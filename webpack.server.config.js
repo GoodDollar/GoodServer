@@ -17,7 +17,7 @@ module.exports = (env, argv) => {
 
   return ({
     entry: {
-      server: SERVER_PATH,
+      server: ["@babel/polyfill",SERVER_PATH]
     },
     output: {
       path: path.join(__dirname, "dist"),

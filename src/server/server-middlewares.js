@@ -1,5 +1,6 @@
 import bodyParser from "body-parser"
 import addLoginMiddlewares from "./login/login-middleware"
+import {setup as addGunMiddlewares} from "./gun/gun-middleware"
 
 export default (app, env) => {
   // parse application/x-www-form-urlencoded
@@ -19,4 +20,6 @@ export default (app, env) => {
   })
 
   addLoginMiddlewares(app)
+  addGunMiddlewares(app)
+
 }

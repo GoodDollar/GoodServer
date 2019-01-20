@@ -22,6 +22,11 @@ var conf = convict({
     default: 3003,
     env: "PORT"
   },
+  gundbPassword: {
+    doc: "The password to gundb",
+    format: "*",
+    env: "GUNDB_PASS"
+  }, 
   ethereum:{
     network_id:42,
     useWebSocket:true,
