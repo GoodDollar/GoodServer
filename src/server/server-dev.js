@@ -28,17 +28,17 @@ const compiler = webpack(config)
 app.use(webpackHotMiddleware(compiler))
 
 middlewares(app, "dev")
-app.get("*", (req, res, next) => {
-  compiler.outputFileSystem.readFile(HTML_FILE, (err, result) => {
-    if (err) {
-      return next(err)
-    }
-    res.set("content-type", "text/html")
-    res.send(result)
-    res.end()
-    return false
-  })
-})
+// app.get("*", (req, res, next) => {
+//   compiler.outputFileSystem.readFile(HTML_FILE, (err, result) => {
+//     if (err) {
+//       return next(err)
+//     }
+//     res.set("content-type", "text/html")
+//     res.send(result)
+//     res.end()
+//     return false
+//   })
+// })
 
 console.log({conf})
 const PORT = conf.port || 8080

@@ -10,7 +10,7 @@
     "comma-dangle": "off",
     "react/jsx-filename-extension": "off",
     "semi":"off",
-    "quotes":["error","double"],
+    "quotes":"off",
     "require-jsdoc":"warn",
     "no-unused-vars":"warn"
   }

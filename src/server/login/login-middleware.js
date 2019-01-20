@@ -17,7 +17,7 @@ jwtOptions.secretOrKey = "G00DAPP";
 const strategy = new Strategy(jwtOptions, ((jwtPayload, next) => {
   console.debug("payload received", jwtPayload);
   // usually this would be a database call:
-  const user = { user: jwtPayload.loggedInAs }
+  const user = { pubkey: jwtPayload.loggedInAs }
   if (user) {
     next(null, user);
   } else {
@@ -66,6 +66,7 @@ const setup = (app:express) => {
     console.debug(req.user)
     res.end()
   })
+  
   console.info("Done setup login middleware.")
 }
 
