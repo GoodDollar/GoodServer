@@ -2,12 +2,14 @@
 import path from "path"
 import express from "express"
 import webpack from "webpack"
+import pino from 'express-pino-logger'
 import webpackDevMiddleware from "webpack-dev-middleware"
 import webpackHotMiddleware from "webpack-hot-middleware"
 import middlewares from "./server-middlewares"
 import config from "../../webpack.dev.config" 
 import conf from './server.config.js'
 import {GunDBInstance} from './gun/gun-middleware'
+import logger from '../imports/pino-logger'
 
 
 const app = express();
@@ -25,6 +27,8 @@ const compiler = webpack(config)
 //   publicPath: config.output.publicPath
 // }))
 
+app.use(pino({ logger }))
+
 app.use(webpackHotMiddleware(compiler))
 
 middlewares(app, "dev")
@@ -40,12 +44,12 @@ middlewares(app, "dev")
 //   })
 // })
 
-console.log({conf})
+logger.debug({ conf })
 const PORT = conf.port || 8080
 
 const server = app.listen(PORT, () => {
-  console.log(`App listening to ${PORT}....`)
-  console.log("Press Ctrl+C to quit.")
+  logger.info(`App listening to ${PORT}....`)
+  logger.info('Press Ctrl+C to quit.')
 })
 
 GunDBInstance.init(server,conf.gundbPassword)

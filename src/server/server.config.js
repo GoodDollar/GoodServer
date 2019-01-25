@@ -1,6 +1,9 @@
 require('dotenv').config()
 var convict = require('convict');
- 
+const logger = require('../imports/pino-logger').default
+
+const log = logger.child({ from: 'server-config', level: 10 })
+
 // Define a schema
 var conf = convict({
   env: {
@@ -43,9 +46,9 @@ var conf = convict({
  
 // Load environment dependent configuration
 var env = conf.get('env');
-console.log({env}) 
+log.info({ env })
 var network = conf.get('network');
-console.log("network:",network.value) 
+log.info('network: ', network.value)
 conf.loadFile('./config/' + env + '/dev-'+network.value+'.json');
  
 // Perform validation
