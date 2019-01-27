@@ -1,11 +1,11 @@
 require('dotenv').config()
-var convict = require('convict');
- 
+const convict = require('convict');
+
 // Define a schema
-var conf = convict({
+const conf = convict({
   env: {
     doc: "The applicaton environment.",
-    format: ["production","development", "test"],
+    format: ["production", "development", "test"],
     default: "dev-localhost",
     arg: 'nodeEnv',
     env: "NODE_ENV"
@@ -25,30 +25,44 @@ var conf = convict({
   gundbPassword: {
     doc: "The password to gundb",
     format: "*",
+    default: "",
     env: "GUNDB_PASS"
-  }, 
-  ethereum:{
-    network_id:42,
-    useWebSocket:true,
-    web3Transport:"HttpProvider",
-    httpWeb3provider:"https://kovan.infura.io/v3/",
-    websocketWeb3Provider:"wss://kovan.infura.io/ws" 
   },
-  network:{
+  mnemonic: {
+    doc: "Wallet mnemonic",
+    format: "*",
+    env: "MNEMONIC",
+    default: ""
+  },
+  infuraKey: {
+    doc: "Infura API Key",
+    format: "*",
+    env: "INFURA_API",
+    default: ""
+  },
+  ethereum: {
+    network_id: 42,
+    useWebSocket: true,
+    web3Transport: "HttpProvider",
+    httpWeb3provider: "https://kovan.infura.io/v3/",
+    websocketWeb3Provider: "wss://kovan.infura.io/ws",
+    mnemonic: ""
+  },
+  network: {
     doc: "The blockchain network to connect to",
-    format: ["kovan", "mainnet","rinkbey", "ropsten"],
-    value:'ropsten'
+    format: ["kovan", "mainnet", "rinkbey", "ropsten"],
+    default: 'ropsten',
+    env: "NETWORK"
   }
 });
- 
+
 // Load environment dependent configuration
-var env = conf.get('env');
-console.log({env}) 
-var network = conf.get('network');
-console.log("network:",network.value) 
-conf.loadFile('./config/' + env + '/dev-'+network.value+'.json');
- 
+const env = conf.get('env');
+const network = conf.get('network');
+conf.loadFile(`./config/${env}/${network}.json`);
 // Perform validation
-conf.validate({allowed: 'strict'}) 
- 
+conf.validate({ allowed: 'strict' })
+console.log(conf)
+console.log("mnemonic:", conf.get("mnemonic"))
+console.log("network:", network)
 module.exports = conf.getProperties();
