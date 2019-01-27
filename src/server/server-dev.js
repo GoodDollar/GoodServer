@@ -5,9 +5,9 @@ import webpack from "webpack"
 import webpackDevMiddleware from "webpack-dev-middleware"
 import webpackHotMiddleware from "webpack-hot-middleware"
 import middlewares from "./server-middlewares"
-import config from "../../webpack.dev.config" 
-import conf from './server.config.js'
-import {GunDBInstance} from './gun/gun-middleware'
+import config from "../../webpack.dev.config"
+import conf from './server.config'
+import { GunDBPublic } from './gun/gun-middleware'
 
 
 const app = express();
@@ -40,12 +40,10 @@ middlewares(app, "dev")
 //   })
 // })
 
-console.log({conf})
 const PORT = conf.port || 8080
 
 const server = app.listen(PORT, () => {
   console.log(`App listening to ${PORT}....`)
   console.log("Press Ctrl+C to quit.")
 })
-
-GunDBInstance.init(server,conf.gundbPassword)
+GunDBPublic.init(server, conf.gundbPassword, 'publicdb')

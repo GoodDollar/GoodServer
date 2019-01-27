@@ -15,19 +15,36 @@ interface StorageAPI {
     deleteUser(user: UserRecord):boolean
 }
 
+function wrapAsync(fn) {
+  return function (req, res, next) {
+    // Make sure to `.catch()` any errors and pass them along to the `next()`
+    // middleware in the chain, in this case the error handler.
+    fn(req, res, next).catch(next);
+  };
+}
+
 const setup = (app:express, storage:StorageAPI) => {
-  app.post("/user/add", passport.authenticate("jwt", { session: false }), (req, res) => {
+  app.post("/user/*", passport.authenticate("jwt", { session: false }), wrapAsync(async (req, res, next) => {
     const { user, body } = req
-    console.log("user/add:", { user, body })
-    const pubkey = get(body,'user.pubkey')
-    if (user.pubkey === pubkey) {
-      storage.addUser(body.user)
-      res.json({ok:1})
-    } else {
+    console.log("user/* auth:", { user, body })
+    const pubkey = get(body, 'user.pubkey')
+    if (user.pubkey !== pubkey) {
       console.error(`Trying to update other user data! ${user.pubkey}!==${pubkey}`);
       throw new Error(`Trying to update other user data! ${user.pubkey}!==${pubkey}`)
-    }
-  });
+    } else next()
+  }))
+
+  app.post("/user/add", passport.authenticate("jwt", { session: false }), wrapAsync(async (req, res, next) => {
+    const { user, body } = req
+    await storage.addUser(body.user)
+    res.json({ ok: 1 })
+  }))
+
+  app.post("/user/delete", passport.authenticate("jwt", { session: false }), wrapAsync(async (req, res, next) => {
+    const { user, body } = req
+    await storage.deleteUser(body.user)
+    res.json({ ok: 1 })
+  }));
 }
 
 export default setup

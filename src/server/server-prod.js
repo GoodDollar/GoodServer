@@ -1,6 +1,8 @@
 import path from "path"
 import express from "express"
 import middlewares from "./server-middlewares"
+import conf from './server.config'
+import { GunDBPublic } from './gun/gun-middleware'
 
 const app = express();
 
@@ -21,8 +23,9 @@ app.get("*", (req, res) => {
 
 
 const PORT = process.env.PORT || 3000
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`App listening to ${PORT}....`)
   console.log("Press Ctrl+C to quit.")
-}) 
+})
 
+GunDBPublic.init(server, conf.gundbPassword, 'publicdb')
