@@ -6,7 +6,7 @@ import type { StorageAPI, UserRecord } from "../storage/storageAPI"
 import conf from '../server.config'
 import logger from '../../imports/pino-logger'
 
-const log = logger.child({ from: 'GunDB-Middleware', level: 30 })
+const log = logger.child({ from: 'GunDB-Middleware' })
 
 const setup = (app) => {
   app.use(Gun.serve);
@@ -70,7 +70,7 @@ class GunDB implements StorageAPI {
   async deleteUser(user:UserRecord):Promise<boolean> {
     const { pubkey } = user
     const userRecord = await this.usersCol.get(pubkey).then()
-    console.log("deleteUser fetched record:",{userRecord})
+    log.info("deleteUser fetched record:", { userRecord })
     if (userRecord.email) {
       this.usersCol.get('byemail').get(userRecord.email).put(null)
     }
