@@ -2,7 +2,7 @@ import bodyParser from "body-parser"
 import addLoginMiddlewares from "./login/login-middleware"
 import { setup as addGunMiddlewares } from "./gun/gun-middleware"
 import addStorageMiddlewares from "./storage/storageAPI"
-import { GunDBInstance } from "./gun/gun-middleware"
+import { GunDBPrivate } from "./gun/gun-middleware"
 
 export default (app, env) => {
   // parse application/x-www-form-urlencoded
@@ -23,6 +23,11 @@ export default (app, env) => {
 
   addLoginMiddlewares(app)
   addGunMiddlewares(app)
-  addStorageMiddlewares(app, GunDBInstance)
+  addStorageMiddlewares(app, GunDBPrivate)
+
+  app.use((error, req, res, next) => {
+    console.log({error});
+    res.status(400).json({ message: error.message });
+  });
 
 }

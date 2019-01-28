@@ -6,9 +6,9 @@ import pino from 'express-pino-logger'
 import webpackDevMiddleware from "webpack-dev-middleware"
 import webpackHotMiddleware from "webpack-hot-middleware"
 import middlewares from "./server-middlewares"
-import config from "../../webpack.dev.config" 
-import conf from './server.config.js'
-import {GunDBInstance} from './gun/gun-middleware'
+import config from "../../webpack.dev.config"
+import conf from './server.config'
+import { GunDBPublic } from './gun/gun-middleware'
 import logger from '../imports/pino-logger'
 
 
@@ -51,5 +51,4 @@ const server = app.listen(PORT, () => {
   logger.info(`App listening to ${PORT}....`)
   logger.info('Press Ctrl+C to quit.')
 })
-
-GunDBInstance.init(server,conf.gundbPassword)
+GunDBPublic.init(server, conf.gundbPassword, 'publicdb')

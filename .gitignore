@@ -1,8 +1,11 @@
 .vscode
+.env
 node_modules
 dist
 *.log
 yarn.lock
 secrets.json
 openSubjects.txt
-radata
+publicdb
+privatedb
+config/*/*

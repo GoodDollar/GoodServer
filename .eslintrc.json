@@ -12,6 +12,7 @@
     "semi":"off",
     "quotes":"off",
     "require-jsdoc":"warn",
-    "no-unused-vars":"warn"
+    "no-unused-vars":"warn",
+    "max-len":["error",200]
   }
 }
