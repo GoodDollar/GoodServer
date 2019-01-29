@@ -9,3 +9,4 @@ openSubjects.txt
 publicdb
 privatedb
 config/*/*
+test/jest-envs/*
