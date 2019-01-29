@@ -65,7 +65,6 @@ const network = conf.get('network');
 conf.loadFile(`./config/${env}/${network}.json`);
 // Perform validation
 conf.validate({ allowed: 'strict' })
-log.trace(conf)
-log.trace("mnemonic:", conf.get("mnemonic"))
-log.trace("network:", network)
+log.trace("Starting configuration...",conf._instance)
+
 module.exports = conf.getProperties();
