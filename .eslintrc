@@ -15,7 +15,8 @@
     "flowtype",
     "import",
     "prettier",
-    "react"
+    "react",
+    "jest"
   ],
   "settings": {
     "react": {
