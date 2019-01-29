@@ -4,11 +4,14 @@ import SEA from "gun/sea"
 import { get, each } from "lodash"
 import type { StorageAPI, UserRecord } from "../storage/storageAPI"
 import conf from '../server.config'
+import logger from '../../imports/pino-logger'
+
+const log = logger.child({ from: 'GunDB-Middleware' })
 
 const setup = (app) => {
   app.use(Gun.serve);
   global.Gun = Gun; // / make global to `node --inspect` - debug only
-  console.info("Done setup GunDB middleware.")
+  log.info("Done setup GunDB middleware.")
 }
 class GunDB implements StorageAPI {
   gun:Gun
@@ -23,10 +26,10 @@ class GunDB implements StorageAPI {
     this.serverName = name
     this.user.create("gooddollar", password,
       (createres) => {
-        console.log("Create GoodDollar User", { createres })
+        log.trace("Create GoodDollar User", { createres })
         this.user.auth("gooddollar", password,
           async (authres) => {
-            console.log("Authenticated GunDB user:", authres)
+            log.trace("Authenticated GunDB user:", authres)
             this.usersCol = this.user.get('users')
           })
       })
@@ -67,7 +70,7 @@ class GunDB implements StorageAPI {
   async deleteUser(user:UserRecord):Promise<boolean> {
     const { pubkey } = user
     const userRecord = await this.usersCol.get(pubkey).then()
-    console.log("deleteUser fetched record:",{userRecord})
+    log.info("deleteUser fetched record:", { userRecord })
     if (userRecord.email) {
       this.usersCol.get('byemail').get(userRecord.email).put(null)
     }

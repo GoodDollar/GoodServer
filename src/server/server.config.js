@@ -1,5 +1,8 @@
 require('dotenv').config()
 const convict = require('convict');
+const logger = require('../imports/pino-logger').default
+
+const log = logger.child({ from: 'server-config', level: 10 })
 
 // Define a schema
 const conf = convict({
@@ -62,7 +65,7 @@ const network = conf.get('network');
 conf.loadFile(`./config/${env}/${network}.json`);
 // Perform validation
 conf.validate({ allowed: 'strict' })
-console.log(conf)
-console.log("mnemonic:", conf.get("mnemonic"))
-console.log("network:", network)
+log.trace(conf)
+log.trace("mnemonic:", conf.get("mnemonic"))
+log.trace("network:", network)
 module.exports = conf.getProperties();

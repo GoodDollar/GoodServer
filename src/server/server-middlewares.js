@@ -26,7 +26,7 @@ export default (app, env) => {
   addStorageMiddlewares(app, GunDBPrivate)
 
   app.use((error, req, res, next) => {
-    console.log({error});
+    req.log.error({ error });
     res.status(400).json({ message: error.message });
   });
 

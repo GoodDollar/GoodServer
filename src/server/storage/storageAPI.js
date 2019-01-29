@@ -25,11 +25,11 @@ function wrapAsync(fn) {
 
 const setup = (app:express, storage:StorageAPI) => {
   app.post("/user/*", passport.authenticate("jwt", { session: false }), wrapAsync(async (req, res, next) => {
-    const { user, body } = req
-    console.log("user/* auth:", { user, body })
+    const { user, body, log } = req
+    log.trace("user/* auth:", { user, body })
     const pubkey = get(body, 'user.pubkey')
     if (user.pubkey !== pubkey) {
-      console.error(`Trying to update other user data! ${user.pubkey}!==${pubkey}`);
+      log.error(`Trying to update other user data! ${user.pubkey}!==${pubkey}`);
       throw new Error(`Trying to update other user data! ${user.pubkey}!==${pubkey}`)
     } else next()
   }))
