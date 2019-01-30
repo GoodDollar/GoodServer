@@ -2,6 +2,8 @@ import bodyParser from "body-parser"
 import addLoginMiddlewares from "./login/login-middleware"
 import { setup as addGunMiddlewares } from "./gun/gun-middleware"
 import addStorageMiddlewares from "./storage/storageAPI"
+import addVerificationMiddlewares from "./verification/verificationAPI"
+
 import { GunDBPrivate } from "./gun/gun-middleware"
 
 export default (app, env) => {
@@ -24,7 +26,8 @@ export default (app, env) => {
   addLoginMiddlewares(app)
   addGunMiddlewares(app)
   addStorageMiddlewares(app, GunDBPrivate)
-
+  addVerificationMiddlewares(app,{ verifyUser(u, v) { return true } },GunDBPrivate)
+  
   app.use((error, req, res, next) => {
     req.log.error({ error });
     res.status(400).json({ message: error.message });

@@ -32,6 +32,18 @@ const strategy = new Strategy(jwtOptions, ((jwtPayload, next) => {
 const setup = (app:express) => {
   passport.use(strategy);
   app.use(passport.initialize());
+  app.post("/*/*", passport.authenticate("jwt", { session: false }), wrapAsync(async (req, res, next) => {
+    const { user, body, log } = req
+    log.trace("/*/* auth:", { user, body })
+    if (req.url.indexOf('/auth') === 0) next()
+
+    const pubkey = get(body, 'user.pubkey')
+    if (user.pubkey !== pubkey) {
+      log.error(`Trying to update other user data! ${user.pubkey}!==${pubkey}`);
+      throw new Error(`Trying to update other user data! ${user.pubkey}!==${pubkey}`)
+    } else next()
+  }))
+
   app.post("/auth/eth", (req, res) => {
     const log = req.log.child({ from: 'login-middleware - auth/eth' })
 

@@ -10,7 +10,7 @@ import conf from '../server.config'
 import { type TransactionReceipt } from './types'
 
 
-export class AdminWallet {
+export class Wallet {
     web3:Web3;
 
     wallet:HDWalletProvider
@@ -54,4 +54,5 @@ export class AdminWallet {
     }
 }
 
-export default new AdminWallet(conf.mnemonic)
+const AdminWallet = new Wallet(conf.mnemonic)
+export default AdminWallet

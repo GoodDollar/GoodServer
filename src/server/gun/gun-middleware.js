@@ -2,7 +2,7 @@
 import Gun from "gun"
 import SEA from "gun/sea"
 import { get, each } from "lodash"
-import type { StorageAPI, UserRecord } from "../storage/storageAPI"
+import  { type StorageAPI, type UserRecord } from "../../imports/types"
 import conf from '../server.config'
 import logger from '../../imports/pino-logger'
 
