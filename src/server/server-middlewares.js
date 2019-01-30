@@ -6,6 +6,15 @@ import addVerificationMiddlewares from "./verification/verificationAPI"
 
 import { GunDBPrivate } from "./gun/gun-middleware"
 
+function wrapAsync(fn) {
+  return function (req, res, next) {
+    // Make sure to `.catch()` any errors and pass them along to the `next()`
+    // middleware in the chain, in this case the error handler.
+    fn(req, res, next).catch(next);
+  };
+}
+
+export { wrapAsync }
 export default (app, env) => {
   // parse application/x-www-form-urlencoded
   // for easier testing with Postman or plain HTML forms

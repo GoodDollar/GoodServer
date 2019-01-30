@@ -18,7 +18,8 @@ const setup = (app:express, verifier:VerificationAPI, storage:StorageAPI) => {
     const { verificationData } = req.body
     if (verifier.verifyUser(user, verificationData)) { 
       await AdminWallet.whitelistUser(user.pubkey)
-      await storage.updateUser({ pubkey: user.pubkey, isVerified: true }) 
+      await storage.updateUser({ pubkey: user.pubkey, isVerified: true })
+      res.json( { ok: 1 } ) 
     } else { throw new Error("Can't verify user") }
   }))
 
