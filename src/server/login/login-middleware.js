@@ -34,7 +34,7 @@ const strategy = new Strategy(jwtOptions, ((jwtPayload, next) => {
 const setup = (app:express) => {
   passport.use(strategy);
   app.use(passport.initialize());
-  app.use(['/verify/*','/user/*'], passport.authenticate("jwt", { session: false }), wrapAsync(async (req, res, next) => {
+  app.use(['/user/*'], passport.authenticate("jwt", { session: false }), wrapAsync(async (req, res, next) => {
     const { user, body, log } = req
     log.trace(`${req.baseUrl} auth:`, { user, body })
     const pubkey = get(body, 'user.pubkey')

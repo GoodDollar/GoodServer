@@ -21,9 +21,13 @@ export class Wallet {
 
     identityContract:Web3.eth.Contract
 
+    claimContract:Web3.eth.Contract
+
+    reserveContract:Web3.eth.Contract
+
     address:string
 
-    networdId:number
+    networkId:number
 
 
     constructor(mnemonic:string) {
