@@ -21,7 +21,7 @@
     "react": {
       "pragma": "React",
       "version": "detect",
-      "flowVersion": "0.89"
+      "flowVersion": "0.91"
     }
   },
   "rules": {
