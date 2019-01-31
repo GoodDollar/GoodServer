@@ -1,3 +1,5 @@
+import  networks from './networks.js'
+
 require('dotenv').config()
 const convict = require('convict');
 const logger = require('../imports/pino-logger').default
@@ -45,16 +47,13 @@ const conf = convict({
   },
   ethereum: {
     network_id: 42,
-    useWebSocket: true,
-    web3Transport: "HttpProvider",
-    httpWeb3provider: "https://kovan.infura.io/v3/",
+    httpWeb3Provider: "https://kovan.infura.io/v3/",
     websocketWeb3Provider: "wss://kovan.infura.io/ws",
-    mnemonic: ""
   },
   network: {
     doc: "The blockchain network to connect to",
-    format: ["kovan", "mainnet", "rinkbey", "ropsten"],
-    default: 'ropsten',
+    format: ["kovan", "mainnet", "rinkbey", "ropsten","truffle","ganache","fuse"],
+    default: 'kovan',
     env: "NETWORK"
   }
 });
@@ -62,10 +61,9 @@ const conf = convict({
 // Load environment dependent configuration
 const env = conf.get('env');
 const network = conf.get('network');
-conf.loadFile(`./config/${env}/${network}.json`);
+conf.set("ethereum",networks[network]);
 // Perform validation
 conf.validate({ allowed: 'strict' })
-log.trace(conf)
-log.trace("mnemonic:", conf.get("mnemonic"))
-log.trace("network:", network)
-module.exports = conf.getProperties();
+log.trace("Starting configuration...",conf._instance)
+
+export default conf.getProperties()
