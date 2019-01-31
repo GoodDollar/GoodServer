@@ -1,4 +1,5 @@
 // @flow
+import express, { Router } from 'express'
 import Gun from "gun"
 import SEA from "gun/sea"
 import { get, each } from "lodash"
@@ -8,19 +9,21 @@ import logger from '../../imports/pino-logger'
 
 const log = logger.child({ from: 'GunDB-Middleware' })
 
-const setup = (app) => {
+const setup = (app: Router) => {
   app.use(Gun.serve);
   global.Gun = Gun; // / make global to `node --inspect` - debug only
   log.info("Done setup GunDB middleware.")
 }
 class GunDB implements StorageAPI {
-  gun:Gun
+  gun: Gun
 
-  user:Gun
+  user: Gun
 
-  serverName:string
+  usersCol: Gun
 
-  init(server:express, password:string, name:string) {
+  serverName: string
+
+  init(server: typeof express | null, password: string, name: string) {
     this.gun = Gun({ web: server, file: name })
     this.user = this.gun.user()
     this.serverName = name
@@ -42,13 +45,23 @@ class GunDB implements StorageAPI {
   async updateUser(user:UserRecord):Promise<boolean> {
     const { pubkey } = user
     const isDup = await this.isDupUserData(user)
+
     if (!isDup) {
       this.usersCol.get("users").get(pubkey).put(user)
-      if (user.email) this.usersCol.get("byemail").put({ [user.email]: pubkey })
 
-      if (user.mobile) this.usersCol.get("bymobile").put({ [user.mobile]: pubkey })
+      if (user.email) {
+        const { email } = user
+        this.usersCol.get("byemail").put({ [email]: pubkey })
+      }
+
+      if (user.mobile) {
+        const { mobile } = user
+        this.usersCol.get("bymobile").put({ [mobile]: pubkey })
+      }
+
       return true
     }
+
     return Promise.reject(new Error("Duplicate user information (phone/email)"))
     // this.user.get('users').get(pubkey).secret({...user, jwt})
   }
@@ -83,7 +96,10 @@ class GunDB implements StorageAPI {
     return true
   }
 }
+
 const GunDBPublic = new GunDB()
 const GunDBPrivate = new GunDB()
+
 GunDBPrivate.init(null, conf.gundbPassword, 'privatedb')
+
 export { setup, GunDBPublic, GunDBPrivate }

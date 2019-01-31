@@ -1,4 +1,6 @@
 // @flow
+import { Router } from 'express'
+import type { NextFunction } from 'express'
 import passport from "passport"
 import { get } from 'lodash'
 
@@ -10,20 +12,20 @@ type UserRecord = {
     jwt?:string
 }
 interface StorageAPI {
-    addUser(user: UserRecord):boolean,
-    updateUser(user: UserRecord):boolean,
-    deleteUser(user: UserRecord):boolean
+    addUser(user: UserRecord): Promise<boolean>,
+    updateUser(user: UserRecord): Promise<boolean>,
+    deleteUser(user: UserRecord): Promise<boolean>
 }
 
 function wrapAsync(fn) {
-  return function (req, res, next) {
+  return function (req, res, next: NextFunction) {
     // Make sure to `.catch()` any errors and pass them along to the `next()`
     // middleware in the chain, in this case the error handler.
     fn(req, res, next).catch(next);
   };
 }
 
-const setup = (app:express, storage:StorageAPI) => {
+const setup = (app: Router, storage: StorageAPI) => {
   app.post("/user/*", passport.authenticate("jwt", { session: false }), wrapAsync(async (req, res, next) => {
     const { user, body, log } = req
     log.trace("user/* auth:", { user, body })
