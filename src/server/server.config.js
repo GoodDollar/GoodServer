@@ -60,7 +60,6 @@ const conf = convict({
 
 // Load environment dependent configuration
 const env = conf.get('env');
-console.log(networks)
 const network = conf.get('network');
 conf.set("ethereum",networks[network]);
 // Perform validation

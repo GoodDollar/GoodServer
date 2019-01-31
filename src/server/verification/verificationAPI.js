@@ -3,14 +3,7 @@ import passport from "passport"
 import { get } from 'lodash'
 import {type UserRecord, StorageAPI, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
-
-function wrapAsync(fn) {
-  return function (req, res, next) {
-    // Make sure to `.catch()` any errors and pass them along to the `next()`
-    // middleware in the chain, in this case the error handler.
-    fn(req, res, next).catch(next);
-  };
-}
+import { wrapAsync } from '../server-middlewares'
 
 const setup = (app:express, verifier:VerificationAPI, storage:StorageAPI) => {
   app.post("/verify/user", passport.authenticate("jwt", { session: false }), wrapAsync(async (req, res, next) => {
