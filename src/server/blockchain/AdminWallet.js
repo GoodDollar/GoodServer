@@ -7,7 +7,7 @@ import RedemptionABI from '@gooddollar/goodcontracts/build/contracts/RedemptionF
 import GoodDollarABI from '@gooddollar/goodcontracts/build/contracts/GoodDollar.json'
 import ReserveABI from '@gooddollar/goodcontracts/build/contracts/GoodDollarReserve.json'
 import conf from '../server.config'
-import { type TransactionReceipt } from './types'
+import { type TransactionReceipt } from './blockchain-types'
 
 
 export class Wallet {
