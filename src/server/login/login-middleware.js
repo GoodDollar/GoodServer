@@ -3,7 +3,9 @@ import passport from "passport"
 import { ExtractJwt, Strategy } from "passport-jwt"
 import express from "express"
 import ethUtil from "ethereumjs-util"
+import { get } from 'lodash'
 import logger from '../../imports/pino-logger'
+import { wrapAsync } from '../server-middlewares'
 
 // const ExtractJwt = passportJWT.ExtractJwt
 // const JwtStrategy = passportJWT.Strategy
@@ -32,6 +34,16 @@ const strategy = new Strategy(jwtOptions, ((jwtPayload, next) => {
 const setup = (app:express) => {
   passport.use(strategy);
   app.use(passport.initialize());
+  app.use(['/user/*'], passport.authenticate("jwt", { session: false }), wrapAsync(async (req, res, next) => {
+    const { user, body, log } = req
+    log.trace(`${req.baseUrl} auth:`, { user, body })
+    const pubkey = get(body, 'user.pubkey')
+    if (user.pubkey !== pubkey) {
+      log.error(`Trying to update other user data! ${user.pubkey}!==${pubkey}`);
+      throw new Error(`Trying to update other user data! ${user.pubkey}!==${pubkey}`)
+    } else next()
+  }))
+
   app.post("/auth/eth", (req, res) => {
     const log = req.log.child({ from: 'login-middleware - auth/eth' })
 

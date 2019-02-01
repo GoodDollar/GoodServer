@@ -3,7 +3,7 @@ import express, { Router } from 'express'
 import Gun from "gun"
 import SEA from "gun/sea"
 import { get, each } from "lodash"
-import type { StorageAPI, UserRecord } from "../storage/storageAPI"
+import  { type StorageAPI, type UserRecord } from "../../imports/types"
 import conf from '../server.config'
 import logger from '../../imports/pino-logger'
 
@@ -29,10 +29,10 @@ class GunDB implements StorageAPI {
     this.serverName = name
     this.user.create("gooddollar", password,
       (createres) => {
-        log.trace("Create GoodDollar User", { createres })
+        log.trace("Created gundb GoodDollar User", { name })
         this.user.auth("gooddollar", password,
           async (authres) => {
-            log.trace("Authenticated GunDB user:", authres)
+            log.trace("Authenticated GunDB user:", {name})
             this.usersCol = this.user.get('users')
           })
       })
