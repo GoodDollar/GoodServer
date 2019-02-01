@@ -66,7 +66,7 @@ export interface Subscribe<T> {
         id: string;
         subscribe(callback?: Callback<Subscribe<T>>): Subscribe<T>;
         unsubscribe(callback?: Callback<boolean>): void | boolean;
-        arguments: any;
+        arguments: {};
     };
     on(type: "data" | "changed", handler: (data: T) => void): void;
     on(type: "error", handler: (data: Error) => void): void;
