@@ -3,10 +3,26 @@
 
 [ignore]
 ./dist/.*
+.*/assets/.*
 ./config/.*
 ./public/.*
 ./scripts/.*
-./node_modules/.*
+./ossl/.*
+./radata/.*
+.*/node_modules/.*
 
 [libs]
 ./flow-typed/.*
+
+[options]
+# https://github.com/facebook/react-native/issues/19766#issuecomment-398099206
+module.system=haste
+module.system.haste.use_name_reducers=true
+# keep the following in sync with server/haste/hasteImpl.js
+# get basename
+module.system.haste.name_reducers='^.*/\([a-zA-Z0-9$_.-]+\.js\(\.flow\)?\)$' -> '\1'
+# strip .js or .js.flow suffix
+module.system.haste.name_reducers='^\(.*\)\.js\(\.flow\)?$' -> '\1'
+# strip .ios suffix
+module.system.haste.paths.blacklist=.*/__tests__/.*
+module.system.haste.paths.blacklist=.*/__mocks__/.*

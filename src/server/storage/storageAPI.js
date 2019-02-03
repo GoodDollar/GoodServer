@@ -1,11 +1,11 @@
 // @flow
+import { Router } from 'express'
 import passport from "passport"
 import { get } from 'lodash'
-import { type UserRecord, type StorageAPI } from '../../imports/types'
+import { type StorageAPI } from '../../imports/types'
 import { wrapAsync } from '../server-middlewares'
 
-const setup = (app:express, storage:StorageAPI) => {
-
+const setup = (app: Router, storage: StorageAPI) => {
   app.post("/user/add", passport.authenticate("jwt", { session: false }), wrapAsync(async (req, res, next) => {
     const { user, body } = req
     await storage.addUser(body.user)

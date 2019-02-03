@@ -8,9 +8,9 @@ export type UserRecord = {
 }
 
 export interface StorageAPI {
-    addUser(user: UserRecord):boolean,
-    updateUser(user: UserRecord):boolean,
-    deleteUser(user: UserRecord):boolean
+    addUser(user: UserRecord): Promise<boolean>,
+    updateUser(user: UserRecord): Promise<boolean>,
+    deleteUser(user: UserRecord): Promise<boolean>
 }
 
 export interface VerificationAPI {
