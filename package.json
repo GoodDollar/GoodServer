@@ -51,6 +51,7 @@
     "passport": "^0.4.0",
     "passport-jwt": "^4.0.0",
     "pino": "^5.11.0",
+    "plivo": "^4.0.7",
     "react": "^16.7.0",
     "react-dom": "^16.7.0",
     "truffle-hdwallet-provider": "^1.0.2",
