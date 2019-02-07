@@ -51,7 +51,7 @@ const setup = (app:express) => {
     log.debug('body:', req.body)
 
     let signature = req.body.signature
-    let reqPublicKey = req.body.publicKey
+    let reqPublicKey = req.body.pubkey
     let method    = req.body.method
 
     log.debug({ signature })
@@ -95,7 +95,7 @@ const setup = (app:express) => {
 
     res.end()
   })
-  
+
   logger
     .child({ from: 'login-middleware - setup' })
     .info("Done setup login middleware.")
