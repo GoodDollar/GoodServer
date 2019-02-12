@@ -3,7 +3,7 @@ import express, { Router } from 'express'
 import Gun from "gun"
 import SEA from "gun/sea"
 import { get, each } from "lodash"
-import  { type StorageAPI, type UserRecord } from "../../imports/types"
+import { type StorageAPI, type UserRecord } from "../../imports/types"
 import conf from '../server.config'
 import logger from '../../imports/pino-logger'
 
@@ -93,6 +93,27 @@ class GunDB implements StorageAPI {
     }
 
     this.usersCol.get(pubkey).put(null)
+    return true
+  }
+
+  async storeOTP(user: UserRecord, otp: number): Promise<boolean> {
+    const { pubkey } = user
+    const expirationDate = Date.now() + conf.otpTtlMinutes * 60 * 1000
+    this.usersCol.get('otpVerification').put({ [pubkey]: { otp, expirationDate } })
+    return true
+  }
+
+  async getOTP(user: UserRecord): Promise<{ otp: string, expirationDate: number }> {
+    const { pubkey } = user
+    const storedOTP: {otp: string, expirationDate: number } = await this.usersCol.get('otpVerification').get(pubkey).then()
+    return storedOTP
+  }
+
+  async deleteOTP(user: UserRecord): Promise<boolean> {
+    const { pubkey } = user
+    const userOTPRecord = await this.usersCol.get(pubkey).then()
+    log.info('deleteOTP fetched record:', { userOTPRecord })
+    this.usersCol.get('otpVerification').get(pubkey).put(null)
     return true
   }
 }

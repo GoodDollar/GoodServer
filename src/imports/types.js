@@ -10,7 +10,8 @@ export type UserRecord = {
 export interface StorageAPI {
     addUser(user: UserRecord): Promise<boolean>,
     updateUser(user: UserRecord): Promise<boolean>,
-    deleteUser(user: UserRecord): Promise<boolean>
+    deleteUser(user: UserRecord): Promise<boolean>,
+    storeOTP(user: UserRecord, otp: number): Promise<boolean>
 }
 
 export interface VerificationAPI {
