@@ -3,7 +3,7 @@ import { Router } from 'express'
 import passport from "passport"
 import { get } from 'lodash'
 import { type StorageAPI } from '../../imports/types'
-import { wrapAsync } from '../server-middlewares'
+import { wrapAsync, onlyInProduction } from '../server-middlewares'
 import { sendOTP } from '../../imports/otp'
 
 const setup = (app: Router, storage: StorageAPI) => {
@@ -19,7 +19,7 @@ const setup = (app: Router, storage: StorageAPI) => {
     res.json({ ok: 1 })
   }));
 
-  app.post("/user/mobile", passport.authenticate("jwt", { session: false }), wrapAsync(async (req, res, next) => {
+  app.post("/user/mobile", passport.authenticate("jwt", { session: false }), onlyInProduction, wrapAsync(async (req, res, next) => {
     const { body: { user } } = req
 
     const [, otp] = await sendOTP(user)

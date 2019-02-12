@@ -25,7 +25,21 @@ function wrapAsync(fn: Function) {
   };
 }
 
-export { wrapAsync }
+/**
+ * If in production execute the following middleware
+ * @param req
+ * @param res
+ * @param next
+ */
+function onlyInProduction(req: $Request, res: $Response, next: NextFunction) {
+  if (conf.env === 'production') {
+    next()
+    return
+  }
+  res.json({ ok: 1 })
+}
+
+export { wrapAsync, onlyInProduction }
 export default (app: Router, env: any) => {
   // parse application/x-www-form-urlencoded
   // for easier testing with Postman or plain HTML forms

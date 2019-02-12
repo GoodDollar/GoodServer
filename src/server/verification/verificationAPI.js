@@ -3,7 +3,7 @@ import { Router } from 'express'
 import passport from 'passport'
 import { type UserRecord, StorageAPI, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
-import { wrapAsync } from '../server-middlewares'
+import { wrapAsync, onlyInProduction } from '../server-middlewares'
 import { GunDBPrivate } from '../gun/gun-middleware'
 
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
@@ -22,7 +22,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     } else { throw new Error("Can't verify user") }
   }))
 
-  app.post('/verify/mobile', passport.authenticate('jwt', { session: false }), wrapAsync(async (req, res, next) => {
+  app.post('/verify/mobile', passport.authenticate('jwt', { session: false }), onlyInProduction, wrapAsync(async (req, res, next) => {
     const { user, body: { verificationData }, log: logger }: { user: UserRecord, body: any, log: any } = req
     const log = logger.child({ from: 'verificationAPI - verify/mobile' })
 
