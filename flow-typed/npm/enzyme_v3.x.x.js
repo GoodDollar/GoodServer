@@ -1,5 +1,5 @@
-// flow-typed signature: 82ccea1391380e84c700ab3f36b80184
-// flow-typed version: 7edb1d6e30/enzyme_v3.x.x/flow_>=v0.53.x
+// flow-typed signature: c278360f2144417a98958b1da49f89c5
+// flow-typed version: 7bd880a082/enzyme_v3.x.x/flow_>=v0.53.x
 
 declare module "enzyme" {
   declare type PredicateFunction<T: Wrapper<*>> = (
@@ -7,7 +7,7 @@ declare module "enzyme" {
     index: number
   ) => boolean;
   declare type NodeOrNodes = React$Node | Array<React$Node>;
-  declare type EnzymeSelector = string | Class<React$Component<*, *>> | {};
+  declare type EnzymeSelector = string | {} | React$ElementType;
 
   // CheerioWrapper is a type alias for an actual cheerio instance
   // TODO: Reference correct type from cheerio's type declarations
@@ -52,6 +52,7 @@ declare module "enzyme" {
     prop(key: string): any,
     key(): string,
     simulate(event: string, ...args: Array<any>): this,
+    simulateError(error: Error): this,
     slice(begin?: number, end?: number): this,
     setState(state: {}, callback?: () => void): this,
     setProps(props: {}, callback?: () => void): this,
