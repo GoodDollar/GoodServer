@@ -1,21 +1,20 @@
 // @flow
 import { Router } from 'express'
-import passport from "passport"
-import { get } from 'lodash'
-import {type UserRecord, StorageAPI, VerificationAPI } from '../../imports/types'
+import passport from 'passport'
+import { type UserRecord, StorageAPI, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { wrapAsync } from '../server-middlewares'
-import pino from '../../imports/pino-logger'
-
-const log = pino.child({ from: 'verificationAPI' })
+import { GunDBPrivate } from '../gun/gun-middleware'
 
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
-  app.post("/verify/user", passport.authenticate("jwt", { session: false }), wrapAsync(async (req, res, next) => {
+  app.post('/verify/user', passport.authenticate('jwt', { session: false }), wrapAsync(async (req, res, next) => {
+    const log = req.log.child({ from: 'verificationAPI - verify/user' })
     log.debug('User:', req.user)
     log.debug('Body:', req.body)
     const user: UserRecord = req.user
     const { verificationData } = req.body
-    if (verifier.verifyUser(user, verificationData)) {
+    const verified = await verifier.verifyUser(user, verificationData)
+    if (verified) {
       await AdminWallet.whitelistUser(user.pubkey)
       const updatedUser = await storage.updateUser({ pubkey: user.pubkey, isVerified: true })
       log.debug('updateUser:', updatedUser)
@@ -23,6 +22,17 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     } else { throw new Error("Can't verify user") }
   }))
 
+  app.post('/verify/mobile', passport.authenticate('jwt', { session: false }), wrapAsync(async (req, res, next) => {
+    const { user, body: { verificationData }, log: logger }: { user: UserRecord, body: any, log: any } = req
+    const log = logger.child({ from: 'verificationAPI - verify/mobile' })
+
+    log.debug('mobile verified', user, verificationData)
+
+    await verifier.verifyMobile(user, verificationData)
+    await GunDBPrivate.deleteOTP(user)
+
+    res.json({ ok: 1 })
+  }))
 }
 
 export default setup

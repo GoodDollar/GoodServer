@@ -15,5 +15,6 @@ export interface StorageAPI {
 }
 
 export interface VerificationAPI {
-    verifyUser(user: UserRecord, verificationData:any):boolean,
+    verifyUser(user: UserRecord, verificationData:any):Promise<any>,
+    verifyMobile(user: UserRecord, verificationData:any):Promise<any>
 }
