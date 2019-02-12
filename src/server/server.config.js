@@ -73,6 +73,18 @@ const conf = convict({
     format: "*",
     env: "PLIVO_PHONE_NUMBER",
     default: ""
+  },
+  otpDigits: {
+    doc: "Amount of digits for the OTP",
+    format: "*",
+    env: "OTP_DIGITS",
+    default: "6"
+  },
+  otpTtlMinutes: {
+    doc: "Time, in minutes, for the OTP to be valid",
+    format: "*",
+    env: "OTP_TTL_MINUTES",
+    default: "60"
   }
 });
 
