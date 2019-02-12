@@ -1,4 +1,4 @@
-import  networks from './networks.js'
+import networks from './networks'
 
 require('dotenv').config()
 const convict = require('convict');
@@ -55,15 +55,34 @@ const conf = convict({
     format: ["kovan", "mainnet", "rinkbey", "ropsten","truffle","ganache","fuse"],
     default: 'kovan',
     env: "NETWORK"
+  },
+  plivoAuthID: {
+    doc: "Plivo's authorization ID",
+    format: "*",
+    env: "PLIVO_AUTH_ID",
+    default: ""
+  },
+  plivoAuthToken: {
+    doc: "Plivo's authorization Token",
+    format: "*",
+    env: "PLIVO_AUTH_TOKEN",
+    default: ""
+  },
+  plivoPhoneNumber: {
+    doc: "Plivo's Phone Number",
+    format: "*",
+    env: "PLIVO_PHONE_NUMBER",
+    default: ""
   }
 });
 
 // Load environment dependent configuration
 const env = conf.get('env');
 const network = conf.get('network');
-conf.set("ethereum",networks[network]);
+conf.set("ethereum", networks[network]);
 // Perform validation
 conf.validate({ allowed: 'strict' })
-log.trace("Starting configuration...",conf._instance)
+// eslint-disable-next-line
+log.trace("Starting configuration...", conf._instance)
 
 export default conf.getProperties()
