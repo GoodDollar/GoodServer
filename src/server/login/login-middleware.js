@@ -5,7 +5,7 @@ import express from "express"
 import ethUtil from "ethereumjs-util"
 import { get } from 'lodash'
 import logger from '../../imports/pino-logger'
-import { wrapAsync } from '../server-middlewares'
+import { wrapAsync, lightLogs } from '../server-middlewares'
 
 // const ExtractJwt = passportJWT.ExtractJwt
 // const JwtStrategy = passportJWT.Strategy
@@ -44,7 +44,7 @@ const setup = (app:express) => {
     } else next()
   }))
 
-  app.post("/auth/eth", (req, res) => {
+  app.post("/auth/eth", lightLogs((req, res) => {
     const log = req.log.child({ from: 'login-middleware - auth/eth' })
 
     log.debug('authorizing')
@@ -85,16 +85,16 @@ const setup = (app:express) => {
       log.error('SigUtil unable to recover the message signer')
       throw new Error("Unable to verify credentials")
     }
-  });
+  }));
 
 
-  app.get("/auth/test", passport.authenticate("jwt", { session: false }), (req, res) => {
+  app.get("/auth/test", passport.authenticate("jwt", { session: false }), lightLogs((req, res) => {
     const log = req.log.child({ from: 'login-middleware - auth/test' })
 
     log.debug(req.user)
 
     res.end()
-  })
+  }))
 
   logger
     .child({ from: 'login-middleware - setup' })

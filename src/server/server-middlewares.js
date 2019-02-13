@@ -18,11 +18,22 @@ function wrapAsync(fn: Function) {
     const log = req.log.child({ from: 'wrapAsync' })
     // Make sure to `.catch()` any errors and pass them along to the `next()`
     // middleware in the chain, in this case the error handler.
-    fn(req, res, next).catch((error) => {
+    fn({ ...req, log: logger }, res, next).catch((error) => {
       log.error(error)
       next(error)
     });
   };
+}
+
+/**
+ * Prevents logging header information when logging
+ * @param fn
+ * @returns {Function}
+ */
+function lightLogs(fn: Function) {
+  return function (req: $Request, res: $Response, next: NextFunction) {
+    fn({ ...req, log: logger }, res, next)
+  }
 }
 
 /**
@@ -39,7 +50,7 @@ function onlyInProduction(req: $Request, res: $Response, next: NextFunction) {
   res.json({ ok: 1 })
 }
 
-export { wrapAsync, onlyInProduction }
+export { wrapAsync, onlyInProduction, lightLogs }
 export default (app: Router, env: any) => {
   // parse application/x-www-form-urlencoded
   // for easier testing with Postman or plain HTML forms
