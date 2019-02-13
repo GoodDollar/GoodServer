@@ -5,6 +5,7 @@ import { type UserRecord, StorageAPI, VerificationAPI } from '../../imports/type
 import AdminWallet from '../blockchain/AdminWallet'
 import { wrapAsync, onlyInProduction } from '../server-middlewares'
 import { GunDBPrivate } from '../gun/gun-middleware'
+import { sendOTP } from '../../imports/otp'
 
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post('/verify/user', passport.authenticate('jwt', { session: false }), wrapAsync(async (req, res, next) => {
@@ -20,6 +21,15 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       log.debug('updateUser:', updatedUser)
       res.json( { ok: 1 } )
     } else { throw new Error("Can't verify user") }
+  }))
+
+  app.post("/verify/sendotp", passport.authenticate("jwt", { session: false }), onlyInProduction, wrapAsync(async (req, res, next) => {
+    const { body: { user } } = req
+
+    const [, otp] = await sendOTP(user)
+    storage.storeOTP(user, otp)
+
+    res.json({ ok: 1 })
   }))
 
   app.post('/verify/mobile', passport.authenticate('jwt', { session: false }), onlyInProduction, wrapAsync(async (req, res, next) => {
