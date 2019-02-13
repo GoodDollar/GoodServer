@@ -1,18 +1,16 @@
 // @flow
 import express, { Router } from 'express'
-import Gun from "gun"
-import SEA from "gun/sea"
-import { get, each } from "lodash"
-import { type StorageAPI, type UserRecord } from "../../imports/types"
+import Gun from 'gun'
+import { type StorageAPI, type UserRecord } from '../../imports/types'
 import conf from '../server.config'
 import logger from '../../imports/pino-logger'
 
 const log = logger.child({ from: 'GunDB-Middleware' })
 
 const setup = (app: Router) => {
-  app.use(Gun.serve);
-  global.Gun = Gun; // / make global to `node --inspect` - debug only
-  log.info("Done setup GunDB middleware.")
+  app.use(Gun.serve)
+  global.Gun = Gun // / make global to `node --inspect` - debug only
+  log.info('Done setup GunDB middleware.')
 }
 class GunDB implements StorageAPI {
   gun: Gun
@@ -27,69 +25,93 @@ class GunDB implements StorageAPI {
     this.gun = Gun({ web: server, file: name })
     this.user = this.gun.user()
     this.serverName = name
-    this.user.create("gooddollar", password,
-      (createres) => {
-        log.trace("Created gundb GoodDollar User", { name })
-        this.user.auth("gooddollar", password,
-          async (authres) => {
-            log.trace("Authenticated GunDB user:", {name})
-            this.usersCol = this.user.get('users')
-          })
+    this.user.create('gooddollar', password, createres => {
+      log.trace('Created gundb GoodDollar User', { name })
+      this.user.auth('gooddollar', password, async authres => {
+        log.trace('Authenticated GunDB user:', { name })
+        this.usersCol = this.user.get('users')
+      })
+    })
+  }
+
+  async getUser(pubkey: string): Promise<UserRecord> {
+    return this.usersCol
+      .get('users')
+      .get(pubkey)
+      .then(u => {
+        // eslint-disable-next-line no-param-reassign
+        delete u._
+        return u
       })
   }
 
-  async addUser(user:UserRecord):Promise<boolean> {
+  async addUser(user: UserRecord): Promise<boolean> {
     return this.updateUser(user)
   }
 
-  async updateUser(user:UserRecord):Promise<boolean> {
+  async updateUser(user: UserRecord): Promise<boolean> {
     const { pubkey } = user
     const isDup = await this.isDupUserData(user)
 
     if (!isDup) {
-      this.usersCol.get("users").get(pubkey).put(user)
+      this.usersCol
+        .get('users')
+        .get(pubkey)
+        .put(user)
 
       if (user.email) {
         const { email } = user
-        this.usersCol.get("byemail").put({ [email]: pubkey })
+        this.usersCol.get('byemail').put({ [email]: pubkey })
       }
 
       if (user.mobile) {
         const { mobile } = user
-        this.usersCol.get("bymobile").put({ [mobile]: pubkey })
+        this.usersCol.get('bymobile').put({ [mobile]: pubkey })
       }
 
       return true
     }
 
-    return Promise.reject(new Error("Duplicate user information (phone/email)"))
+    return Promise.reject(new Error('Duplicate user information (phone/email)'))
     // this.user.get('users').get(pubkey).secret({...user, jwt})
   }
 
-  async isDupUserData(user:UserRecord) {
+  async isDupUserData(user: UserRecord) {
     if (user.email) {
-      const res = await this.usersCol.get('byemail').get(user.email).then()
+      const res = await this.usersCol
+        .get('byemail')
+        .get(user.email)
+        .then()
       if (res && res !== user.pubkey) return true
     }
 
     if (user.mobile) {
-      const res = await this.usersCol.get('bymobile').get(user.mobile).then()
+      const res = await this.usersCol
+        .get('bymobile')
+        .get(user.mobile)
+        .then()
       if (res && res !== user.pubkey) return true
     }
 
     return false
   }
 
-  async deleteUser(user:UserRecord):Promise<boolean> {
+  async deleteUser(user: UserRecord): Promise<boolean> {
     const { pubkey } = user
     const userRecord = await this.usersCol.get(pubkey).then()
-    log.info("deleteUser fetched record:", { userRecord })
+    log.info('deleteUser fetched record:', { userRecord })
     if (userRecord.email) {
-      this.usersCol.get('byemail').get(userRecord.email).put(null)
+      this.usersCol
+        .get('byemail')
+        .get(userRecord.email)
+        .put(null)
     }
 
     if (userRecord.mobile) {
-      this.usersCol.get('bymobile').get(userRecord.mobile).put(null)
+      this.usersCol
+        .get('bymobile')
+        .get(userRecord.mobile)
+        .put(null)
     }
 
     this.usersCol.get(pubkey).put(null)

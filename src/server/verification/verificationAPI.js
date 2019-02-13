@@ -19,7 +19,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       await AdminWallet.whitelistUser(user.pubkey)
       const updatedUser = await storage.updateUser({ pubkey: user.pubkey, isVerified: true })
       log.debug('updateUser:', updatedUser)
-      res.json( { ok: 1 } )
+      res.json({ ok: 1 })
     } else { throw new Error("Can't verify user") }
   }))
 
