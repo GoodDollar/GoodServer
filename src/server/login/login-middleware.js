@@ -4,7 +4,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt'
 import express from 'express'
 import ethUtil from 'ethereumjs-util'
 import { get } from 'lodash'
-import pino from '../../imports/pino-logger'
+import logger from '../../imports/pino-logger'
 import { wrapAsync } from '../server-middlewares'
 import { GunDBPrivate } from '../gun/gun-middleware'
 // const ExtractJwt = passportJWT.ExtractJwt
