@@ -23,7 +23,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   }))
 
   app.post('/verify/mobile', passport.authenticate('jwt', { session: false }), onlyInProduction, wrapAsync(async (req, res, next) => {
-    const { user, body: { verificationData }, log: logger }: { user: UserRecord, body: any, log: any } = req
+    const { user, body: { verificationData }, log: logger }: { user: UserRecord, body: { verificationData: { otp: string } }, log: any } = req
     const log = logger.child({ from: 'verificationAPI - verify/mobile' })
 
     log.debug('mobile verified', user, verificationData)
