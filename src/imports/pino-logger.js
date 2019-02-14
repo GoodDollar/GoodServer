@@ -10,5 +10,5 @@ export default pino({
   redact: {
     paths: ['req.headers.authorization'],
     censor: '*** private data ***'
-  },
+  }
 })

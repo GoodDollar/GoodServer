@@ -1,23 +1,19 @@
 /* eslint-disable import/no-extraneous-dependencies */
-import path from "path"
-import express from "express"
-import webpack from "webpack"
-import webpackDevMiddleware from "webpack-dev-middleware"
-import webpackHotMiddleware from "webpack-hot-middleware"
-import middlewares from "./server-middlewares"
-import config from "../../webpack.dev.config"
+import path from 'path'
+import express from 'express'
+import webpack from 'webpack'
+import webpackDevMiddleware from 'webpack-dev-middleware'
+import webpackHotMiddleware from 'webpack-hot-middleware'
+import middlewares from './server-middlewares'
+import config from '../../webpack.dev.config'
 import conf from './server.config'
 import { GunDBPublic } from './gun/gun-middleware'
 
+const app = express()
 
-const app = express();
+const DIST_DIR = __dirname
 
-
-const DIST_DIR = __dirname;
-
-
-const HTML_FILE = path.join(DIST_DIR, "index.html");
-
+const HTML_FILE = path.join(DIST_DIR, 'index.html')
 
 const compiler = webpack(config)
 
@@ -27,7 +23,7 @@ const compiler = webpack(config)
 
 app.use(webpackHotMiddleware(compiler))
 
-middlewares(app, "dev")
+middlewares(app, 'dev')
 // app.get("*", (req, res, next) => {
 //   compiler.outputFileSystem.readFile(HTML_FILE, (err, result) => {
 //     if (err) {
