@@ -3,7 +3,7 @@ import passport from 'passport'
 import { ExtractJwt, Strategy } from 'passport-jwt'
 import express from 'express'
 import ethUtil from 'ethereumjs-util'
-import { get } from 'lodash'
+import { get, defaults } from 'lodash'
 import logger from '../../imports/pino-logger'
 import { wrapAsync } from '../server-middlewares'
 import { GunDBPrivate } from '../gun/gun-middleware'
@@ -19,10 +19,12 @@ jwtOptions.secretOrKey = 'G00DAPP'
 // jwtOptions.audience = 'yoursite.net';
 export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
   // usually this would be a database call:
-  const user = await GunDBPrivate.getUser(jwtPayload.loggedInAs)
+  let user = await GunDBPrivate.getUser(jwtPayload.loggedInAs)
   log.debug('payload received', { jwtPayload, user })
+  //if user is empty make sure we have something
+  user = defaults(user, { pubkey: jwtPayload.loggedInAs })
   // const user = { pubkey: jwtPayload.loggedInAs }
-  if (user) {
+  if (get(jwtPayload, 'loggedInAs')) {
     next(null, user)
   } else {
     next(null, false)
