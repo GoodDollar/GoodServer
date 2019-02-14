@@ -3,8 +3,7 @@ import { Router } from 'express'
 import passport from "passport"
 import { get } from 'lodash'
 import { type StorageAPI } from '../../imports/types'
-import { wrapAsync } from '../server-middlewares'
-import { sendOTP } from '../../imports/otp'
+import { wrapAsync } from '../utils/helpers'
 
 const setup = (app: Router, storage: StorageAPI) => {
   app.post("/user/add", passport.authenticate("jwt", { session: false }), wrapAsync(async (req, res, next) => {

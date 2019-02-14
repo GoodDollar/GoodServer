@@ -5,7 +5,7 @@ import express from 'express'
 import ethUtil from 'ethereumjs-util'
 import { get } from 'lodash'
 import logger from '../../imports/pino-logger'
-import { wrapAsync, lightLogs } from '../server-middlewares'
+import { wrapAsync, lightLogs } from '../utils/helpers'
 import { GunDBPrivate } from '../gun/gun-middleware'
 // const ExtractJwt = passportJWT.ExtractJwt
 // const JwtStrategy = passportJWT.Strategy

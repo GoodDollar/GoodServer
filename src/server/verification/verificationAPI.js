@@ -3,9 +3,7 @@ import { Router } from 'express'
 import passport from 'passport'
 import { type UserRecord, StorageAPI, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
-import { wrapAsync, onlyInProduction } from '../server-middlewares'
-import { GunDBPrivate } from '../gun/gun-middleware'
-import { sendOTP } from '../../imports/otp'
+import { wrapAsync, onlyInProduction } from '../utils/helpers'
 
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post('/verify/user', passport.authenticate('jwt', { session: false }), wrapAsync(async (req, res, next) => {
