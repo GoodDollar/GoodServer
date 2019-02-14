@@ -1,26 +1,32 @@
+// @flow
 import logger from '../../imports/pino-logger'
-import type { UserRecord } from '../../imports/types'
+import type { UserRecord, VerificationAPI } from '../../imports/types'
 import { GunDBPrivate } from '../gun/gun-middleware'
 
-class Verifications {
+class Verifications implements VerificationAPI {
   log: any
 
   constructor() {
     this.log = logger.child({ from: 'Verifications' })
   }
 
-  verifyUser = async (user: UserRecord, verificationData: any): Promise<boolean> => Promise.resolve(true)
+  async verifyUser(user: UserRecord, verificationData: any): Promise<boolean> {
+    return Promise.resolve(true)
+  }
 
-  verifyMobile = async (user: UserRecord, verificationData: any): Promise<any> => {
-    const { expirationDate, otp }: { otp: string, expirationDate: number } = await GunDBPrivate.getOTP(user)
+  async verifyMobile(user: UserRecord, verificationData: { otp: string }): Promise<boolean | Error> {
+    const storedUser = await GunDBPrivate.getUser(user.pubkey)
 
-    if (+verificationData.otp === otp) {
-      if (expirationDate < Date.now()) {
-        return Promise.reject(new Error('Code expired, retry'))
+    if (storedUser && storedUser.otp) {
+      if (+verificationData.otp === storedUser.otp.code) {
+        if (storedUser.otp.expirationDate < Date.now()) {
+          return Promise.reject(new Error('Code expired, retry'))
+        }
+        return Promise.resolve(true)
       }
-      return Promise.resolve(true)
+      return Promise.reject(new Error("Oops, it's not right code"))
     }
-    return Promise.reject(new Error("Oops, it's not right code"))
+    return Promise.reject(new Error('No code to validate, retry'))
   }
 }
 
