@@ -4,7 +4,7 @@ import passport from 'passport'
 import { ExtractJwt, Strategy } from 'passport-jwt'
 import { Router } from 'express'
 import ethUtil from 'ethereumjs-util'
-import { get } from 'lodash'
+import { get, defaults } from 'lodash'
 import logger from '../../imports/pino-logger'
 import { wrapAsync, lightLogs } from '../utils/helpers'
 import { GunDBPrivate } from '../gun/gun-middleware'
@@ -19,10 +19,12 @@ jwtOptions.secretOrKey = 'G00DAPP'
 export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
   const log = logger.child({ from: 'login-middleware' })
   // usually this would be a database call:
-  const user = await GunDBPrivate.getUser(jwtPayload.loggedInAs)
+  let user = await GunDBPrivate.getUser(jwtPayload.loggedInAs)
   log.debug('payload received', { jwtPayload, user })
+  //if user is empty make sure we have something
+  user = defaults(user, { pubkey: jwtPayload.loggedInAs })
   // const user = { pubkey: jwtPayload.loggedInAs }
-  if (user) {
+  if (get(jwtPayload, 'loggedInAs')) {
     next(null, user)
   } else {
     next(null, false)

@@ -73,6 +73,7 @@ class GunDB implements StorageAPI {
 
     let promises = []
     if (!isDup) {
+      log.info('Updating user', { pubkey, user })
       promises.push(this.usersCol.get(pubkey).putAck(user))
 
       if (user.email) {
