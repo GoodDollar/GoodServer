@@ -1,6 +1,7 @@
 // @flow
 import express, { Router } from 'express'
 import Gun from 'gun'
+import SEA from 'gun/sea'
 import { type StorageAPI, type UserRecord } from '../../imports/types'
 import conf from '../server.config'
 import logger from '../../imports/pino-logger'
@@ -21,15 +22,18 @@ class GunDB implements StorageAPI {
 
   serverName: string
 
-  init(server: typeof express | null, password: string, name: string) {
+  init(server: typeof express | null, password: string, name: string): Promise<boolean> {
     this.gun = Gun({ web: server, file: name })
     this.user = this.gun.user()
     this.serverName = name
-    this.user.create('gooddollar', password, createres => {
-      log.trace('Created gundb GoodDollar User', { name })
-      this.user.auth('gooddollar', password, async authres => {
-        log.trace('Authenticated GunDB user:', { name })
-        this.usersCol = this.user.get('users')
+    return new Promise((resolv, reject) => {
+      this.user.create('gooddollar', password, createres => {
+        log.trace('Created gundb GoodDollar User', { name })
+        this.user.auth('gooddollar', password, async authres => {
+          log.trace('Authenticated GunDB user:', { name })
+          this.usersCol = this.user.get('users')
+          resolv(true)
+        })
       })
     })
   }
@@ -54,10 +58,7 @@ class GunDB implements StorageAPI {
     const isDup = await this.isDupUserData(user)
 
     if (!isDup) {
-      this.usersCol
-        .get('users')
-        .get(pubkey)
-        .put(user)
+      this.usersCol.get(pubkey).put(user)
 
       if (user.email) {
         const { email } = user
