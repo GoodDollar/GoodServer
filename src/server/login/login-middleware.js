@@ -51,7 +51,7 @@ const setup = (app: express) => {
     log.debug('/auth/eth', 'body:', req.body)
 
     let signature = req.body.signature
-    let reqPublicKey = req.body.publicKey
+    let reqPublicKey = req.body.pubkey
     let method = req.body.method
 
     log.debug('/auth/eth', { signature, reqPublicKey, method })
