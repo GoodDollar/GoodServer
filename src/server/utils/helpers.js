@@ -37,7 +37,7 @@ function lightLogs(fn: Function) {
  * @param next
  */
 function onlyInProduction(req: $Request, res: $Response, next: NextFunction) {
-  if (conf.env !== 'production') {
+  if (conf.env === 'production') {
     next()
     return
   }
