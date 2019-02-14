@@ -1,11 +1,28 @@
 // @flow
 import express, { Router } from 'express'
 import Gun from 'gun'
+import SEA from 'gun/sea'
 import { type StorageAPI, type UserRecord } from '../../imports/types'
 import conf from '../server.config'
 import logger from '../../imports/pino-logger'
+import { stringify } from 'querystring';
 
 const log = logger.child({ from: 'GunDB-Middleware' })
+
+type ACK = {
+  ok: string,
+  err: string
+}
+Gun.chain.putAck = function(data, cb) {
+  var gun = this,
+    cb =
+      cb ||
+      function(ctx) {
+        return ctx
+      }
+  let promise = new Promise((res, rej) => gun.put(data, ack => (ack.err ? rej(ack) : res(ack))))
+  return promise.then(cb)
+}
 
 const setup = (app: Router) => {
   app.use(Gun.serve)
@@ -21,28 +38,29 @@ class GunDB implements StorageAPI {
 
   serverName: string
 
-  init(server: typeof express | null, password: string, name: string) {
+  init(server: typeof express | null, password: string, name: string): Promise<boolean> {
+    // this.gun = Gun()
     this.gun = Gun({ web: server, file: name })
     this.user = this.gun.user()
     this.serverName = name
-    this.user.create('gooddollar', password, createres => {
-      log.trace('Created gundb GoodDollar User', { name })
-      this.user.auth('gooddollar', password, async authres => {
-        log.trace('Authenticated GunDB user:', { name })
-        this.usersCol = this.user.get('users')
+    return new Promise((resolv, reject) => {
+      this.user.create('gooddollar', password, createres => {
+        log.info('Created gundb GoodDollar User', { name })
+        this.user.auth('gooddollar', password, async authres => {
+          log.info('Authenticated GunDB user:', { name })
+          this.usersCol = this.user.get('users')
+          resolv(true)
+        })
       })
     })
   }
 
   async getUser(pubkey: string): Promise<UserRecord> {
-    return this.usersCol
-      .get('users')
-      .get(pubkey)
-      .then(u => {
-        // eslint-disable-next-line no-param-reassign
-        delete u._
-        return u
-      })
+    return this.usersCol.get(pubkey).then(u => {
+      // eslint-disable-next-line no-param-reassign
+      if (u) delete u._
+      return u
+    })
   }
 
   async addUser(user: UserRecord): Promise<boolean> {
@@ -53,23 +71,21 @@ class GunDB implements StorageAPI {
     const { pubkey } = user
     const isDup = await this.isDupUserData(user)
 
+    let promises = []
     if (!isDup) {
-      this.usersCol
-        .get('users')
-        .get(pubkey)
-        .put(user)
+      promises.push(this.usersCol.get(pubkey).putAck(user))
 
       if (user.email) {
         const { email } = user
-        this.usersCol.get('byemail').put({ [email]: pubkey })
+        promises.push(this.usersCol.get('byemail').putAck({ [email]: pubkey }))
       }
 
       if (user.mobile) {
         const { mobile } = user
-        this.usersCol.get('bymobile').put({ [mobile]: pubkey })
+        promises.push(this.usersCol.get('bymobile').put({ [mobile]: pubkey }))
       }
 
-      return true
+      return Promise.all(promises).then(r => true)
     }
 
     return Promise.reject(new Error('Duplicate user information (phone/email)'))
@@ -145,4 +161,4 @@ const GunDBPrivate = new GunDB()
 
 GunDBPrivate.init(null, conf.gundbPassword, 'privatedb')
 
-export { setup, GunDBPublic, GunDBPrivate }
+export { setup, GunDBPublic, GunDBPrivate, GunDB }
