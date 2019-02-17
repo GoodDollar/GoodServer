@@ -5,7 +5,7 @@ import SEA from 'gun/sea'
 import { type StorageAPI, type UserRecord } from '../../imports/types'
 import conf from '../server.config'
 import logger from '../../imports/pino-logger'
-import { stringify } from 'querystring';
+import { stringify } from 'querystring'
 
 const log = logger.child({ from: 'GunDB-Middleware' })
 
@@ -133,6 +133,18 @@ class GunDB implements StorageAPI {
 
     this.usersCol.get(pubkey).put(null)
     return true
+  }
+
+  sanitizeUser(user: UserRecord): UserRecord {
+    return {
+      pubkey: user.pubkey,
+      fullName: user.fullName,
+      mobile: user.mobile,
+      email: user.email,
+      jwt: user.jwt,
+      smsValidated: user.smsValidated,
+      isEmailConfirmed: user.isEmailConfirmed
+    }
   }
 }
 

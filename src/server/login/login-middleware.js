@@ -1,16 +1,15 @@
+// @flow
 import jwt from 'jsonwebtoken'
 import passport from 'passport'
 import { ExtractJwt, Strategy } from 'passport-jwt'
-import express from 'express'
+import { Router } from 'express'
 import ethUtil from 'ethereumjs-util'
 import { get, defaults } from 'lodash'
 import logger from '../../imports/pino-logger'
-import { wrapAsync } from '../server-middlewares'
+import { wrapAsync, lightLogs } from '../utils/helpers'
 import { GunDBPrivate } from '../gun/gun-middleware'
 // const ExtractJwt = passportJWT.ExtractJwt
 // const JwtStrategy = passportJWT.Strategy
-
-const log = logger.child({ from: 'login-middleware' })
 
 const jwtOptions = {}
 jwtOptions.jwtFromRequest = ExtractJwt.fromAuthHeaderAsBearerToken()
@@ -18,6 +17,7 @@ jwtOptions.secretOrKey = 'G00DAPP'
 // jwtOptions.issuer = 'accounts.examplesoft.com';
 // jwtOptions.audience = 'yoursite.net';
 export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
+  const log = logger.child({ from: 'login-middleware' })
   // usually this would be a database call:
   let user = await GunDBPrivate.getUser(jwtPayload.loggedInAs)
   log.debug('payload received', { jwtPayload, user })
@@ -31,16 +31,20 @@ export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
   }
 })
 
-const setup = (app: express) => {
+const setup = (app: Router) => {
   passport.use(strategy)
+
   app.use(passport.initialize())
+
   app.use(
     ['/user/*'],
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const { user, body, log } = req
-      log.trace(`${req.baseUrl} auth:`, { user, body })
       const pubkey = get(body, 'user.pubkey')
+
+      log.trace(`${req.baseUrl} auth:`, { user, body })
+
       if (user.pubkey !== pubkey) {
         log.error(`Trying to update other user data! ${user.pubkey}!==${pubkey}`)
         throw new Error(`Trying to update other user data! ${user.pubkey}!==${pubkey}`)
@@ -48,50 +52,61 @@ const setup = (app: express) => {
     })
   )
 
-  app.post('/auth/eth', (req, res) => {
-    log.debug('/auth/eth', 'authorizing')
-    log.debug('/auth/eth', 'body:', req.body)
+  app.post(
+    '/auth/eth',
+    lightLogs((req, res) => {
+      const log = req.log.child({ from: 'login-middleware' })
 
-    let signature = req.body.signature
-    let reqPublicKey = req.body.pubkey
-    let method = req.body.method
+      log.debug('/auth/eth', 'authorizing')
+      log.debug('/auth/eth', 'body:', req.body)
 
-    log.debug('/auth/eth', { signature, reqPublicKey, method })
+      const signature = req.body.signature
+      const reqPublicKey = req.body.pubkey
+      const method = req.body.method
 
-    const msg = 'Login to GoodDAPP'
-    const sig = ethUtil.fromRpcSig(signature)
+      log.debug('/auth/eth', { signature, reqPublicKey, method })
 
-    log.debug('/auth/eth', 'Signature:', sig)
+      const msg = 'Login to GoodDAPP'
+      const sig = ethUtil.fromRpcSig(signature)
 
-    const messageHash = ethUtil.keccak(`\u0019Ethereum Signed Message:\n${msg.length.toString()}${msg}`)
+      log.debug('/auth/eth', 'Signature:', sig)
 
-    const publicKey = ethUtil.ecrecover(messageHash, sig.v, sig.r, sig.s)
-    const recovered = ethUtil.bufferToHex(ethUtil.pubToAddress(publicKey))
+      const messageHash = ethUtil.keccak(`\u0019Ethereum Signed Message:\n${msg.length.toString()}${msg}`)
 
-    log.debug('/auth/eth', 'Recovered public key:', { recovered })
+      const publicKey = ethUtil.ecrecover(messageHash, sig.v, sig.r, sig.s)
+      const recovered = ethUtil.bufferToHex(ethUtil.pubToAddress(publicKey))
 
-    if (recovered.toLowerCase() === reqPublicKey.toLowerCase()) {
-      logger.info(`SigUtil Successfully verified signer as ${reqPublicKey}`)
+      log.debug('/auth/eth', 'Recovered public key:', { recovered })
 
-      const token = jwt.sign({ method: method, loggedInAs: reqPublicKey }, 'G00DAPP')
+      if (recovered.toLowerCase() === reqPublicKey.toLowerCase()) {
+        log.info(`SigUtil Successfully verified signer as ${reqPublicKey}`)
 
-      log.info('/auth/eth', `JWT token: ${token}`)
+        const token = jwt.sign({ method: method, loggedInAs: reqPublicKey }, 'G00DAPP')
 
-      res.json({ token })
+        log.info('/auth/eth', `JWT token: ${token}`)
+
+        res.json({ token })
+        res.end()
+      } else {
+        log.error('/auth/eth', 'SigUtil unable to recover the message signer')
+        throw new Error('Unable to verify credentials')
+      }
+    })
+  )
+
+  app.get(
+    '/auth/test',
+    passport.authenticate('jwt', { session: false }),
+    lightLogs((req, res) => {
+      const log = req.log.child({ from: 'login-middleware' })
+
+      log.debug('/auth/test', req.user)
+
       res.end()
-    } else {
-      log.error('/auth/eth', 'SigUtil unable to recover the message signer')
-      throw new Error('Unable to verify credentials')
-    }
-  })
+    })
+  )
 
-  app.get('/auth/test', passport.authenticate('jwt', { session: false }), (req, res) => {
-    log.debug('auth/test', req.user)
-
-    res.end()
-  })
-
-  logger.info('Done setup login middleware.')
+  logger.child({ from: 'login-middleware' }).info('Done setup login middleware.')
 }
 
 export default setup
