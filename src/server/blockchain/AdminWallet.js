@@ -7,8 +7,10 @@ import RedemptionABI from '@gooddollar/goodcontracts/build/contracts/RedemptionF
 import GoodDollarABI from '@gooddollar/goodcontracts/build/contracts/GoodDollar.json'
 import ReserveABI from '@gooddollar/goodcontracts/build/contracts/GoodDollarReserve.json'
 import conf from '../server.config'
+import logger from '../../imports/pino-logger'
 import { type TransactionReceipt } from './blockchain-types'
 
+const log = logger.child({ from: 'AdminWallet' })
 export class Wallet {
   web3: Web3
 
@@ -64,6 +66,16 @@ export class Wallet {
   async isVerified(address: string): Promise<boolean> {
     const tx: boolean = await this.identityContract.methods.isVerified(address).call()
     return tx
+  }
+
+  async topWallet(address: string): PromiEvent<TransactionReceipt> {    
+    if (await this.isVerified(address)) {      
+      return this.web3.eth.sendTransaction({ to: address, value: Web3.utils.toWei('1000000', 'gwei') })
+    }
+  }
+
+  async getBalance(): Promise<number> {
+    return this.web3.eth.getBalance(this.address).then(b => Web3.utils.fromWei(b))
   }
 }
 

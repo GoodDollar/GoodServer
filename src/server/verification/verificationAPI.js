@@ -65,6 +65,33 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       res.json({ ok: 1 })
     })
   )
+
+  app.post(
+    '/verify/topwallet',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res, next) => {
+      const log = req.log.child({ from: 'verificationAPI - verify/topwallet' })
+      const { user } = req
+      const storedUser = user
+      if (storedUser.lastTopWallet) {
+        res.json({ ok: -1 })
+        return
+      }
+      let txRes = await AdminWallet.topWallet(storedUser.pubkey)
+        .then(tx => {
+          return { ok: 1 }
+        })
+        .catch(e => {
+          log.error('Failed top wallet tx', e)
+          return { ok: -1, err: e.message }
+        })
+      log.info('topping wallet', { txRes, address: storedUser.pubkey, adminBalance: await AdminWallet.getBalance() })
+      if (txRes.ok === 1)
+        await storage.updateUser({ pubkey: storedUser.pubkey, lastTopWallet: new Date().toISOString() })
+
+      res.json(txRes)
+    })
+  )
 }
 
 export default setup
