@@ -4,6 +4,8 @@ import passport from 'passport'
 import { type UserRecord, StorageAPI, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { wrapAsync, onlyInProduction } from '../utils/helpers'
+import { sendOTP } from '../../imports/otp'
+import conf from '../server.config'
 
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
@@ -34,8 +36,10 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verification API - verify/sendotp' })
       const { body } = req
-      // const [, code] = await sendOTP(body.user)
-      await storage.updateUser({ ...body.user, otp: { code: 111111, expirationDate: Date.now() } })
+      const [, code] = await sendOTP(body.user)
+      const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
+
+      await storage.updateUser({ ...body.user, otp: { code, expirationDate } })
 
       res.json({ ok: 1 })
     })
