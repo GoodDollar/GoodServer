@@ -15,9 +15,7 @@ class Verifications implements VerificationAPI {
   }
 
   async verifyMobile(user: UserRecord, verificationData: { otp: string }): Promise<boolean | Error> {
-    const otp = await GunDBPrivate.getUserNode(user.pubkey)
-      .get('otp')
-      .then()
+    const otp = await GunDBPrivate.getUserField(user.pubkey, 'otp')
 
     if (otp) {
       if (+verificationData.otp === otp.code) {
