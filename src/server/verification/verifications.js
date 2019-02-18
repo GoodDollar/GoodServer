@@ -15,11 +15,13 @@ class Verifications implements VerificationAPI {
   }
 
   async verifyMobile(user: UserRecord, verificationData: { otp: string }): Promise<boolean | Error> {
-    const storedUser = await GunDBPrivate.getUser(user.pubkey)
+    const otp = await GunDBPrivate.getUserNode(user.pubkey)
+      .get('otp')
+      .then()
 
-    if (storedUser && storedUser.otp) {
-      if (+verificationData.otp === storedUser.otp.code) {
-        if (storedUser.otp.expirationDate < Date.now()) {
+    if (otp) {
+      if (+verificationData.otp === otp.code) {
+        if (otp.expirationDate < Date.now()) {
           return Promise.reject(new Error('Code expired, retry'))
         }
         return Promise.resolve(true)
