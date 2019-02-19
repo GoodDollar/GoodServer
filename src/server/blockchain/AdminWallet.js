@@ -1,6 +1,6 @@
 // @flow
 import Web3 from 'web3'
-import Web3PromieEvent from 'web3-core-promievent'
+import { default as PromiEvent } from 'web3-core-promievent'
 import HDWalletProvider from 'truffle-hdwallet-provider'
 import IdentityABI from '@gooddollar/goodcontracts/build/contracts/Identity.json'
 import RedemptionABI from '@gooddollar/goodcontracts/build/contracts/RedemptionFunctional.json'
@@ -68,8 +68,8 @@ export class Wallet {
     return tx
   }
 
-  async topWallet(address: string): PromiEvent<TransactionReceipt> {    
-    if (await this.isVerified(address)) {      
+  async topWallet(address: string): PromiEvent<TransactionReceipt> {
+    if (await this.isVerified(address)) {
       return this.web3.eth.sendTransaction({ to: address, value: Web3.utils.toWei('1000000', 'gwei') })
     }
   }
