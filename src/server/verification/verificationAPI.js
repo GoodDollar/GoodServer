@@ -1,6 +1,7 @@
 // @flow
 import { Router } from 'express'
 import passport from 'passport'
+import moment from 'moment'
 import { type UserRecord, StorageAPI, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { wrapAsync, onlyInProduction } from '../utils/helpers'
@@ -32,7 +33,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     onlyInProduction,
     wrapAsync(async (req, res, next) => {
-      const log = req.log.child({ from: 'verification API - verify/sendotp' })
       const { body } = req
       // const [, code] = await sendOTP(body.user)
       await storage.updateUser({ ...body.user, otp: { code: 111111, expirationDate: Date.now() } })
@@ -73,9 +73,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log.child({ from: 'verificationAPI - verify/topwallet' })
       const { user } = req
       const storedUser = user
+      //allow topping once a day
+
       if (storedUser.lastTopWallet) {
-        res.json({ ok: -1 })
-        return
+        let daysAgo = moment().diff(moment(storedUser.lastTopWallet), 'days')
+        if (daysAgo < 1) return res.json({ ok: -1 })
       }
       let txRes = await AdminWallet.topWallet(storedUser.pubkey)
         .then(tx => {
