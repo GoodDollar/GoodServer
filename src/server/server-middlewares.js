@@ -35,7 +35,7 @@ export default (app: Router, env: any) => {
 
   app.use((error, req, res, next: NextFunction) => {
     const log = req.log.child({ from: 'errorHandler' })
-    log.error({ error })
+    log.error(error)
     res.status(400).json({ message: error.message })
   })
 }
