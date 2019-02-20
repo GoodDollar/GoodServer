@@ -71,7 +71,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/topwallet' })
-      const { user } = req
+      const { user: storedUser } = req
       const storedUser = user
       //allow topping once a day
 
