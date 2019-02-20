@@ -55,12 +55,24 @@ class GunDB implements StorageAPI {
     })
   }
 
-  async getUser(pubkey: string): Promise<UserRecord> {
-    return this.usersCol.get(pubkey).then(u => {
-      // eslint-disable-next-line no-param-reassign
-      if (u) delete u._
-      return u
-    })
+  recordSanitize(obj: {} = {}) {
+    if (obj._ !== undefined) {
+      const { _, ...record } = obj
+      return record
+    }
+
+    return obj
+  }
+
+  getUser(pubkey: string): Promise<UserRecord> {
+    return this.usersCol.get(pubkey).then(this.recordSanitize)
+  }
+
+  getUserField(pubkey: string, field: string): Promise<any> {
+    return this.usersCol
+      .get(pubkey)
+      .get(field)
+      .then(this.recordSanitize)
   }
 
   async addUser(user: UserRecord): Promise<boolean> {

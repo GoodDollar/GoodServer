@@ -12,6 +12,7 @@ export type UserRecord = {
 
 export interface StorageAPI {
   getUser(pubkey: string): Promise<UserRecord>;
+  getUserField(pubkey: string, field: string): Promise<any>;
   addUser(user: UserRecord): Promise<boolean>;
   updateUser(user: UserRecord): Promise<boolean>;
   deleteUser(user: UserRecord): Promise<boolean>;
