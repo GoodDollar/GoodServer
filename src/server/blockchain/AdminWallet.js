@@ -9,6 +9,7 @@ import ReserveABI from '@gooddollar/goodcontracts/build/contracts/GoodDollarRese
 import conf from '../server.config'
 import logger from '../../imports/pino-logger'
 import { type TransactionReceipt } from './blockchain-types'
+import moment from 'moment'
 
 const log = logger.child({ from: 'AdminWallet' })
 export class Wallet {
@@ -68,10 +69,16 @@ export class Wallet {
     return tx
   }
 
-  async topWallet(address: string): PromiEvent<TransactionReceipt> {
+  async topWallet(address: string, lastTopping?:moment.Moment = moment().subtract(1,'day')): PromiEvent<TransactionReceipt> {
+    let daysAgo = moment().diff(moment(lastTopping), 'days')
+    if (daysAgo < 1) throw new Error('Daily limit reached')
     if (await this.isVerified(address)) {
-      return this.web3.eth.sendTransaction({ to: address, value: Web3.utils.toWei('1000000', 'gwei') })
-    }
+      let userBalance = await this.web3.eth.getBalance(address)
+      let toTop = parseInt(Web3.utils.toWei('1000000', 'gwei')) - userBalance
+      log.debug('TopWallet:', { userBalance, toTop })
+      if (toTop > 0) return this.web3.eth.sendTransaction({ to: address, value: toTop })
+      throw new Error("User doesn't need topping")
+    } else throw new Error('User not verified')
   }
 
   async getBalance(): Promise<number> {

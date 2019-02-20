@@ -75,16 +75,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const storedUser = user
       //allow topping once a day
 
-      if (storedUser.lastTopWallet) {
-        let daysAgo = moment().diff(moment(storedUser.lastTopWallet), 'days')
-        if (daysAgo < 1) return res.json({ ok: -1 })
-      }
-      let txRes = await AdminWallet.topWallet(storedUser.pubkey)
+      let txRes = await AdminWallet.topWallet(storedUser.pubkey, storedUser.lastTopWallet)
         .then(tx => {
           return { ok: 1 }
         })
         .catch(e => {
-          log.error('Failed top wallet tx', e)
+          log.error('Failed top wallet tx', e.message, e.stack)
           return { ok: -1, err: e.message }
         })
       log.info('topping wallet', { txRes, address: storedUser.pubkey, adminBalance: await AdminWallet.getBalance() })
