@@ -1,6 +1,7 @@
 // @flow
 import { Router } from 'express'
 import passport from 'passport'
+import moment from 'moment'
 import { type UserRecord, StorageAPI, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { wrapAsync, onlyInProduction } from '../utils/helpers'
@@ -34,7 +35,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     onlyInProduction,
     wrapAsync(async (req, res, next) => {
-      const log = req.log.child({ from: 'verification API - verify/sendotp' })
       const { body } = req
       const [, code] = await sendOTP(body.user)
       const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
@@ -67,6 +67,31 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       await storage.updateUser(sanitizedUser)
 
       res.json({ ok: 1 })
+    })
+  )
+
+  app.post(
+    '/verify/topwallet',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res, next) => {
+      const log = req.log.child({ from: 'verificationAPI - verify/topwallet' })
+      const { user: storedUser } = req
+      const storedUser = user
+      //allow topping once a day
+
+      let txRes = await AdminWallet.topWallet(storedUser.pubkey, storedUser.lastTopWallet)
+        .then(tx => {
+          return { ok: 1 }
+        })
+        .catch(e => {
+          log.error('Failed top wallet tx', e.message, e.stack)
+          return { ok: -1, err: e.message }
+        })
+      log.info('topping wallet', { txRes, address: storedUser.pubkey, adminBalance: await AdminWallet.getBalance() })
+      if (txRes.ok === 1)
+        await storage.updateUser({ pubkey: storedUser.pubkey, lastTopWallet: new Date().toISOString() })
+
+      res.json(txRes)
     })
   )
 }

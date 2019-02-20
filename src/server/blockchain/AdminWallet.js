@@ -1,14 +1,17 @@
 // @flow
 import Web3 from 'web3'
-import Web3PromieEvent from 'web3-core-promievent'
+import { default as PromiEvent } from 'web3-core-promievent'
 import HDWalletProvider from 'truffle-hdwallet-provider'
 import IdentityABI from '@gooddollar/goodcontracts/build/contracts/Identity.json'
 import RedemptionABI from '@gooddollar/goodcontracts/build/contracts/RedemptionFunctional.json'
 import GoodDollarABI from '@gooddollar/goodcontracts/build/contracts/GoodDollar.json'
 import ReserveABI from '@gooddollar/goodcontracts/build/contracts/GoodDollarReserve.json'
 import conf from '../server.config'
+import logger from '../../imports/pino-logger'
 import { type TransactionReceipt } from './blockchain-types'
+import moment from 'moment'
 
+const log = logger.child({ from: 'AdminWallet' })
 export class Wallet {
   web3: Web3
 
@@ -64,6 +67,22 @@ export class Wallet {
   async isVerified(address: string): Promise<boolean> {
     const tx: boolean = await this.identityContract.methods.isVerified(address).call()
     return tx
+  }
+
+  async topWallet(address: string, lastTopping?:moment.Moment = moment().subtract(1,'day')): PromiEvent<TransactionReceipt> {
+    let daysAgo = moment().diff(moment(lastTopping), 'days')
+    if (daysAgo < 1) throw new Error('Daily limit reached')
+    if (await this.isVerified(address)) {
+      let userBalance = await this.web3.eth.getBalance(address)
+      let toTop = parseInt(Web3.utils.toWei('1000000', 'gwei')) - userBalance
+      log.debug('TopWallet:', { userBalance, toTop })
+      if (toTop > 0) return this.web3.eth.sendTransaction({ to: address, value: toTop })
+      throw new Error("User doesn't need topping")
+    } else throw new Error('User not verified')
+  }
+
+  async getBalance(): Promise<number> {
+    return this.web3.eth.getBalance(this.address).then(b => Web3.utils.fromWei(b))
   }
 }
 
