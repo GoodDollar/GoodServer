@@ -34,7 +34,8 @@ export class Wallet {
   constructor(mnemonic: string) {
     this.wallet = new HDWalletProvider(
       mnemonic,
-      new Web3.providers.WebsocketProvider(conf.ethereum.websocketWeb3Provider)
+      conf.ethereum.httpWeb3Provider
+      // new Web3.providers.WebsocketProvider(conf.ethereum.websocketWeb3Provider)
     )
     this.web3 = new Web3(this.wallet)
     this.address = this.wallet.getAddress()

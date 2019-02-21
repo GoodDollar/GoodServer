@@ -1,7 +1,6 @@
 // @flow
 import { Router } from 'express'
 import passport from 'passport'
-import moment from 'moment'
 import { type UserRecord, StorageAPI, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { wrapAsync, onlyInProduction } from '../utils/helpers'
@@ -76,7 +75,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/topwallet' })
       const { user: storedUser } = req
-      const storedUser = user
       //allow topping once a day
 
       let txRes = await AdminWallet.topWallet(storedUser.pubkey, storedUser.lastTopWallet)

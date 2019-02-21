@@ -1,7 +1,7 @@
 const networks = {
   kovan: {
     network_id: 42,
-    httpWeb3Provider: 'https://kovan.infura.io/v3/',
+    httpWeb3Provider: `https://kovan.infura.io/v3/${process.env.INFURA_API}`,
     websocketWeb3Provider: 'wss://kovan.infura.io/ws'
   },
   truffle: {
