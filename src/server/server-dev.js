@@ -8,6 +8,7 @@ import middlewares from './server-middlewares'
 import config from '../../webpack.dev.config'
 import conf from './server.config'
 import { GunDBPublic } from './gun/gun-middleware'
+import AdminWallet from './blockchain/AdminWallet'
 
 const app = express()
 

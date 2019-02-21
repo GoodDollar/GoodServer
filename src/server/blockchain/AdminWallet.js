@@ -32,14 +32,26 @@ export class Wallet {
   networkId: number
 
   constructor(mnemonic: string) {
+    this.mnemonic = mnemonic
+    this.init()
+  }
+  async init() {
     this.wallet = new HDWalletProvider(
-      mnemonic,
-      conf.ethereum.httpWeb3Provider
-      // new Web3.providers.WebsocketProvider(conf.ethereum.websocketWeb3Provider)
+      this.mnemonic,
+      // conf.ethereum.httpWeb3Provider
+      new Web3.providers.WebsocketProvider(conf.ethereum.websocketWeb3Provider),
+      0,
+      10
     )
-    this.web3 = new Web3(this.wallet)
-    this.address = this.wallet.getAddress()
+    this.web3 = new Web3(new Web3.providers.WebsocketProvider(conf.ethereum.websocketWeb3Provider))
+    this.address = this.wallet.addresses[0]
     this.web3.eth.defaultAccount = this.address
+    this.web3.eth.defaultGasPrice = Web3.utils.toWei('1', 'gwei')
+    this.web3.eth.defaultGas = 500000
+    let account = this.web3.eth.accounts.privateKeyToAccount(
+      '0x' + this.wallet.wallets[this.address]._privKey.toString('hex')
+    )
+    this.web3.eth.accounts.wallet.add(account)
     this.networkId = conf.ethereum.network_id // ropsten network
     this.identityContract = new this.web3.eth.Contract(IdentityABI.abi, IdentityABI.networks[this.networkId].address, {
       from: this.address
@@ -53,6 +65,8 @@ export class Wallet {
     this.reserveContract = new this.web3.eth.Contract(ReserveABI.abi, ReserveABI.networks[this.networkId].address, {
       from: this.address
     })
+    let balance = await this.tokenContract.methods.balanceOf(this.address).call()
+    log.debug('AdminWallet Ready:', { account, balance })
   }
 
   async whitelistUser(address: string): Promise<TransactionReceipt> {
@@ -70,16 +84,20 @@ export class Wallet {
     return tx
   }
 
-  async topWallet(address: string, lastTopping?:moment.Moment = moment().subtract(1,'day')): PromiEvent<TransactionReceipt> {
+  async topWallet(
+    address: string,
+    lastTopping?: moment.Moment = moment().subtract(1, 'day')
+  ): PromiEvent<TransactionReceipt> {
     let daysAgo = moment().diff(moment(lastTopping), 'days')
     if (daysAgo < 1) throw new Error('Daily limit reached')
-    if (await this.isVerified(address)) {
+    const isVerified = await this.isVerified(address)
+    if (isVerified) {
       let userBalance = await this.web3.eth.getBalance(address)
       let toTop = parseInt(Web3.utils.toWei('1000000', 'gwei')) - userBalance
       log.debug('TopWallet:', { userBalance, toTop })
       if (toTop > 0) return this.web3.eth.sendTransaction({ to: address, value: toTop })
       throw new Error("User doesn't need topping")
-    } else throw new Error('User not verified')
+    } else throw new Error(`User not verified: ${address} ${isVerified}`)
   }
 
   async getBalance(): Promise<number> {

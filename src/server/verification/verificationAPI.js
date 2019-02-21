@@ -13,12 +13,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/user' })
-      log.debug('User:', req.user)
-      log.debug('Body:', req.body)
       const user: UserRecord = req.user
       const { verificationData } = req.body
       const verified = await verifier.verifyUser(user, verificationData)
       if (verified) {
+        log.debug('Whitelisting new user', user)
         await AdminWallet.whitelistUser(user.pubkey)
         const updatedUser = await storage.updateUser({ pubkey: user.pubkey, isVerified: true })
         log.debug('updateUser:', updatedUser)
