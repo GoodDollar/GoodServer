@@ -12,7 +12,7 @@ const networks = {
   fuse: {
     network_id: 121,
     httpWeb3Provider: 'https://rpc.fuse.io/',
-    websocketWeb3Provider: 'wss://explorer.fuse.io/socket/websocket'
+    websocketWeb3Provider: 'wss://explorer-node.fuse.io/ws'
   }
 }
 
