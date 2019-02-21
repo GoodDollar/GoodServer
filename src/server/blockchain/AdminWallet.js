@@ -43,11 +43,12 @@ export class Wallet {
       0,
       10
     )
-    this.web3 = new Web3(new Web3.providers.WebsocketProvider(conf.ethereum.websocketWeb3Provider))
+    this.web3 = new Web3(new Web3.providers.WebsocketProvider(conf.ethereum.websocketWeb3Provider), {
+      defaultAccount: this.address,
+      defaultGasPrice: Web3.utils.toWei('1', 'gwei'),
+      defaultGas: 500000
+    })
     this.address = this.wallet.addresses[0]
-    this.web3.eth.defaultAccount = this.address
-    this.web3.eth.defaultGasPrice = Web3.utils.toWei('1', 'gwei')
-    this.web3.eth.defaultGas = 500000
     let account = this.web3.eth.accounts.privateKeyToAccount(
       '0x' + this.wallet.wallets[this.address]._privKey.toString('hex')
     )
@@ -95,7 +96,14 @@ export class Wallet {
       let userBalance = await this.web3.eth.getBalance(address)
       let toTop = parseInt(Web3.utils.toWei('1000000', 'gwei')) - userBalance
       log.debug('TopWallet:', { userBalance, toTop })
-      if (toTop > 0) return this.web3.eth.sendTransaction({ to: address, value: toTop })
+      if (toTop > 0)
+        return this.web3.eth.sendTransaction({
+          from: this.address,
+          to: address,
+          value: toTop,
+          gas: 100000,
+          gasPrice: Web3.utils.toWei('1', 'gwei')
+        })
       throw new Error("User doesn't need topping")
     } else throw new Error(`User not verified: ${address} ${isVerified}`)
   }
