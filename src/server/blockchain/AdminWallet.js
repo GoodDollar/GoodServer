@@ -38,8 +38,8 @@ export class Wallet {
   async init() {
     this.wallet = new HDWalletProvider(
       this.mnemonic,
-      // conf.ethereum.httpWeb3Provider
-      new Web3.providers.WebsocketProvider(conf.ethereum.websocketWeb3Provider),
+      conf.ethereum.httpWeb3Provider,
+      // new Web3.providers.WebsocketProvider(conf.ethereum.websocketWeb3Provider),
       0,
       10
     )
@@ -55,16 +55,24 @@ export class Wallet {
     this.web3.eth.accounts.wallet.add(account)
     this.networkId = conf.ethereum.network_id // ropsten network
     this.identityContract = new this.web3.eth.Contract(IdentityABI.abi, IdentityABI.networks[this.networkId].address, {
-      from: this.address
+      from: this.address,
+      gas: 500000,
+      gasPrice: Web3.utils.toWei('1', 'gwei')
     })
     this.claimContract = new this.web3.eth.Contract(RedemptionABI.abi, RedemptionABI.networks[this.networkId].address, {
-      from: this.address
+      from: this.address,
+      gas: 500000,
+      gasPrice: Web3.utils.toWei('1', 'gwei')
     })
     this.tokenContract = new this.web3.eth.Contract(GoodDollarABI.abi, GoodDollarABI.networks[this.networkId].address, {
-      from: this.address
+      from: this.address,
+      gas: 500000,
+      gasPrice: Web3.utils.toWei('1', 'gwei')
     })
     this.reserveContract = new this.web3.eth.Contract(ReserveABI.abi, ReserveABI.networks[this.networkId].address, {
-      from: this.address
+      from: this.address,
+      gas: 500000,
+      gasPrice: Web3.utils.toWei('1', 'gwei')
     })
     let balance = await this.tokenContract.methods.balanceOf(this.address).call()
     log.debug('AdminWallet Ready:', { account, balance })
