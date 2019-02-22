@@ -1,4 +1,6 @@
 
+# GoodDollar API Server [![Build Status](https://travis-ci.com/GoodDollar/GoodServer.svg?branch=master)](https://travis-ci.com/GoodDollar/GoodServer)
+
 Setup
 --
 - copy env.example to .env
