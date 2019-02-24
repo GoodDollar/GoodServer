@@ -12,7 +12,7 @@ const networks = {
   truffle: {
     network_id: 4447,
     httpWeb3Provider: 'http://localhost:9545/',
-    websocketWeb3Provider: 'wss://localhost:9545/ws'
+    websocketWeb3Provider: 'ws://localhost:9545/ws'
   },
   fuse: {
     network_id: 121,
