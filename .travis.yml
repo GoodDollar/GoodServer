@@ -24,6 +24,6 @@ before_script:
   - truffle migrate --reset --network develop
   - cd ..
 
-  script:
+script:
   - npm run build
   - npm run coverage
