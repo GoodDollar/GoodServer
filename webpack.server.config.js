@@ -36,11 +36,7 @@ module.exports = (env, argv) => {
   },
     externals: [nodeExternals()], // Need this to avoid error when working with Express
     plugins: [
-       new webpack.DefinePlugin({
-      PRODUCTION: JSON.stringify(false),
-      NETWORK: JSON.stringify('kovan'),
-      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV)
-    }),
+       new webpack.DefinePlugin({}),
       new NodemonPlugin()],
     module: {
       rules: [

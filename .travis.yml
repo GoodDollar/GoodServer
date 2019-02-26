@@ -12,18 +12,17 @@ env:
     - NETWORK=truffle
     - LOG_LEVEL=trace
 
-install:
-  - npm install -g ganache-cli truffle
+before_install:
+  - npm install -g ganache-cli truffle webpack
   
 before_script:
   - git clone https://github.com/GoodDollar/GoodContracts
   - cd GoodContracts
-  - npm i
   - ganache-cli -m "$MNEMONIC" --port 9545 --networkId 4447 -g 10000000000 &
   - truffle compile
   - truffle migrate --reset --network develop
   - cd ..
 
 script:
-  - npm run build
   - npm run coverage
+  - npm run build
