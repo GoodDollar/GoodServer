@@ -36,6 +36,7 @@ export class Wallet {
     this.init()
   }
   async init() {
+    log.debug('Initializing wallet:', { mnemonic: this.mnemonic, conf: conf.ethereum })
     this.wallet = new HDWalletProvider(
       this.mnemonic,
       conf.ethereum.httpWeb3Provider,
@@ -43,7 +44,8 @@ export class Wallet {
       0,
       10
     )
-    this.web3 = new Web3(new Web3.providers.WebsocketProvider(conf.ethereum.websocketWeb3Provider), {
+    // this.web3 = new Web3(new Web3.providers.WebsocketProvider(conf.ethereum.websocketWeb3Provider), {
+    this.web3 = new Web3(this.wallet, {
       defaultAccount: this.address,
       defaultGasPrice: Web3.utils.toWei('1', 'gwei'),
       defaultGas: 500000
@@ -74,22 +76,46 @@ export class Wallet {
       gas: 500000,
       gasPrice: Web3.utils.toWei('1', 'gwei')
     })
-    let balance = await this.tokenContract.methods.balanceOf(this.address).call()
-    log.debug('AdminWallet Ready:', { account, balance })
+    try {
+      let gdbalance = await this.tokenContract.methods.balanceOf(this.address).call()
+      let nativebalance = await this.web3.eth.getBalance(this.address)
+      log.debug('AdminWallet Ready:', { account, gdbalance, nativebalance })
+    } catch (e) {
+      log.error('Error initializing wallet', e)
+    }
   }
 
   async whitelistUser(address: string): Promise<TransactionReceipt> {
-    const tx: TransactionReceipt = await this.identityContract.methods.whiteListUser(address).send()
+    const tx: TransactionReceipt = await this.identityContract.methods
+      .whiteListUser(address)
+      .send()
+      .catch(e => {
+        log.error('Error whitelistUser', e)
+        throw e
+      })
     return tx
   }
 
   async blacklistUser(address: string): Promise<TransactionReceipt> {
-    const tx: TransactionReceipt = await this.identityContract.methods.blackListUser(address).send()
+    const tx: TransactionReceipt = await this.identityContract.methods
+      .blackListUser(address)
+      .send()
+      .catch(e => {
+        log.error('Error blackListUser', e)
+        throw e
+      })
+
     return tx
   }
 
   async isVerified(address: string): Promise<boolean> {
-    const tx: boolean = await this.identityContract.methods.isVerified(address).call()
+    const tx: boolean = await this.identityContract.methods
+      .isVerified(address)
+      .call()
+      .catch(e => {
+        log.error('Error isVerified', e)
+        throw e
+      })
     return tx
   }
 
@@ -98,26 +124,37 @@ export class Wallet {
     lastTopping?: moment.Moment = moment().subtract(1, 'day')
   ): PromiEvent<TransactionReceipt> {
     let daysAgo = moment().diff(moment(lastTopping), 'days')
-    if (daysAgo < 1) throw new Error('Daily limit reached')
-    const isVerified = await this.isVerified(address)
-    if (isVerified) {
-      let userBalance = await this.web3.eth.getBalance(address)
-      let toTop = parseInt(Web3.utils.toWei('1000000', 'gwei')) - userBalance
-      log.debug('TopWallet:', { userBalance, toTop })
-      if (toTop > 0)
-        return this.web3.eth.sendTransaction({
-          from: this.address,
-          to: address,
-          value: toTop,
-          gas: 100000,
-          gasPrice: Web3.utils.toWei('1', 'gwei')
-        })
-      throw new Error("User doesn't need topping")
-    } else throw new Error(`User not verified: ${address} ${isVerified}`)
+    if (conf.env !== 'development' && daysAgo < 1) throw new Error('Daily limit reached')
+    try {
+      const isVerified = await this.isVerified(address)
+      if (isVerified) {
+        let userBalance = await this.web3.eth.getBalance(address)
+        let toTop = parseInt(Web3.utils.toWei('1000000', 'gwei')) - userBalance
+        log.debug('TopWallet:', { userBalance, toTop })
+        if (toTop > 0)
+          return this.web3.eth.sendTransaction({
+            from: this.address,
+            to: address,
+            value: toTop,
+            gas: 100000,
+            gasPrice: Web3.utils.toWei('1', 'gwei')
+          })
+        throw new Error("User doesn't need topping")
+      } else throw new Error(`User not verified: ${address} ${isVerified}`)
+    } catch (e) {
+      log.error('Error topWallet', e)
+      throw e
+    }
   }
 
   async getBalance(): Promise<number> {
-    return this.web3.eth.getBalance(this.address).then(b => Web3.utils.fromWei(b))
+    return this.web3.eth
+      .getBalance(this.address)
+      .then(b => Web3.utils.fromWei(b))
+      .catch(e => {
+        log.error('Error getBalance', e)
+        throw e
+      })
   }
 }
 

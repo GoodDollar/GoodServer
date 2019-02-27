@@ -78,6 +78,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       let txRes = await AdminWallet.topWallet(storedUser.pubkey, storedUser.lastTopWallet)
         .then(tx => {
+          log.debug('topping wallet tx', { address: storedUser.pubkey, tx })
+          storage.updateUser({ pubkey: storedUser.pubkey, lastTopWallet: new Date().toISOString() })
           return { ok: 1 }
         })
         .catch(e => {
@@ -85,8 +87,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           return { ok: -1, err: e.message }
         })
       log.info('topping wallet', { txRes, address: storedUser.pubkey, adminBalance: await AdminWallet.getBalance() })
-      if (txRes.ok === 1)
-        await storage.updateUser({ pubkey: storedUser.pubkey, lastTopWallet: new Date().toISOString() })
 
       res.json(txRes)
     })
