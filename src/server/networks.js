@@ -16,6 +16,7 @@ const networks = {
   },
   fuse: {
     network_id: 121,
+    web3Transport: 'WebSocket',
     httpWeb3Provider: 'https://rpc.fuse.io/',
     websocketWeb3Provider: 'wss://explorer-node.fuse.io/ws'
   }
