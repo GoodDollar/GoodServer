@@ -1,7 +1,7 @@
 import conf from '../server.config'
 import logger from '../../imports/pino-logger'
 
-const sgMail = require('@sendgrid/mail')
+import sgMail from '@sendgrid/mail'
 sgMail.setApiKey(conf.sendGridApiKey)
 
 const log = logger.child({ from: 'AdminWallet' })
