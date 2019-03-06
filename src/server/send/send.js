@@ -2,11 +2,13 @@ import conf from '../server.config'
 import logger from '../../imports/pino-logger'
 
 import sgMail from '@sendgrid/mail'
+import * as plivo from 'plivo'
+
 sgMail.setApiKey(conf.sendGridApiKey)
 
 const log = logger.child({ from: 'AdminWallet' })
 
-export const sendLinkByEmail = async (to, link) => {
+export const sendLinkByEmail = (to, link) => {
   const text = `You got GD. To withdraw open: ${link}`
   const msg = {
     to,
@@ -15,9 +17,18 @@ export const sendLinkByEmail = async (to, link) => {
     html: text,
     text
   }
-  await sgMail.send(msg).catch(error => {
+  return sgMail.send(msg).catch(error => {
     //Log friendly error
     log.error(error.toString())
     throw error
   })
+}
+
+export const sendLinkBySMS = async (to, link) => {
+  console.log({ conf })
+  const { plivoAuthID, plivoAuthToken, plivoPhoneNumber } = conf
+  const client = new plivo.Client(plivoAuthID, plivoAuthToken)
+  const text = `You got GD. To withdraw open: ${link}`
+
+  return client.messages.create(plivoPhoneNumber, to, text)
 }
