@@ -5,8 +5,8 @@
   "main": "src/server/index.js",
   "scripts": {
     "build": "webpack --mode production --config webpack.server.config.js",
-    "test": "jest --globalSetup ./test/jest-envs/local/env.js",
-    "test:staging": "jest --globalSetup ./test/jest-envs/staging/env.js",
+    "test": "jest",
+    "test:staging": "jest",
     "coverage": "jest --coverage",
     "start": "webpack  --mode development --config webpack.server.config.js --watch --verbose",
     "dev": "npm start | pino-pretty -c -f -s \"msg!='request completed'\"",

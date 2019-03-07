@@ -9,5 +9,6 @@ secrets.json
 openSubjects.txt
 publicdb
 privatedb
+testdb
 config/*/*
 test/jest-envs/*
