@@ -1,18 +1,14 @@
 import path from 'path'
 import express from 'express'
-import middlewares from './server-middlewares'
 import conf from './server.config'
 import { GunDBPublic } from './gun/gun-middleware'
-
-const app = express()
+import app from './app'
 
 const DIST_DIR = __dirname
 
 const HTML_FILE = path.join(DIST_DIR, 'index.html')
 
 app.use(express.static(DIST_DIR))
-
-middlewares(app, 'prod')
 
 app.get('*', (req, res) => {
   res.sendFile(HTML_FILE)

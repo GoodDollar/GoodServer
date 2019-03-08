@@ -5,9 +5,9 @@
   "main": "src/server/index.js",
   "scripts": {
     "build": "webpack --mode production --config webpack.server.config.js",
-    "test": "jest",
-    "test:staging": "jest",
-    "coverage": "jest --coverage",
+    "test": "jest --forceExit --detectOpenHandles",
+    "test:staging": "jest --forceExit --detectOpenHandles",
+    "coverage": "jest --forceExit --detectOpenHandles --coverage",
     "start": "webpack  --mode development --config webpack.server.config.js --watch --verbose",
     "dev": "npm start | pino-pretty -c -f -s \"msg!='request completed'\"",
     "flow": "flow"
@@ -56,6 +56,7 @@
     "plivo": "^4.0.7",
     "react": "^16.7.0",
     "react-dom": "^16.7.0",
+    "supertest": "^3.4.2",
     "truffle-hdwallet-provider": "^1.0.2",
     "web3": "1.0.0-beta.37",
     "web3-core-promievent": "1.0.0-beta.37",

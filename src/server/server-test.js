@@ -31,11 +31,16 @@ import app from './app'
 //   })
 // })
 
-console.log({ conf })
-const PORT = conf.port || 8080
+const PORT = conf.port || 4000
 
-const server = app.listen(PORT, () => {
-  console.log(`App listening to ${PORT}....`)
-  console.log('Press Ctrl+C to quit.')
-})
-GunDBPublic.init(server, conf.gundbPassword, 'publicdb')
+const makeServer = done => {
+  const server = app.listen(PORT, err => {
+    console.log(`App listening to ${PORT}....`)
+    done()
+  })
+
+  GunDBPublic.init(server, conf.gundbPassword, 'publicdb')
+
+  return server
+}
+export default makeServer
