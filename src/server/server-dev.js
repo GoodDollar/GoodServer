@@ -9,13 +9,13 @@ import { GunDBPublic } from './gun/gun-middleware'
 import AdminWallet from './blockchain/AdminWallet'
 import app from './app'
 
-// const compiler = webpack(config)
+const compiler = webpack(config)
 
 // app.use(webpackDevMiddleware(compiler, {
 //   publicPath: config.output.publicPath
 // }))
 
-// app.use(webpackHotMiddleware(compiler))
+app.use(webpackHotMiddleware(compiler))
 
 // const DIST_DIR = __dirname
 // const HTML_FILE = path.join(DIST_DIR, 'index.html')

@@ -9,28 +9,6 @@ import { GunDBPublic } from './gun/gun-middleware'
 import AdminWallet from './blockchain/AdminWallet'
 import app from './app'
 
-// const compiler = webpack(config)
-
-// app.use(webpackDevMiddleware(compiler, {
-//   publicPath: config.output.publicPath
-// }))
-
-// app.use(webpackHotMiddleware(compiler))
-
-// const DIST_DIR = __dirname
-// const HTML_FILE = path.join(DIST_DIR, 'index.html')
-// app.get("*", (req, res, next) => {
-//   compiler.outputFileSystem.readFile(HTML_FILE, (err, result) => {
-//     if (err) {
-//       return next(err)
-//     }
-//     res.set("content-type", "text/html")
-//     res.send(result)
-//     res.end()
-//     return false
-//   })
-// })
-
 const PORT = conf.port || 4000
 
 const makeServer = done => {
