@@ -16,7 +16,7 @@ before_install:
   - npm install -g ganache-cli truffle webpack
   
 before_script:
-  - git clone https://github.com/GoodDollar/GoodContracts
+  - git -C GoodContracts pull || git clone https://github.com/GoodDollar/GoodContracts  
   - cd GoodContracts
   - ganache-cli -m "$MNEMONIC" --port 9545 --networkId 4447 -g 10000000000 &
   - truffle compile

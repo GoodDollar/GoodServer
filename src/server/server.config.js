@@ -48,7 +48,8 @@ const conf = convict({
   ethereum: {
     network_id: 42,
     httpWeb3Provider: 'https://kovan.infura.io/v3/',
-    websocketWeb3Provider: 'wss://kovan.infura.io/ws'
+    websocketWeb3Provider: 'wss://kovan.infura.io/ws',
+    web3Transport: 'WebSocket'
   },
   network: {
     doc: 'The blockchain network to connect to',
@@ -85,6 +86,12 @@ const conf = convict({
     format: '*',
     env: 'OTP_TTL_MINUTES',
     default: '60'
+  },
+  sendGridApiKey: {
+    doc: 'Sendgrid API KEY',
+    format: '*',
+    env: 'SENDGRID_API_KEY',
+    default: 'YOUR_API_KEY'
   }
 })
 
@@ -95,6 +102,6 @@ conf.set('ethereum', networks[network])
 // Perform validation
 conf.validate({ allowed: 'strict' })
 // eslint-disable-next-line
-log.trace("Starting configuration...", conf._instance)
+log.trace('Starting configuration...', conf._instance)
 
 export default conf.getProperties()

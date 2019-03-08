@@ -2,6 +2,8 @@
 import Web3 from 'web3'
 import { default as PromiEvent } from 'web3-core-promievent'
 import HDWalletProvider from 'truffle-hdwallet-provider'
+import type { WebSocketProvider } from 'web3-providers-ws'
+import type { HttpProvider } from 'web3-providers-http'
 import IdentityABI from '@gooddollar/goodcontracts/build/contracts/Identity.json'
 import RedemptionABI from '@gooddollar/goodcontracts/build/contracts/RedemptionFunctional.json'
 import GoodDollarABI from '@gooddollar/goodcontracts/build/contracts/GoodDollar.json'
@@ -35,16 +37,36 @@ export class Wallet {
     this.mnemonic = mnemonic
     this.init()
   }
+
+  getWeb3TransportProvider(): HttpProvider | WebSocketProvider {
+    let provider
+    let web3Provider
+    let transport = conf.ethereum.web3Transport
+    switch (transport) {
+      case 'WebSocket':
+        provider = conf.ethereum.websocketWeb3Provider
+        web3Provider = new Web3.providers.WebsocketProvider(provider)
+        break
+
+      case 'HttpProvider':
+        provider = conf.ethereum.httpWeb3provider + conf.infuraKey
+        web3Provider = new Web3.providers.HttpProvider(provider)
+        break
+
+      default:
+        provider = conf.ethereum.httpWeb3provider + conf.infuraKey
+        web3Provider = new Web3.providers.HttpProvider(provider)
+        break
+    }
+    log.debug({ conf, web3Provider, provider })
+
+    return web3Provider
+  }
+
   async init() {
     log.debug('Initializing wallet:', { mnemonic: this.mnemonic, conf: conf.ethereum })
-    this.wallet = new HDWalletProvider(
-      this.mnemonic,
-      conf.ethereum.httpWeb3Provider,
-      // new Web3.providers.WebsocketProvider(conf.ethereum.websocketWeb3Provider),
-      0,
-      10
-    )
-    // this.web3 = new Web3(new Web3.providers.WebsocketProvider(conf.ethereum.websocketWeb3Provider), {
+    this.wallet = new HDWalletProvider(this.mnemonic, this.getWeb3TransportProvider(), 0, 10)
+
     this.web3 = new Web3(this.wallet, {
       defaultAccount: this.address,
       defaultGasPrice: Web3.utils.toWei('1', 'gwei'),
