@@ -14,7 +14,8 @@ const PORT = conf.port || 4000
 const makeServer = done => {
   const server = app.listen(PORT, err => {
     console.log(`App listening to ${PORT}....`)
-    done()
+    // Delay to wait until gun middleware and wallet are ready
+    setTimeout(done, 1000)
   })
 
   GunDBPublic.init(server, conf.gundbPassword, 'publicdb')
