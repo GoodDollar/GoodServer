@@ -2,30 +2,29 @@ import request from 'supertest'
 import makeServer from '../../server-test'
 import { getToken } from '../../__util__/'
 
-describe('verificationAPI', () => {
+describe('sendAPÏ', () => {
   let server
   beforeAll(done => {
     server = makeServer(done)
   })
 
   afterAll(done => {
-    console.log('afterAll')
     server.close(err => {
       console.log({ err })
       done()
     })
   })
 
-  test('/verify/sendotp without creds -> 401', done => {
+  test('/send/linkemail without creds -> 401', done => {
     request(server)
-      .post('/verify/sendotp')
+      .post('/send/linkemail')
       .expect(401, done)
   })
 
-  test('/verify/sendotp with creds', async done => {
+  test('/send/linkemailwith creds', async done => {
     const token = await getToken(server)
     request(server)
-      .post('/verify/sendotp')
+      .post('/send/linkemail')
       .set('Authorization', `Bearer ${token}`)
       .expect(200, { ok: 1 }, done)
   })

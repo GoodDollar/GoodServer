@@ -1,32 +1,30 @@
+// @flow
 import request from 'supertest'
 import makeServer from '../../server-test'
-import { getToken } from '../../__util__/'
+import { getToken, getCreds } from '../../__util__/'
+import type { UserRecord } from '../../../imports/types'
 
-describe('verificationAPI', () => {
+describe('storageAPI', () => {
   let server
   beforeAll(done => {
     server = makeServer(done)
   })
 
   afterAll(done => {
-    console.log('afterAll')
     server.close(err => {
       console.log({ err })
       done()
     })
   })
 
-  test('/verify/sendotp without creds -> 401', done => {
-    request(server)
-      .post('/verify/sendotp')
-      .expect(401, done)
-  })
-
-  test('/verify/sendotp with creds', async done => {
+  test('/user/add creds', async done => {
     const token = await getToken(server)
+    const { pubkey } = getCreds()
+    const user: UserRecord = { pubkey }
     request(server)
-      .post('/verify/sendotp')
+      .post('/user/add')
       .set('Authorization', `Bearer ${token}`)
+      .send({ user })
       .expect(200, { ok: 1 }, done)
   })
 })
