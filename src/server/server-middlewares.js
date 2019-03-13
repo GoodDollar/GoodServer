@@ -10,7 +10,7 @@ import addStorageMiddlewares from './storage/storageAPI'
 import addVerificationMiddlewares from './verification/verificationAPI'
 import addSendMiddlewares from './send/sendAPI'
 import logger from '../imports/pino-logger'
-import VerificationAPI from './verification/verifications'
+import VerificationAPI from './verification/verification'
 
 export default (app: Router, env: any) => {
   // parse application/x-www-form-urlencoded

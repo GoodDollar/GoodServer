@@ -5,13 +5,11 @@ import { GunDB } from '../gun-middleware'
 const storage = new GunDB()
 describe('GunDB', () => {
   beforeAll(async () => {
-    await storage.init(null, 'test', 'test')
+    await storage.init(null, 'test', 'testdb')
   })
-  //this test gets stuck for some reason
-  afterAll(() => setTimeout(() => process.exit(1), 1000))
 
   it('Should add user', async () => {
-    let res = storage.updateUser({ pubkey: 1, fullName: 'hadar' })
+    let res = await storage.updateUser({ pubkey: 1, fullName: 'hadar' })
     expect(res).toBeTruthy()
   })
 

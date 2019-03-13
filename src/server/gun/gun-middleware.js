@@ -39,17 +39,16 @@ class GunDB implements StorageAPI {
   serverName: string
 
   init(server: typeof express | null, password: string, name: string): Promise<boolean> {
-    // this.gun = Gun()
     this.gun = Gun({ web: server, file: name })
     this.user = this.gun.user()
     this.serverName = name
-    return new Promise((resolv, reject) => {
+    return new Promise((resolve, reject) => {
       this.user.create('gooddollar', password, createres => {
         log.info('Created gundb GoodDollar User', { name })
         this.user.auth('gooddollar', password, async authres => {
           log.info('Authenticated GunDB user:', { name })
           this.usersCol = this.user.get('users')
-          resolv(true)
+          resolve(true)
         })
       })
     })
