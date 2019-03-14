@@ -11,7 +11,7 @@ const conf = convict({
   env: {
     doc: 'The applicaton environment.',
     format: ['production', 'development', 'test'],
-    default: 'develeopment',
+    default: 'development',
     arg: 'nodeEnv',
     env: 'NODE_ENV'
   },
