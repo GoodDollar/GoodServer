@@ -49,12 +49,12 @@ export class Wallet {
         break
 
       case 'HttpProvider':
-        provider = conf.ethereum.httpWeb3provider + conf.infuraKey
+        provider = conf.ethereum.httpWeb3Provider + conf.infuraKey
         web3Provider = new Web3.providers.HttpProvider(provider)
         break
 
       default:
-        provider = conf.ethereum.httpWeb3provider + conf.infuraKey
+        provider = conf.ethereum.httpWeb3Provider + conf.infuraKey
         web3Provider = new Web3.providers.HttpProvider(provider)
         break
     }
@@ -115,6 +115,7 @@ export class Wallet {
         log.error('Error whitelistUser', e)
         throw e
       })
+    log.info('Whitelisted user', address, tx)
     return tx
   }
 
