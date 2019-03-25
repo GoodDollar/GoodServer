@@ -10,6 +10,7 @@
     "coverage": "jest --forceExit --detectOpenHandles --coverage",
     "start": "webpack  --mode development --config webpack.server.config.js --watch --verbose",
     "dev": "npm start | pino-pretty -c -f -s \"msg!='request completed'\"",
+    "dev:local": "npm link @gooddollar/goodcontracts && npm start | pino-pretty -c -f -s \"msg!='request completed'\"",
     "flow": "flow"
   },
   "repository": {

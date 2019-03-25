@@ -33,6 +33,8 @@ export class Wallet {
 
   networkId: number
 
+  mnemonic: string
+
   constructor(mnemonic: string) {
     this.mnemonic = mnemonic
     this.init()
