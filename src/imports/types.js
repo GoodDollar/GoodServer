@@ -10,6 +10,15 @@ export type UserRecord = {
   otp?: { code: number, expirationDate: number }
 }
 
+export type JWTRecord = {
+  method: 'eth',
+  loggedInAs: string,
+  gdAddress: string,
+  profilePublickey: string
+}
+
+export type LoggedUser = JWTRecord & UserRecord
+
 export interface StorageAPI {
   getUser(pubkey: string): Promise<UserRecord>;
   getUserField(pubkey: string, field: string): Promise<any>;

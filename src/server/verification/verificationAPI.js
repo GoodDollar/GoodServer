@@ -1,11 +1,12 @@
 // @flow
 import { Router } from 'express'
 import passport from 'passport'
-import { type UserRecord, StorageAPI, VerificationAPI } from '../../imports/types'
+import { type UserRecord, StorageAPI, LoggedUser, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { wrapAsync, onlyInProduction } from '../utils/helpers'
 import { sendOTP } from '../../imports/otp'
 import conf from '../server.config'
+import { GunDBPublic } from '../gun/gun-middleware'
 
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
@@ -13,13 +14,13 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/user' })
-      const user: UserRecord = req.user
+      const user: LoggedUser = req.user
       const { verificationData } = req.body
       const verified = await verifier.verifyUser(user, verificationData)
       if (verified) {
         log.debug('Whitelisting new user', user)
-        await AdminWallet.whitelistUser(user.pubkey)
-        const updatedUser = await storage.updateUser({ pubkey: user.pubkey, isVerified: true })
+        await AdminWallet.whitelistUser(user.gdAddress /*, user.profilePublickey */)
+        const updatedUser = await storage.updateUser({ pubkey: user.loggedInAs, isVerified: true })
         log.debug('updateUser:', updatedUser)
         res.json({ ok: 1 })
       } else {
@@ -55,16 +56,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       log.debug('mobile verified', { user, verificationData })
 
       await verifier.verifyMobile(user, verificationData)
-
-      const storedUser = await storage.getUser(user.pubkey)
-      log.debug('storedUser', { storedUser })
-      storedUser.smsValidated = true
-
-      const sanitizedUser = storage.sanitizeUser(storedUser)
-      log.debug('sanitizedUser', { sanitizedUser })
-      await storage.updateUser(sanitizedUser)
-
-      res.json({ ok: 1 })
+      await storage.updateUser({ pubkey: user.loggedInAs, smsValidated: true })
+      const signedMobile = await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: user.mobile })
+      res.json({ ok: 1, attestation: signedMobile })
     })
   )
 
@@ -73,20 +67,20 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/topwallet' })
-      const { user: storedUser } = req
+      const user: LoggedUser = req.user
       //allow topping once a day
 
-      let txRes = await AdminWallet.topWallet(storedUser.pubkey, storedUser.lastTopWallet)
+      let txRes = await AdminWallet.topWallet(user.gdAddress, user.lastTopWallet)
         .then(tx => {
-          log.debug('topping wallet tx', { address: storedUser.pubkey, tx })
-          storage.updateUser({ pubkey: storedUser.pubkey, lastTopWallet: new Date().toISOString() })
+          log.debug('topping wallet tx', { walletaddress: user.gdAddress, tx })
+          storage.updateUser({ pubkey: user.loggedInAs, lastTopWallet: new Date().toISOString() })
           return { ok: 1 }
         })
         .catch(e => {
           log.error('Failed top wallet tx', e.message, e.stack)
           return { ok: -1, err: e.message }
         })
-      log.info('topping wallet', { txRes, address: storedUser.pubkey, adminBalance: await AdminWallet.getBalance() })
+      log.info('topping wallet', { txRes, loggedInAs: user.loggedInAs, adminBalance: await AdminWallet.getBalance() })
 
       res.json(txRes)
     })

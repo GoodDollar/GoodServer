@@ -13,6 +13,20 @@ type ACK = {
   ok: string,
   err: string
 }
+
+export type Entity = {
+  '@did': string,
+  publicKey: string
+}
+export type Claim = {
+  issuer: Entity,
+  subject: Entity,
+  sig?: string,
+  claim: any,
+  issuedAt: Date,
+  expiresAt?: Date
+}
+
 Gun.chain.putAck = function(data, cb) {
   var gun = this,
     cb =
@@ -54,7 +68,7 @@ class GunDB implements StorageAPI {
     })
   }
 
-  recordSanitize(obj: {} = {}) {
+  recordSanitize(obj: any = {}) {
     if (obj._ !== undefined) {
       const { _, ...record } = obj
       return record
@@ -152,10 +166,24 @@ class GunDB implements StorageAPI {
       fullName: user.fullName,
       mobile: user.mobile,
       email: user.email,
-      jwt: user.jwt,
       smsValidated: user.smsValidated,
       isEmailConfirmed: user.isEmailConfirmed
     }
+  }
+
+  async signClaim(subjectPubKey: string, claimData: any): Claim {
+    let attestation: Claim = {
+      issuer: { '@did': 'did:gooddollar:' + this.user.is.pub, publicKey: this.user.is.pub },
+      subject: {
+        '@did': 'did:gooddollar:' + subjectPubKey,
+        publicKey: subjectPubKey
+      },
+      claim: claimData,
+      issuedAt: new Date()
+    }
+    let sig = await SEA.sign(attestation, this.user.pair())
+    attestation.sig = sig
+    return attestation
   }
 }
 
