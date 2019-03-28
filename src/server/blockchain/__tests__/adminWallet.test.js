@@ -7,7 +7,7 @@ test('adminWallet constructor works', async () => {
 })
 
 test('adminWallet can whitelist user', async () => {
-  const tx = await AdminWallet.whitelistUser('0x888185b656fe770677a91412f9f09B23A787242A')
+  const tx = await AdminWallet.whitelistUser('0x888185b656fe770677a91412f9f09B23A787242A', 'did:gd')
   const isVerified = await AdminWallet.isVerified('0x888185b656fe770677a91412f9f09B23A787242A')
   expect(isVerified).toBeTruthy()
 })

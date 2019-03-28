@@ -109,15 +109,15 @@ export class Wallet {
     }
   }
 
-  async whitelistUser(address: string): Promise<TransactionReceipt> {
+  async whitelistUser(address: string, did: string): Promise<TransactionReceipt> {
     const tx: TransactionReceipt = await this.identityContract.methods
-      .whiteListUser(address)
+      .whiteListUser(address, did)
       .send()
       .catch(e => {
         log.error('Error whitelistUser', e)
         throw e
       })
-    log.info('Whitelisted user', address, tx)
+    log.info('Whitelisted user', { address, did, tx })
     return tx
   }
 
