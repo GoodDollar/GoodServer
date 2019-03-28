@@ -24,7 +24,6 @@ export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
   log.debug('payload received', { jwtPayload, user })
   //if user is empty make sure we have something
   user = defaults(user, jwtPayload)
-  // const user = { pubkey: jwtPayload.loggedInAs }
   if (get(jwtPayload, 'loggedInAs')) {
     next(null, user)
   } else {
@@ -53,13 +52,13 @@ const setup = (app: Router) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const { user, body, log } = req
-      const pubkey = get(body, 'user.pubkey')
+      const identifier = get(body, 'user.identifier') || user.loggedInAs
 
       log.trace(`${req.baseUrl} auth:`, { user, body })
 
-      if (user.loggedInAs !== pubkey) {
-        log.error(`Trying to update other user data! ${user.loggedInAs}!==${pubkey}`)
-        throw new Error(`Trying to update other user data! ${user.loggedInAs}!==${pubkey}`)
+      if (user.loggedInAs !== identifier) {
+        log.error(`Trying to update other user data! ${user.loggedInAs}!==${identifier}`)
+        throw new Error(`Trying to update other user data! ${user.loggedInAs}!==${identifier}`)
       } else next()
     })
   )
@@ -85,7 +84,12 @@ const setup = (app: Router) => {
       const recovered = recoverPublickey(signature, msg, nonce)
       const gdPublicAddress = recoverPublickey(gdSignature, msg, nonce)
       const profileVerified = await SEA.verify(profileSignature, profileReqPublickey)
-      log.debug('/auth/eth', 'Recovered public key:', { recovered })
+      log.debug('/auth/eth', 'Recovered public key:', {
+        recovered,
+        gdPublicAddress,
+        profileVerified,
+        profileReqPublickey
+      })
 
       if (recovered && gdPublicAddress && profileVerified && profileVerified === msg + nonce) {
         log.info(`SigUtil Successfully verified signer as ${recovered}`)

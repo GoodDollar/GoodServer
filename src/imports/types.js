@@ -1,6 +1,6 @@
 // @flow
 export type UserRecord = {
-  pubkey: string,
+  identifier: string,
   fullName?: string,
   mobile?: string,
   email?: string,
@@ -20,8 +20,8 @@ export type JWTRecord = {
 export type LoggedUser = JWTRecord & UserRecord
 
 export interface StorageAPI {
-  getUser(pubkey: string): Promise<UserRecord>;
-  getUserField(pubkey: string, field: string): Promise<any>;
+  getUser(identifier: string): Promise<UserRecord>;
+  getUserField(identifier: string, field: string): Promise<any>;
   addUser(user: UserRecord): Promise<boolean>;
   updateUser(user: UserRecord): Promise<boolean>;
   deleteUser(user: UserRecord): Promise<boolean>;

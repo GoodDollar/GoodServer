@@ -20,7 +20,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       if (verified) {
         log.debug('Whitelisting new user', user)
         await AdminWallet.whitelistUser(user.gdAddress /*, user.profilePublickey */)
-        const updatedUser = await storage.updateUser({ pubkey: user.loggedInAs, isVerified: true })
+        const updatedUser = await storage.updateUser({ identifier: user.loggedInAs, isVerified: true })
         log.debug('updateUser:', updatedUser)
         res.json({ ok: 1 })
       } else {
@@ -56,7 +56,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       log.debug('mobile verified', { user, verificationData })
 
       await verifier.verifyMobile(user, verificationData)
-      await storage.updateUser({ pubkey: user.loggedInAs, smsValidated: true })
+      await storage.updateUser({ identifier: user.loggedInAs, smsValidated: true })
       const signedMobile = await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: user.mobile })
       res.json({ ok: 1, attestation: signedMobile })
     })
@@ -73,7 +73,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       let txRes = await AdminWallet.topWallet(user.gdAddress, user.lastTopWallet)
         .then(tx => {
           log.debug('topping wallet tx', { walletaddress: user.gdAddress, tx })
-          storage.updateUser({ pubkey: user.loggedInAs, lastTopWallet: new Date().toISOString() })
+          storage.updateUser({ identifier: user.loggedInAs, lastTopWallet: new Date().toISOString() })
           return { ok: 1 }
         })
         .catch(e => {

@@ -13,7 +13,7 @@ function wrapAsync(fn: Function) {
   return function(req: $Request & { log: any }, res: $Response, next: NextFunction) {
     const log = req.log.child({ from: 'wrapAsync' })
     fn({ ...req, log: logger }, res, next).catch(error => {
-      log.error(error)
+      log.error('Error in request', req.route, error)
       next(error)
     })
   }

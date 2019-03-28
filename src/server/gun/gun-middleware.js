@@ -77,13 +77,13 @@ class GunDB implements StorageAPI {
     return obj
   }
 
-  getUser(pubkey: string): Promise<UserRecord> {
-    return this.usersCol.get(pubkey).then(this.recordSanitize)
+  getUser(identifier: string): Promise<UserRecord> {
+    return this.usersCol.get(identifier).then(this.recordSanitize)
   }
 
-  getUserField(pubkey: string, field: string): Promise<any> {
+  getUserField(identifier: string, field: string): Promise<any> {
     return this.usersCol
-      .get(pubkey)
+      .get(identifier)
       .get(field)
       .then(this.recordSanitize)
   }
@@ -93,29 +93,29 @@ class GunDB implements StorageAPI {
   }
 
   async updateUser(user: UserRecord): Promise<boolean> {
-    const { pubkey } = user
+    const { identifier } = user
     const isDup = await this.isDupUserData(user)
 
     let promises = []
     if (!isDup) {
-      log.info('Updating user', { pubkey, user })
-      promises.push(this.usersCol.get(pubkey).putAck(user))
+      log.info('Updating user', { identifier, user })
+      promises.push(this.usersCol.get(identifier).putAck(user))
 
       if (user.email) {
         const { email } = user
-        promises.push(this.usersCol.get('byemail').putAck({ [email]: pubkey }))
+        promises.push(this.usersCol.get('byemail').putAck({ [email]: identifier }))
       }
 
       if (user.mobile) {
         const { mobile } = user
-        promises.push(this.usersCol.get('bymobile').put({ [mobile]: pubkey }))
+        promises.push(this.usersCol.get('bymobile').put({ [mobile]: identifier }))
       }
 
       return Promise.all(promises).then(r => true)
     }
 
     return Promise.reject(new Error('Duplicate user information (phone/email)'))
-    // this.user.get('users').get(pubkey).secret({...user, jwt})
+    // this.user.get('users').get(identifier).secret({...user, jwt})
   }
 
   async isDupUserData(user: UserRecord) {
@@ -124,7 +124,7 @@ class GunDB implements StorageAPI {
         .get('byemail')
         .get(user.email)
         .then()
-      if (res && res !== user.pubkey) return true
+      if (res && res !== user.identifier) return true
     }
 
     if (user.mobile) {
@@ -132,15 +132,15 @@ class GunDB implements StorageAPI {
         .get('bymobile')
         .get(user.mobile)
         .then()
-      if (res && res !== user.pubkey) return true
+      if (res && res !== user.identifier) return true
     }
 
     return false
   }
 
   async deleteUser(user: UserRecord): Promise<boolean> {
-    const { pubkey } = user
-    const userRecord = await this.usersCol.get(pubkey).then()
+    const { identifier } = user
+    const userRecord = await this.usersCol.get(identifier).then()
     log.info('deleteUser fetched record:', { userRecord })
     if (userRecord.email) {
       this.usersCol
@@ -156,13 +156,13 @@ class GunDB implements StorageAPI {
         .put(null)
     }
 
-    this.usersCol.get(pubkey).put(null)
+    this.usersCol.get(identifier).put(null)
     return true
   }
 
   sanitizeUser(user: UserRecord): UserRecord {
     return {
-      pubkey: user.pubkey,
+      identifier: user.identifier,
       fullName: user.fullName,
       mobile: user.mobile,
       email: user.email,

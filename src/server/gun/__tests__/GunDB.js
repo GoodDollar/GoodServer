@@ -11,13 +11,13 @@ describe('GunDB', () => {
   })
 
   it('Should add user', async () => {
-    let res = await storage.updateUser({ pubkey: 1, fullName: 'hadar' })
+    let res = await storage.updateUser({ identifier: 1, fullName: 'hadar' })
     expect(res).toBeTruthy()
   })
 
   it('Should get user', async () => {
     let res = await storage.getUser(1)
-    expect(res).toMatchObject({ pubkey: 1, fullName: 'hadar' })
+    expect(res).toMatchObject({ identifier: 1, fullName: 'hadar' })
   })
 
   it('Should sign attestation', async () => {
