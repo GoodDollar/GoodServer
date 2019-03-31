@@ -17,10 +17,10 @@ before_install:
   
 before_script:
   - ganache-cli -m "$MNEMONIC" --port 9545 --networkId 4447 -g 10000000000 &
-  - cd node_modules/@gooddollar/goodcontracts
-  - cp ~/truffle.test.js truffle.js
+  - cp truffle.test.js node_modules/@gooddollar/goodcontracts/
+  - cd node_modules/@gooddollar/goodcontracts  
   - truffle migrate --reset --network development
-  - cd ~
+  - cd ../../..
 
 script:
   - npm run coverage
