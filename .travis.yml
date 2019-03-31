@@ -16,11 +16,13 @@ before_install:
   - npm install -g ganache-cli truffle webpack
   
 before_script:
+  - git -C GoodContracts pull || git clone https://github.com/GoodDollar/GoodContracts . || true
+  - cp -R node_modules/@gooddollar/goodcontracts/contracts GoodContracts/contracts
   - ganache-cli -m "$MNEMONIC" --port 9545 --networkId 4447 -g 10000000000 &
-  - cp truffle.test.js node_modules/@gooddollar/goodcontracts/truffle.js
-  - cd node_modules/@gooddollar/goodcontracts  
-  - truffle migrate --reset --network development
-  - cd ../../..
+  - cd GoodContracts
+  - truffle migrate --reset --network develop
+  - git reset --hard
+  - cd ..
 
 script:
   - npm run coverage
