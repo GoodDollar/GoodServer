@@ -2,8 +2,6 @@ language: node_js
 
 cache:
   npm: true
-  directories:
-    - ./GoodContracts
   
 env:
   global:
@@ -16,7 +14,7 @@ before_install:
   - npm install -g ganache-cli truffle webpack
   
 before_script:
-  - if cd GoodContracts; then git reset --hard; git pull; else https://github.com/GoodDollar/GoodContracts; fi
+  - git clone https://github.com/GoodDollar/GoodContracts
   - cp -R node_modules/@gooddollar/goodcontracts/contracts GoodContracts/contracts
   - ganache-cli -m "$MNEMONIC" --port 9545 --networkId 4447 -g 10000000000 &
   - cd GoodContracts || true
