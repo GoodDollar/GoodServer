@@ -8,6 +8,7 @@ import { get, defaults } from 'lodash'
 import logger from '../../imports/pino-logger'
 import { wrapAsync, lightLogs } from '../utils/helpers'
 import { GunDBPrivate } from '../gun/gun-middleware'
+import SEA from 'gun/sea'
 // const ExtractJwt = passportJWT.ExtractJwt
 // const JwtStrategy = passportJWT.Strategy
 
@@ -22,8 +23,7 @@ export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
   let user = await GunDBPrivate.getUser(jwtPayload.loggedInAs)
   log.debug('payload received', { jwtPayload, user })
   //if user is empty make sure we have something
-  user = defaults(user, { pubkey: jwtPayload.loggedInAs })
-  // const user = { pubkey: jwtPayload.loggedInAs }
+  user = defaults(user, jwtPayload)
   if (get(jwtPayload, 'loggedInAs')) {
     next(null, user)
   } else {
@@ -31,6 +31,17 @@ export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
   }
 })
 
+const recoverPublickey = (signature, msg, nonce) => {
+  const sig = ethUtil.fromRpcSig(signature)
+
+  const messageHash = ethUtil.keccak(
+    `\u0019Ethereum Signed Message:\n${(msg.length + nonce.length).toString()}${msg}${nonce}`
+  )
+
+  const publicKey = ethUtil.ecrecover(messageHash, sig.v, sig.r, sig.s)
+  const recovered = ethUtil.bufferToHex(ethUtil.pubToAddress(publicKey))
+  return recovered
+}
 const setup = (app: Router) => {
   passport.use(strategy)
 
@@ -41,47 +52,52 @@ const setup = (app: Router) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const { user, body, log } = req
-      const pubkey = get(body, 'user.pubkey')
+      const identifier = get(body, 'user.identifier') || user.loggedInAs
 
       log.trace(`${req.baseUrl} auth:`, { user, body })
 
-      if (user.pubkey !== pubkey) {
-        log.error(`Trying to update other user data! ${user.pubkey}!==${pubkey}`)
-        throw new Error(`Trying to update other user data! ${user.pubkey}!==${pubkey}`)
+      if (user.loggedInAs !== identifier) {
+        log.error(`Trying to update other user data! ${user.loggedInAs}!==${identifier}`)
+        throw new Error(`Trying to update other user data! ${user.loggedInAs}!==${identifier}`)
       } else next()
     })
   )
 
   app.post(
     '/auth/eth',
-    lightLogs((req, res) => {
+    lightLogs(async (req, res) => {
       const log = req.log.child({ from: 'login-middleware' })
 
       log.debug('/auth/eth', 'authorizing')
       log.debug('/auth/eth', 'body:', req.body)
 
       const signature = req.body.signature
-      const reqPublicKey = req.body.pubkey
+      const gdSignature = req.body.gdSignature
+      const profileReqPublickey = req.body.profilePublickey
+      const profileSignature = req.body.profileSignature
+      const nonce = req.body.nonce
       const method = req.body.method
 
-      log.debug('/auth/eth', { signature, reqPublicKey, method })
+      log.debug('/auth/eth', { signature, method })
 
       const msg = 'Login to GoodDAPP'
-      const sig = ethUtil.fromRpcSig(signature)
+      const recovered = recoverPublickey(signature, msg, nonce)
+      const gdPublicAddress = recoverPublickey(gdSignature, msg, nonce)
+      const profileVerified = await SEA.verify(profileSignature, profileReqPublickey)
+      log.debug('/auth/eth', 'Recovered public key:', {
+        recovered,
+        gdPublicAddress,
+        profileVerified,
+        profileReqPublickey
+      })
 
-      log.debug('/auth/eth', 'Signature:', sig)
+      if (recovered && gdPublicAddress && profileVerified && profileVerified === msg + nonce) {
+        log.info(`SigUtil Successfully verified signer as ${recovered}`)
 
-      const messageHash = ethUtil.keccak(`\u0019Ethereum Signed Message:\n${msg.length.toString()}${msg}`)
-
-      const publicKey = ethUtil.ecrecover(messageHash, sig.v, sig.r, sig.s)
-      const recovered = ethUtil.bufferToHex(ethUtil.pubToAddress(publicKey))
-
-      log.debug('/auth/eth', 'Recovered public key:', { recovered })
-
-      if (recovered.toLowerCase() === reqPublicKey.toLowerCase()) {
-        log.info(`SigUtil Successfully verified signer as ${reqPublicKey}`)
-
-        const token = jwt.sign({ method: method, loggedInAs: reqPublicKey }, 'G00DAPP')
+        const token = jwt.sign(
+          { method: method, loggedInAs: recovered, gdAddress: gdPublicAddress, profilePublickey: profileReqPublickey },
+          'G00DAPP'
+        )
 
         log.info('/auth/eth', `JWT token: ${token}`)
 

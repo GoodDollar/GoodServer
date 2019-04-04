@@ -10,6 +10,7 @@
     "coverage": "jest --forceExit --detectOpenHandles --coverage",
     "start": "webpack  --mode development --config webpack.server.config.js --watch --verbose",
     "dev": "npm start | pino-pretty -c -f -s \"msg!='request completed'\"",
+    "dev:local": "npm link @gooddollar/goodcontracts && npm start | pino-pretty -c -f -s \"msg!='request completed'\"",
     "flow": "flow"
   },
   "repository": {
@@ -35,7 +36,7 @@
   "dependencies": {
     "@babel/polyfill": "^7.2.5",
     "@colony/purser-metamask": "^2.1.0",
-    "@gooddollar/goodcontracts": "0.0.9",
+    "@gooddollar/goodcontracts": "0.0.11",
     "@sendgrid/mail": "^6.3.1",
     "body-parser": "^1.18.3",
     "convict": "^4.4.1",

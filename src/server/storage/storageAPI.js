@@ -3,14 +3,15 @@ import { Router } from 'express'
 import passport from 'passport'
 import { type StorageAPI } from '../../imports/types'
 import { wrapAsync } from '../utils/helpers'
-
+import { defaults } from 'lodash'
 const setup = (app: Router, storage: StorageAPI) => {
   app.post(
     '/user/add',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const { body } = req
-      await storage.addUser(body.user)
+      const user = defaults(body.user, { identifier: req.user.loggedInAs })
+      await storage.addUser(user)
       res.json({ ok: 1 })
     })
   )
@@ -20,7 +21,8 @@ const setup = (app: Router, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const { body } = req
-      await storage.deleteUser(body.user)
+      const user = defaults(body.user, { identifier: req.user.loggedInAs })
+      await storage.deleteUser(user)
       res.json({ ok: 1 })
     })
   )
