@@ -21,8 +21,10 @@ before_script:
   - npm i
   - truffle migrate --reset --network develop
   - git reset --hard
+  - npm link
   - cd ..
 
 script:
+  - npm link @gooddollar/goodcontracts
   - npm run coverage
   - npm run build
