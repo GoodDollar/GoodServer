@@ -138,7 +138,7 @@ export class Wallet {
       .isVerified(address)
       .call()
       .catch(e => {
-        log.error('Error isVerified', e)
+        log.error('Error isVerified', e.message)
         throw e
       })
     return tx
