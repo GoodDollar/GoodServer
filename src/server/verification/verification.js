@@ -28,6 +28,19 @@ class Verifications implements VerificationAPI {
     }
     return Promise.reject(new Error('No code to validate, retry'))
   }
+
+  async verifyEmail(user: UserRecord, verificationData: { code: string }): Promise<boolean | Error> {
+    const code = await GunDBPrivate.getUserField(user.identifier, 'emailVerificationCode')
+
+    if (code) {
+      this.log.info({ verificationData, code })
+      if (+verificationData.code === code) {
+        return Promise.resolve(true)
+      }
+      return Promise.reject(new Error("Oops, it's not right code"))
+    }
+    return Promise.reject(new Error('No code to validate, retry'))
+  }
 }
 
 export default new Verifications()
