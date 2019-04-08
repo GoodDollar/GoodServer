@@ -108,6 +108,12 @@ const conf = convict({
     format: '*',
     env: 'NO_REPLY_GD_EMAIL',
     default: 'no-reply@gooddollar.com'
+  },
+  walletUrl: {
+    doc: 'wallet URL',
+    format: '*',
+    env: 'WALLET_URL',
+    default: 'WALLET_URL'
   }
 })
 
