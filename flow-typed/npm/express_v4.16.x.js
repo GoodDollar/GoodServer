@@ -1,5 +1,5 @@
-// flow-typed signature: 207bac286d971cad7615b09aa20d4acf
-// flow-typed version: bb849ae672/express_v4.16.x/flow_>=v0.32.x
+// flow-typed signature: 76276bc15c3dd741728de14d5880d282
+// flow-typed version: c7f4cf7a4d/express_v4.16.x/flow_>=v0.32.x <=v0.92.x
 
 import * as http from "http";
 import type { Socket } from "net";
