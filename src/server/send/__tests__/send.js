@@ -1,7 +1,7 @@
 /**
  * @jest-environment node
  */
-import { sendLinkByEmail, sendLinkBySMS } from '../send'
+import { sendLinkByEmail, sendLinkBySMS, sendRecoveryInstructionsByEmail } from '../send'
 
 describe('Send', () => {
   describe('Send Via Email', () => {
@@ -45,6 +45,38 @@ describe('Send', () => {
       try {
         await sendLinkBySMS('fake', 'http://example.com/address')
       } catch (e) {
+        expect(e instanceof Error).toBeTruthy()
+      }
+    })
+  })
+
+  describe('Send Recovery Instructions Via Email', () => {
+    it('Should send email', async () => {
+      expect.assertions(2)
+      try {
+        const result = await sendRecoveryInstructionsByEmail(
+          'kevin.bardi@altoros.com',
+          'Kevin',
+          'abcd efgh ijkl mnop qrst uvwx yzab cdef ghij klmn opqr stuv'
+        )
+        console.log({ result })
+        expect(result).toBeTruthy()
+        expect(true).toBeTruthy()
+      } catch (e) {
+        console.error(e)
+      }
+    })
+
+    it('Should fail with fake email', async () => {
+      expect.assertions(2)
+      try {
+        await sendRecoveryInstructionsByEmail(
+          'fake',
+          'Kevin',
+          'abcd efgh ijkl mnop qrst uvwx yzab cdef ghij klmn opqr stuv'
+        )
+      } catch (e) {
+        expect(e.message).toEqual('Bad Request')
         expect(e instanceof Error).toBeTruthy()
       }
     })

@@ -32,3 +32,23 @@ export const sendLinkBySMS = async (to, link) => {
 
   return client.messages.create(plivoPhoneNumber, to, text)
 }
+
+export const sendRecoveryInstructionsByEmail = (to, name, key) => {
+  const text = `
+    Congratulations ${name}! You have a good dollar account. \n
+    Please save the key to recover your account:
+      - Your key is: <b>${key}</b>
+  `
+  const msg = {
+    to,
+    from: 'no-reply@gooddollar.com',
+    subject: 'Congratulations! You have a good dollar account',
+    html: text,
+    text
+  }
+  return sgMail.send(msg).catch(error => {
+    //Log friendly error
+    log.error(error.toString())
+    throw error
+  })
+}
