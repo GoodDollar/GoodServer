@@ -36,9 +36,16 @@ export const sendLinkBySMS = (to: string, link: string) => {
   return client.messages.create(plivoPhoneNumber, to, text)
 }
 
+/**
+ * Sends an email to the user's registered email through SendGrid.send API using a Transactional Template
+ * @param {UserRecord} user - User profile
+ * @returns {Promise<R>|Promise<R|*>}
+ */
 export const sendEmailConfirmationLink = (user: UserRecord) => {
   const validationHash = generateOTP(10)
   const validationLink = `${conf.walletUrl}/Signup/EmailConfirmation/?validation=${validationHash}`
+
+  // structure required by SendGrid API: https://sendgrid.api-docs.io/v3.0/mail-send
   const msg: any = {
     personalizations: [
       {

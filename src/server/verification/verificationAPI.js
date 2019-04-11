@@ -99,6 +99,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       const code = await sendEmailConfirmationLink(body.user)
 
+      // updates/adds user with the emailVerificationCode to be used for verification later
       await storage.updateUser({ identifier: user.loggedInAs, emailVerificationCode: code })
 
       res.json({ ok: 1 })
@@ -117,6 +118,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       log.debug('email verified', { user, verificationData })
 
       await verifier.verifyEmail({ identifier: user.loggedInAs }, verificationData)
+
+      // if verification succeeds, then set the flag `isEmailConfirmed` to true in the user's record
       await storage.updateUser({ identifier: user.loggedInAs, isEmailConfirmed: true })
 
       const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: user.email })
