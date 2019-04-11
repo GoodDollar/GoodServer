@@ -2,7 +2,7 @@ language: node_js
 
 cache:
   npm: true
-  
+
 env:
   global:
     - GUNDB_PASS=test
@@ -12,7 +12,7 @@ env:
 
 before_install:
   - npm install -g ganache-cli truffle webpack
-  
+
 before_script:
   - export CONTRACTSTAG=`node -pe "require('./node_modules/@gooddollar/goodcontracts/package.json').version"`
   - git clone https://github.com/GoodDollar/GoodContracts --branch=v$CONTRACTSTAG
@@ -26,4 +26,5 @@ before_script:
 script:
   - npm link @gooddollar/goodcontracts
   - npm run coverage
+  - npm run coveralls
   - npm run build
