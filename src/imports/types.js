@@ -31,4 +31,5 @@ export interface StorageAPI {
 export interface VerificationAPI {
   verifyUser(user: UserRecord, verificationData: any): Promise<boolean | Error>;
   verifyMobile(user: UserRecord, verificationData: { otp: string }): Promise<boolean | Error>;
+  verifyEmail(user: UserRecord, verificationData: { code: string }): Promise<boolean | Error>;
 }
