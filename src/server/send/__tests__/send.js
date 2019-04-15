@@ -10,7 +10,6 @@ describe('Send', () => {
       expect.assertions(2)
       try {
         const result = await sendLinkByEmail('dario.minones@altoros.com', 'http://example.com/address')
-        console.log({ result })
         expect(result).toBeTruthy()
         expect(true).toBeTruthy()
       } catch (e) {
@@ -53,7 +52,7 @@ describe('Send', () => {
 
   describe('Send Recovery Instructions Via Email', () => {
     it('Should send email', async () => {
-      expect.assertions(2)
+      expect.assertions(1)
       try {
         const result = await sendRecoveryInstructionsByEmail(
           'kevin.bardi@altoros.com',
@@ -61,23 +60,8 @@ describe('Send', () => {
           'abcd efgh ijkl mnop qrst uvwx yzab cdef ghij klmn opqr stuv'
         )
         expect(result).toBeTruthy()
-        expect(true).toBeTruthy()
       } catch (e) {
         console.error(e)
-      }
-    })
-
-    it('Should fail with fake email', async () => {
-      expect.assertions(2)
-      try {
-        await sendRecoveryInstructionsByEmail(
-          'fake',
-          'Kevin',
-          'abcd efgh ijkl mnop qrst uvwx yzab cdef ghij klmn opqr stuv'
-        )
-      } catch (e) {
-        expect(e.message).toEqual('Bad Request')
-        expect(e instanceof Error).toBeTruthy()
       }
     })
   })

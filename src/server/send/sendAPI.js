@@ -38,7 +38,7 @@ const setup = (app: Router) => {
   app.post(
     '/send/recoveryinstructions',
     passport.authenticate('jwt', { session: false }),
-    // onlyInProduction,
+    onlyInProduction,
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'sendAPI - /send/linkemail' })
       const { user } = req
