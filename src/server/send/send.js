@@ -65,7 +65,6 @@ export const sendRecoveryInstructionsByEmail = (to: string, name: string, key: s
     from: {
       email: conf.noReplyEmail
     },
-    subject: 'Congratulations! You have a good dollar account',
     template_id: conf.sendGrid.templates.recoveryInstructions
   }
 
