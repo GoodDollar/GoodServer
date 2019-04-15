@@ -95,6 +95,12 @@ const conf = convict({
       default: 'YOUR_API_KEY'
     },
     templates: {
+      recoveryInstructions: {
+        doc: 'Sendgrid Transactional Template ID',
+        format: '*',
+        env: 'SENDGRID_TEMPLATE_RECOVERY_INSTRUCTIONS',
+        default: ''
+      },
       emailConfirmation: {
         doc: 'Sendgrid Transactional Template ID',
         format: '*',

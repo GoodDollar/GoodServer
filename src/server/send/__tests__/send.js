@@ -1,7 +1,8 @@
 /**
  * @jest-environment node
  */
-import { sendEmailConfirmationLink, sendLinkByEmail, sendLinkBySMS } from '../send'
+
+import { sendEmailConfirmationLink, sendLinkByEmail, sendLinkBySMS, sendRecoveryInstructionsByEmail } from '../send'
 
 describe('Send', () => {
   describe('Send Via Email', () => {
@@ -9,7 +10,6 @@ describe('Send', () => {
       expect.assertions(2)
       try {
         const result = await sendLinkByEmail('dario.minones@altoros.com', 'http://example.com/address')
-        console.log({ result })
         expect(result).toBeTruthy()
         expect(true).toBeTruthy()
       } catch (e) {
@@ -50,6 +50,22 @@ describe('Send', () => {
     })
   })
 
+  describe('Send Recovery Instructions Via Email', () => {
+    it('Should send email', async () => {
+      expect.assertions(1)
+      try {
+        const result = await sendRecoveryInstructionsByEmail(
+          'kevin.bardi@altoros.com',
+          'Kevin',
+          'abcd efgh ijkl mnop qrst uvwx yzab cdef ghij klmn opqr stuv'
+        )
+        expect(result).toBeTruthy()
+      } catch (e) {
+        console.error(e)
+      }
+    })
+  })
+
   describe('Send Email confirmation Link', () => {
     it(`should send email`, async () => {
       // Given
@@ -72,27 +88,5 @@ describe('Send', () => {
         console.error(e)
       }
     })
-  })
-
-  it(`should fail with invalid user record`, async () => {
-    // Given
-    const user = {
-      fullName: 'Fernando Greco',
-      email: '',
-      mobile: '+22233232323',
-      smsValidated: true,
-      isEmailConfirmed: false,
-      jwt: ''
-    }
-
-    try {
-      // When
-      const result = await sendEmailConfirmationLink(user)
-
-      // Then
-      expect(result).toBeFalsy()
-    } catch (e) {
-      console.error(e)
-    }
   })
 })
