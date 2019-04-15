@@ -5,6 +5,9 @@ import * as plivo from 'plivo'
 import conf from '../server.config'
 import logger from '../../imports/pino-logger'
 
+import type { UserRecord } from '../../imports/types'
+import { generateOTP } from '../../imports/otp'
+
 sgMail.setApiKey(conf.sendGrid.apiKey)
 
 const log = logger.child({ from: 'AdminWallet' })
@@ -66,9 +69,54 @@ export const sendRecoveryInstructionsByEmail = (to: string, name: string, key: s
     template_id: conf.sendGrid.templates.recoveryInstructions
   }
 
+  log.debug({ msg })
+
   return sgMail.send(msg).catch(error => {
-    //Log friendly error
+    // Log friendly error
     log.error(error.toString())
     throw error
   })
+}
+
+/**
+ * Sends an email to the user's registered email through SendGrid.send API using a Transactional Template
+ * @param {UserRecord} user - User profile
+ * @returns {Promise<R>|Promise<R|*>}
+ */
+export const sendEmailConfirmationLink = (user: UserRecord) => {
+  const validationHash = generateOTP(10)
+  const validationLink = `${conf.walletUrl}/Signup/EmailConfirmation/?validation=${validationHash}`
+
+  // structure required by SendGrid API: https://sendgrid.api-docs.io/v3.0/mail-send
+  const msg: any = {
+    personalizations: [
+      {
+        dynamic_template_data: {
+          receiver_name: user.fullName,
+          validation_link: validationLink
+        },
+        to: [
+          {
+            email: user.email,
+            name: user.fullName
+          }
+        ]
+      }
+    ],
+    from: {
+      email: conf.noReplyEmail
+    },
+    template_id: conf.sendGrid.templates.emailConfirmation
+  }
+
+  log.debug({ msg })
+
+  return sgMail
+    .send(msg)
+    .then(() => validationHash)
+    .catch(error => {
+      //Log friendly error
+      log.error(error.toString())
+      throw error
+    })
 }

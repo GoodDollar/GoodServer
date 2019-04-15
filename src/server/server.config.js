@@ -100,6 +100,12 @@ const conf = convict({
         format: '*',
         env: 'SENDGRID_TEMPLATE_RECOVERY_INSTRUCTIONS',
         default: ''
+      },
+      emailConfirmation: {
+        doc: 'Sendgrid Transactional Template ID',
+        format: '*',
+        env: 'SENDGRID_TEMPLATE_EMAIL_CONFIRMATION',
+        default: ''
       }
     }
   },
@@ -108,6 +114,12 @@ const conf = convict({
     format: '*',
     env: 'NO_REPLY_GD_EMAIL',
     default: 'no-reply@gooddollar.com'
+  },
+  walletUrl: {
+    doc: 'wallet URL',
+    format: '*',
+    env: 'WALLET_URL',
+    default: 'WALLET_URL'
   }
 })
 
