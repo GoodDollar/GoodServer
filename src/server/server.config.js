@@ -87,11 +87,33 @@ const conf = convict({
     env: 'OTP_TTL_MINUTES',
     default: '60'
   },
-  sendGridApiKey: {
-    doc: 'Sendgrid API KEY',
+  sendGrid: {
+    apiKey: {
+      doc: 'Sendgrid API KEY',
+      format: '*',
+      env: 'SENDGRID_API_KEY',
+      default: 'YOUR_API_KEY'
+    },
+    templates: {
+      emailConfirmation: {
+        doc: 'Sendgrid Transactional Template ID',
+        format: '*',
+        env: 'SENDGRID_TEMPLATE_EMAIL_CONFIRMATION',
+        default: ''
+      }
+    }
+  },
+  noReplyEmail: {
+    doc: 'no-reply GD email',
     format: '*',
-    env: 'SENDGRID_API_KEY',
-    default: 'YOUR_API_KEY'
+    env: 'NO_REPLY_GD_EMAIL',
+    default: 'no-reply@gooddollar.com'
+  },
+  walletUrl: {
+    doc: 'wallet URL',
+    format: '*',
+    env: 'WALLET_URL',
+    default: 'WALLET_URL'
   }
 })
 

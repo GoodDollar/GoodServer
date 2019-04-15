@@ -7,7 +7,8 @@ export type UserRecord = {
   jwt?: string,
   smsValidated?: boolean,
   isEmailConfirmed?: boolean,
-  otp?: { code: number, expirationDate: number }
+  otp?: { code: number, expirationDate: number },
+  emailVerification?: { code: string, expirationDate: number }
 }
 
 export type JWTRecord = {
@@ -31,4 +32,5 @@ export interface StorageAPI {
 export interface VerificationAPI {
   verifyUser(user: UserRecord, verificationData: any): Promise<boolean | Error>;
   verifyMobile(user: UserRecord, verificationData: { otp: string }): Promise<boolean | Error>;
+  verifyEmail(user: UserRecord, verificationData: { code: string }): Promise<boolean | Error>;
 }

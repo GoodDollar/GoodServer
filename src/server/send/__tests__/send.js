@@ -1,7 +1,7 @@
 /**
  * @jest-environment node
  */
-import { sendLinkByEmail, sendLinkBySMS } from '../send'
+import { sendEmailConfirmationLink, sendLinkByEmail, sendLinkBySMS } from '../send'
 
 describe('Send', () => {
   describe('Send Via Email', () => {
@@ -48,5 +48,51 @@ describe('Send', () => {
         expect(e instanceof Error).toBeTruthy()
       }
     })
+  })
+
+  describe('Send Email confirmation Link', () => {
+    it(`should send email`, async () => {
+      // Given
+      const user = {
+        fullName: 'Fernando Greco',
+        email: 'fernando.greco@gmail.com',
+        mobile: '+22233232323',
+        smsValidated: true,
+        isEmailConfirmed: false,
+        jwt: ''
+      }
+
+      try {
+        // When
+        const result = await sendEmailConfirmationLink(user)
+
+        // Then
+        expect(result).toBeTruthy()
+      } catch (e) {
+        console.error(e)
+      }
+    })
+  })
+
+  it(`should fail with invalid user record`, async () => {
+    // Given
+    const user = {
+      fullName: 'Fernando Greco',
+      email: '',
+      mobile: '+22233232323',
+      smsValidated: true,
+      isEmailConfirmed: false,
+      jwt: ''
+    }
+
+    try {
+      // When
+      const result = await sendEmailConfirmationLink(user)
+
+      // Then
+      expect(result).toBeFalsy()
+    } catch (e) {
+      console.error(e)
+    }
   })
 })

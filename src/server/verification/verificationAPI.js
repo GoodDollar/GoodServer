@@ -1,12 +1,13 @@
 // @flow
 import { Router } from 'express'
 import passport from 'passport'
-import { type UserRecord, StorageAPI, LoggedUser, VerificationAPI } from '../../imports/types'
+import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
-import { wrapAsync, onlyInProduction } from '../utils/helpers'
+import { onlyInProduction, wrapAsync } from '../utils/helpers'
 import { sendOTP } from '../../imports/otp'
 import conf from '../server.config'
 import { GunDBPublic } from '../gun/gun-middleware'
+import { sendEmailConfirmationLink } from '../send/send'
 
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
@@ -55,7 +56,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       log.debug('mobile verified', { user, verificationData })
 
-      await verifier.verifyMobile(user, verificationData)
+      await verifier.verifyMobile({ identifier: user.loggedInAs }, verificationData)
       await storage.updateUser({ identifier: user.loggedInAs, smsValidated: true })
       const signedMobile = await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: user.mobile })
       res.json({ ok: 1, attestation: signedMobile })
@@ -83,6 +84,47 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       log.info('topping wallet', { txRes, loggedInAs: user.loggedInAs, adminBalance: await AdminWallet.getBalance() })
 
       res.json(txRes)
+    })
+  )
+
+  app.post(
+    '/verify/sendemail',
+    passport.authenticate('jwt', { session: false }),
+    onlyInProduction,
+    wrapAsync(async (req, res, next) => {
+      const log = req.log.child({ from: 'verificationAPI - verify/sendemail' })
+      const { user, body } = req
+
+      log.info({ user, body })
+
+      const code = await sendEmailConfirmationLink(body.user)
+
+      // updates/adds user with the emailVerificationCode to be used for verification later
+      await storage.updateUser({ identifier: user.loggedInAs, emailVerificationCode: code })
+
+      res.json({ ok: 1 })
+    })
+  )
+
+  app.post(
+    '/verify/email',
+    passport.authenticate('jwt', { session: false }),
+    onlyInProduction,
+    wrapAsync(async (req, res, next) => {
+      const log = req.log.child({ from: 'verificationAPI - verify/email' })
+      const { user, body } = req
+      const verificationData: { code: string } = body.verificationData
+
+      log.debug('email verified', { user, verificationData })
+
+      await verifier.verifyEmail({ identifier: user.loggedInAs }, verificationData)
+
+      // if verification succeeds, then set the flag `isEmailConfirmed` to true in the user's record
+      await storage.updateUser({ identifier: user.loggedInAs, isEmailConfirmed: true })
+
+      const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: user.email })
+
+      res.json({ ok: 1, attestation: signedEmail })
     })
   )
 }
