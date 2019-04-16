@@ -10,7 +10,7 @@ const log = logger.child({ from: 'server-config', level: 10 })
 const conf = convict({
   env: {
     doc: 'The applicaton environment.',
-    format: ['production', 'development', 'test'],
+    format: ['production', 'development', 'staging', 'test'],
     default: 'development',
     arg: 'nodeEnv',
     env: 'NODE_ENV'
