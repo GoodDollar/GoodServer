@@ -3,7 +3,7 @@ import { Router } from 'express'
 import passport from 'passport'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
-import { onlyInProduction, wrapAsync } from '../utils/helpers'
+import { onlyInEnv, wrapAsync } from '../utils/helpers'
 import { sendOTP } from '../../imports/otp'
 import conf from '../server.config'
 import { GunDBPublic } from '../gun/gun-middleware'
@@ -29,11 +29,10 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
     })
   )
-
   app.post(
     '/verify/sendotp',
     passport.authenticate('jwt', { session: false }),
-    onlyInProduction,
+    onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res, next) => {
       const { body } = req
       const [, code] = await sendOTP(body.user)
@@ -48,7 +47,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
     '/verify/mobile',
     passport.authenticate('jwt', { session: false }),
-    onlyInProduction,
+    onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/mobile' })
       const { user, body } = req
@@ -90,7 +89,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
     '/verify/sendemail',
     passport.authenticate('jwt', { session: false }),
-    onlyInProduction,
+    onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/sendemail' })
       const { user, body } = req
@@ -109,7 +108,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
     '/verify/email',
     passport.authenticate('jwt', { session: false }),
-    onlyInProduction,
+    onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/email' })
       const { user, body } = req

@@ -36,12 +36,15 @@ function lightLogs(fn: Function) {
  * @param res
  * @param next
  */
-function onlyInProduction(req: $Request, res: $Response, next: NextFunction) {
-  if (conf.env === 'production') {
-    next()
-    return
+const onlyInEnv = (...args: Array<string>) => {
+  return function(req: $Request, res: $Response, next: NextFunction) {
+    const environments = args || []
+    if (environments.includes(conf.env)) {
+      next()
+      return
+    }
+    res.json({ ok: 1 })
   }
-  res.json({ ok: 1 })
 }
 
-export { wrapAsync, onlyInProduction, lightLogs }
+export { wrapAsync, onlyInEnv, lightLogs }
