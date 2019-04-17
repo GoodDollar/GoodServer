@@ -9,12 +9,13 @@ env:
     - MNEMONIC="choice congress hobby buddy dutch busy army eager empty solution start grunt"
     - NETWORK=truffle
     - LOG_LEVEL=trace
+    - CONTRACTSTAG=unify-truffle-configs
 
 before_install:
   - npm install -g ganache-cli truffle@5.0.12 webpack
 
 before_script:
-  - export CONTRACTSTAG=${CONTRACTSTAG:-`node -pe "require('./node_modules/@gooddollar/goodcontracts/package.json').version"`}
+  # - export CONTRACTSTAG=${CONTRACTSTAG:-`node -pe "require('./node_modules/@gooddollar/goodcontracts/package.json').version"`}
   - git clone https://github.com/GoodDollar/GoodContracts --branch=v$CONTRACTSTAG
   - ganache-cli -m "$MNEMONIC" --port 9545 --networkId 4447 -g 10000000000 &
   - cd GoodContracts || true
