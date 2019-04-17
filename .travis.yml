@@ -11,7 +11,7 @@ env:
     - LOG_LEVEL=trace
 
 before_install:
-  - npm install -g ganache-cli truffle webpack
+  - npm install -g ganache-cli truffle@5.0.12 webpack
 
 before_script:
   - export CONTRACTSTAG=`node -pe "require('./node_modules/@gooddollar/goodcontracts/package.json').version"`

@@ -36,9 +36,8 @@ function lightLogs(fn: Function) {
  * @param res
  * @param next
  */
-const onlyInEnv = (...args: Array<string>) => {
+const onlyInEnv = (...environments: Array<string>) => {
   return function(req: $Request, res: $Response, next: NextFunction) {
-    const environments = args || []
     if (environments.includes(conf.env)) {
       next()
       return
