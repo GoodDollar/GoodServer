@@ -34,11 +34,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res, next) => {
-      const { body } = req
+      const { user, body } = req
       const [, code] = await sendOTP(body.user)
       const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
 
-      await storage.updateUser({ ...body.user, otp: { code, expirationDate } })
+      await storage.updateUser({ identifier: user.loggedInAs, otp: { code, expirationDate } })
 
       res.json({ ok: 1 })
     })
