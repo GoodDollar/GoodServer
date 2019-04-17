@@ -4,6 +4,7 @@ import * as plivo from 'plivo'
 
 import conf from '../server.config'
 import logger from '../../imports/pino-logger'
+
 import type { UserRecord } from '../../imports/types'
 import { generateOTP } from '../../imports/otp'
 
@@ -34,6 +35,46 @@ export const sendLinkBySMS = (to: string, link: string) => {
   const text = `You got GD. To withdraw open: ${link}`
 
   return client.messages.create(plivoPhoneNumber, to, text)
+}
+
+/**
+ * Sends an email with recovery instructions to the user's registered email through SendGrid.
+ * Send it by an API using a Transactional Template
+ *
+ * @param {string} to - User email
+ * @param {string} name - User name
+ * @param {string} key - Mnemonic key
+ * @returns {Promise<R>|Promise<R|*>}
+ */
+export const sendRecoveryInstructionsByEmail = (to: string, name: string, key: string) => {
+  const msg: any = {
+    personalizations: [
+      {
+        dynamic_template_data: {
+          name,
+          key
+        },
+        to: [
+          {
+            email: to,
+            name
+          }
+        ]
+      }
+    ],
+    from: {
+      email: conf.noReplyEmail
+    },
+    template_id: conf.sendGrid.templates.recoveryInstructions
+  }
+
+  log.debug({ msg })
+
+  return sgMail.send(msg).catch(error => {
+    // Log friendly error
+    log.error(error.toString())
+    throw error
+  })
 }
 
 /**
