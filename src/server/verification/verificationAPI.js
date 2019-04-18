@@ -90,7 +90,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
     '/verify/sendemail',
     passport.authenticate('jwt', { session: false }),
-    onlyInProduction,
+    //onlyInProduction,
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/sendemail' })
       const { user, body } = req
@@ -125,6 +125,34 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: user.email })
 
       res.json({ ok: 1, attestation: signedEmail })
+    })
+  )
+
+  app.post(
+    '/verify/facerecognition',
+    passport.authenticate('jwt', { session: false }),
+    onlyInProduction,
+    wrapAsync(async (req, res, next) => {
+      const log = req.log.child({ from: 'verificationAPI - verify/facerecognition' })
+      const { user, body } = req
+      const verificationData: { code: string } = body.verificationData
+
+      // recieve zoomclient params from client:
+
+      /* this is the client type:
+     apiResult: await this.client.enroll({
+          email: this.props.email,
+          name: this.props.name,
+          sessionId: this.props.result.sessionId,
+          facemap: this.props.result.facemap,
+          auditTrailImage: this.props.result.auditTrailImage
+        })
+     */
+
+      // pass the above exactly to Ruby backend.
+
+      //res.json({ ok: 1, attestation: signedEmail })
+      res.json({ ok: 1 })
     })
   )
 }
