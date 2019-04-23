@@ -27,6 +27,6 @@ describe('verificationAPI', () => {
     request(server)
       .post('/verify/sendotp')
       .set('Authorization', `Bearer ${token}`)
-      .expect(200, { ok: 1 }, done)
+      .expect(200, { ok: 1, onlyInEnv: 'test' }, done)
   })
 })
