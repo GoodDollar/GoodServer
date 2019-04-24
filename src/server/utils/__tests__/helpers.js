@@ -9,7 +9,7 @@ describe('storageAPI', () => {
     const response = {
       ...new MockExpressResponse(),
       json: data => {
-        expect(data).toEqual({ ok: 1, onlyInEnv: 'test' })
+        expect(data).toEqual({ ok: 1, onlyInEnv: { current: 'test', onlyIn: ['production'] } })
         done()
       }
     }

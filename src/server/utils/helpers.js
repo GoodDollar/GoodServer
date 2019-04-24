@@ -42,7 +42,7 @@ const onlyInEnv = (...environments: Array<string>) => {
       next()
       return
     }
-    res.json({ ok: 1, onlyInEnv: conf.env })
+    res.json({ ok: 1, onlyInEnv: { current: conf.env, onlyIn: environments } })
   }
 }
 
