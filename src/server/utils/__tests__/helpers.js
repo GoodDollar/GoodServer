@@ -4,7 +4,7 @@ import MockExpressRequest from 'mock-express-request'
 import MockExpressResponse from 'mock-express-response'
 
 describe('storageAPI', () => {
-  test('use onlyProd should return {ok:1, onlyInEnv:"test"}', done => {
+  test('use onlyProd should return {ok:1, onlyInEnv: {current: "test", onlyIn: ["production"]}}', done => {
     const onlyProd = onlyInEnv('production')
     const response = {
       ...new MockExpressResponse(),
