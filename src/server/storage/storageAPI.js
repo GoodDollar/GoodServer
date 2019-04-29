@@ -13,10 +13,9 @@ const setup = (app: Router, storage: StorageAPI) => {
     wrapAsync(async (req, res, next) => {
       const { body } = req
       const user: UserRecord = defaults(body.user, { identifier: req.user.loggedInAs })
-      await storage.addUser(user)
-      //if adduser went ok then we create a contact and update the user with mauticId
+      //mautic contact should already exists since it is first created during the email verification we update it here
       const mauticRecord = await Mautic.createContact(user)
-      storage.addUser({ mauticId: mauticRecord.contact.fields.all.id, identifier: req.user.loggedInAs })
+      await storage.updateUser({ ...user, mauticId: mauticRecord.contact.fields.all.id })
 
       res.json({ ok: 1 })
     })
