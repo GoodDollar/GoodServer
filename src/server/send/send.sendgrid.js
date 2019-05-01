@@ -10,7 +10,7 @@ import { generateOTP } from '../../imports/otp'
 
 sgMail.setApiKey(conf.sendGrid.apiKey)
 
-const log = logger.child({ from: 'AdminWallet' })
+const log = logger.child({ from: 'send.js' })
 
 export const sendLinkByEmail = (to: string, link: string) => {
   const text = `You got GD. To withdraw open: ${link}`

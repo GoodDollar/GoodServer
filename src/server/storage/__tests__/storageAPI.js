@@ -19,8 +19,10 @@ describe('storageAPI', () => {
 
   test('/user/add creds', async done => {
     const token = await getToken(server)
-    console.log(token)
-    const user: UserRecord = { identifier: '0x7ac080f6607405705aed79675789701a48c76f55' }
+    const user: UserRecord = {
+      identifier: '0x7ac080f6607405705aed79675789701a48c76f55',
+      email: 'useraddtest@gooddollar.org' // required for mautic create contact
+    }
     request(server)
       .post('/user/add')
       .set('Authorization', `Bearer ${token}`)

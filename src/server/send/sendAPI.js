@@ -2,7 +2,8 @@
 import { Router } from 'express'
 import passport from 'passport'
 import { wrapAsync, onlyInEnv } from '../utils/helpers'
-import { sendLinkByEmail, sendLinkBySMS, sendRecoveryInstructionsByEmail } from './send'
+import { sendLinkByEmail, sendLinkBySMS } from './send.sendgrid'
+import { Mautic } from '../mautic/mauticAPI'
 
 const setup = (app: Router) => {
   app.post(
@@ -38,14 +39,15 @@ const setup = (app: Router) => {
   app.post(
     '/send/recoveryinstructions',
     passport.authenticate('jwt', { session: false }),
-    onlyInEnv('production', 'staging'),
+    onlyInEnv('production', 'staging', 'test'),
     wrapAsync(async (req, res, next) => {
-      const log = req.log.child({ from: 'sendAPI - /send/linkemail' })
+      const log = req.log.child({ from: 'sendAPI - /send/recoveryinstructions' })
       const { user } = req
-      const { to, name, mnemonic } = req.body
+      const { mnemonic } = req.body
 
-      log.info('sending email', { to, name, mnemonic })
-      await sendRecoveryInstructionsByEmail(to, name, mnemonic)
+      log.info('sending recovery email', user)
+      //at this stage user record should contain all his details
+      await Mautic.sendRecoveryEmail(user, mnemonic)
       res.json({ ok: 1 })
     })
   )

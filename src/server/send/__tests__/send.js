@@ -2,7 +2,12 @@
  * @jest-environment node
  */
 
-import { sendEmailConfirmationLink, sendLinkByEmail, sendLinkBySMS, sendRecoveryInstructionsByEmail } from '../send'
+import {
+  sendEmailConfirmationLink,
+  sendLinkByEmail,
+  sendLinkBySMS,
+  sendRecoveryInstructionsByEmail
+} from '../send.sendgrid'
 
 describe('Send', () => {
   describe('Send Via Email', () => {
