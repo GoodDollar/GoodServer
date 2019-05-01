@@ -130,7 +130,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
     '/verify/facerecognition',
     passport.authenticate('jwt', { session: false }),
-    onlyInProduction,
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/facerecognition' })
       const { user, body } = req
