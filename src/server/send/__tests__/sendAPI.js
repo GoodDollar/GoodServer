@@ -26,6 +26,6 @@ describe('sendAPÏ', () => {
     request(server)
       .post('/send/linkemail')
       .set('Authorization', `Bearer ${token}`)
-      .expect(200, { ok: 1 }, done)
+      .expect(200, { ok: 1, onlyInEnv: { current: 'test', onlyIn: ['production', 'staging'] } }, done)
   })
 })
