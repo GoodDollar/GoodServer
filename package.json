@@ -9,9 +9,10 @@
     "test:staging": "jest --forceExit --detectOpenHandles",
     "coverage": "jest --forceExit --detectOpenHandles --coverage",
     "coveralls": "cat ./coverage/lcov.info | node node_modules/.bin/coveralls",
-    "start": "webpack  --mode development --config webpack.server.config.js --watch --verbose",
-    "dev": "npm start | pino-pretty -c -f -s \"msg!='request completed'\"",
-    "dev:local": "npm link @gooddollar/goodcontracts && npm start | pino-pretty -c -f -s \"msg!='request completed'\"",
+    "start": "node dist/server.js",
+    "start:dev": "webpack  --mode development --config webpack.server.config.js --watch --verbose",
+    "dev": "npm run start:dev | pino-pretty -c -f -s \"msg!='request completed'\"",
+    "dev:local": "npm link @gooddollar/goodcontracts && npm run dev",
     "flow": "flow"
   },
   "repository": {
