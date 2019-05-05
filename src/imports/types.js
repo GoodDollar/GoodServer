@@ -26,7 +26,6 @@ export interface StorageAPI {
   addUser(user: UserRecord): Promise<boolean>;
   updateUser(user: UserRecord): Promise<boolean>;
   deleteUser(user: UserRecord): Promise<boolean>;
-  sanitizeUser(user: UserRecord): UserRecord;
 }
 
 export interface VerificationAPI {
