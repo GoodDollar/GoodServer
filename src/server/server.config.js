@@ -120,6 +120,12 @@ const conf = convict({
     format: '*',
     env: 'WALLET_URL',
     default: 'WALLET_URL'
+  },
+  faceRecoServer: {
+    doc: 'Face Recognition Server URL',
+    format: '*',
+    env: 'FACE_RECO_SERVER',
+    default: 'FACE_RECO_SERVER'
   }
 })
 
