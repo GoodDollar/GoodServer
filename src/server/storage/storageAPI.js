@@ -6,6 +6,7 @@ import { wrapAsync } from '../utils/helpers'
 import { defaults } from 'lodash'
 import { UserRecord } from '../../imports/types'
 import { Mautic } from '../mautic/mauticAPI'
+import get from 'lodash/get'
 const setup = (app: Router, storage: StorageAPI) => {
   app.post(
     '/user/add',
@@ -14,9 +15,8 @@ const setup = (app: Router, storage: StorageAPI) => {
       const { body } = req
       const user: UserRecord = defaults(body.user, { identifier: req.user.loggedInAs })
       //mautic contact should already exists since it is first created during the email verification we update it here
-      const mauticRecord = await Mautic.createContact(user)
-      await storage.updateUser({ ...user, mauticId: mauticRecord.contact.fields.all.id })
-
+      const mauticRecord = process.env.NODE_ENV === 'development' ? {} : await Mautic.createContact(user)
+      await storage.updateUser({ ...user, mauticId: get(mauticRecord, 'contact.fields.all.id', -1) })
       res.json({ ok: 1 })
     })
   )
