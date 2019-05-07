@@ -18,10 +18,13 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log.child({ from: 'verificationAPI - verify/user' })
       const user: LoggedUser = req.user
       const { verificationData } = req.body
-      const verified = await verifier.verifyUser(user, verificationData)
+      //if user was verified in the past he is automatically verified now
+      const verified = user.isVerified || (await verifier.verifyUser(user, verificationData))
       if (verified) {
         log.debug('Whitelisting new user', user)
-        await AdminWallet.whitelistUser(user.gdAddress, user.profilePublickey)
+        //dont whitelist if already whitelisted
+        if (!(await AdminWallet.isVerified(user.gdAddress)))
+          await AdminWallet.whitelistUser(user.gdAddress, user.profilePublickey)
         const updatedUser = await storage.updateUser({ identifier: user.loggedInAs, isVerified: true })
         log.debug('updateUser:', updatedUser)
         res.json({ ok: 1 })
