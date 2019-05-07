@@ -48,6 +48,7 @@
     "express": "^4.16.4",
     "express-pino-logger": "^4.0.0",
     "flow": "^0.2.3",
+    "fs": "0.0.1-security",
     "gun": "^0.2019.413",
     "jsonwebtoken": "^8.4.0",
     "lodash": "^4.17.11",

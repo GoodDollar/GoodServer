@@ -1,4 +1,5 @@
 // @flow
+import fs from 'fs'
 import _ from 'lodash'
 import axios from 'axios'
 import multer from 'multer'
@@ -13,8 +14,8 @@ import { wrapAsync, lightLogs } from '../utils/helpers'
 
 const setup = (app: Router) => {
   var storage = multer.memoryStorage()
-  //var upload = multer({ dest: 'uploads/' }) // to handle blob parameters of faceReco
-  var upload = multer({ storage: storage })
+  var upload = multer({ dest: 'uploads/' }) // to handle blob parameters of faceReco
+  //var upload = multer({ storage: storage })
   app.post(
     '/livetest/enroll',
     passport.authenticate('jwt', { session: false }),
@@ -25,26 +26,30 @@ const setup = (app: Router) => {
       const livenessApi = conf.faceRecoServer + '/users'
       log.debug(`Sending request to: ${livenessApi}`)
       let form = new FormData()
-      let facemap = _.find(files, { fieldname: 'facemap' }).buffer
-      let auditTrailImage = _.find(files, { fieldname: 'auditTrailImage' }).buffer
-      log.trace('finished loading buffer ')
+      let facemapfile = _.find(files, { fieldname: 'facemap' }).path
+      let auditTrailImagefile = _.find(files, { fieldname: 'auditTrailImage' }).path
+      let facemap = fs.createReadStream(facemapfile)
+      let auditTrailImage = fs.createReadStream(auditTrailImagefile)
+      
       form.append('name', user.fullName)
-      log.trace({ user })
       form.append('email', user.email)
       form.append('session_id', body.sessionId)
       form.append('facemap', facemap)
       form.append('audit_trail_image', auditTrailImage)
 
-      let response = await axios({
-        method: 'post',
-        url: livenessApi,
-        data: form,
-        headers: {
-          'Content-Type': `multipart/form-data; boundary=${form._boundary}`
-        }
-      })
-      log.trace({ response })
-      res.json({ ok: 1 })
+      try {
+        let response = await axios({
+          method: 'post',
+          url: livenessApi,
+          data: form,
+          headers: {
+            'Content-Type': `multipart/form-data; boundary=${form._boundary}`
+          }
+        })
+        res.json({ ok: 1 })
+      } catch (e) {
+        res.json({ ok: 0 })
+      }
     })
   )
 }

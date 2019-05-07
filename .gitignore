@@ -12,3 +12,4 @@ privatedb
 testdb
 config/*/*
 test/jest-envs/*
+uploads/*
