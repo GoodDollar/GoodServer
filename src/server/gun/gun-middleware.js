@@ -26,6 +26,11 @@ export type Claim = {
   issuedAt: Date,
   expiresAt?: Date
 }
+export type S3Conf = {
+  key: string,
+  secret: string,
+  bucket: string
+}
 
 Gun.chain.putAck = function(data, cb) {
   var gun = this,
@@ -53,8 +58,9 @@ class GunDB implements StorageAPI {
 
   serverName: string
 
-  init(server: typeof express | null, password: string, name: string): Promise<boolean> {
-    this.gun = Gun({ web: server, file: name })
+  init(server: typeof express | null, password: string, name: string, s3?: S3Conf): Promise<boolean> {
+    if (s3.secret) this.gun = Gun({ web: server, s3 })
+    else this.gun = Gun({ web: server, file: name, s3 })
     this.user = this.gun.user()
     this.serverName = name
     return new Promise((resolve, reject) => {
@@ -184,6 +190,6 @@ class GunDB implements StorageAPI {
 const GunDBPublic = new GunDB()
 const GunDBPrivate = new GunDB()
 
-GunDBPrivate.init(null, conf.gundbPassword, 'privatedb')
+GunDBPrivate.init(null, conf.gundbPassword, 'privatedb', conf.gunPrivateS3)
 
 export { setup, GunDBPublic, GunDBPrivate, GunDB }

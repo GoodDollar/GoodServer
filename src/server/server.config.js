@@ -144,6 +144,34 @@ const conf = convict({
     format: '*',
     env: 'MAUTIC_VERIFY_ID',
     default: '4'
+  },
+  gunPrivateS3: {
+    key: {
+      format: '*',
+      default: undefined
+    },
+    secret: {
+      format: '*',
+      default: undefined
+    },
+    bucket: {
+      format: '*',
+      default: undefined
+    }
+  },
+  gunPublicS3: {
+    key: {
+      format: '*',
+      default: undefined
+    },
+    secret: {
+      format: '*',
+      default: undefined
+    },
+    bucket: {
+      format: '*',
+      default: undefined
+    }
   }
 })
 
@@ -151,6 +179,20 @@ const conf = convict({
 const env = conf.get('env')
 const network = conf.get('network')
 conf.set('ethereum', networks[network])
+//parse S3 details for gundb in format of key,secret,bucket
+const privateS3 = process.env.GUN_PRIVATE_S3
+if (privateS3) {
+  console.log(privateS3)
+  let s3Vals = privateS3.split(',')
+  let s3Conf = { key: s3Vals[0], secret: s3Vals[1], bucket: s3Vals[2] }
+  conf.set('gunPrivateS3', s3Conf)
+}
+const publicS3 = process.env.GUN_PUBLIC_S3
+if (publicS3) {
+  let s3Vals = publicS3.split(',')
+  let s3Conf = { key: s3Vals[0], secret: s3Vals[1], bucket: s3Vals[2] }
+  conf.set('gunPublicS3', s3Conf)
+}
 // Perform validation
 conf.validate({ allowed: 'strict' })
 // eslint-disable-next-line
