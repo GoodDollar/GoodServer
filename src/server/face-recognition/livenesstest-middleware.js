@@ -30,7 +30,6 @@ const setup = (app: Router) => {
       let auditTrailImagefile = _.find(files, { fieldname: 'auditTrailImage' }).path
       let facemap = fs.createReadStream(facemapfile)
       let auditTrailImage = fs.createReadStream(auditTrailImagefile)
-      
       form.append('name', user.fullName)
       form.append('email', user.email)
       form.append('session_id', body.sessionId)
@@ -46,8 +45,9 @@ const setup = (app: Router) => {
             'Content-Type': `multipart/form-data; boundary=${form._boundary}`
           }
         })
-        res.json({ ok: 1 })
+        res.json({ ok: 1, response: response })
       } catch (e) {
+        log.error(e)
         res.json({ ok: 0 })
       }
     })
