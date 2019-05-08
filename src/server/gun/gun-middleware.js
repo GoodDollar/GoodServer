@@ -43,6 +43,7 @@ const setup = (app: Router) => {
   global.Gun = Gun // / make global to `node --inspect` - debug only
   log.info('Done setup GunDB middleware.')
 }
+
 class GunDB implements StorageAPI {
   gun: Gun
 
@@ -68,6 +69,10 @@ class GunDB implements StorageAPI {
     })
   }
 
+  /**
+   * remove the soul field(_) from gun records
+   * @param {*} gun record
+   */
   recordSanitize(obj: any = {}) {
     if (obj._ !== undefined) {
       const { _, ...record } = obj
@@ -158,17 +163,6 @@ class GunDB implements StorageAPI {
 
     this.usersCol.get(identifier).put(null)
     return true
-  }
-
-  sanitizeUser(user: UserRecord): UserRecord {
-    return {
-      identifier: user.identifier,
-      fullName: user.fullName,
-      mobile: user.mobile,
-      email: user.email,
-      smsValidated: user.smsValidated,
-      isEmailConfirmed: user.isEmailConfirmed
-    }
   }
 
   async signClaim(subjectPubKey: string, claimData: any): Claim {

@@ -35,4 +35,9 @@ describe('GunDB', () => {
     let msg = await SEA.verify(res.sig, storage.user.is.pub)
     expect(msg).toBeTruthy()
   })
+
+  it('should remove gundb soul from records', async () => {
+    let res = await storage.recordSanitize({ _: { '#': 'soul' } })
+    expect(res).toEqual({})
+  })
 })

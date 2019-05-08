@@ -1,13 +1,14 @@
 // @flow
 import { Router } from 'express'
 import passport from 'passport'
+import defaults from 'lodash/defaults'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
-import { sendOTP } from '../../imports/otp'
+import { sendOTP, generateOTP } from '../../imports/otp'
 import conf from '../server.config'
 import { GunDBPublic } from '../gun/gun-middleware'
-import { sendEmailConfirmationLink } from '../send/send'
+import { Mautic } from '../mautic/mauticAPI'
 
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
@@ -85,21 +86,34 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       res.json(txRes)
     })
   )
-
+  /**
+   * Send verification email endpoint
+   */
   app.post(
     '/verify/sendemail',
     passport.authenticate('jwt', { session: false }),
-    onlyInEnv('production', 'staging'),
+    onlyInEnv('production', 'staging', 'test'),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/sendemail' })
       const { user, body } = req
 
-      log.info({ user, body })
-
-      const code = await sendEmailConfirmationLink(body.user)
-
-      // updates/adds user with the emailVerificationCode to be used for verification later
-      await storage.updateUser({ identifier: user.loggedInAs, emailVerificationCode: code })
+      // log.info({ user, body })
+      //merge user details for use by mautic
+      let userRec: UserRecord = defaults(body.user, user)
+      //first time create contact for user in mautic
+      const mauticContact = await Mautic.createContact(userRec)
+      userRec.mauticId = mauticContact.contact.fields.all.id
+      log.debug('created new user mautic contact', userRec)
+      const code = generateOTP(10)
+      const validationLink = `${conf.walletUrl}/Signup/EmailConfirmation/?validation=${code}`
+      Mautic.sendVerificationEmail(userRec, validationLink)
+      log.debug('send new user email validation link', validationLink)
+      // updates/adds user with the emailVerificationCode to be used for verification later and with mauticId
+      await storage.updateUser({
+        mauticId: mauticContact.contact.fields.all.id,
+        identifier: user.loggedInAs,
+        emailVerificationCode: code
+      })
 
       res.json({ ok: 1 })
     })
@@ -108,7 +122,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
     '/verify/email',
     passport.authenticate('jwt', { session: false }),
-    onlyInEnv('production', 'staging'),
+    onlyInEnv('production', 'staging', 'test'),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/email' })
       const { user, body } = req

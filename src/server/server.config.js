@@ -126,6 +126,30 @@ const conf = convict({
     format: '*',
     env: 'FACE_RECO_SERVER',
     default: 'FACE_RECO_SERVER'
+ },
+ mauticURL: {
+    doc: 'mautic URL',
+    format: '*',
+    env: 'MAUTIC_URL',
+    default: 'WALLET_URL'
+  },
+  mauticToken: {
+    doc: 'mautic token',
+    format: '*',
+    env: 'MAUTIC_TOKEN',
+    default: 'MAUTIC_TOKEN'
+  },
+  mauticRecoveryEmailId: {
+    doc: 'id of email template',
+    format: '*',
+    env: 'MAUTIC_RECOVERY_ID',
+    default: '9'
+  },
+  mauticVerifyEmailId: {
+    doc: 'id of email template',
+    format: '*',
+    env: 'MAUTIC_VERIFY_ID',
+    default: '4'
   }
 })
 
