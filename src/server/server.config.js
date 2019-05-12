@@ -126,8 +126,8 @@ const conf = convict({
     format: '*',
     env: 'FACE_RECO_SERVER',
     default: 'FACE_RECO_SERVER'
- },
- mauticURL: {
+  },
+  mauticURL: {
     doc: 'mautic URL',
     format: '*',
     env: 'MAUTIC_URL',
@@ -150,6 +150,24 @@ const conf = convict({
     format: '*',
     env: 'MAUTIC_VERIFY_ID',
     default: '4'
+  },
+  zoomURL: {
+    doc: 'Zoom Client URL',
+    format: '*',
+    env: 'ZOOM_API_URL',
+    default: 'https://api.zoomauth.com/api/v1/biometrics'
+  },
+  zoomToken: {
+    doc: 'Zoom APP Token',
+    format: '*',
+    env: 'ZOOM_TOKEN',
+    default: ''
+  },
+  zoomMinMatchLevel: {
+    doc: 'Zoom minimum match level in search',
+    format: '*',
+    env: 'ZOOM_MIN_MATCH_LEVEL',
+    default: 1
   }
 })
 
