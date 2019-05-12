@@ -67,14 +67,17 @@ class GunDB implements StorageAPI {
    * @param {[S3Conf]} s3 optional S3 settings instead of local file storage
    */
   init(server: typeof express | null, password: string, name: string, s3?: S3Conf): Promise<boolean> {
-    if (s3 && s3.secret) this.gun = Gun({ web: server, s3 })
-    else this.gun = Gun({ web: server, file: name })
+    if (s3 && s3.secret) {
+      log.info('Starting gun with S3')
+      this.gun = Gun({ web: server, s3 })
+    } else this.gun = Gun({ web: server, file: name })
     this.user = this.gun.user()
     this.serverName = name
     this.ready = new Promise((resolve, reject) => {
       this.user.create('gooddollar', password, createres => {
         log.info('Created gundb GoodDollar User', { name })
         this.user.auth('gooddollar', password, async authres => {
+          if (authres.error) return reject(authres.error)
           log.info('Authenticated GunDB user:', { name })
           this.usersCol = this.user.get('users')
           resolve(true)
