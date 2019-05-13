@@ -39,8 +39,8 @@ export const ZoomClient = {
     return this.baseQuery('/liveness', this.baseHeaders, data)
   },
   search(data: ZoomRequest) {
-    this.baseHeaders['Content-Type'] = `application/json`
-    log.debug({ data })
+    this.baseHeaders['Content-Type'] = `multipart/form-data; boundary=${data._boundary}`
+    log.debug('search data:', { data })
     return this.baseQuery('/search', this.baseHeaders, data)
   }
 }

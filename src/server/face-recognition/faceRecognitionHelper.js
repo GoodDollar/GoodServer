@@ -23,15 +23,20 @@ export const Helper = {
     form.append('sessionId', sessionId)
     form.append('facemap', facemap)
     form.append('auditTrailImage', auditTrailImage)
-    return { form, facemap, auditTrailImage, enrollmentIdentifier, sessionId }
+    return { form, facemap, facemapfile, auditTrailImage, enrollmentIdentifier, sessionId }
   },
 
-  prepareSearchData(sessionId: string, facemap: ReadStream) {
-    return {
-      sessionId: sessionId,
-      facemap: facemap,
-      minMatchLevel: Config.minMatchLevel
-    }
+  prepareSearchData(sessionId: string, facemapfile: string) {
+    let form = new FormData()
+    const facemap = fs.createReadStream(facemapfile)
+
+    log.debug('preparing search data', sessionId, Config.zoomMinMatchLevel)
+    form.append('facemap', facemap)
+    form.append('sessionId', sessionId)
+    form.append('minMatchLevel', Config.zoomMinMatchLevel)
+    log.debug('done preparing search data')
+
+    return form
   },
 
   async isLivenessPassed(zoomData: ZoomRequest) {
