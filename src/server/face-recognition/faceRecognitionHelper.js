@@ -19,7 +19,7 @@ export const Helper = {
     const auditTrailImage = fs.createReadStream(auditTrailImagefile)
     const enrollmentIdentifier = body.enrollmentIdentifier
     const sessionId = body.sessionId
-    log.debug('body', { body })
+    // log.debug('body', { body })
     form.append('sessionId', sessionId)
     form.append('facemap', facemap)
     form.append('auditTrailImage', auditTrailImage)
@@ -29,7 +29,6 @@ export const Helper = {
   prepareSearchData(sessionId: string, facemapfile: string) {
     let form = new FormData()
     const facemap = fs.createReadStream(facemapfile)
-
     form.append('facemap', facemap)
     form.append('sessionId', sessionId)
     form.append('minMatchLevel', Config.zoomMinMatchLevel)
@@ -39,13 +38,9 @@ export const Helper = {
   prepareEnrollmentData(enrollmentIdentifier: string, sessionId: string, facemapfile: string) {
     let form = new FormData()
     const facemap = fs.createReadStream(facemapfile)
-
-    log.debug('preparing enrollment data', sessionId, enrollmentIdentifier)
     form.append('facemap', facemap)
     form.append('sessionId', sessionId)
     form.append('enrollmentIdentifier', enrollmentIdentifier)
-    log.debug('done preparing enrollment data')
-
     return form
   },
 

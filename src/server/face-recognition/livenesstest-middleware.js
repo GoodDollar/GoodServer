@@ -23,17 +23,17 @@ const setup = (app: Router) => {
       const { body, files, user } = req
       const { form, facemapfile, enrollmentIdentifier, sessionId } = Helper.prepareLivenessData(body, files)
       let livenessData: FormData = form
-      log.info('livenessData', { livenessData })
+      // log.info('livenessData', { livenessData })
 
       let livenessPassed = await Helper.isLivenessPassed(livenessData)
       if (!livenessPassed) return res.json({ ok: 1, livenessPassed: livenessPassed })
 
       let searchData = Helper.prepareSearchData(sessionId, facemapfile)
-      log.info('searchData', { searchData })
+      // log.info('searchData', { searchData })
       let duplicates = await Helper.isDuplicatesExist(searchData)
       if (duplicates) return res.json({ ok: 1, livenessPassed: livenessPassed, duplicates: duplicates })
       let enrollData = Helper.prepareEnrollmentData(enrollmentIdentifier, sessionId, facemapfile)
-      log.info('enrollData', { enrollData })
+      // log.info('enrollData', { enrollData })
       let enroll = await Helper.enroll(enrollData)
       return res.json({ ok: 1, livenessPassed: livenessPassed, duplicates: duplicates, enrollment: enroll })
     })

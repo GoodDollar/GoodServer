@@ -24,8 +24,7 @@ export const ZoomClient = {
 
     return fetch(fullUrl, { method: 'post', body: data, headers })
       .then(async res => {
-        log.debug('Response:', { res })
-        if (res.status !== 200) throw new Error(await res.text())
+        log.debug('Response:', url, { res })
         return res.json()
       })
       .catch(e => {
@@ -40,12 +39,12 @@ export const ZoomClient = {
   },
   search(data: ZoomRequest) {
     this.baseHeaders['Content-Type'] = `multipart/form-data; boundary=${data._boundary}`
-    log.debug('search data:', { data })
+    // log.debug('search data:', { data })
     return this.baseQuery('/search', this.baseHeaders, data)
   },
   enrollment(data: ZoomRequest) {
     this.baseHeaders['Content-Type'] = `multipart/form-data; boundary=${data._boundary}`
-    log.debug('enrollment data:', { data })
+    // log.debug('enrollment data:', { data })
     return this.baseQuery('/enrollment', this.baseHeaders, data)
   }
 }
