@@ -8,7 +8,7 @@ import Config from '../server.config'
 import FormData from 'form-data'
 
 const log = logger.child({ from: 'ZoomClient' })
-type ZoomRequest = {
+export type ZoomRequest = {
   sessionId: string,
   facemap: Blob,
   enrollmentIdentifier?: string,
@@ -38,9 +38,8 @@ export const ZoomClient = {
     this.baseHeaders['Content-Type'] = `multipart/form-data; boundary=${data._boundary}`
     return this.baseQuery('/liveness', this.baseHeaders, data)
   },
-  search(data: ZoomRequest, minMatchLevel: string) {
+  search(data: ZoomRequest) {
     this.baseHeaders['Content-Type'] = `application/json`
-    data.minMatchLevel = minMatchLevel
     log.debug({ data })
     return this.baseQuery('/search', this.baseHeaders, data)
   }

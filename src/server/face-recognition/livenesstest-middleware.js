@@ -21,17 +21,14 @@ const setup = (app: Router) => {
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'livenesstest' })
       const { body, files, user } = req
-      let form: FormData = Helper.prepareZoomData(body, files)
-      log.info({ form })
+      let livenessData: FormData = Helper.prepareLivenessData(body, files)
+      log.info({ livenessData })
+      let searchData = Helper.prepareSearchData(body)
       try {
-        let livenessPassed = await Helper.isLivenessPassed(form)
-        if (!livenessPassed) res.json({ ok: 1, livenessPassed: livenessPassed })
-
-        let duplicates = await Helper.isDuplicatesExist({
-          sessionId: body.sessionId,
-          enrollmentIdentifier: body.enrollmentIdentifier,
-          minMatchLevel: conf.minMatchLevel
-        })
+        let livenessPassed = await Helper.isLivenessPassed(livenessData)
+        if (!livenessPassed) return res.json({ ok: 1, livenessPassed: livenessPassed })
+        let duplicates = await Helper.isDuplicatesExist(searchData)
+        return res.json({ ok: 1, livenessPassed: livenessPassed, duplicates: duplicates })
       } catch (e) {
         log.error(e)
         throw e

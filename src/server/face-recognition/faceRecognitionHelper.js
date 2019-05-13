@@ -5,11 +5,12 @@ import FormData from 'form-data'
 import Config from '../server.config'
 import { ZoomClient } from './zoomClient'
 import logger from '../../imports/pino-logger'
+import type { ZoomRequest } from './zoomClient'
 
 const log = logger.child({ from: 'faceRecognitionHelper' })
 
 export const Helper = {
-  prepareZoomData(body, files) {
+  prepareLivenessData(body, files) {
     // log.info({ files })
     let form = new FormData()
     const facemapfile = _.find(files, { fieldname: 'facemap' }).path
@@ -23,6 +24,14 @@ export const Helper = {
     form.append('facemap', facemap)
     form.append('auditTrailImage', auditTrailImage)
     return form
+  },
+
+  prepareSearchData(body){
+    return {
+      sessionId: body.sessionId,
+      enrollmentIdentifier: body.enrollmentIdentifier,
+      minMatchLevel: Config.minMatchLevel
+    }
   },
 
   async isLivenessPassed(zoomData: ZoomRequest) {
