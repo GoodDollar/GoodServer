@@ -42,5 +42,10 @@ export const ZoomClient = {
     this.baseHeaders['Content-Type'] = `multipart/form-data; boundary=${data._boundary}`
     log.debug('search data:', { data })
     return this.baseQuery('/search', this.baseHeaders, data)
+  },
+  enrollment(data: ZoomRequest) {
+    this.baseHeaders['Content-Type'] = `multipart/form-data; boundary=${data._boundary}`
+    log.debug('enrollment data:', { data })
+    return this.baseQuery('/enrollment', this.baseHeaders, data)
   }
 }

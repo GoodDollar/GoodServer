@@ -21,28 +21,21 @@ const setup = (app: Router) => {
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'livenesstest' })
       const { body, files, user } = req
-      const {
-        form,
-        facemap,
-        facemapfile,
-        auditTrailImage,
-        enrollmentIdentifier,
-        sessionId
-      } = Helper.prepareLivenessData(body, files)
+      const { form, facemapfile, enrollmentIdentifier, sessionId } = Helper.prepareLivenessData(body, files)
       let livenessData: FormData = form
-      log.info({ livenessData })
-      try {
-        let livenessPassed = await Helper.isLivenessPassed(livenessData)
-        if (!livenessPassed) return res.json({ ok: 1, livenessPassed: livenessPassed })
+      log.info('livenessData', { livenessData })
 
-        let searchData = Helper.prepareSearchData(sessionId, facemapfile)
-        log.info('searchData', { searchData })
-        let duplicates = await Helper.isDuplicatesExist(searchData)
-        return res.json({ ok: 1, livenessPassed: livenessPassed, duplicates: duplicates })
-      } catch (e) {
-        log.error(e)
-        throw e
-      }
+      let livenessPassed = await Helper.isLivenessPassed(livenessData)
+      if (!livenessPassed) return res.json({ ok: 1, livenessPassed: livenessPassed })
+
+      let searchData = Helper.prepareSearchData(sessionId, facemapfile)
+      log.info('searchData', { searchData })
+      let duplicates = await Helper.isDuplicatesExist(searchData)
+      if (duplicates) return res.json({ ok: 1, livenessPassed: livenessPassed, duplicates: duplicates })
+      let enrollData = Helper.prepareEnrollmentData(enrollmentIdentifier, sessionId, facemapfile)
+      log.info('enrollData', { enrollData })
+      let enroll = await Helper.enroll(enrollData)
+      return res.json({ ok: 1, livenessPassed: livenessPassed, duplicates: duplicates, enrollment: enroll })
     })
   )
 }

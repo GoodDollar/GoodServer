@@ -30,11 +30,21 @@ export const Helper = {
     let form = new FormData()
     const facemap = fs.createReadStream(facemapfile)
 
-    log.debug('preparing search data', sessionId, Config.zoomMinMatchLevel)
     form.append('facemap', facemap)
     form.append('sessionId', sessionId)
     form.append('minMatchLevel', Config.zoomMinMatchLevel)
-    log.debug('done preparing search data')
+    return form
+  },
+
+  prepareEnrollmentData(enrollmentIdentifier: string, sessionId: string, facemapfile: string) {
+    let form = new FormData()
+    const facemap = fs.createReadStream(facemapfile)
+
+    log.debug('preparing enrollment data', sessionId, enrollmentIdentifier)
+    form.append('facemap', facemap)
+    form.append('sessionId', sessionId)
+    form.append('enrollmentIdentifier', enrollmentIdentifier)
+    log.debug('done preparing enrollment data')
 
     return form
   },
@@ -54,9 +64,20 @@ export const Helper = {
     try {
       let res = await ZoomClient.search(zoomData)
       log.debug({ res })
-      return res.meta.ok && res.data.results.length !== 0
+      return res.meta.ok && res.data.errorFromZoomServer === null
     } catch (e) {
       log.error('Error:', e, Config.zoomMinMatchLevel, { zoomData })
+      return false
+    }
+  },
+
+  async enroll(zoomData: ZoomRequest) {
+    try {
+      let res = await ZoomClient.enrollment(zoomData)
+      log.debug({ res })
+      return res.meta.ok && res.data.results.length !== 0
+    } catch (e) {
+      log.error('Error:', e, { zoomData })
       return false
     }
   }
