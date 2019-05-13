@@ -10,16 +10,23 @@ describe('GunDB', () => {
     await storage.init(null, 'test', 'testdb')
   })
 
+  it('Should init correctly without s3', async () => {
+    expect(storage.ready).resolves.toBe(true)
+  })
   it('Should add user', async () => {
-    let res = await storage.updateUser({ identifier: 1, fullName: 'hadar' })
+    let res = await storage.updateUser({ identifier: 1, fullName: 'hadar', email: 'jd@gooddollar.org' })
     expect(res).toBeTruthy()
   })
 
   it('Should get user', async () => {
     let res = await storage.getUser(1)
-    expect(res).toMatchObject({ identifier: 1, fullName: 'hadar' })
+    expect(res).toMatchObject({ identifier: 1, fullName: 'hadar', email: 'jd@gooddollar.org' })
   })
 
+  it('Should detect duplicate users', async () => {
+    let res = await storage.isDupUserData({ identifier: 2, fullName: 'dany', email: 'jd@gooddollar.org' })
+    expect(res).toBeTruthy()
+  })
   it('Should sign attestation', async () => {
     let res = await storage.signClaim('dummykey', { passedTest: true })
     expect(res).toMatchObject({
