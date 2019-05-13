@@ -1,5 +1,5 @@
 // @flow
-import fs from 'fs'
+import fs, { ReadStream } from 'fs'
 import _ from 'lodash'
 import FormData from 'form-data'
 import Config from '../server.config'
@@ -10,7 +10,7 @@ import type { ZoomRequest } from './zoomClient'
 const log = logger.child({ from: 'faceRecognitionHelper' })
 
 export const Helper = {
-  prepareLivenessData(body, files) {
+  prepareLivenessData(body: any, files: any) {
     // log.info({ files })
     let form = new FormData()
     const facemapfile = _.find(files, { fieldname: 'facemap' }).path
@@ -23,13 +23,13 @@ export const Helper = {
     form.append('sessionId', sessionId)
     form.append('facemap', facemap)
     form.append('auditTrailImage', auditTrailImage)
-    return form
+    return { form, facemap, auditTrailImage, enrollmentIdentifier, sessionId }
   },
 
-  prepareSearchData(body){
+  prepareSearchData(sessionId: string, facemap: ReadStream) {
     return {
-      sessionId: body.sessionId,
-      enrollmentIdentifier: body.enrollmentIdentifier,
+      sessionId: sessionId,
+      facemap: facemap,
       minMatchLevel: Config.minMatchLevel
     }
   },

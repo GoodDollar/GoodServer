@@ -21,9 +21,10 @@ const setup = (app: Router) => {
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'livenesstest' })
       const { body, files, user } = req
-      let livenessData: FormData = Helper.prepareLivenessData(body, files)
+      const { form, facemap, auditTrailImage, enrollmentIdentifier, sessionId } = Helper.prepareLivenessData(body, files)
+      let livenessData: FormData = form
       log.info({ livenessData })
-      let searchData = Helper.prepareSearchData(body)
+      let searchData = Helper.prepareSearchData(body, facemap)
       try {
         let livenessPassed = await Helper.isLivenessPassed(livenessData)
         if (!livenessPassed) return res.json({ ok: 1, livenessPassed: livenessPassed })
