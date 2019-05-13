@@ -54,7 +54,7 @@ export const Helper = {
     try {
       let res = await ZoomClient.search(zoomData)
       log.debug({ res })
-      return res.meta.ok && res.data.results.length === 0
+      return res.meta.ok && res.data.results.length !== 0
     } catch (e) {
       log.error('Error:', e, Config.zoomMinMatchLevel, { zoomData })
       return false
