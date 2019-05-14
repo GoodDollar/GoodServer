@@ -202,6 +202,9 @@ class GunDB implements StorageAPI {
 const GunDBPublic = new GunDB()
 const GunDBPrivate = new GunDB()
 
-GunDBPrivate.init(null, conf.gundbPassword, 'privatedb', conf.gunPrivateS3)
+GunDBPrivate.init(null, conf.gundbPassword, 'privatedb', conf.gunPrivateS3).catch(e => {
+  log.error(e)
+  process.exit(-1)
+})
 
 export { setup, GunDBPublic, GunDBPrivate, GunDB }
