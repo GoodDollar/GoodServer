@@ -40,11 +40,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       else result = { ok: 1, isVerified: true, enrollResult: { alreadyEnrolled: true } }
       if (result.isVerified) {
         log.debug('Whitelisting new user', user)
-        //hack to do parallel transactions
-        let nonce = await AdminWallet.web3.eth.getTransactionCount(AdminWallet.address)
         await Promise.all([
-          AdminWallet.whitelistUser(user.gdAddress, user.profilePublickey, nonce),
-          AdminWallet.topWallet(user.gdAddress, null, true, nonce + 1),
+          AdminWallet.whitelistUser(user.gdAddress, user.profilePublickey),
           storage
             .updateUser({ identifier: user.loggedInAs, isVerified: true })
             .then(updatedUser => log.debug('updatedUser:', updatedUser))
