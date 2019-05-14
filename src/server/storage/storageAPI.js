@@ -15,7 +15,7 @@ const setup = (app: Router, storage: StorageAPI) => {
     '/user/add',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
-      const { body, user: userRecord } = req
+      const { body, user: userRecord, log } = req
       //check that user passed all min requirements
       if (['production', 'staging'].includes(conf.env) && (!userRecord.smsValidated || !userRecord.isEmailConfirmed))
         throw new Error('User email or mobile not verified!')
@@ -25,7 +25,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       const mauticRecord = process.env.NODE_ENV === 'development' ? {} : await Mautic.createContact(user)
       //topwallet of user after registration
       await Promise.all([
-        AdminWallet.topWallet(userRecord.gdAddress, null, true),
+        AdminWallet.topWallet(userRecord.gdAddress, null, true).catch(e => log.error(e)),
         storage.updateUser({ ...user, mauticId: get(mauticRecord, 'contact.fields.all.id', -1) })
       ])
       res.json({ ok: 1 })
