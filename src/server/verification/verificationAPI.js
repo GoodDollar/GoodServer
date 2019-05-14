@@ -10,7 +10,6 @@ import { sendOTP, generateOTP } from '../../imports/otp'
 import conf from '../server.config'
 import { GunDBPublic } from '../gun/gun-middleware'
 import { Mautic } from '../mautic/mauticAPI'
-import { Helper } from './facerecognition/facerecognitionHelper'
 import fs from 'fs'
 
 const fsPromises = fs.promises
