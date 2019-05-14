@@ -146,12 +146,14 @@ export class Wallet {
 
   async topWallet(
     address: string,
-    lastTopping?: moment.Moment = moment().subtract(1, 'day')
+    lastTopping?: moment.Moment = moment().subtract(1, 'day'),
+    force: boolean = false,
+    nonce: number = undefined
   ): PromiEvent<TransactionReceipt> {
     let daysAgo = moment().diff(moment(lastTopping), 'days')
     if (conf.env !== 'development' && daysAgo < 1) throw new Error('Daily limit reached')
     try {
-      const isVerified = await this.isVerified(address)
+      const isVerified = force || (await this.isVerified(address))
       if (isVerified) {
         let userBalance = await this.web3.eth.getBalance(address)
         let toTop = parseInt(Web3.utils.toWei('1000000', 'gwei')) - userBalance
@@ -162,7 +164,8 @@ export class Wallet {
             to: address,
             value: toTop,
             gas: 100000,
-            gasPrice: Web3.utils.toWei('1', 'gwei')
+            gasPrice: Web3.utils.toWei('1', 'gwei'),
+            nonce
           })
         throw new Error("User doesn't need topping")
       } else throw new Error(`User not verified: ${address} ${isVerified}`)
