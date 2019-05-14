@@ -5,7 +5,6 @@ import bodyParser from 'body-parser'
 import cors from 'cors'
 import pino from 'express-pino-logger'
 import addLoginMiddlewares from './login/login-middleware'
-import addLivenessTestMiddlewares from './face-recognition/livenesstest-middleware'
 import { setup as addGunMiddlewares, GunDBPrivate } from './gun/gun-middleware'
 import addStorageMiddlewares from './storage/storageAPI'
 import addVerificationMiddlewares from './verification/verificationAPI'
@@ -31,7 +30,6 @@ export default (app: Router, env: any) => {
   app.use(pino({ logger }))
 
   addLoginMiddlewares(app)
-  addLivenessTestMiddlewares(app)
   addGunMiddlewares(app)
   addStorageMiddlewares(app, GunDBPrivate)
   addVerificationMiddlewares(app, VerificationAPI, GunDBPrivate)

@@ -168,6 +168,7 @@ const conf = convict({
     format: '*',
     env: 'ZOOM_MIN_MATCH_LEVEL',
     default: 1
+  },
   gunPrivateS3: {
     key: {
       format: '*',

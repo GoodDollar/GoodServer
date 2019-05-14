@@ -1,7 +1,8 @@
 // @flow
 import { Router } from 'express'
 import passport from 'passport'
-import defaults from 'lodash/defaults'
+import _ from 'lodash'
+import multer from 'multer'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
@@ -9,8 +10,41 @@ import { sendOTP, generateOTP } from '../../imports/otp'
 import conf from '../server.config'
 import { GunDBPublic } from '../gun/gun-middleware'
 import { Mautic } from '../mautic/mauticAPI'
+import { Helper } from './facerecognition/facerecognitionHelper'
+import fs from 'fs'
 
+const fsPromises = fs.promises
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
+  var upload = multer({ dest: 'uploads/' }) // to handle blob parameters of faceReco
+  app.post(
+    '/verify/facerecognition',
+    passport.authenticate('jwt', { session: false }),
+    upload.any(),
+    wrapAsync(async (req, res, next) => {
+      const log = req.log.child({ from: 'livenesstest' })
+      const { body, files, user } = req
+      log.debug({ files, body })
+      const verificationData = {
+        facemapFile: _.find(files, { fieldname: 'facemap' }).path,
+        auditTrailImageFile: _.find(files, { fieldname: 'auditTrailImage' }).path,
+        enrollmentIdentifier: body.enrollmentIdentifier,
+        sessionId: body.sessionId
+      }
+      const result = await verifier.verifyUser(user, verificationData).finally(() => {
+        //cleanup
+        log.info('cleaning up facerecognition files')
+        fsPromises.unlink(verificationData.facemapFile)
+        fsPromises.unlink(verificationData.auditTrailImageFile)
+      })
+      if (result.isVerified) {
+        log.debug('Whitelisting new user', user)
+        await AdminWallet.whitelistUser(user.gdAddress, user.profilePublickey)
+        const updatedUser = await storage.updateUser({ identifier: user.loggedInAs, isVerified: true })
+        log.debug('updateUser:', updatedUser)
+      }
+      res.json(result)
+    })
+  )
   app.post(
     '/verify/user',
     passport.authenticate('jwt', { session: false }),
@@ -99,7 +133,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       // log.info({ user, body })
       //merge user details for use by mautic
-      let userRec: UserRecord = defaults(body.user, user)
+      let userRec: UserRecord = _.defaults(body.user, user)
       //first time create contact for user in mautic
       const mauticContact = await Mautic.createContact(userRec)
       userRec.mauticId = mauticContact.contact.fields.all.id
