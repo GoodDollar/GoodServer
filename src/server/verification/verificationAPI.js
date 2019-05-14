@@ -18,6 +18,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
     '/verify/facerecognition',
     passport.authenticate('jwt', { session: false }),
+    onlyInEnv('production', 'staging'),
     upload.any(),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'livenesstest' })
