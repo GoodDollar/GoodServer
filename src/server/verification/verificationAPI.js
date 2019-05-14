@@ -18,7 +18,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
     '/verify/facerecognition',
     passport.authenticate('jwt', { session: false }),
-    onlyInEnv('production', 'staging'),
     upload.any(),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'livenesstest' })
@@ -30,17 +29,26 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         enrollmentIdentifier: body.enrollmentIdentifier,
         sessionId: body.sessionId
       }
-      const result = await verifier.verifyUser(user, verificationData).finally(() => {
-        //cleanup
-        log.info('cleaning up facerecognition files')
-        fsPromises.unlink(verificationData.facemapFile)
-        fsPromises.unlink(verificationData.auditTrailImageFile)
-      })
+      let result = { ok: 1 }
+      if (['production', 'staging'].includes(conf.env))
+        result = await verifier.verifyUser(user, verificationData).finally(() => {
+          //cleanup
+          log.info('cleaning up facerecognition files')
+          fsPromises.unlink(verificationData.facemapFile)
+          fsPromises.unlink(verificationData.auditTrailImageFile)
+        })
+      else result = { ok: 1, isVerified: true, enrollResult: { alreadyEnrolled: true } }
       if (result.isVerified) {
         log.debug('Whitelisting new user', user)
-        await AdminWallet.whitelistUser(user.gdAddress, user.profilePublickey)
-        const updatedUser = await storage.updateUser({ identifier: user.loggedInAs, isVerified: true })
-        log.debug('updateUser:', updatedUser)
+        //hack to do parallel transactions
+        let nonce = await AdminWallet.web3.eth.getTransactionCount(AdminWallet.address)
+        await Promise.all([
+          AdminWallet.whitelistUser(user.gdAddress, user.profilePublickey, nonce),
+          AdminWallet.topWallet(user.gdAddress, null, true, nonce + 1),
+          storage
+            .updateUser({ identifier: user.loggedInAs, isVerified: true })
+            .then(updatedUser => log.debug('updatedUser:', updatedUser))
+        ])
       }
       res.json(result)
     })
