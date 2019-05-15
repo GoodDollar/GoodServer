@@ -147,8 +147,7 @@ export class Wallet {
   async topWallet(
     address: string,
     lastTopping?: moment.Moment = moment().subtract(1, 'day'),
-    force: boolean = false,
-    nonce: number = undefined
+    force: boolean = false
   ): PromiEvent<TransactionReceipt> {
     let daysAgo = moment().diff(moment(lastTopping), 'days')
     if (conf.env !== 'development' && daysAgo < 1) throw new Error('Daily limit reached')
@@ -164,8 +163,7 @@ export class Wallet {
             to: address,
             value: toTop,
             gas: 100000,
-            gasPrice: Web3.utils.toWei('1', 'gwei'),
-            nonce
+            gasPrice: Web3.utils.toWei('1', 'gwei')
           })
         throw new Error("User doesn't need topping")
       } else throw new Error(`User not verified: ${address} ${isVerified}`)
