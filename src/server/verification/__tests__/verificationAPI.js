@@ -64,7 +64,5 @@ describe('verificationAPI', () => {
         'Content-Type': `multipart/form-data;`
       }
     })
-  }
-
-
+  })
 })
