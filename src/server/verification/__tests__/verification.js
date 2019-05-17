@@ -130,7 +130,7 @@ describe('verification', () => {
     expect(res.enrollResult).toMatchObject({
       ok: 1,
       isVerified: true,
-      enrollResult: { enrollmentIdentifier: verificationData.enrollmentIdentifier }
+      enrollmentIdentifier: verificationData.enrollmentIdentifier
     })
   })
 })
