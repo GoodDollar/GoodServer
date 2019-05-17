@@ -32,7 +32,7 @@ class Verifications implements VerificationAPI {
     return {
       ok: 1,
       isVerified,
-      enrollResult: { ...enrollResult, enrollmentIdentifier: verificationData.enrollmentIdentifier }
+      enrollResult: { ...enrollResult, enrollmentIdentifier: enrollResult.enrollmentIdentifier }
     }
   }
 
