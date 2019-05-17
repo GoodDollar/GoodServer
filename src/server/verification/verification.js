@@ -1,7 +1,7 @@
 // @flow
 import type { UserRecord, VerificationAPI } from '../../imports/types'
 import { GunDBPrivate } from '../gun/gun-middleware'
-import { Helper, type EnrollResult, type VerificationData } from './faceRecognition/faceRecognitionHelper'
+import Helper, { type EnrollResult, type VerificationData } from './faceRecognition/faceRecognitionHelper'
 import logger from '../../imports/pino-logger'
 
 class Verifications implements VerificationAPI {
@@ -12,7 +12,7 @@ class Verifications implements VerificationAPI {
   }
 
   async verifyUser(user: UserRecord, verificationData: any): Promise<boolean> {
-    this.log.debug('Verifying user:', { user, verificationData })
+    //this.log.debug('Verifying user:', { user, verificationData })
     const livenessData = Helper.prepareLivenessData(verificationData)
     const searchData = Helper.prepareSearchData(verificationData)
     // log.info('searchData', { searchData })

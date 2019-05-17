@@ -30,14 +30,14 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         sessionId: body.sessionId
       }
       let result = { ok: 1 }
-      if (['production', 'staging'].includes(conf.env))
+      if (!['development'].includes(conf.env))
         result = await verifier.verifyUser(user, verificationData).finally(() => {
           //cleanup
           log.info('cleaning up facerecognition files')
           fsPromises.unlink(verificationData.facemapFile)
           fsPromises.unlink(verificationData.auditTrailImageFile)
         })
-      else result = { ok: 1, isVerified: true, enrollResult: { alreadyEnrolled: true } }
+      else result = { ok: 1, isVerified: true, enrollResult: { alreadyEnrolled: true } } // skip facereco only in dev mode
       if (result.isVerified) {
         log.debug('Whitelisting new user', user)
         await Promise.all([

@@ -29,7 +29,7 @@ export type EnrollResult = {
   alreadyEnrolled: boolean
 }
 
-export const Helper = {
+const Helper = {
   prepareLivenessData(data: VerificationData) {
     let form = new FormData()
     const facemap = fs.createReadStream(data.facemapFile)
@@ -96,3 +96,5 @@ export const Helper = {
     }
   }
 }
+
+export default Helper
