@@ -29,7 +29,7 @@ export type EnrollResult = {
   alreadyEnrolled: boolean
 }
 
-export const Helper = {
+const Helper = {
   prepareLivenessData(data: VerificationData) {
     let form = new FormData()
     const facemap = fs.createReadStream(data.facemapFile)
@@ -76,7 +76,9 @@ export const Helper = {
     try {
       let res = await ZoomClient.search(zoomData)
       log.debug('search result:', { res })
-      return res.data.results.length > 0 && _.find(res.data.results, { enrollmentIdentifier: identifier }) === undefined
+      return (
+        res.data.results.length > 0 && !(_.find(res.data.results, { enrollmentIdentifier: identifier }) === undefined) // if NO matches found for this user identifier -> this user doesn't have duplicates
+      )
     } catch (e) {
       log.error('Error:', e, Config.zoomMinMatchLevel, { zoomData })
       throw e
@@ -96,3 +98,5 @@ export const Helper = {
     }
   }
 }
+
+export default Helper

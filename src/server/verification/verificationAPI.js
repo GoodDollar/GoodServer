@@ -30,14 +30,14 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         sessionId: body.sessionId
       }
       let result = { ok: 1 }
-      if (['production', 'staging'].includes(conf.env))
+      if (!['development'].includes(conf.env))
         result = await verifier.verifyUser(user, verificationData).finally(() => {
           //cleanup
           log.info('cleaning up facerecognition files')
           fsPromises.unlink(verificationData.facemapFile)
           fsPromises.unlink(verificationData.auditTrailImageFile)
         })
-      else result = { ok: 1, isVerified: true, enrollResult: { alreadyEnrolled: true } }
+      else result = { ok: 1, isVerified: true, enrollResult: { alreadyEnrolled: true } } // skip facereco only in dev mode
       if (result.isVerified) {
         log.debug('Whitelisting new user', user)
         await Promise.all([
@@ -177,33 +177,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: user.email })
 
       res.json({ ok: 1, attestation: signedEmail })
-    })
-  )
-
-  app.post(
-    '/verify/facerecognition',
-    passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res, next) => {
-      const log = req.log.child({ from: 'verificationAPI - verify/facerecognition' })
-      const { user, body } = req
-      const verificationData: { code: string } = body.verificationData
-
-      // recieve zoomclient params from client:
-
-      /* this is the client type:
-     apiResult: await this.client.enroll({
-          email: this.props.email,
-          name: this.props.name,
-          sessionId: this.props.result.sessionId,
-          facemap: this.props.result.facemap,
-          auditTrailImage: this.props.result.auditTrailImage
-        })
-     */
-
-      // pass the above exactly to Ruby backend.
-
-      //res.json({ ok: 1, attestation: signedEmail })
-      res.json({ ok: 1 })
     })
   )
 }
