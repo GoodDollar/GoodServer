@@ -38,7 +38,7 @@
   "dependencies": {
     "@babel/polyfill": "^7.2.5",
     "@colony/purser-metamask": "^2.1.0",
-    "@gooddollar/goodcontracts": "0.0.13",
+    "@gooddollar/goodcontracts": "0.0.14",
     "@sendgrid/mail": "^6.3.1",
     "aws-sdk": "^2.450.0",
     "body-parser": "^1.18.3",
