@@ -76,8 +76,14 @@ const Helper = {
     try {
       let res = await ZoomClient.search(zoomData)
       log.debug('search result:', { res })
+      const validMatches = _.filter(
+        res.data.results,
+        r =>
+          r.zoomSearchMatchLevel === 'ZOOM_SEARCH_MATCH_LEVEL_0' ||
+          r.zoomSearchMatchLevel === 'ZOOM_SEARCH_MATCH_LEVEL_1'
+      )
       return (
-        res.data.results.length > 0 && _.find(res.data.results, { enrollmentIdentifier: identifier }) === undefined // if found matches - verify it's not the user itself
+        validMatches.length > 0 && _.find(validMatches, { enrollmentIdentifier: identifier }) === undefined // if found matches - verify it's not the user itself
       )
     } catch (e) {
       log.error('Error:', e, Config.zoomMinMatchLevel, { zoomData })
