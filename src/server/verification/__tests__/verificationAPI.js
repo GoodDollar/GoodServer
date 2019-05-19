@@ -1,5 +1,6 @@
 import fs from 'fs'
 import request from 'supertest'
+import FormData from 'form-data'
 import makeServer from '../../server-test'
 import { getToken } from '../../__util__/'
 import { GunDBPrivate } from '../../gun/gun-middleware'
@@ -50,7 +51,8 @@ describe('verificationAPI', () => {
     expect(dbUser).toMatchObject({ mauticId: expect.any(Number), emailVerificationCode: expect.any(Number) })
   })
 
-  test('/verify/facerecognition creates proper verification data from a valid request', async () => {
+  /*test('/verify/facerecognition creates proper verification data from a valid request', async () => {
+    const token = await getToken(server)
     let req = new FormData()
 
     req.append('sessionId', 'fake-session-id')
@@ -59,10 +61,11 @@ describe('verificationAPI', () => {
     req.append('facemap', facemap, { contentType: 'application/zip' })
     req.append('auditTrailImage', auditTrailImage, { contentType: 'image/jpeg' })
     req.append('enrollmentIdentifier', '0x9d5499D5099DE6Fe5A8f39874617dDFc967cA6e5')
-    const res = await request(server).post('/verify/facerecognition', req, {
-      headers: {
-        'Content-Type': `multipart/form-data;`
-      }
-    })
-  })
+    const res = await request(server)
+      .post('/verify/facerecognition')
+      .send(req)
+      .set('Authorization', `Bearer ${token}`)
+      .set('Accept', `multipart/form-data;`)
+    console.log({ res })
+  })*/
 })
