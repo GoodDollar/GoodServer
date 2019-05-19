@@ -29,6 +29,20 @@ export type EnrollResult = {
   alreadyEnrolled: boolean
 }
 
+export type SearchResult = {
+  data: {
+    results: Array<{
+      enrollmentIdentifier: string,
+      auditTrailImage: string,
+      zoomSearchMatchLevel:
+        | 'ZOOM_SEARCH_MATCH_LEVEL_0'
+        | 'ZOOM_SEARCH_MATCH_LEVEL_1'
+        | 'ZOOM_SEARCH_MATCH_LEVEL_2'
+        | 'ZOOM_SEARCH_NO_MATCH_DETERMINED'
+    }>
+  }
+}
+
 const Helper = {
   prepareLivenessData(data: VerificationData) {
     let form = new FormData()
@@ -74,7 +88,7 @@ const Helper = {
 
   async isDuplicatesExist(zoomData: FormData, identifier: string) {
     try {
-      let res = await ZoomClient.search(zoomData)
+      let res: SearchResult = await ZoomClient.search(zoomData)
       log.debug('search result:', { res })
       const validMatches = _.filter(
         res.data.results,

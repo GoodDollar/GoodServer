@@ -1,3 +1,4 @@
+//@flow
 //import { ZoomClient } from '../faceRecognition/zoomClient'
 
 describe('faceRecognitionHelper', () => {
@@ -92,8 +93,14 @@ describe('faceRecognitionHelper', () => {
       data: {
         results: [
           // user enrollmentIdentifier is 0x9d5499D5099DE6Fe5A8f39874617dDFc967cA6e5
-          { enrollmentIdentifier: '0x9d5499D5099DE6Fe5A8f39874617dDFc967cA6e3' },
-          { enrollmentIdentifier: '0x9d5499D5099DE6Fe5A8f39874617dDFc967cA6e2' }
+          {
+            enrollmentIdentifier: '0x9d5499D5099DE6Fe5A8f39874617dDFc967cA6e3',
+            zoomSearchMatchLevel: 'ZOOM_SEARCH_MATCH_LEVEL_0'
+          },
+          {
+            enrollmentIdentifier: '0x9d5499D5099DE6Fe5A8f39874617dDFc967cA6e2',
+            zoomSearchMatchLevel: 'ZOOM_SEARCH_MATCH_LEVEL_2'
+          }
         ]
       }
     })
@@ -109,9 +116,41 @@ describe('faceRecognitionHelper', () => {
       data: {
         results: [
           // user enrollmentIdentifier is 0x9d5499D5099DE6Fe5A8f39874617dDFc967cA6e5
-          { enrollmentIdentifier: '0x9d5499D5099DE6Fe5A8f39874617dDFc967cA6e5' },
-          { enrollmentIdentifier: '0x9d5499D5099DE6Fe5A8f39874617dDFc967cA6e3' },
-          { enrollmentIdentifier: '0x9d5499D5099DE6Fe5A8f39874617dDFc967cA6e2' }
+          {
+            enrollmentIdentifier: '0x9d5499D5099DE6Fe5A8f39874617dDFc967cA6e5',
+            zoomSearchMatchLevel: 'ZOOM_SEARCH_MATCH_LEVEL_0'
+          },
+          {
+            enrollmentIdentifier: '0x9d5499D5099DE6Fe5A8f39874617dDFc967cA6e3',
+            zoomSearchMatchLevel: 'ZOOM_SEARCH_MATCH_LEVEL_0'
+          },
+          {
+            enrollmentIdentifier: '0x9d5499D5099DE6Fe5A8f39874617dDFc967cA6e2',
+            zoomSearchMatchLevel: 'ZOOM_SEARCH_MATCH_LEVEL_0'
+          }
+        ]
+      }
+    })
+    let result = await faceRecognitionHelper.isDuplicatesExist(verificationData, verificationData.enrollmentIdentifier)
+    expect(result).toBe(false)
+  })
+
+  test('it returns duplicate=false if zoom search returned match level <1', async () => {
+    const faceRecognitionHelper = require('../faceRecognition/faceRecognitionHelper').default
+    const zoomClient = require('../faceRecognition/zoomClient').ZoomClient
+    zoomClient.search.mockResolvedValue({
+      meta: { ok: false },
+      data: {
+        results: [
+          // user enrollmentIdentifier is 0x9d5499D5099DE6Fe5A8f39874617dDFc967cA6e5
+          {
+            enrollmentIdentifier: '0x9d5499D5099DE6Fe5A8f39874617dDFc967cA6e3',
+            zoomSearchMatchLevel: 'ZOOM_SEARCH_MATCH_LEVEL_2'
+          },
+          {
+            enrollmentIdentifier: '0x9d5499D5099DE6Fe5A8f39874617dDFc967cA6e2',
+            zoomSearchMatchLevel: 'ZOOM_SEARCH_NO_MATCH_DETERMINED'
+          }
         ]
       }
     })
