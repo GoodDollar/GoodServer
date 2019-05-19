@@ -118,4 +118,47 @@ describe('faceRecognitionHelper', () => {
     let result = await faceRecognitionHelper.isDuplicatesExist(verificationData, verificationData.enrollmentIdentifier)
     expect(result).toBe(true)
   })
+
+  test('it returns enrollment result if zoom enroll meta.ok = true', async () => {
+    const faceRecognitionHelper = require('../faceRecognition/faceRecognitionHelper').default
+    const zoomClient = require('../faceRecognition/zoomClient').ZoomClient
+    const expected = {
+      enrollmentIdentifier: verificationData.enrollmentIdentifier,
+      livenessResult: 'passed',
+      livenessScore: 87,
+      glassesScore: 8,
+      glassesDecision: false,
+      retryFeedbackSuggestion: null,
+      createDate: '2017-01-01T00:00:00+00:00',
+      creationStatusFromZoomServer: 'The facemap was created successfully.',
+      errorFromZoomServer: null,
+      facemap: ''
+    }
+    zoomClient.enrollment.mockResolvedValue({
+      meta: { ok: true },
+      data: {
+        enrollmentIdentifier: verificationData.enrollmentIdentifier,
+        livenessResult: 'passed',
+        livenessScore: 87,
+        glassesScore: 8,
+        glassesDecision: false,
+        retryFeedbackSuggestion: null,
+        createDate: '2017-01-01T00:00:00+00:00',
+        creationStatusFromZoomServer: 'The facemap was created successfully.',
+        errorFromZoomServer: null,
+        facemap: ''
+      }
+    })
+    let result = await faceRecognitionHelper.enroll(verificationData)
+    expect(result).toMatchObject(expected)
+  })
+
+  test('it returns alreadyEnrolled:true if zoom enroll meta.ok = false and res.meta.subCode === nameCollision', async () => {
+    const faceRecognitionHelper = require('../faceRecognition/faceRecognitionHelper').default
+    const zoomClient = require('../faceRecognition/zoomClient').ZoomClient
+    const expected = { alreadyEnrolled: true }
+    zoomClient.enrollment.mockResolvedValue({ meta: { ok: false, subCode: 'nameCollision' } })
+    let result = await faceRecognitionHelper.enroll(verificationData)
+    expect(result).toMatchObject(expected)
+  })
 })
