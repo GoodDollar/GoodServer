@@ -1,7 +1,8 @@
 // @flow
-import logger from '../../imports/pino-logger'
 import type { UserRecord, VerificationAPI } from '../../imports/types'
 import { GunDBPrivate } from '../gun/gun-middleware'
+import Helper, { type EnrollResult, type VerificationData } from './faceRecognition/faceRecognitionHelper'
+import logger from '../../imports/pino-logger'
 
 class Verifications implements VerificationAPI {
   log: any
@@ -11,7 +12,30 @@ class Verifications implements VerificationAPI {
   }
 
   async verifyUser(user: UserRecord, verificationData: any): Promise<boolean> {
-    return Promise.resolve(true)
+    //this.log.debug('Verifying user:', { user, verificationData })
+    const livenessData = Helper.prepareLivenessData(verificationData)
+    const searchData = Helper.prepareSearchData(verificationData)
+    // log.info('searchData', { searchData })
+    const [isDuplicate, livenessPassed] = await Promise.all([
+      Helper.isDuplicatesExist(searchData, verificationData.enrollmentIdentifier),
+      Helper.isLivenessPassed(livenessData)
+    ])
+    this.log.debug('liveness result:', { user: user.identifier, livenessPassed })
+    if (!livenessPassed) return { ok: 1, livenessPassed }
+    this.log.debug('isDuplicate result:', { user: user.identifier, isDuplicate })
+    if (isDuplicate) return { ok: 1, isDuplicate }
+    const enrollData = Helper.prepareEnrollmentData(verificationData)
+    // log.info('enrollData', { enrollData })
+    const enrollResult: EnrollResult = await Helper.enroll(enrollData)
+    const isVerified =
+      livenessPassed &&
+      !isDuplicate &&
+      (enrollResult.alreadyEnrolled || (enrollResult.enrollmentIdentifier ? true : false)) // enrollResult.enrollmentIdentifier should return true if there is value in it (and not the value itself) into isVerified.
+    return {
+      ok: 1,
+      isVerified,
+      enrollResult: { ...enrollResult, enrollmentIdentifier: enrollResult.enrollmentIdentifier }
+    }
   }
 
   async verifyMobile(user: UserRecord, verificationData: { otp: string }): Promise<boolean | Error> {

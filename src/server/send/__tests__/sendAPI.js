@@ -6,6 +6,7 @@ import { GunDBPrivate } from '../../gun/gun-middleware'
 describe('sendAPÏ', () => {
   let server
   beforeAll(done => {
+    jest.setTimeout(10000)
     server = makeServer(done)
   })
 
@@ -16,18 +17,18 @@ describe('sendAPÏ', () => {
     })
   })
 
-  test('/send/linkemail without creds -> 401', done => {
-    request(server)
+  test('/send/linkemail without creds -> 401', async () => {
+    await request(server)
       .post('/send/linkemail')
-      .expect(401, done)
+      .expect(401)
   })
 
-  test('/send/linkemailwith creds', async done => {
+  test('/send/linkemailwith creds', async () => {
     const token = await getToken(server)
-    request(server)
+    await request(server)
       .post('/send/linkemail')
       .set('Authorization', `Bearer ${token}`)
-      .expect(200, { ok: 1, onlyInEnv: { current: 'test', onlyIn: ['production', 'staging'] } }, done)
+      .expect(200, { ok: 1, onlyInEnv: { current: 'test', onlyIn: ['production', 'staging'] } })
   })
 
   test('/verify/sendemail with creds', async () => {

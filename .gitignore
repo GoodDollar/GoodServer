@@ -3,6 +3,7 @@
 node_modules
 dist/
 coverage/
+radata/
 *.log
 yarn.lock
 secrets.json
@@ -12,3 +13,4 @@ privatedb
 testdb
 config/*/*
 test/jest-envs/*
+uploads/*
