@@ -1,10 +1,3 @@
-import fs from 'fs'
-import FormData from 'form-data'
-//import verification from '../verification'
-//const verification = require('../verification').default
-//jest.mock('../faceRecognition/faceRecognitionHelper') // mock Helper
-//const Helper = require('../faceRecognition/faceRecognitionHelper').default
-
 describe('verification', () => {
   let user
   let verificationData
