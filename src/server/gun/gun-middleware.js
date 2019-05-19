@@ -77,7 +77,10 @@ class GunDB implements StorageAPI {
       this.user.create('gooddollar', password, createres => {
         log.info('Created gundb GoodDollar User', { name })
         this.user.auth('gooddollar', password, async authres => {
-          if (authres.error) return reject(authres.error)
+          if (authres.error) {
+            log.error('Failed authenticating gundb user:', name, authres.error)
+            return reject(authres.error)
+          }
           log.info('Authenticated GunDB user:', { name })
           this.usersCol = this.user.get('users')
           resolve(true)

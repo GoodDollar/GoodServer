@@ -8,6 +8,7 @@ import { GunDBPrivate } from '../../gun/gun-middleware'
 describe('verificationAPI', () => {
   let server
   beforeAll(done => {
+    jest.setTimeout(10000)
     server = makeServer(done)
     console.log('the server is ..')
     console.log({ server })
@@ -21,18 +22,18 @@ describe('verificationAPI', () => {
     })
   })
 
-  test('/verify/sendotp without creds -> 401', done => {
-    request(server)
+  test('/verify/sendotp without creds -> 401', async () => {
+    await request(server)
       .post('/verify/sendotp')
-      .expect(401, done)
+      .expect(401)
   })
 
-  test('/verify/sendotp with creds', async done => {
+  test('/verify/sendotp with creds', async () => {
     const token = await getToken(server)
-    request(server)
+    await request(server)
       .post('/verify/sendotp')
       .set('Authorization', `Bearer ${token}`)
-      .expect(200, { ok: 1, onlyInEnv: { current: 'test', onlyIn: ['production', 'staging'] } }, done)
+      .expect(200, { ok: 1, onlyInEnv: { current: 'test', onlyIn: ['production', 'staging'] } })
   })
 
   test('/verify/sendemail with creds', async () => {
