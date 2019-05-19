@@ -82,7 +82,7 @@ class GunDB implements StorageAPI {
             return reject(authres.error)
           }
           log.info('Authenticated GunDB user:', { name })
-          this.usersCol = this.user.get('users')
+          this.usersCol = await this.user.get('users').then()
           resolve(true)
         })
       })

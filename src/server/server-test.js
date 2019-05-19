@@ -23,8 +23,8 @@ const makeServer = done => {
     GunDBPublic.init(server, conf.gundbPassword, 'publicdb')
   })
   serverPromise
-    .then(GunDBPrivate.ready)
-    .then(GunDBPublic.ready)
+    .then(x => GunDBPrivate.ready)
+    .then(x => GunDBPublic.ready)
     .then(r => {
       setTimeout(done, 1000)
       console.log('make server ready')
