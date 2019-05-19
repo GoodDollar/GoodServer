@@ -84,7 +84,7 @@ describe('faceRecognitionHelper', () => {
     expect(result).toBe(false)
   })
 
-  test('it returns duplicate=false if zoom search returned ok and results without the current user enrollment', async () => {
+  test('it returns duplicate=true if zoom search returned ok and results without the current user enrollment', async () => {
     const faceRecognitionHelper = require('../faceRecognition/faceRecognitionHelper').default
     const zoomClient = require('../faceRecognition/zoomClient').ZoomClient
     zoomClient.search.mockResolvedValue({
@@ -98,10 +98,10 @@ describe('faceRecognitionHelper', () => {
       }
     })
     let result = await faceRecognitionHelper.isDuplicatesExist(verificationData, verificationData.enrollmentIdentifier)
-    expect(result).toBe(false)
+    expect(result).toBe(true)
   })
 
-  test('it returns duplicate=false if zoom search returned ok and results without the current user enrollment', async () => {
+  test('it returns duplicate=false if zoom search returned ok and results contain the current user enrollment', async () => {
     const faceRecognitionHelper = require('../faceRecognition/faceRecognitionHelper').default
     const zoomClient = require('../faceRecognition/zoomClient').ZoomClient
     zoomClient.search.mockResolvedValue({
@@ -116,7 +116,7 @@ describe('faceRecognitionHelper', () => {
       }
     })
     let result = await faceRecognitionHelper.isDuplicatesExist(verificationData, verificationData.enrollmentIdentifier)
-    expect(result).toBe(true)
+    expect(result).toBe(false)
   })
 
   test('it returns enrollment result if zoom enroll meta.ok = true', async () => {
