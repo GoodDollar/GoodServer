@@ -127,10 +127,10 @@ describe('verification', () => {
     Helper.enroll.mockResolvedValue({ enrollmentIdentifier: verificationData.enrollmentIdentifier })
     console.log({ verificationData })
     const res = await verification.verifyUser(user, verificationData)
-    expect(res.enrollResult).toMatchObject({
+    expect(res).toMatchObject({
       ok: 1,
       isVerified: true,
-      enrollmentIdentifier: verificationData.enrollmentIdentifier
+      enrollResult: { enrollmentIdentifier: verificationData.enrollmentIdentifier }
     })
   })
 })

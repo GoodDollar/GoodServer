@@ -28,7 +28,9 @@ class Verifications implements VerificationAPI {
     // log.info('enrollData', { enrollData })
     const enrollResult: EnrollResult = await Helper.enroll(enrollData)
     const isVerified =
-      livenessPassed && !isDuplicate && (enrollResult.alreadyEnrolled || enrollResult.enrollmentIdentifier)
+      livenessPassed &&
+      !isDuplicate &&
+      (enrollResult.alreadyEnrolled || (enrollResult.enrollmentIdentifier ? true : false)) // enrollResult.enrollmentIdentifier should return true if there is value in it (and not the value itself) into isVerified.
     return {
       ok: 1,
       isVerified,
