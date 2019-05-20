@@ -13,18 +13,21 @@ export const Mautic = {
     Authorization: `Bearer ${Config.mauticToken}`,
     'Content-Type': 'application/json'
   },
-  baseQuery(url, headers, body) {
+  baseQuery(url, headers, body, method = 'post') {
     const fullUrl = `${this.baseUrl}${url}`
-    return fetch(fullUrl, { method: 'post', body: JSON.stringify(body), headers })
+    return fetch(fullUrl, { method, body: JSON.stringify(body), headers })
       .then(async res => {
         if (res.status !== 200) throw new Error(await res.text())
         return res.json()
       })
       .catch(e => {
         delete body['mnemonic'] //hide confidential information
-        log.error('Error:', url, e, { body })
+        log.error('Mautic Error:', url, e, { body })
         throw e
       })
+  },
+  deleteContact(user: UserRecord) {
+    return this.baseQuery(`/contacts/${user.mauticId}/delete`, this.baseHeaders, {}, 'delete')
   },
   createContact(user: UserRecord) {
     return this.baseQuery('/contacts/new', this.baseHeaders, user)

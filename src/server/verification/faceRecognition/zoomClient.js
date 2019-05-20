@@ -9,10 +9,10 @@ export const ZoomClient = {
   baseHeaders: {
     'X-App-Token': Config.zoomToken
   },
-  baseQuery(url, headers, data: FromData) {
+  baseQuery(url, headers, data: FromData, method = 'post') {
     const fullUrl = `${this.baseUrl}${url}`
 
-    return fetch(fullUrl, { method: 'post', body: data, headers })
+    return fetch(fullUrl, { method, body: data, headers })
       .then(async res => {
         log.debug('Response:', url, { res })
         return res.json()
@@ -36,5 +36,9 @@ export const ZoomClient = {
     this.baseHeaders['Content-Type'] = `multipart/form-data; boundary=${data._boundary}`
     // log.debug('enrollment data:', { data })
     return this.baseQuery('/enrollment', this.baseHeaders, data)
+  },
+  delete(identifier: string) {
+    // log.debug('enrollment data:', { data })
+    return this.baseQuery(`/enrollment/${identifier}`, this.baseHeaders, {}, 'delete')
   }
 }

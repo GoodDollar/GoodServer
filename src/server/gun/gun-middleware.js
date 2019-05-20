@@ -167,7 +167,7 @@ class GunDB implements StorageAPI {
   async deleteUser(user: UserRecord): Promise<boolean> {
     const { identifier } = user
     const userRecord = await this.usersCol.get(identifier).then()
-    log.info('deleteUser fetched record:', { userRecord })
+    log.info('deleteUser fetched record:', { userRecord, identifier })
     if (userRecord.email) {
       this.usersCol
         .get('byemail')
@@ -182,7 +182,7 @@ class GunDB implements StorageAPI {
         .put(null)
     }
 
-    this.usersCol.get(identifier).put(null)
+    await this.usersCol.get(identifier).putAck(null)
     return true
   }
 

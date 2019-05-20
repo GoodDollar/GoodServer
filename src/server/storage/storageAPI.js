@@ -9,6 +9,7 @@ import { UserRecord } from '../../imports/types'
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import AdminWallet from '../blockchain/AdminWallet'
+import Helper from '../verification/faceRecognition/faceRecognitionHelper'
 
 const setup = (app: Router, storage: StorageAPI) => {
   app.post(
@@ -23,6 +24,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       const user: UserRecord = defaults(body.user, { identifier: userRecord.loggedInAs })
       //mautic contact should already exists since it is first created during the email verification we update it here
       const mauticRecord = process.env.NODE_ENV === 'development' ? {} : await Mautic.createContact(user)
+      log.debug('User mautic record', { mauticRecord })
       //topwallet of user after registration
       await Promise.all([
         AdminWallet.topWallet(userRecord.gdAddress, null, true).catch(e => log.error(e)),
@@ -36,10 +38,20 @@ const setup = (app: Router, storage: StorageAPI) => {
     '/user/delete',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
-      const { body } = req
-      const user = defaults(body.user, { identifier: req.user.loggedInAs })
-      await storage.deleteUser(user)
-      res.json({ ok: 1 })
+      const { body, user, log } = req
+      log.info('deleteing user', { user })
+      const results = await Promise.all([
+        Helper.delete(body.zoomId)
+          .then(r => ({ zoom: 'ok' }))
+          .catch(e => ({ zoom: 'failed' })),
+        (user.identifier ? storage.deleteUser(user) : Promise.resolve())
+          .then(r => ({ gundb: 'ok' }))
+          .catch(e => ({ gundb: 'failed' })),
+        Mautic.deleteContact(user)
+          .then(r => ({ mautic: 'ok' }))
+          .catch(e => ({ mautic: 'failed' }))
+      ])
+      res.json({ ok: 1, results })
     })
   )
 }

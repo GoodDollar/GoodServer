@@ -116,6 +116,18 @@ const Helper = {
       log.error('Error:', e, { zoomData })
       throw e
     }
+  },
+
+  async delete(enrollmentIdentifier: string): Promise<boolean> {
+    try {
+      let res = await ZoomClient.delete(enrollmentIdentifier)
+      log.debug('delete result:', { res })
+      if (res.meta.ok) return true
+      else return false
+    } catch (e) {
+      log.error('delete error:', e, { enrollmentIdentifier })
+      throw e
+    }
   }
 }
 
