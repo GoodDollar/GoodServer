@@ -17,7 +17,7 @@ export const Mautic = {
     const fullUrl = `${this.baseUrl}${url}`
     return fetch(fullUrl, { method, body: JSON.stringify(body), headers })
       .then(async res => {
-        if (res.status !== 200) throw new Error(await res.text())
+        if (res.status >= 300) throw new Error(await res.text())
         return res.json()
       })
       .catch(e => {
