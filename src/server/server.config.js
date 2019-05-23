@@ -196,6 +196,12 @@ const conf = convict({
       format: '*',
       default: undefined
     }
+  },
+  allowDuplicateUserData: {
+    doc: 'Allow to register with existing mobile/email',
+    format: Boolean,
+    env: 'ALLOW_DUPLICATE_USER_DATA',
+    default: false
   }
 })
 
