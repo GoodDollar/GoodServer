@@ -123,7 +123,8 @@ class GunDB implements StorageAPI {
     const isDup = await this.isDupUserData(user)
 
     let promises = []
-    if (!isDup) {
+    //for non production we can allowDuplicateUserData
+    if (!isDup || conf.allowDuplicateUserData) {
       log.info('Updating user', { identifier, user })
       promises.push(this.usersCol.get(identifier).putAck(user))
 
