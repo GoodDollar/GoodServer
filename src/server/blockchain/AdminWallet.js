@@ -68,19 +68,32 @@ export class Wallet {
   }
 
   async init() {
-    log.debug('Initializing wallet:', { mnemonic: this.mnemonic, conf: conf.ethereum })
-    this.wallet = new HDWalletProvider(this.mnemonic, this.getWeb3TransportProvider(), 0, 10)
+    log.debug('Initializing wallet:', { conf: conf.ethereum })
 
-    this.web3 = new Web3(this.wallet, {
-      defaultAccount: this.address,
-      defaultGasPrice: Web3.utils.toWei('1', 'gwei'),
-      defaultGas: 500000
-    })
-    this.address = this.wallet.addresses[0]
-    let account = this.web3.eth.accounts.privateKeyToAccount(
-      '0x' + this.wallet.wallets[this.address]._privKey.toString('hex')
-    )
-    this.web3.eth.accounts.wallet.add(account)
+    if (conf.privateKey) {
+      this.web3 = new Web3(this.getWeb3TransportProvider(), null, {
+        defaultGasPrice: Web3.utils.toWei('1', 'gwei'),
+        defaultGas: 500000
+      })
+      let account = this.web3.eth.accounts.privateKeyToAccount(conf.privateKey)
+      this.web3.eth.accounts.wallet.add(account)
+      this.web3.eth.defaultAccount = account.address
+      this.address = account.address
+      log.debug('Initialized by private key:', account.address)
+    } else if (conf.mnemonic) {
+      this.wallet = new HDWalletProvider(this.mnemonic, this.getWeb3TransportProvider(), 0, 10)
+
+      this.web3 = new Web3(this.wallet, null, {
+        defaultAccount: this.address,
+        defaultGasPrice: Web3.utils.toWei('1', 'gwei'),
+        defaultGas: 500000
+      })
+      this.address = this.wallet.addresses[0]
+      let account = this.web3.eth.accounts.privateKeyToAccount(
+        '0x' + this.wallet.wallets[this.address]._privKey.toString('hex')
+      )
+      this.web3.eth.accounts.wallet.add(account)
+    }
     this.network = conf.network
     this.networkId = conf.ethereum.network_id
     this.identityContract = new this.web3.eth.Contract(
@@ -122,7 +135,7 @@ export class Wallet {
     try {
       let gdbalance = await this.tokenContract.methods.balanceOf(this.address).call()
       let nativebalance = await this.web3.eth.getBalance(this.address)
-      log.debug('AdminWallet Ready:', { account, gdbalance, nativebalance })
+      log.debug('AdminWallet Ready:', { account: this.address, gdbalance, nativebalance })
     } catch (e) {
       log.error('Error initializing wallet', e)
     }

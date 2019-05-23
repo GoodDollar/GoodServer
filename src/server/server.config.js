@@ -40,6 +40,12 @@ const conf = convict({
     env: 'MNEMONIC',
     default: ''
   },
+  privateKey: {
+    doc: 'Wallet private key',
+    format: '*',
+    env: 'PRIVATE_KEY',
+    default: undefined
+  },
   infuraKey: {
     doc: 'Infura API Key',
     format: '*',
