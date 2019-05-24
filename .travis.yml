@@ -20,6 +20,7 @@ before_script:
   - cd GoodContracts || true
   - npm i
   - truffle migrate --reset --network develop
+  - ls -la releases
   - npm link
   - cd ..
 
