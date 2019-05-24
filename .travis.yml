@@ -15,6 +15,8 @@ before_install:
 
 before_script:
   - export CONTRACTSTAG=${CONTRACTSTAG:-`node -pe "require('./package.json').dependencies['@gooddollar/goodcontracts']"`}
+  - echo $CONTRACTSTAG
+  - export CONTRACTSTAG=0.0.15
   - git clone https://github.com/GoodDollar/GoodContracts --branch=v$CONTRACTSTAG
   - ganache-cli -m "$MNEMONIC" --port 9545 --networkId 4447 -g 10000000000 &
   - cd GoodContracts || true
