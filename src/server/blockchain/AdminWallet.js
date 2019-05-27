@@ -8,10 +8,12 @@ import IdentityABI from '@gooddollar/goodcontracts/build/contracts/Identity.json
 import RedemptionABI from '@gooddollar/goodcontracts/build/contracts/RedemptionFunctional.json'
 import GoodDollarABI from '@gooddollar/goodcontracts/build/contracts/GoodDollar.json'
 import ReserveABI from '@gooddollar/goodcontracts/build/contracts/GoodDollarReserve.json'
+import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
 import conf from '../server.config'
 import logger from '../../imports/pino-logger'
 import { type TransactionReceipt } from './blockchain-types'
 import moment from 'moment'
+import get from 'lodash/get'
 
 const log = logger.child({ from: 'AdminWallet' })
 export class Wallet {
@@ -66,44 +68,74 @@ export class Wallet {
   }
 
   async init() {
-    log.debug('Initializing wallet:', { mnemonic: this.mnemonic, conf: conf.ethereum })
-    this.wallet = new HDWalletProvider(this.mnemonic, this.getWeb3TransportProvider(), 0, 10)
+    log.debug('Initializing wallet:', { conf: conf.ethereum })
 
-    this.web3 = new Web3(this.wallet, {
-      defaultAccount: this.address,
-      defaultGasPrice: Web3.utils.toWei('1', 'gwei'),
-      defaultGas: 500000
-    })
-    this.address = this.wallet.addresses[0]
-    let account = this.web3.eth.accounts.privateKeyToAccount(
-      '0x' + this.wallet.wallets[this.address]._privKey.toString('hex')
+    if (conf.privateKey) {
+      this.web3 = new Web3(this.getWeb3TransportProvider(), null, {
+        defaultGasPrice: Web3.utils.toWei('1', 'gwei'),
+        defaultGas: 500000
+      })
+      let account = this.web3.eth.accounts.privateKeyToAccount(conf.privateKey)
+      this.web3.eth.accounts.wallet.add(account)
+      this.web3.eth.defaultAccount = account.address
+      this.address = account.address
+      log.debug('Initialized by private key:', account.address)
+    } else if (conf.mnemonic) {
+      this.wallet = new HDWalletProvider(this.mnemonic, this.getWeb3TransportProvider(), 0, 10)
+
+      this.web3 = new Web3(this.wallet, null, {
+        defaultAccount: this.address,
+        defaultGasPrice: Web3.utils.toWei('1', 'gwei'),
+        defaultGas: 500000
+      })
+      this.address = this.wallet.addresses[0]
+      let account = this.web3.eth.accounts.privateKeyToAccount(
+        '0x' + this.wallet.wallets[this.address]._privKey.toString('hex')
+      )
+      this.web3.eth.accounts.wallet.add(account)
+    }
+    this.network = conf.network
+    this.networkId = conf.ethereum.network_id
+    this.identityContract = new this.web3.eth.Contract(
+      IdentityABI.abi,
+      get(ContractsAddress, `${this.network}.Identity`, IdentityABI.networks[this.networkId].address),
+      {
+        from: this.address,
+        gas: 500000,
+        gasPrice: Web3.utils.toWei('1', 'gwei')
+      }
     )
-    this.web3.eth.accounts.wallet.add(account)
-    this.networkId = conf.ethereum.network_id // ropsten network
-    this.identityContract = new this.web3.eth.Contract(IdentityABI.abi, IdentityABI.networks[this.networkId].address, {
-      from: this.address,
-      gas: 500000,
-      gasPrice: Web3.utils.toWei('1', 'gwei')
-    })
-    this.claimContract = new this.web3.eth.Contract(RedemptionABI.abi, RedemptionABI.networks[this.networkId].address, {
-      from: this.address,
-      gas: 500000,
-      gasPrice: Web3.utils.toWei('1', 'gwei')
-    })
-    this.tokenContract = new this.web3.eth.Contract(GoodDollarABI.abi, GoodDollarABI.networks[this.networkId].address, {
-      from: this.address,
-      gas: 500000,
-      gasPrice: Web3.utils.toWei('1', 'gwei')
-    })
-    this.reserveContract = new this.web3.eth.Contract(ReserveABI.abi, ReserveABI.networks[this.networkId].address, {
-      from: this.address,
-      gas: 500000,
-      gasPrice: Web3.utils.toWei('1', 'gwei')
-    })
+    this.claimContract = new this.web3.eth.Contract(
+      RedemptionABI.abi,
+      get(ContractsAddress, `${this.network}.RedemptionFunctional`, RedemptionABI.networks[this.networkId].address),
+      {
+        from: this.address,
+        gas: 500000,
+        gasPrice: Web3.utils.toWei('1', 'gwei')
+      }
+    )
+    this.tokenContract = new this.web3.eth.Contract(
+      GoodDollarABI.abi,
+      get(ContractsAddress, `${this.network}.GoodDollar`, GoodDollarABI.networks[this.networkId].address),
+      {
+        from: this.address,
+        gas: 500000,
+        gasPrice: Web3.utils.toWei('1', 'gwei')
+      }
+    )
+    this.reserveContract = new this.web3.eth.Contract(
+      ReserveABI.abi,
+      get(ContractsAddress, `${this.network}.GoodDollarReserve`, ReserveABI.networks[this.networkId].address),
+      {
+        from: this.address,
+        gas: 500000,
+        gasPrice: Web3.utils.toWei('1', 'gwei')
+      }
+    )
     try {
       let gdbalance = await this.tokenContract.methods.balanceOf(this.address).call()
       let nativebalance = await this.web3.eth.getBalance(this.address)
-      log.debug('AdminWallet Ready:', { account, gdbalance, nativebalance })
+      log.debug('AdminWallet Ready:', { account: this.address, gdbalance, nativebalance })
     } catch (e) {
       log.error('Error initializing wallet', e)
     }
