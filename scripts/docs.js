@@ -112,7 +112,7 @@ async function generateToc(docs) {
   const baseFolder = BASE_DOCS_FOLDER + '/'
   await execPromise(`mkdir -p ${baseFolder}`)
 
-  const title = '\n### GoodDAPP\n\n'
+  const title = '\n### GoodServer\n\n'
 
   const outputString = title + (await doGenerateToc(docs, { baseFolder }))
   fs.writeFileSync(`${baseFolder}/README.md`, outputString)
