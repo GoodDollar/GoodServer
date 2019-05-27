@@ -58,3 +58,6 @@ If in production execute the following middleware
 [8]: https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array
 
 [9]: https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String
+## Source
+[https://github.com/GoodDollar/GoodServer/src/server/utils/helpers.js](https://github.com/GoodDollar/GoodServer/src/server/utils/helpers.js)
+
