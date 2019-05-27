@@ -20,7 +20,11 @@ const setup = (app: Router, storage: StorageAPI) => {
       const logger = req.log.child({ from: 'storageAPI - /user/add' })
 
       //check that user passed all min requirements
-      if (['production', 'staging'].includes(conf.env) && (!userRecord.smsValidated || !userRecord.isEmailConfirmed))
+      if (
+        ['production', 'staging'].includes(conf.env) &&
+        (userRecord.smsValidated !== true ||
+          (conf.skipEmailVerification === false && userRecord.isEmailConfirmed !== true))
+      )
         throw new Error('User email or mobile not verified!')
 
       const user: UserRecord = defaults(body.user, { identifier: userRecord.loggedInAs })
