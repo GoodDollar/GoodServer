@@ -86,7 +86,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         const [, code] = await sendOTP(body.user)
         const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
 
-        await storage.updateUser({ identifier: user.loggedInAs, otp: { code, expirationDate } })
+        storage.updateUser({ identifier: user.loggedInAs, otp: { code, expirationDate } })
       }
       res.json({ ok: 1 })
     })
@@ -104,7 +104,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       log.debug('mobile verified', { user, verificationData })
       if (!user.smsValidated) {
         await verifier.verifyMobile({ identifier: user.loggedInAs }, verificationData)
-        await storage.updateUser({ identifier: user.loggedInAs, smsValidated: true })
+        storage.updateUser({ identifier: user.loggedInAs, smsValidated: true })
       }
       const signedMobile = await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: user.mobile })
       res.json({ ok: 1, attestation: signedMobile })
@@ -163,7 +163,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         log.debug('send new user email validation link', validationLink)
       }
       // updates/adds user with the emailVerificationCode to be used for verification later and with mauticId
-      await storage.updateUser({
+      storage.updateUser({
         identifier: user.loggedInAs,
         mauticId: userRec.mauticId,
         emailVerificationCode: code
@@ -187,7 +187,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         await verifier.verifyEmail({ identifier: user.loggedInAs }, verificationData)
 
         // if verification succeeds, then set the flag `isEmailConfirmed` to true in the user's record
-        await storage.updateUser({ identifier: user.loggedInAs, isEmailConfirmed: true })
+        storage.updateUser({ identifier: user.loggedInAs, isEmailConfirmed: true })
       }
       const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: user.email })
 

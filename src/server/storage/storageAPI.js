@@ -28,10 +28,8 @@ const setup = (app: Router, storage: StorageAPI) => {
       const mauticRecord = process.env.NODE_ENV === 'development' ? {} : await Mautic.createContact(user).catch(e => {})
       logger.debug('User mautic record', { mauticRecord })
       //topwallet of user after registration
-      let ok = await Promise.all([
-        AdminWallet.topWallet(userRecord.gdAddress, null, true),
-        storage.updateUser({ ...user, mauticId: get(mauticRecord, 'contact.fields.all.id', -1) })
-      ])
+      storage.updateUser({ ...user, mauticId: get(mauticRecord, 'contact.fields.all.id', -1) })
+      let ok = await AdminWallet.topWallet(userRecord.gdAddress, null, true)
         .then(r => 1)
         .catch(e => {
           logger.error(e)
