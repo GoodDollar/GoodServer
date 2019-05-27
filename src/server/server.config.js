@@ -209,6 +209,12 @@ const conf = convict({
     format: Boolean,
     env: 'ALLOW_DUPLICATE_USER_DATA',
     default: false
+  },
+  skipEmailVerification: {
+    doc: 'Allow to register with unverified email',
+    format: Boolean,
+    env: 'SKIP_EMAIL_VERIFICATION',
+    default: false
   }
 })
 

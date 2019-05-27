@@ -156,18 +156,20 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         userRec.mauticId = mauticContact.contact.fields.all.id
         log.debug('created new user mautic contact', userRec)
       }
-      const code = generateOTP(10)
-      if (!user.isEmailConfirmed) {
-        const validationLink = `${conf.walletUrl}/Signup/EmailConfirmation/?validation=${code}`
-        Mautic.sendVerificationEmail(userRec, validationLink)
-        log.debug('send new user email validation link', validationLink)
+      if (conf.skipEmailVerification === false) {
+        const code = generateOTP(10)
+        if (!user.isEmailConfirmed) {
+          const validationLink = `${conf.walletUrl}/Signup/EmailConfirmation/?validation=${code}`
+          Mautic.sendVerificationEmail(userRec, validationLink)
+          log.debug('send new user email validation link', validationLink)
+        }
+        // updates/adds user with the emailVerificationCode to be used for verification later and with mauticId
+        await storage.updateUser({
+          identifier: user.loggedInAs,
+          mauticId: userRec.mauticId,
+          emailVerificationCode: code
+        })
       }
-      // updates/adds user with the emailVerificationCode to be used for verification later and with mauticId
-      await storage.updateUser({
-        identifier: user.loggedInAs,
-        mauticId: userRec.mauticId,
-        emailVerificationCode: code
-      })
 
       res.json({ ok: 1 })
     })
