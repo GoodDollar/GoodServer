@@ -1,4 +1,5 @@
 import networks from './networks'
+import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
 
 require('dotenv').config()
 const convict = require('convict')
@@ -39,6 +40,12 @@ const conf = convict({
     env: 'MNEMONIC',
     default: ''
   },
+  privateKey: {
+    doc: 'Wallet private key',
+    format: '*',
+    env: 'PRIVATE_KEY',
+    default: undefined
+  },
   infuraKey: {
     doc: 'Infura API Key',
     format: '*',
@@ -53,7 +60,7 @@ const conf = convict({
   },
   network: {
     doc: 'The blockchain network to connect to',
-    format: ['kovan', 'mainnet', 'rinkbey', 'ropsten', 'truffle', 'ganache', 'fuse'],
+    format: ['kovan', 'mainnet', 'rinkbey', 'ropsten', 'truffle', 'ganache', 'fuse', 'production', 'develop'],
     default: 'kovan',
     env: 'NETWORK'
   },
@@ -202,13 +209,20 @@ const conf = convict({
     format: Boolean,
     env: 'ALLOW_DUPLICATE_USER_DATA',
     default: false
+  },
+  skipEmailVerification: {
+    doc: 'Allow to register with unverified email',
+    format: Boolean,
+    env: 'SKIP_EMAIL_VERIFICATION',
+    default: false
   }
 })
 
 // Load environment dependent configuration
 const env = conf.get('env')
 const network = conf.get('network')
-conf.set('ethereum', networks[network])
+const networkId = ContractsAddress[network].networkId
+conf.set('ethereum', networks[networkId])
 //parse S3 details for gundb in format of key,secret,bucket
 const privateS3 = process.env.GUN_PRIVATE_S3
 if (privateS3) {
