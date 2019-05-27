@@ -20,7 +20,8 @@ const sendOTP = (user: UserRecord): Promise<any> => {
   const { mobile } = user
   const client = new plivo.Client(plivoAuthID, plivoAuthToken)
   const otp = generateOTP(conf.otpDigits)
-  return Promise.all([client.messages.create(plivoPhoneNumber, mobile, otp), otp])
+  const msg = 'Your GoodDollar Verification Code Is: ' + otp
+  return Promise.all([client.messages.create(plivoPhoneNumber, mobile, msg), otp])
 }
 
 export { generateOTP, sendOTP }
