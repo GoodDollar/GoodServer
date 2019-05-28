@@ -210,8 +210,7 @@ export class Wallet {
   }
 
   async getBalance(): Promise<number> {
-    return this.web3.eth
-      .getBalance(this.address)
+    return this.getAddressBalance(this.address)
       .then(b => Web3.utils.fromWei(b))
       .catch(e => {
         log.error('Error getBalance', e)
