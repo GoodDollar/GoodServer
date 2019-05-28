@@ -79,7 +79,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { user, body } = req
 
       let userRec: UserRecord = _.defaults(body.user, user, { identifier: user.loggedInAs })
-      if (await storage.isDupUserData(userRec)) {
+      if (conf.allowDuplicateUserData === false && (await storage.isDupUserData(userRec))) {
         return res.json({ ok: 0, error: 'Mobile already exists, please use a different one.' })
       }
       if (!userRec.smsValidated) {
@@ -147,7 +147,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       // log.info({ user, body })
       //merge user details for use by mautic
       let userRec: UserRecord = _.defaults(body.user, user)
-      if (await storage.isDupUserData(userRec)) {
+      if (conf.allowDuplicateUserData === false && (await storage.isDupUserData(userRec))) {
         return res.json({ ok: 0, error: 'Email already exists, please use a different one' })
       }
       if (!user.mauticId) {
