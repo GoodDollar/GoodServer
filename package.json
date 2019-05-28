@@ -64,6 +64,7 @@
     "plivo": "^4.0.7",
     "react": "^16.7.0",
     "react-dom": "^16.7.0",
+    "rollbar": "^2.7.1",
     "supertest": "^3.4.2",
     "truffle-hdwallet-provider": "^1.0.2",
     "web3": "1.0.0-beta.37",

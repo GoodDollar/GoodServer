@@ -11,8 +11,15 @@ import addVerificationMiddlewares from './verification/verificationAPI'
 import addSendMiddlewares from './send/sendAPI'
 import logger from '../imports/pino-logger'
 import VerificationAPI from './verification/verification'
-
+import Rollbar from 'rollbar'
 export default (app: Router, env: any) => {
+  const rollbar = new Rollbar({
+    accessToken: '9d72fbbedc434c03995f186846f0a126',
+    captureUncaught: true,
+    captureUnhandledRejections: true
+  })
+  // record a generic message and send it to Rollbar
+
   // parse application/x-www-form-urlencoded
   // for easier testing with Postman or plain HTML forms
   app.use(
@@ -34,6 +41,8 @@ export default (app: Router, env: any) => {
   addStorageMiddlewares(app, GunDBPrivate)
   addVerificationMiddlewares(app, VerificationAPI, GunDBPrivate)
   addSendMiddlewares(app)
+
+  app.use(rollbar.errorHandler())
 
   app.use((error, req, res, next: NextFunction) => {
     const log = req.log.child({ from: 'errorHandler' })
