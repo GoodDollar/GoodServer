@@ -23,7 +23,6 @@ before_script:
   - npm i
   - truffle migrate --reset --network develop
   - npm link
-  - ls -la releases
   - cd ..
 
 script:
