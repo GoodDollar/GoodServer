@@ -205,6 +205,10 @@ export class Wallet {
     }
   }
 
+  async getAddressBalance(address: string): Promise<number> {
+    return this.web3.eth.getBalance(address)
+  }
+
   async getBalance(): Promise<number> {
     return this.web3.eth
       .getBalance(this.address)

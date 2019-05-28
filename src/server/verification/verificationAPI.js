@@ -15,6 +15,7 @@ import fs from 'fs'
 const fsPromises = fs.promises
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   var upload = multer({ dest: 'uploads/' }) // to handle blob parameters of faceReco
+
   app.post(
     '/verify/facerecognition',
     passport.authenticate('jwt', { session: false }),
@@ -50,6 +51,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       res.json(result)
     })
   )
+
   app.post(
     '/verify/user',
     passport.authenticate('jwt', { session: false }),
@@ -71,6 +73,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
     })
   )
+
   app.post(
     '/verify/sendotp',
     passport.authenticate('jwt', { session: false }),
@@ -85,7 +88,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       if (!userRec.smsValidated) {
         const [, code] = await sendOTP(body.user)
         const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
-
         await storage.updateUser({ identifier: user.loggedInAs, otp: { code, expirationDate } })
       }
       res.json({ ok: 1 })
@@ -134,6 +136,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       res.json(txRes)
     })
   )
+
   /**
    * Send verification email endpoint
    */

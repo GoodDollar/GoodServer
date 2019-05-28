@@ -23,10 +23,24 @@ describe('sendAPÏ', () => {
       .expect(401)
   })
 
-  test('/send/linkemailwith creds', async () => {
+  test('/send/linkemail with creds', async () => {
     const token = await getToken(server)
     await request(server)
       .post('/send/linkemail')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200, { ok: 1, onlyInEnv: { current: 'test', onlyIn: ['production', 'staging'] } })
+  })
+
+  test('/send/linksms without creds -> 401', async () => {
+    await request(server)
+      .post('/send/linksms')
+      .expect(401)
+  })
+
+  test('/send/linksms with creds', async () => {
+    const token = await getToken(server)
+    await request(server)
+      .post('/send/linksms')
       .set('Authorization', `Bearer ${token}`)
       .expect(200, { ok: 1, onlyInEnv: { current: 'test', onlyIn: ['production', 'staging'] } })
   })
