@@ -13,6 +13,7 @@
     "start:dev": "webpack  --mode development --config webpack.server.config.js --watch --verbose",
     "dev": "npm run start:dev | pino-pretty -c -f -s \"msg!='request completed'\"",
     "dev:local": "npm link @gooddollar/goodcontracts && npm run dev",
+    "prod": "npm start -- --optimize_for_size --max_old_space_size=460 | pino-pretty -c -f -s \"msg!='request completed'\"",
     "flow": "flow",
     "docs": "node scripts/docs.js"
   },

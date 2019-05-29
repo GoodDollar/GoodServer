@@ -22,7 +22,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'livenesstest' })
       const { body, files, user } = req
-      log.debug({ files, body })
       const verificationData = {
         facemapFile: _.find(files, { fieldname: 'facemap' }).path,
         auditTrailImageFile: _.find(files, { fieldname: 'auditTrailImage' }).path,
