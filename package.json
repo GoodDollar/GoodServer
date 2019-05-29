@@ -70,7 +70,6 @@
     "truffle-hdwallet-provider": "^1.0.2",
     "web3": "1.0.0-beta.37",
     "web3-core-promievent": "1.0.0-beta.37",
-    "websocket": "^1.0.28",
     "winston": "^3.2.1"
   },
   "devDependencies": {
@@ -130,7 +129,8 @@
     "webpack-dev-middleware": "^3.5.1",
     "webpack-dev-server": "^3.1.14",
     "webpack-hot-middleware": "^2.22.2",
-    "webpack-node-externals": "^1.7.2"
+    "webpack-node-externals": "^1.7.2",
+    "websocket": "^1.0.28"
   },
   "husky": {
     "hooks": {
