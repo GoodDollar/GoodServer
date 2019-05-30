@@ -3,9 +3,6 @@ import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json
 
 require('dotenv').config()
 const convict = require('convict')
-const logger = require('../imports/pino-logger').default
-
-const log = logger.child({ from: 'server-config', level: 10 })
 
 // Define a schema
 const conf = convict({
@@ -15,6 +12,12 @@ const conf = convict({
     default: 'development',
     arg: 'nodeEnv',
     env: 'NODE_ENV'
+  },
+  logLevel: {
+    doc: 'Log level',
+    format: ['debug', 'error', 'warn', 'info', 'off', 'trace'],
+    default: 'debug',
+    env: 'LOG_LEVEL'
   },
   ip: {
     doc: 'The IP address to bind.',
@@ -240,6 +243,5 @@ if (publicS3) {
 // Perform validation
 conf.validate({ allowed: 'strict' })
 // eslint-disable-next-line
-log.trace('Starting configuration...', conf._instance)
 
 export default conf.getProperties()

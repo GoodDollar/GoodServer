@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "GoodDollar Server",
   "main": "src/server/index.js",
+  "engines": {
+    "node": "10.15.*"
+  },
   "scripts": {
     "build": "webpack --mode production --config webpack.server.config.js",
     "test": "jest --forceExit --detectOpenHandles --maxWorkers=1",
