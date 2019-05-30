@@ -2,44 +2,137 @@
 
 ### Table of Contents
 
--   [init][1]
-    -   [Parameters][2]
--   [recordSanitize][3]
-    -   [Parameters][4]
+-   [ACK][1]
+    -   [Properties][2]
+-   [Entity][3]
+    -   [Properties][4]
+-   [Claim][5]
+    -   [Properties][6]
+-   [S3Conf][7]
+    -   [Properties][8]
+-   [setup][9]
+    -   [Parameters][10]
+-   [GunDB][11]
+    -   [init][12]
+        -   [Parameters][13]
+    -   [recordSanitize][14]
+        -   [Parameters][15]
 
-## init
+## ACK
+
+Type: {ok: [string][16], err: [string][16]}
+
+### Properties
+
+-   `ok` **[string][16]** 
+-   `err` **[string][16]** 
+
+## Entity
+
+Type: {@did: [string][16], publicKey: [string][16]}
+
+### Properties
+
+-   `@did` **[string][16]** 
+-   `publicKey` **[string][16]** 
+
+## Claim
+
+Type: {issuer: [Entity][17], subject: [Entity][17], sig: [string][16]?, claim: any, issuedAt: [Date][18], expiresAt: [Date][18]?}
+
+### Properties
+
+-   `issuer` **[Entity][17]** 
+-   `subject` **[Entity][17]** 
+-   `sig` **[string][16]?** 
+-   `claim` **any** 
+-   `issuedAt` **[Date][18]** 
+-   `expiresAt` **[Date][18]?** 
+
+## S3Conf
+
+Type: {key: [string][16], secret: [string][16], bucket: [string][16]}
+
+### Properties
+
+-   `key` **[string][16]** 
+-   `secret` **[string][16]** 
+-   `bucket` **[string][16]** 
+
+## setup
+
+Make app use Gun.serve and put Gun as global so we can do  `node --inspect` - debug only
 
 ### Parameters
 
+-   `app` **Router** 
+
+## GunDB
+
+Gun wrapper that implements `StorageAPI`
+Can be instantiated with a private or a public gundb and should be used to access gun accross the API server
+
+### init
+
+#### Parameters
+
 -   `server` **(any | null)** 
--   `password` **[string][5]** SEA password for GoodDollar user
--   `name` **[string][5]** folder to store gundb
--   `s3` **\[S3Conf]** optional S3 settings instead of local file storage
+-   `password` **[string][16]** SEA password for GoodDollar user
+-   `name` **[string][16]** folder to store gundb
+-   `s3` **[S3Conf][19]?** optional S3 settings instead of local file storage
 
-Returns **[Promise][6]&lt;[boolean][7]>** 
+Returns **[Promise][20]&lt;[boolean][21]>** 
 
-## recordSanitize
+### recordSanitize
 
 remove the soul field(\_) from gun records
 
-### Parameters
+#### Parameters
 
 -   `obj` **any**  (optional, default `{}`)
 -   `gun` **any** record
 
-[1]: #init
+[1]: #ack
 
-[2]: #parameters
+[2]: #properties
 
-[3]: #recordsanitize
+[3]: #entity
 
-[4]: #parameters-1
+[4]: #properties-1
 
-[5]: https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String
+[5]: #claim
 
-[6]: https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise
+[6]: #properties-2
 
-[7]: https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean
+[7]: #s3conf
+
+[8]: #properties-3
+
+[9]: #setup
+
+[10]: #parameters
+
+[11]: #gundb
+
+[12]: #init
+
+[13]: #parameters-1
+
+[14]: #recordsanitize
+
+[15]: #parameters-2
+
+[16]: https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String
+
+[17]: #entity
+
+[18]: https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Date
+
+[19]: #s3conf
+
+[20]: https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise
+
+[21]: https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean
 ## Source
 [https://github.com/GoodDollar/GoodServer/src/server/gun/gun-middleware.js](https://github.com/GoodDollar/GoodServer/src/server/gun/gun-middleware.js)
 
