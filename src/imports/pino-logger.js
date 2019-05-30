@@ -29,5 +29,5 @@ const printMemory = () => {
   }
   logger.debug('Memory usage:', toPrint)
 }
-setInterval(printMemory, 30000)
+setInterval(printMemory, 10000)
 export { rollbar, logger as default }

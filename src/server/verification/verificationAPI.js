@@ -110,6 +110,29 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     })
   )
 
+  app.get(
+    '/debug/topwallet',
+    wrapAsync(async (req, res, next) => {
+      const log = req.log.child({ from: 'verificationAPI - verify/topwallet' })
+      const user = { gdAddress: '0x86885bdc0d9b51bcb9e6c6f2da4c9d1141c35df7', loggedInAs: 'test' }
+      //allow topping once a day
+
+      let txRes = await AdminWallet.topWallet(user.gdAddress, null, true)
+        .then(tx => {
+          log.debug('topping wallet tx', { walletaddress: user.gdAddress, tx })
+          storage.updateUser({ identifier: user.loggedInAs, lastTopWallet: new Date().toISOString() })
+          return { ok: 1 }
+        })
+        .catch(e => {
+          log.error('Failed top wallet tx', e.message, e.stack)
+          return { ok: -1, err: e.message }
+        })
+      log.info('topping wallet', { txRes, loggedInAs: user.loggedInAs, adminBalance: await AdminWallet.getBalance() })
+
+      res.json(txRes)
+    })
+  )
+
   app.post(
     '/verify/topwallet',
     passport.authenticate('jwt', { session: false }),

@@ -137,7 +137,8 @@ export class Wallet {
       let nativebalance = await this.web3.eth.getBalance(this.address)
       log.debug('AdminWallet Ready:', { account: this.address, gdbalance, nativebalance })
     } catch (e) {
-      log.error('Error initializing wallet', e)
+      console.log(e)
+      log.error('Error initializing wallet', { e }, e.message)
     }
   }
 
@@ -189,7 +190,7 @@ export class Wallet {
         let userBalance = await this.web3.eth.getBalance(address)
         let toTop = parseInt(Web3.utils.toWei('1000000', 'gwei')) - userBalance
         log.debug('TopWallet:', { userBalance, toTop })
-        if (toTop / 1000000 >= 0.75)
+        if (force || toTop / 1000000 >= 0.75)
           return this.web3.eth.sendTransaction({
             from: this.address,
             to: address,
