@@ -6,6 +6,11 @@ import { UserRecord } from '../../imports/types'
 import Config from '../server.config'
 
 const log = logger.child({ from: 'Mautic' })
+const Timeout = (timeout: msec) => {
+  return new Promise((res, rej) => {
+    setTimeout(rej, timeout, new Error('Request Timeout'))
+  })
+}
 
 export const Mautic = {
   baseUrl: Config.mauticURL,
@@ -13,9 +18,10 @@ export const Mautic = {
     Authorization: `Bearer ${Config.mauticToken}`,
     'Content-Type': 'application/json'
   },
-  baseQuery(url, headers, body, method = 'post') {
+  baseQuery(url, headers, body, method = 'post', timeout = 5000) {
     const fullUrl = `${this.baseUrl}${url}`
-    return fetch(fullUrl, { method, body: JSON.stringify(body), headers })
+
+    return Promise.race([Timeout(timeout), fetch(fullUrl, { method, body: JSON.stringify(body), headers })])
       .then(async res => {
         if (res.status >= 300) throw new Error(await res.text())
         return res.json()

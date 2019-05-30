@@ -9,9 +9,8 @@ import { setup as addGunMiddlewares, GunDBPrivate } from './gun/gun-middleware'
 import addStorageMiddlewares from './storage/storageAPI'
 import addVerificationMiddlewares from './verification/verificationAPI'
 import addSendMiddlewares from './send/sendAPI'
-import logger from '../imports/pino-logger'
+import logger, { rollbar } from '../imports/pino-logger'
 import VerificationAPI from './verification/verification'
-
 export default (app: Router, env: any) => {
   // parse application/x-www-form-urlencoded
   // for easier testing with Postman or plain HTML forms
@@ -34,6 +33,8 @@ export default (app: Router, env: any) => {
   addStorageMiddlewares(app, GunDBPrivate)
   addVerificationMiddlewares(app, VerificationAPI, GunDBPrivate)
   addSendMiddlewares(app)
+
+  app.use(rollbar.errorHandler())
 
   app.use((error, req, res, next: NextFunction) => {
     const log = req.log.child({ from: 'errorHandler' })

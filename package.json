@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "GoodDollar Server",
   "main": "src/server/index.js",
+  "engines": {
+    "node": "10.15.*"
+  },
   "scripts": {
     "build": "webpack --mode production --config webpack.server.config.js",
     "test": "jest --forceExit --detectOpenHandles --maxWorkers=1",
@@ -13,6 +16,7 @@
     "start:dev": "webpack  --mode development --config webpack.server.config.js --watch --verbose",
     "dev": "npm run start:dev | pino-pretty -c -f -s \"msg!='request completed'\"",
     "dev:local": "npm link @gooddollar/goodcontracts && npm run dev",
+    "prod": "npm start -- --optimize_for_size --max_old_space_size=460 | pino-pretty -c -f -s \"msg!='request completed'\"",
     "flow": "flow",
     "docs": "node scripts/docs.js"
   },
@@ -64,6 +68,7 @@
     "plivo": "^4.0.7",
     "react": "^16.7.0",
     "react-dom": "^16.7.0",
+    "rollbar": "^2.7.1",
     "supertest": "^3.4.2",
     "truffle-hdwallet-provider": "^1.0.2",
     "web3": "1.0.0-beta.37",
@@ -127,7 +132,8 @@
     "webpack-dev-middleware": "^3.5.1",
     "webpack-dev-server": "^3.1.14",
     "webpack-hot-middleware": "^2.22.2",
-    "webpack-node-externals": "^1.7.2"
+    "webpack-node-externals": "^1.7.2",
+    "websocket": "^1.0.28"
   },
   "husky": {
     "hooks": {
