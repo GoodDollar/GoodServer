@@ -23,4 +23,13 @@ logger.error = function() {
   if (rollbar && env.NODE_ENV !== 'test') rollbar.error.apply(rollbar, arguments)
   return error.apply(logger, arguments)
 }
+const printMemory = () => {
+  const used = process.memoryUsage()
+  let toPrint = {}
+  for (let key in used) {
+    toPrint[key] = `${Math.round((used[key] / 1024 / 1024) * 100) / 100} MB`
+  }
+  logger.debug('Memory usage:', toPrint)
+}
+setInterval(printMemory, 30000)
 export { rollbar, logger as default }
