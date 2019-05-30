@@ -12,6 +12,16 @@ import AdminWallet from '../blockchain/AdminWallet'
 import Helper from '../verification/faceRecognition/faceRecognitionHelper'
 
 const setup = (app: Router, storage: StorageAPI) => {
+  /**
+   * @api {post} /user/add Add user account
+   * @apiName Add
+   * @apiGroup Storage
+   *
+   * @apiParam {Object} user
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
   app.post(
     '/user/add',
     passport.authenticate('jwt', { session: false }),
@@ -44,6 +54,17 @@ const setup = (app: Router, storage: StorageAPI) => {
     })
   )
 
+  /**
+   * @api {post} /user/delete Delete user account
+   * @apiName Delete
+   * @apiGroup Storage
+   *
+   * @apiParam {String} zoomId
+   *
+   * @apiSuccess {Number} ok
+   * @apiSuccess {[Object]} results
+   * @ignore
+   */
   app.post(
     '/user/delete',
     passport.authenticate('jwt', { session: false }),
