@@ -19,7 +19,7 @@ const log = logger.child({ from: 'AdminWallet' })
 export class Wallet {
   web3: Web3
 
-  wallet: HDWalletProvider
+  // wallet: HDWalletProvider
 
   accountsContract: Web3.eth.Contract
 
@@ -81,17 +81,18 @@ export class Wallet {
       this.address = account.address
       log.debug('Initialized by private key:', account.address)
     } else if (conf.mnemonic) {
-      this.wallet = new HDWalletProvider(this.mnemonic, this.getWeb3TransportProvider(), 0, 10)
+      const wallet = new HDWalletProvider(this.mnemonic, this.getWeb3TransportProvider(), 0, 10)
 
-      this.web3 = new Web3(this.wallet, null, {
+      this.web3 = new Web3(wallet, null, {
         defaultAccount: this.address,
         defaultGasPrice: Web3.utils.toWei('1', 'gwei'),
         defaultGas: 500000
       })
-      this.address = this.wallet.addresses[0]
+      this.address = wallet.addresses[0]
       let account = this.web3.eth.accounts.privateKeyToAccount(
-        '0x' + this.wallet.wallets[this.address]._privKey.toString('hex')
+        '0x' + wallet.wallets[this.address]._privKey.toString('hex')
       )
+      wallet.engine.close()
       this.web3.eth.accounts.wallet.add(account)
     }
     this.network = conf.network
