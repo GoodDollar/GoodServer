@@ -59,7 +59,7 @@ const conf = convict({
     network_id: 42,
     httpWeb3Provider: 'https://kovan.infura.io/v3/',
     websocketWeb3Provider: 'wss://kovan.infura.io/ws',
-    web3Transport: 'WebSocket'
+    web3Transport: 'HttpProvider'
   },
   network: {
     doc: 'The blockchain network to connect to',
