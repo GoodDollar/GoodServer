@@ -2,10 +2,10 @@
 import { Router } from 'express'
 import passport from 'passport'
 import get from 'lodash/get'
-import { type StorageAPI } from '../../imports/types'
+import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync } from '../utils/helpers'
 import { defaults } from 'lodash'
-import { UserRecord } from '../../imports/types'
+
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import AdminWallet from '../blockchain/AdminWallet'
@@ -35,10 +35,12 @@ const setup = (app: Router, storage: StorageAPI) => {
       let ok = await Promise.all([
         AdminWallet.topWallet(userRecord.gdAddress, null, true).catch(e => logger.error('New user topping failed', e)),
         storage.updateUser({ ...user, mauticId: get(mauticRecord, 'contact.fields.all.id', -1) })
-      ]).catch(e => {
-        logger.error(e)
-        throw e
-      })
+      ])
+        .then(r => 1)
+        .catch(e => {
+          logger.error(e)
+          throw e
+        })
       log.debug('added new user:', { user })
       res.json({ ok })
     })
