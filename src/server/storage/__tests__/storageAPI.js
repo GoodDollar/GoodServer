@@ -4,6 +4,7 @@ import makeServer from '../../server-test'
 import { getToken, getCreds } from '../../__util__/'
 import type { UserRecord } from '../../../imports/types'
 
+jest.setTimeout(10000)
 describe('storageAPI', () => {
   let server
   beforeAll(done => {
@@ -17,26 +18,26 @@ describe('storageAPI', () => {
     })
   })
 
-  test('/user/add creds', async done => {
+  test('/user/add creds', async () => {
     const token = await getToken(server)
     const user: UserRecord = {
       identifier: '0x7ac080f6607405705aed79675789701a48c76f55',
       email: 'useraddtest@gooddollar.org' // required for mautic create contact
     }
-    request(server)
+    let res = await request(server)
       .post('/user/add')
       .set('Authorization', `Bearer ${token}`)
       .send({ user })
-      .expect(200, { ok: 1 }, done)
+    expect(res).toMatchObject({ status: 200, body: { ok: 1 } })
   })
 
-  test('/user/add false creds', async done => {
+  test('/user/add false creds', async () => {
     const token = await getToken(server)
     const user: UserRecord = { identifier: '0x7ac080f6607405705aed79675789701a48c76f56' }
-    request(server)
+    let res = await request(server)
       .post('/user/add')
       .set('Authorization', `Bearer ${token}`)
       .send({ user })
-      .expect(400, done)
+    expect(res).toMatchObject({ status: 400 })
   })
 })

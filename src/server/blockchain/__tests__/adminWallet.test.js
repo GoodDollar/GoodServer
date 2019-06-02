@@ -1,7 +1,9 @@
 import AdminWallet from '../AdminWallet'
 
-jest.setTimeout(20000)
-
+jest.setTimeout(30000)
+beforeAll(async () => {
+  await AdminWallet.ready
+})
 test('adminWallet constructor works', async () => {
   expect(AdminWallet.address).not.toBeNull()
 })
