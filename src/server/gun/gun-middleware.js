@@ -128,7 +128,7 @@ class GunDB implements StorageAPI {
       log.info('Updating user', { identifier, user })
       try {
         promises.push(
-          this.usersCol.get(identifier).put(user, r => log.debug('by user result:', { r }, user.fullName))
+          this.usersCol.get(identifier).put(user)
           //.then()
         )
 
@@ -138,7 +138,7 @@ class GunDB implements StorageAPI {
             this.usersCol
               .get('byemail')
               .get(email)
-              .put(identifier, r => log.debug('by email result:', r, user.fullName))
+              .put(identifier)
             //.then()
           )
         }
@@ -149,7 +149,7 @@ class GunDB implements StorageAPI {
             this.usersCol
               .get('bymobile')
               .get(mobile)
-              .put(identifier, r => log.debug('by mobile result:', r, user.fullName))
+              .put(identifier)
             //.then()
           )
         }
@@ -158,8 +158,8 @@ class GunDB implements StorageAPI {
       }
 
       return Promise.all(promises)
-        .then(r => true)
         .catch(e => logger.error('Update user failed:', { e, user }))
+        .then(r => true)
     }
 
     return Promise.reject(new Error('Duplicate user information (phone/email)'))
