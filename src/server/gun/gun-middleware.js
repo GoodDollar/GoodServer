@@ -126,31 +126,35 @@ class GunDB implements StorageAPI {
     //for non production we can allowDuplicateUserData
     if (!isDup || conf.allowDuplicateUserData) {
       log.info('Updating user', { identifier, user })
-      promises.push(
-        this.usersCol
-          .get(identifier)
-          .put(user)
-          .then()
-      )
-
-      if (user.email) {
-        const { email } = user
+      try {
         promises.push(
-          this.usersCol
-            .get('byemail')
-            .put({ [email]: identifier })
-            .then()
+          this.usersCol.get(identifier).put(user, r => log.debug('by user result:', { r }, user.fullName))
+          //.then()
         )
-      }
 
-      if (user.mobile) {
-        const { mobile } = user
-        promises.push(
-          this.usersCol
-            .get('bymobile')
-            .put({ [mobile]: identifier })
-            .then()
-        )
+        if (user.email) {
+          const { email } = user
+          promises.push(
+            this.usersCol
+              .get('byemail')
+              .get(email)
+              .put(identifier, r => log.debug('by email result:', r, user.fullName))
+            //.then()
+          )
+        }
+
+        if (user.mobile) {
+          const { mobile } = user
+          promises.push(
+            this.usersCol
+              .get('bymobile')
+              .get(mobile)
+              .put(identifier, r => log.debug('by mobile result:', r, user.fullName))
+            //.then()
+          )
+        }
+      } catch (ex) {
+        logger.error('Update user failed [gun actions]:', { message: ex.message, user })
       }
 
       return Promise.all(promises)
