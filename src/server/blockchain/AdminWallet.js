@@ -158,7 +158,7 @@ export class Wallet {
     const tx: TransactionReceipt = await this.sendTransaction(
       this.identityContract.methods.whiteListUser(address, did)
     ).catch(e => {
-      log.error('Error whitelistUser', e.message)
+      log.error('Error whitelistUser', { e }, e.message)
       throw e
     })
     log.info('Whitelisted user', { address, did, tx })
@@ -169,7 +169,7 @@ export class Wallet {
     const tx: TransactionReceipt = await this.sendTransaction(
       this.identityContract.methods.blackListUser(address)
     ).catch(e => {
-      log.error('Error blackListUser', e.message)
+      log.error('Error blackListUser', { e }, e.message)
       throw e
     })
 
@@ -181,7 +181,7 @@ export class Wallet {
       .isWhitelisted(address)
       .call()
       .catch(e => {
-        log.error('Error isVerified', e.message)
+        log.error('Error isVerified', { e }, e.message)
         throw e
       })
     return tx
@@ -204,14 +204,16 @@ export class Wallet {
           let res = this.sendNative({
             from: this.address,
             to: address,
-            value: toTop
+            value: toTop,
+            gas: 100000,
+            gasPrice: web3Utils.toWei('1', 'gwei')
           })
           return res
         }
         throw new Error("User doesn't need topping")
       } else throw new Error(`User not verified: ${address} ${isVerified}`)
     } catch (e) {
-      log.error('Error topWallet', e.message)
+      log.error('Error topWallet', { e }, e.message)
       throw e
     }
   }
@@ -245,7 +247,7 @@ export class Wallet {
     { gas, gasPrice }: GasValues = { gas: undefined, gasPrice: undefined }
   ) {
     const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
-    gas = gas || (await tx.estimateGas().catch(this.handleError))
+    gas = gas || (await tx.estimateGas())
     gasPrice = gasPrice || this.gasPrice
 
     let release = await this.mutex.lock()
@@ -267,7 +269,7 @@ export class Wallet {
           onError && onError(e)
           rej(e)
         })
-    }).catch(this.handleError)
+    })
   }
 
   /**
