@@ -23,8 +23,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log.child({ from: 'livenesstest' })
       const { body, files, user } = req
       const verificationData = {
-        facemapFile: _.find(files, { fieldname: 'facemap' }).path,
-        auditTrailImageFile: _.find(files, { fieldname: 'auditTrailImage' }).path,
+        facemapFile: _.get(_.find(files, { fieldname: 'facemap' }), 'path', ''),
+        auditTrailImageFile: _.get(_.find(files, { fieldname: 'auditTrailImage' }), 'path', ''),
         enrollmentIdentifier: body.enrollmentIdentifier,
         sessionId: body.sessionId
       }
@@ -36,7 +36,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           fsPromises.unlink(verificationData.facemapFile)
           fsPromises.unlink(verificationData.auditTrailImageFile)
         })
-      else result = { ok: 1, isVerified: true, enrollResult: { alreadyEnrolled: true } } // skip facereco only in dev mode
+      else {
+        result = { ok: 1, isVerified: true, enrollResult: { alreadyEnrolled: true } } // skip facereco only in dev mode
+      }
       if (result.isVerified) {
         log.debug('Whitelisting new user', user)
         await Promise.all([

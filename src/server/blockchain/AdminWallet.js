@@ -13,6 +13,8 @@ import logger from '../../imports/pino-logger'
 import { type TransactionReceipt } from './blockchain-types'
 import moment from 'moment'
 import get from 'lodash/get'
+import Mutex from 'await-mutex'
+
 import * as web3Utils from 'web3-utils'
 
 const log = logger.child({ from: 'AdminWallet' })
@@ -40,6 +42,7 @@ export class Wallet {
   constructor(mnemonic: string) {
     this.mnemonic = mnemonic
     this.ready = this.init()
+    this.mutex = new Mutex()
   }
 
   getWeb3TransportProvider(): HttpProvider | WebSocketProvider {
@@ -136,7 +139,14 @@ export class Wallet {
     try {
       let gdbalance = await this.tokenContract.methods.balanceOf(this.address).call()
       let nativebalance = await this.web3.eth.getBalance(this.address)
-      log.debug('AdminWallet Ready:', { account: this.address, gdbalance, nativebalance, network: this.networkId })
+      this.nonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
+      log.debug('AdminWallet Ready:', {
+        account: this.address,
+        gdbalance,
+        nativebalance,
+        network: this.networkId,
+        nonce: this.nonce
+      })
     } catch (e) {
       console.log(e)
       log.error('Error initializing wallet', { e }, e.message)
@@ -145,25 +155,23 @@ export class Wallet {
   }
 
   async whitelistUser(address: string, did: string): Promise<TransactionReceipt> {
-    const tx: TransactionReceipt = await this.identityContract.methods
-      .whiteListUser(address, did)
-      .send({ chainId: this.networkId })
-      .catch(e => {
-        log.error('Error whitelistUser', e)
-        throw e
-      })
+    const tx: TransactionReceipt = await this.sendTransaction(
+      this.identityContract.methods.whiteListUser(address, did)
+    ).catch(e => {
+      log.error('Error whitelistUser', e.message)
+      throw e
+    })
     log.info('Whitelisted user', { address, did, tx })
     return tx
   }
 
   async blacklistUser(address: string): Promise<TransactionReceipt> {
-    const tx: TransactionReceipt = await this.identityContract.methods
-      .blackListUser(address)
-      .send({ chainId: this.networkId })
-      .catch(e => {
-        log.error('Error blackListUser', e)
-        throw e
-      })
+    const tx: TransactionReceipt = await this.sendTransaction(
+      this.identityContract.methods.blackListUser(address)
+    ).catch(e => {
+      log.error('Error blackListUser', e.message)
+      throw e
+    })
 
     return tx
   }
@@ -192,19 +200,18 @@ export class Wallet {
         let userBalance = await this.web3.eth.getBalance(address)
         let toTop = parseInt(web3Utils.toWei('1000000', 'gwei')) - userBalance
         log.debug('TopWallet:', { userBalance, toTop })
-        if (force || toTop / 1000000 >= 0.75)
-          return this.web3.eth.sendTransaction({
+        if (force || toTop / 1000000 >= 0.75) {
+          let res = this.sendNative({
             from: this.address,
             to: address,
-            chainId: this.networkId,
-            value: toTop,
-            gas: 100000,
-            gasPrice: web3Utils.toWei('1', 'gwei')
+            value: toTop
           })
+          return res
+        }
         throw new Error("User doesn't need topping")
       } else throw new Error(`User not verified: ${address} ${isVerified}`)
     } catch (e) {
-      log.error('Error topWallet', e)
+      log.error('Error topWallet', e.message)
       throw e
     }
   }
@@ -217,6 +224,95 @@ export class Wallet {
         log.error('Error getBalance', e)
         throw e
       })
+  }
+
+  /**
+   * Helper function to handle a tx Send call
+   * @param tx
+   * @param {object} promiEvents
+   * @param {function} promiEvents.onTransactionHash
+   * @param {function} promiEvents.onReceipt
+   * @param {function} promiEvents.onConfirmation
+   * @param {function} promiEvents.onError
+   * @param {object} gasValues
+   * @param {number} gasValues.gas
+   * @param {number} gasValues.gasPrice
+   * @returns {Promise<Promise|Q.Promise<any>|Promise<*>|Promise<*>|Promise<*>|*>}
+   */
+  async sendTransaction(
+    tx: any,
+    txCallbacks: PromiEvents = {},
+    { gas, gasPrice }: GasValues = { gas: undefined, gasPrice: undefined }
+  ) {
+    const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
+    gas = gas || (await tx.estimateGas().catch(this.handleError))
+    gasPrice = gasPrice || this.gasPrice
+
+    let release = await this.mutex.lock()
+
+    return new Promise((res, rej) => {
+      tx.send({ gas, gasPrice, chainId: this.networkId, nonce: this.nonce })
+        .on('transactionHash', h => {
+          this.nonce = this.nonce + 1
+          release()
+          onTransactionHash && onTransactionHash(h)
+        })
+        .on('receipt', r => {
+          onReceipt && onReceipt(r)
+          res(r)
+        })
+        .on('confirmation', c => onConfirmation && onConfirmation(c))
+        .on('error', e => {
+          release()
+          onError && onError(e)
+          rej(e)
+        })
+    }).catch(this.handleError)
+  }
+
+  /**
+   * Helper function to handle a tx Send call
+   * @param tx
+   * @param {object} promiEvents
+   * @param {function} promiEvents.onTransactionHash
+   * @param {function} promiEvents.onReceipt
+   * @param {function} promiEvents.onConfirmation
+   * @param {function} promiEvents.onError
+   * @param {object} gasValues
+   * @param {number} gasValues.gas
+   * @param {number} gasValues.gasPrice
+   * @returns {Promise<Promise|Q.Promise<any>|Promise<*>|Promise<*>|Promise<*>|*>}
+   */
+  async sendNative(
+    params: { from: string, to: string, value: string },
+    txCallbacks: PromiEvents = {},
+    { gas, gasPrice }: GasValues = { gas: undefined, gasPrice: undefined }
+  ) {
+    const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
+    gas = gas || 100000
+    gasPrice = gasPrice || this.gasPrice
+
+    let release = await this.mutex.lock()
+
+    return new Promise((res, rej) => {
+      this.web3.eth
+        .sendTransaction({ gas, gasPrice, chainId: this.networkId, nonce: this.nonce, ...params })
+        .on('transactionHash', h => {
+          this.nonce = this.nonce + 1
+          release()
+          onTransactionHash && onTransactionHash(h)
+        })
+        .on('receipt', r => {
+          onReceipt && onReceipt(r)
+          res(r)
+        })
+        .on('confirmation', c => onConfirmation && onConfirmation(c))
+        .on('error', e => {
+          release()
+          onError && onError(e)
+          rej(e)
+        })
+    }).catch(this.handleError)
   }
 }
 

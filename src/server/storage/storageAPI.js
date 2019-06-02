@@ -33,7 +33,9 @@ const setup = (app: Router, storage: StorageAPI) => {
       logger.debug('User mautic record', { mauticRecord })
       //topwallet of user after registration
       let ok = await Promise.all([
-        AdminWallet.topWallet(userRecord.gdAddress, null, true).catch(e => logger.error('New user topping failed', e)),
+        AdminWallet.topWallet(userRecord.gdAddress, null, true).catch(e =>
+          logger.error('New user topping failed', e.message)
+        ),
         storage.updateUser({ ...user, mauticId: get(mauticRecord, 'contact.fields.all.id', -1) })
       ])
         .then(r => 1)
