@@ -229,7 +229,6 @@ conf.set('ethereum', networks[networkId])
 //parse S3 details for gundb in format of key,secret,bucket
 const privateS3 = process.env.GUN_PRIVATE_S3
 if (privateS3) {
-  console.log(privateS3)
   let s3Vals = privateS3.split(',')
   let s3Conf = { key: s3Vals[0], secret: s3Vals[1], bucket: s3Vals[2] }
   conf.set('gunPrivateS3', s3Conf)

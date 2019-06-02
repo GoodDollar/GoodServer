@@ -29,7 +29,6 @@ export const sendLinkByEmail = (to: string, link: string) => {
 }
 
 export const sendLinkBySMS = (to: string, link: string) => {
-  console.log({ conf })
   const { plivoAuthID, plivoAuthToken, plivoPhoneNumber } = conf
   const client = new plivo.Client(plivoAuthID, plivoAuthToken)
   const text = `You got GD. To withdraw open: ${link}`

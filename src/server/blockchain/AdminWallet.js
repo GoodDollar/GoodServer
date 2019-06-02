@@ -91,7 +91,6 @@ export class Wallet {
       let root = HDKey.fromMasterSeed(bip39.mnemonicToSeed(this.mnemonic))
       var path = "m/44'/60'/0'/0/0"
       let addrNode = root.derive(path)
-      console.log({ addrNode }, addrNode._privateKey.toString('hex'))
       let account = this.web3.eth.accounts.privateKeyToAccount('0x' + addrNode._privateKey.toString('hex'))
       this.web3.eth.accounts.wallet.add(account)
       this.web3.eth.defaultAccount = account.address
@@ -148,7 +147,6 @@ export class Wallet {
         nonce: this.nonce
       })
     } catch (e) {
-      console.log(e)
       log.error('Error initializing wallet', { e }, e.message)
     }
     return true
