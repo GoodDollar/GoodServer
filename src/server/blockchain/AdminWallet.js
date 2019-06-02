@@ -314,7 +314,7 @@ export class Wallet {
           onError && onError(e)
           rej(e)
         })
-    }).catch(this.handleError)
+    })
   }
 }
 
