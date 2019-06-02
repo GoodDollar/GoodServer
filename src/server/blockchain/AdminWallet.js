@@ -257,6 +257,7 @@ export class Wallet {
       tx.send({ gas, gasPrice, chainId: this.networkId, nonce: this.nonce })
         .on('transactionHash', h => {
           this.nonce = this.nonce + 1
+          log.debug('sendTransaction nonce increased:', this.nonce)
           release()
           onTransactionHash && onTransactionHash(h)
         })
@@ -302,6 +303,7 @@ export class Wallet {
         .sendTransaction({ gas, gasPrice, chainId: this.networkId, nonce: this.nonce, ...params })
         .on('transactionHash', h => {
           this.nonce = this.nonce + 1
+          log.debug('sendNative nonce increase:', this.nonce)
           release()
           onTransactionHash && onTransactionHash(h)
         })
