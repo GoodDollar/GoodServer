@@ -153,7 +153,9 @@ class GunDB implements StorageAPI {
         )
       }
 
-      return Promise.all(promises).then(r => true)
+      return Promise.all(promises)
+        .then(r => true)
+        .catch(e => logger.error('Update user failed:', { e, user }))
     }
 
     return Promise.reject(new Error('Duplicate user information (phone/email)'))

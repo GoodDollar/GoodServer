@@ -201,13 +201,14 @@ export class Wallet {
         let toTop = parseInt(web3Utils.toWei('1000000', 'gwei')) - userBalance
         log.debug('TopWallet:', { userBalance, toTop })
         if (force || toTop / 1000000 >= 0.75) {
-          let res = this.sendNative({
+          let res = await this.sendNative({
             from: this.address,
             to: address,
             value: toTop,
             gas: 100000,
             gasPrice: web3Utils.toWei('1', 'gwei')
           })
+          log.debug('Topwallet result:', res)
           return res
         }
         throw new Error("User doesn't need topping")
