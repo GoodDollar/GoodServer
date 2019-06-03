@@ -1,4 +1,5 @@
 // @flow
+import heapdump from 'heapdump'
 import { Router } from 'express'
 import type { $Request, $Response, NextFunction } from 'express'
 import bodyParser from 'body-parser'
