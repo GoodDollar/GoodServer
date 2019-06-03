@@ -1,3 +1,4 @@
+import 'newrelic'
 import path from 'path'
 import express from 'express'
 import conf from './server.config'
