@@ -2,6 +2,7 @@
 import express, { Router } from 'express'
 import Gun from 'gun'
 import SEA from 'gun/sea'
+import les from 'gun/lib/les'
 import { type StorageAPI, type UserRecord } from '../../imports/types'
 import conf from '../server.config'
 import logger from '../../imports/pino-logger'
