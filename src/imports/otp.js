@@ -6,11 +6,9 @@ import type { UserRecord } from './types'
 import logger from './pino-logger'
 
 const generateOTP = (digits: number = 0): number => {
-  const log = logger.child({ from: 'generateOTP' })
   const exponent = digits - 1
   const base = Number(`1e${exponent}`)
   const multiplier = Number(`9e${exponent}`)
-  log.debug(exponent, base, multiplier)
 
   return Math.floor(base + random() * multiplier)
 }
