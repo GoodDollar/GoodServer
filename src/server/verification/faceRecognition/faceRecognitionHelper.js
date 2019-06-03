@@ -79,9 +79,9 @@ const Helper = {
     try {
       let res = await ZoomClient.liveness(zoomData)
       log.debug('liveness result:', { res })
-      return res.meta.ok && res.data.livenessResult === 'passed' && res.data.livenessScore > 50
+      return res.meta.ok && res.data.livenessResult === 'passed'
     } catch (e) {
-      log.error('Error:', e, { zoomData })
+      log.error('isLive Error:', e, { zoomData })
       throw e
     }
   },
@@ -100,7 +100,7 @@ const Helper = {
         validMatches.length > 0 && _.find(validMatches, { enrollmentIdentifier: identifier }) === undefined // if found matches - verify it's not the user itself
       )
     } catch (e) {
-      log.error('Error:', e, Config.zoomMinMatchLevel, { zoomData })
+      log.error('isDuplicate Error:', e, Config.zoomMinMatchLevel, { zoomData })
       throw e
     }
   },
@@ -111,9 +111,9 @@ const Helper = {
       log.debug('enroll result:', { res })
       if (res.meta.ok) return res.data
       if (res.meta.subCode === 'nameCollision') return { alreadyEnrolled: true }
-      else return false
+      else return { ok: 0, retryFeedbackSuggestion: _.get(res, 'data.retryFeedbackSuggestion', undefined) }
     } catch (e) {
-      log.error('Error:', e, { zoomData })
+      log.error('enroll error:', e, { zoomData })
       throw e
     }
   },
