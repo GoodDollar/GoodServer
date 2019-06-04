@@ -104,7 +104,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       log.debug('mobile verified', { user, verificationData })
       if (!user.smsValidated) {
-        await verifier.verifyMobile({ identifier: user.loggedInAs }, verificationData)
+        let verified = await verifier.verifyMobile({ identifier: user.loggedInAs }, verificationData).catch(e => {
+          log.warn('mobile verification failed:', e)
+          res.json(400, { ok: 0, error: 'OTP FAILED', message: e.message })
+          return false
+        })
+        if (verified === false) return
         await storage.updateUser({ identifier: user.loggedInAs, smsValidated: true })
       }
       const signedMobile = await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: user.mobile })
