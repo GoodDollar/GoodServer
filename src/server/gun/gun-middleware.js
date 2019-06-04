@@ -6,7 +6,6 @@ import SEA from 'gun/sea'
 import { type StorageAPI, type UserRecord } from '../../imports/types'
 import conf from '../server.config'
 import logger from '../../imports/pino-logger'
-import { stringify } from 'querystring'
 
 const log = logger.child({ from: 'GunDB-Middleware' })
 
@@ -68,8 +67,10 @@ class GunDB implements StorageAPI {
    * @param {[S3Conf]} s3 optional S3 settings instead of local file storage
    */
   init(server: typeof express | null, password: string, name: string, s3?: S3Conf): Promise<boolean> {
-    const gc_delay = conf.gunGCInterval || 0.5 * 60 * 1000 /*1min*/
+    //gun lib/les.js settings
+    const gc_delay = conf.gunGCInterval || 1 * 60 * 1000 /*1min*/
     const memory = conf.gunGCMaxMemoryMB || 512
+    //log connected peers information
     Gun.on('opt', ctx => {
       console.log('Starting interval')
       setInterval(() => log.info({ GunServer: ctx.opt.name, Peers: Object.keys(ctx.opt.peers).length }), gc_delay)
