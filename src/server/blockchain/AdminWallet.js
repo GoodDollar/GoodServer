@@ -77,7 +77,7 @@ export class Wallet {
       defaultBlock: 'latest',
       defaultGas: 200000,
       defaultGasPrice: 1000000,
-      transactionBlockTimeout: 2,
+      transactionBlockTimeout: 5,
       transactionConfirmationBlocks: 1,
       transactionPollingTimeout: 30
     })
