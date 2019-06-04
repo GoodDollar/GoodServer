@@ -36,8 +36,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           fsPromises.unlink(verificationData.facemapFile)
           fsPromises.unlink(verificationData.auditTrailImageFile)
         })
-      else {
-        result = { ok: 1, isVerified: true, enrollResult: { alreadyEnrolled: true } } // skip facereco only in dev mode
+      else { // mocked result for verified user or development mode
+        result = {
+          ok: 1,
+          isVerified: true,
+          enrollResult: { alreadyEnrolled: true, enrollmentIdentifier: verificationData.enrollmentIdentifier }
+        } // skip facereco only in dev mode
       }
       if (result.isVerified) {
         log.debug('Whitelisting new user', user)
