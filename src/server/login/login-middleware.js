@@ -9,12 +9,13 @@ import logger from '../../imports/pino-logger'
 import { wrapAsync, lightLogs } from '../utils/helpers'
 import { GunDBPrivate } from '../gun/gun-middleware'
 import SEA from 'gun/sea'
+import Config from '../server.config.js'
 // const ExtractJwt = passportJWT.ExtractJwt
 // const JwtStrategy = passportJWT.Strategy
 
 const jwtOptions = {}
 jwtOptions.jwtFromRequest = ExtractJwt.fromAuthHeaderAsBearerToken()
-jwtOptions.secretOrKey = 'G00DAPP'
+jwtOptions.secretOrKey = Config.jwtPassword
 // jwtOptions.issuer = 'accounts.examplesoft.com';
 // jwtOptions.audience = 'yoursite.net';
 export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
@@ -96,7 +97,7 @@ const setup = (app: Router) => {
 
         const token = jwt.sign(
           { method: method, loggedInAs: recovered, gdAddress: gdPublicAddress, profilePublickey: profileReqPublickey },
-          'G00DAPP'
+          Config.jwtPassword
         )
 
         log.info('/auth/eth', `JWT token: ${token}`)
