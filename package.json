@@ -7,7 +7,7 @@
     "node": "10.15.*"
   },
   "scripts": {
-    "build": "webpack --mode production --config webpack.server.config.js",
+    "build": "webpack --mode production --config webpack.server.config.js --host 0.0.0.0",
     "test": "jest --forceExit --detectOpenHandles --maxWorkers=1",
     "test:staging": "jest --forceExit --detectOpenHandles",
     "coverage": "jest --forceExit --detectOpenHandles --coverage",
