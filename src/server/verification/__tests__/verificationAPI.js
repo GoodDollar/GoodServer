@@ -1,6 +1,7 @@
 import fs from 'fs'
 import request from 'supertest'
 import FormData from 'form-data'
+import delay from 'delay'
 import makeServer from '../../server-test'
 import { getToken } from '../../__util__/'
 import { GunDBPrivate } from '../../gun/gun-middleware'
@@ -48,6 +49,7 @@ describe('verificationAPI', () => {
       })
       .set('Authorization', `Bearer ${token}`)
       .expect(200, { ok: 1 })
+    await delay(500)
     const dbUser = await GunDBPrivate.getUser('0x7ac080f6607405705aed79675789701a48c76f55')
     expect(dbUser).toMatchObject({ mauticId: expect.any(Number), emailVerificationCode: expect.any(Number) })
   })

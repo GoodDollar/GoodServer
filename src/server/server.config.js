@@ -37,6 +37,12 @@ const conf = convict({
     default: '',
     env: 'GUNDB_PASS'
   },
+  jwtPassword: {
+    doc: 'The password to sign the JWT token with',
+    format: '*',
+    default: undefined,
+    env: 'JWT_PASS'
+  },
   mnemonic: {
     doc: 'Wallet mnemonic',
     format: '*',
@@ -59,7 +65,7 @@ const conf = convict({
     network_id: 42,
     httpWeb3Provider: 'https://kovan.infura.io/v3/',
     websocketWeb3Provider: 'wss://kovan.infura.io/ws',
-    web3Transport: 'WebSocket'
+    web3Transport: 'HttpProvider'
   },
   network: {
     doc: 'The blockchain network to connect to',
@@ -229,7 +235,6 @@ conf.set('ethereum', networks[networkId])
 //parse S3 details for gundb in format of key,secret,bucket
 const privateS3 = process.env.GUN_PRIVATE_S3
 if (privateS3) {
-  console.log(privateS3)
   let s3Vals = privateS3.split(',')
   let s3Conf = { key: s3Vals[0], secret: s3Vals[1], bucket: s3Vals[2] }
   conf.set('gunPrivateS3', s3Conf)

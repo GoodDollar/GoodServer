@@ -44,7 +44,7 @@ class Verifications implements VerificationAPI {
     return {
       ok: 1,
       isVerified,
-      enrollResult: { ...enrollResult, enrollmentIdentifier: enrollResult.enrollmentIdentifier }
+      enrollResult: { ...enrollResult, enrollmentIdentifier: verificationData.enrollmentIdentifier }
     }
   }
 

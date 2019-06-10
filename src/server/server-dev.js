@@ -1,16 +1,22 @@
 /* eslint-disable import/no-extraneous-dependencies */
-import path from 'path'
+import 'newrelic'
 import webpack from 'webpack'
-import webpackDevMiddleware from 'webpack-dev-middleware'
 import webpackHotMiddleware from 'webpack-hot-middleware'
 import config from '../../webpack.dev.config'
 import conf from './server.config'
 import { GunDBPublic } from './gun/gun-middleware'
-import AdminWallet from './blockchain/AdminWallet'
 import app from './app'
 
-const compiler = webpack(config)
+process.on('uncaughtException', (err, origin) => {
+  console.log(`Caught exception: ${err}\n` + `Exception origin: ${origin}`)
+  process.exit(-1)
+})
 
+process.on('unhandledRejection', (reason, promise) => {
+  console.log('Unhandled Rejection at:', promise, 'reason:', reason)
+  // Application specific logging, throwing an error, or other logic here
+})
+const compiler = webpack(config)
 // app.use(webpackDevMiddleware(compiler, {
 //   publicPath: config.output.publicPath
 // }))

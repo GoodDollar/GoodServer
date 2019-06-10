@@ -38,8 +38,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log.child({ from: 'livenesstest' })
       const { body, files, user } = req
       const verificationData = {
-        facemapFile: _.find(files, { fieldname: 'facemap' }).path,
-        auditTrailImageFile: _.find(files, { fieldname: 'auditTrailImage' }).path,
+        facemapFile: _.get(_.find(files, { fieldname: 'facemap' }), 'path', ''),
+        auditTrailImageFile: _.get(_.find(files, { fieldname: 'auditTrailImage' }), 'path', ''),
         enrollmentIdentifier: body.enrollmentIdentifier,
         sessionId: body.sessionId
       }
@@ -51,7 +51,14 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           fsPromises.unlink(verificationData.facemapFile)
           fsPromises.unlink(verificationData.auditTrailImageFile)
         })
-      else result = { ok: 1, isVerified: true, enrollResult: { alreadyEnrolled: true } } // skip facereco only in dev mode
+      else {
+        // mocked result for verified user or development mode
+        result = {
+          ok: 1,
+          isVerified: true,
+          enrollResult: { alreadyEnrolled: true, enrollmentIdentifier: verificationData.enrollmentIdentifier }
+        } // skip facereco only in dev mode
+      }
       if (result.isVerified) {
         log.debug('Whitelisting new user', user)
         await Promise.all([
@@ -150,7 +157,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       log.debug('mobile verified', { user, verificationData })
       if (!user.smsValidated) {
-        await verifier.verifyMobile({ identifier: user.loggedInAs }, verificationData)
+        let verified = await verifier.verifyMobile({ identifier: user.loggedInAs }, verificationData).catch(e => {
+          log.warn('mobile verification failed:', e)
+          res.json(400, { ok: 0, error: 'OTP FAILED', message: e.message })
+          return false
+        })
+        if (verified === false) return
         await storage.updateUser({ identifier: user.loggedInAs, smsValidated: true })
       }
       const signedMobile = await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: user.mobile })
