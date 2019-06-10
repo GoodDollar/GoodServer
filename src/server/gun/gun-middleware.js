@@ -81,6 +81,7 @@ class GunDB implements StorageAPI {
     } else {
       this.gun = Gun({ web: server, file: name, gc_delay, memory, name })
       log.info('Starting gun with radisk:', { gc_delay, memory })
+      if (conf.env === 'production') log.error('Started production without S3')
     }
     this.user = this.gun.user()
     this.serverName = name
