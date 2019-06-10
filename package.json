@@ -43,6 +43,8 @@
   "dependencies": {
     "@babel/polyfill": "^7.4.4",
     "@gooddollar/goodcontracts": "0.0.15",
+    "apidoc": "^0.17.7",
+    "apidoc-markdown": "^0.2.1",
     "@sendgrid/mail": "^6.4.0",
     "await-mutex": "^1.0.2",
     "aws-sdk": "^2.466.0",
