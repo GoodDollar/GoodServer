@@ -14,15 +14,6 @@ import logger, { rollbar } from '../imports/pino-logger'
 import VerificationAPI from './verification/verification'
 import fs from 'fs'
 
-const log = logger.child({ from: 'server-middlewares' })
-process.on('uncaughtException', (err, origin) => {
-  log.error(`Caught exception: ${err}\n` + `Exception origin: ${origin}`)
-})
-
-process.on('unhandledRejection', (reason, promise) => {
-  log.error('Unhandled Rejection at:', promise, 'reason:', reason)
-  // Application specific logging, throwing an error, or other logic here
-})
 export default (app: Router, env: any) => {
   // parse application/x-www-form-urlencoded
   // for easier testing with Postman or plain HTML forms
@@ -46,7 +37,7 @@ export default (app: Router, env: any) => {
   addVerificationMiddlewares(app, VerificationAPI, GunDBPrivate)
   addSendMiddlewares(app)
 
-  app.use(rollbar.errorHandler())
+  if (rollbar) app.use(rollbar.errorHandler())
 
   app.use((error, req, res, next: NextFunction) => {
     const log = req.log.child({ from: 'errorHandler' })
