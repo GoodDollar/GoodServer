@@ -47,12 +47,10 @@ const Helper = {
   prepareLivenessData(data: VerificationData) {
     let form = new FormData()
     const facemap = fs.createReadStream(data.facemapFile)
-    const auditTrailImage = fs.createReadStream(data.auditTrailImageFile)
     const sessionId = data.sessionId
     // log.debug('body', { body })
     form.append('sessionId', sessionId)
     form.append('facemap', facemap)
-    form.append('auditTrailImage', auditTrailImage)
     return form
   },
 
@@ -61,16 +59,19 @@ const Helper = {
     const facemap = fs.createReadStream(data.facemapFile)
     form.append('facemap', facemap)
     form.append('sessionId', data.sessionId)
-    // form.append('minMatchLevel', 2)
+    form.append('minMatchLevel', Config.zoomMinMatchLevel)
     return form
   },
 
   prepareEnrollmentData(data: VerificationData) {
     let form = new FormData()
     const facemap = fs.createReadStream(data.facemapFile)
+    const auditTrailImage = fs.createReadStream(data.auditTrailImageFile)
+
     form.append('facemap', facemap)
     form.append('sessionId', data.sessionId)
     form.append('enrollmentIdentifier', data.enrollmentIdentifier)
+    form.append('auditTrailImage', auditTrailImage)
 
     return form
   },
@@ -89,12 +90,12 @@ const Helper = {
   async isDuplicatesExist(zoomData: FormData, identifier: string) {
     try {
       let res: SearchResult = await ZoomClient.search(zoomData)
+      //we dont need the audittrailimages
+      let results = _.map(res.data.results, o => _.omit(o, 'auditTrailImage'))
+      res.data.results = results
       log.debug('search result:', { res })
-      const validMatches = _.filter(
-        res.data.results,
-        r =>
-          r.zoomSearchMatchLevel === 'ZOOM_SEARCH_MATCH_LEVEL_0' ||
-          r.zoomSearchMatchLevel === 'ZOOM_SEARCH_MATCH_LEVEL_1'
+      const validMatches = _.filter(res.data.results, r =>
+        r.zoomSearchMatchLevel.match(/ZOOM_SEARCH_MATCH_LEVEL_[0-2]/)
       )
       return (
         validMatches.length > 0 && _.find(validMatches, { enrollmentIdentifier: identifier }) === undefined // if found matches - verify it's not the user itself
