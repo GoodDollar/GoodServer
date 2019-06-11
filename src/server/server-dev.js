@@ -44,4 +44,7 @@ const server = app.listen(PORT, () => {
   console.log(`App listening to ${PORT}....`)
   console.log('Press Ctrl+C to quit.')
 })
-GunDBPublic.init(server, conf.gundbPassword, 'publicdb', conf.gunPublicS3)
+GunDBPublic.init(server, conf.gundbPassword, 'publicdb', conf.gunPublicS3).catch(e => {
+  console.error(e)
+  process.exit(-1)
+})
