@@ -5,6 +5,7 @@ import type { $Request, $Response, NextFunction } from 'express'
 import bodyParser from 'body-parser'
 import cors from 'cors'
 import pino from 'express-pino-logger'
+import expressip from 'express-ip'
 import addLoginMiddlewares from './login/login-middleware'
 import { setup as addGunMiddlewares, GunDBPrivate } from './gun/gun-middleware'
 import addStorageMiddlewares from './storage/storageAPI'
@@ -30,6 +31,7 @@ export default (app: Router, env: any) => {
   app.use(cors())
 
   app.use(pino({ logger }))
+  app.use(expressip().getIpInfoMiddleware)
 
   addLoginMiddlewares(app)
   addGunMiddlewares(app)

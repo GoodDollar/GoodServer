@@ -126,6 +126,21 @@ const setup = (app: Router) => {
     })
   )
 
+  /**
+   * @api {get} /verify/location GET user location
+   * @apiName Location
+   * @apiGroup User
+   *
+   * @apiSuccess {String} countryCode
+   * @ignore
+   */
+  app.get(
+    '/user/location',
+    lightLogs((req, res, next) => {
+      res.json({ countryCode: req.ipInfo.countryCode || 'IL' })
+    })
+  )
+
   app.get(
     '/auth/test',
     passport.authenticate('jwt', { session: false }),
