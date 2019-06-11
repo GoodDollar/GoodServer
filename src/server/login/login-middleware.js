@@ -64,6 +64,21 @@ const setup = (app: Router) => {
     })
   )
 
+  /**
+   * @api {post} /auth/eth Request user token
+   * @apiName eth
+   * @apiGroup Login
+   *
+   * @apiParam {String} signature
+   * @apiParam {String} gdSignature
+   * @apiParam {String} profilePublickey
+   * @apiParam {String} profileSignature
+   * @apiParam {String} nonce
+   * @apiParam {String} method
+   *
+   * @apiSuccess {String} token
+   * @ignore
+   */
   app.post(
     '/auth/eth',
     lightLogs(async (req, res) => {

@@ -1,6 +1,13 @@
 // @flow
+
+/**
+ * @type
+ */
 export type Callback<T> = (error: Error, result: T) => void
 
+/**
+ * @type
+ */
 export interface EventLog {
   event: string;
   address: string;
@@ -13,6 +20,9 @@ export interface EventLog {
   raw?: { data: string, topics: string[] };
 }
 
+/**
+ * @type
+ */
 export interface TransactionReceipt {
   transactionHash: string;
   transactionIndex: number;
@@ -30,6 +40,9 @@ export interface TransactionReceipt {
   status: boolean;
 }
 
+/**
+ * @type
+ */
 export interface EncodedTransaction {
   raw: string;
   tx: {
@@ -46,11 +59,18 @@ export interface EncodedTransaction {
   };
 }
 
+/**
+ * @type
+ */
 export interface Logs {
   fromBlock?: number;
   address?: string;
   topics?: Array<string | string[]>;
 }
+
+/**
+ * @type
+ */
 export interface Log {
   address: string;
   data: string;
@@ -61,6 +81,10 @@ export interface Log {
   blockHash: string;
   blockNumber: number;
 }
+
+/**
+ * @type
+ */
 export interface Subscribe<T> {
   subscription: {
     id: string,
@@ -72,6 +96,9 @@ export interface Subscribe<T> {
   on(type: 'error', handler: (data: Error) => void): void;
 }
 
+/**
+ * @type
+ */
 export interface Shh {
   generateSymKeyFromPassword(password: string): Promise<string>;
   generateSymKeyFromPassword(password: string, callback: Callback<string>): void;
