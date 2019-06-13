@@ -70,7 +70,7 @@ const setup = (app: Router, storage: StorageAPI) => {
   )
 
   app.post(
-    '/user/get',
+    '/admin/user/get',
     wrapAsync(async (req, res, next) => {
       const { body } = req
       if (body.password !== conf.gundbPassword) return res.json({ ok: 0 })
@@ -84,7 +84,7 @@ const setup = (app: Router, storage: StorageAPI) => {
   )
 
   app.post(
-    '/user/del',
+    '/admin/user/delete',
     wrapAsync(async (req, res, next) => {
       const { body } = req
       let res = {}
