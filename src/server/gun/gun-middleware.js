@@ -118,6 +118,14 @@ class GunDB implements StorageAPI {
     return this.usersCol.get(identifier).then(this.recordSanitize)
   }
 
+  async getUserByEmail(email: string): Promise<UserRecord> {
+    let identifier = await this.usersCol.get('byemail').get(email)
+    return identifier && this.getUser(identifier)
+  }
+  async getUserByMobile(mobile: string): Promise<UserRecord> {
+    let identifier = await this.usersCol.get('bymobile').get(mobile)
+    return identifier && this.getUser(identifier)
+  }
   getUserField(identifier: string, field: string): Promise<any> {
     return this.usersCol
       .get(identifier)
