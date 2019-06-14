@@ -104,11 +104,11 @@ const setup = (app: Router, storage: StorageAPI) => {
     '/admin/user/delete',
     wrapAsync(async (req, res, next) => {
       const { body } = req
-      let res = {}
+      let result = {}
       if (body.password !== conf.gundbPassword) return res.json({ ok: 0 })
-      if (body.identifier) res = await storage.deleteUser(body)
+      if (body.identifier) result = await storage.deleteUser(body)
 
-      res.json({ ok: 1, res })
+      res.json({ ok: 1, result })
     })
   )
 }
