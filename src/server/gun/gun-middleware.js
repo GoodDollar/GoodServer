@@ -9,15 +9,25 @@ import logger from '../../imports/pino-logger'
 
 const log = logger.child({ from: 'GunDB-Middleware' })
 
+/**
+ * @type
+ */
 type ACK = {
   ok: string,
   err: string
 }
 
+/**
+ * @type
+ */
 export type Entity = {
   '@did': string,
   publicKey: string
 }
+
+/**
+ * @type
+ */
 export type Claim = {
   issuer: Entity,
   subject: Entity,
@@ -26,6 +36,10 @@ export type Claim = {
   issuedAt: Date,
   expiresAt?: Date
 }
+
+/**
+ * @type
+ */
 export type S3Conf = {
   key: string,
   secret: string,
@@ -43,12 +57,19 @@ Gun.chain.putAck = function(data, cb) {
   return promise.then(cb)
 }
 
+/**
+ * Make app use Gun.serve and put Gun as global so we can do  `node --inspect` - debug only
+ */
 const setup = (app: Router) => {
   app.use(Gun.serve)
   global.Gun = Gun // / make global to `node --inspect` - debug only
   log.info('Done setup GunDB middleware.')
 }
 
+/**
+ * Gun wrapper that implements `StorageAPI`
+ * Can be instantiated with a private or a public gundb and should be used to access gun accross the API server
+ */
 class GunDB implements StorageAPI {
   gun: Gun
 
@@ -64,7 +85,7 @@ class GunDB implements StorageAPI {
    * @param {typeof express} server The instance to connect gundb with
    * @param {string} password SEA password for GoodDollar user
    * @param {string} name folder to store gundb
-   * @param {[S3Conf]} s3 optional S3 settings instead of local file storage
+   * @param {S3Conf} [s3] optional S3 settings instead of local file storage
    */
   init(server: typeof express | null, password: string, name: string, s3?: S3Conf): Promise<boolean> {
     //gun lib/les.js settings
@@ -77,10 +98,11 @@ class GunDB implements StorageAPI {
     })
     if (s3 && s3.secret) {
       log.info('Starting gun with S3:', { gc_delay, memory })
-      this.gun = Gun({ web: server, s3, gc_delay, memory, name })
+      this.gun = Gun({ web: server, file: name, s3, gc_delay, memory, name })
     } else {
       this.gun = Gun({ web: server, file: name, gc_delay, memory, name })
       log.info('Starting gun with radisk:', { gc_delay, memory })
+      if (conf.env === 'production') log.error('Started production without S3')
     }
     this.user = this.gun.user()
     this.serverName = name
