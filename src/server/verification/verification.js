@@ -22,25 +22,22 @@ class Verifications implements VerificationAPI {
    * @returns {Promise<any | Error>}
    */
   async verifyUser(user: UserRecord, verificationData: any): Promise<any | Error> {
-    //this.log.debug('Verifying user:', { user, verificationData })
-    const livenessData = Helper.prepareLivenessData(verificationData)
+    this.log.debug('Verifying user:', { user })
     const searchData = Helper.prepareSearchData(verificationData)
     // log.info('searchData', { searchData })
-    const [isDuplicate, livenessPassed] = await Promise.all([
-      Helper.isDuplicatesExist(searchData, verificationData.enrollmentIdentifier),
-      Helper.isLivenessPassed(livenessData)
-    ])
-    this.log.debug('liveness result:', { user: user.identifier, livenessPassed })
-    if (!livenessPassed) return { ok: 1, livenessPassed }
+    const isDuplicate = await Helper.isDuplicatesExist(searchData, verificationData.enrollmentIdentifier)
+
     this.log.debug('isDuplicate result:', { user: user.identifier, isDuplicate })
     if (isDuplicate) return { ok: 1, isDuplicate }
     const enrollData = Helper.prepareEnrollmentData(verificationData)
     // log.info('enrollData', { enrollData })
     const enrollResult: EnrollResult = await Helper.enroll(enrollData)
+
+    //this.log.debug('liveness result:', { user: user.identifier, livenessPassed }) // This is left to support future granularity for user better UX experience. Consider using authenticationFacemapIsLowQuality property https://dev.zoomlogin.com/zoomsdk/#/webservice-guide
+    //if (!livenessPassed) return { ok: 1, livenessPassed }
+
     const isVerified =
-      livenessPassed &&
-      !isDuplicate &&
-      (enrollResult.alreadyEnrolled || (enrollResult.enrollmentIdentifier ? true : false)) // enrollResult.enrollmentIdentifier should return true if there is value in it (and not the value itself) into isVerified.
+      !isDuplicate && (enrollResult.alreadyEnrolled || (enrollResult.enrollmentIdentifier ? true : false)) // enrollResult.enrollmentIdentifier should return true if there is value in it (and not the value itself) into isVerified.
     return {
       ok: 1,
       isVerified,

@@ -35,8 +35,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     upload.any(),
     wrapAsync(async (req, res, next) => {
-      const log = req.log.child({ from: 'livenesstest' })
+      const log = req.log.child({ from: 'facerecognition' })
       const { body, files, user } = req
+      log.debug({ user })
       const verificationData = {
         facemapFile: _.get(_.find(files, { fieldname: 'facemap' }), 'path', ''),
         auditTrailImageFile: _.get(_.find(files, { fieldname: 'auditTrailImage' }), 'path', ''),
@@ -44,7 +45,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         sessionId: body.sessionId
       }
       let result = { ok: 1 }
-      if (!user.isVerified && !['development'].includes(conf.env))
+      if (!user.isVerified && !conf.skipFaceRecognition)
         result = await verifier.verifyUser(user, verificationData).finally(() => {
           //cleanup
           log.info('cleaning up facerecognition files')

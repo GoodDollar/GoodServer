@@ -35,10 +35,10 @@ export type SearchResult = {
       enrollmentIdentifier: string,
       auditTrailImage: string,
       zoomSearchMatchLevel:
-        | 'ZOOM_SEARCH_MATCH_LEVEL_0'
-        | 'ZOOM_SEARCH_MATCH_LEVEL_1'
-        | 'ZOOM_SEARCH_MATCH_LEVEL_2'
-        | 'ZOOM_SEARCH_NO_MATCH_DETERMINED'
+      | 'ZOOM_SEARCH_MATCH_LEVEL_0'
+      | 'ZOOM_SEARCH_MATCH_LEVEL_1'
+      | 'ZOOM_SEARCH_MATCH_LEVEL_2'
+      | 'ZOOM_SEARCH_NO_MATCH_DETERMINED'
     }>
   }
 }
@@ -78,7 +78,8 @@ const Helper = {
   async isLivenessPassed(zoomData: FormData) {
     try {
       let res = await ZoomClient.liveness(zoomData)
-      log.debug('liveness result:', { res })
+      let results = res.data
+      results && log.debug('liveness result:', { results })
       return res.meta.ok && res.data.livenessResult === 'passed' && res.data.livenessScore > 50
     } catch (e) {
       log.error('Error:', e, { zoomData })
@@ -87,11 +88,17 @@ const Helper = {
   },
 
   async isDuplicatesExist(zoomData: FormData, identifier: string) {
+    if (Config.allowFaceRecognitionDuplicates) {
+      log.info('NOTE: Skipping duplicates test')
+      return false
+    }
+
     try {
       let res: SearchResult = await ZoomClient.search(zoomData)
-      log.debug('search result:', { res })
+      let results = res.data.results
+      //results && log.debug('search result:', results)
       const validMatches = _.filter(
-        res.data.results,
+        results,
         r =>
           r.zoomSearchMatchLevel === 'ZOOM_SEARCH_MATCH_LEVEL_0' ||
           r.zoomSearchMatchLevel === 'ZOOM_SEARCH_MATCH_LEVEL_1'
@@ -108,8 +115,9 @@ const Helper = {
   async enroll(zoomData: FormData): EnrollResult {
     try {
       let res = await ZoomClient.enrollment(zoomData)
-      log.debug('enroll result:', { res })
-      if (res.meta.ok) return res.data
+      let results = res.data
+      results && log.debug('enroll result:', { results })
+      if (res.meta.ok) return results
       if (res.meta.subCode === 'nameCollision') return { alreadyEnrolled: true }
       else return false
     } catch (e) {
@@ -121,7 +129,8 @@ const Helper = {
   async delete(enrollmentIdentifier: string): Promise<boolean> {
     try {
       let res = await ZoomClient.delete(enrollmentIdentifier)
-      log.debug('delete result:', { res })
+      let results = res.meta.ok
+      results && log.debug('delete result:', { results })
       if (res.meta.ok) return true
       else return false
     } catch (e) {
