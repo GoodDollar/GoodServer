@@ -1,3 +1,7 @@
+/**
+ * @jest-environment node
+ */
+
 import request from 'supertest'
 import makeServer from '../../server-test'
 import { getToken } from '../../__util__/'
@@ -51,7 +55,7 @@ describe('sendAPÏ', () => {
     const user = await GunDBPrivate.usersCol
       .get('0x7ac080f6607405705aed79675789701a48c76f55')
       .putAck({ fullName: 'full name', mauticId: 3461 })
-    const res = await request(server)
+    await request(server)
       .post('/send/recoveryinstructions')
       .send({
         mnemonic: 'unit test send recovery instructions'

@@ -4,6 +4,10 @@ import { GunDBPrivate } from '../gun/gun-middleware'
 import Helper, { type EnrollResult, type VerificationData } from './faceRecognition/faceRecognitionHelper'
 import logger from '../../imports/pino-logger'
 
+/**
+ * Verifications class implements `VerificationAPI`
+ * Used to verify user, email and mobile phone
+ */
 class Verifications implements VerificationAPI {
   log: any
 
@@ -11,7 +15,13 @@ class Verifications implements VerificationAPI {
     this.log = logger.child({ from: 'Verifications' })
   }
 
-  async verifyUser(user: UserRecord, verificationData: any): Promise<boolean> {
+  /**
+   * Verifies user
+   * @param {UserRecord} user to verify
+   * @param {any} verificationData
+   * @returns {Promise<any | Error>}
+   */
+  async verifyUser(user: UserRecord, verificationData: any): Promise<any | Error> {
     //this.log.debug('Verifying user:', { user, verificationData })
     const livenessData = Helper.prepareLivenessData(verificationData)
     const searchData = Helper.prepareSearchData(verificationData)
@@ -34,10 +44,17 @@ class Verifications implements VerificationAPI {
     return {
       ok: 1,
       isVerified,
-      enrollResult: { ...enrollResult, enrollmentIdentifier: enrollResult.enrollmentIdentifier }
+      enrollResult: { ...enrollResult, enrollmentIdentifier: verificationData.enrollmentIdentifier }
     }
   }
 
+  /**
+   * Verifies mobile phone
+   * @param {UserRecord} user to verify
+   * @param {object} verificationData
+   * @param {string} verificationData.otp
+   * @returns {Promise<boolean | Error>}
+   */
   async verifyMobile(user: UserRecord, verificationData: { otp: string }): Promise<boolean | Error> {
     const otp = await GunDBPrivate.getUserField(user.identifier, 'otp')
 

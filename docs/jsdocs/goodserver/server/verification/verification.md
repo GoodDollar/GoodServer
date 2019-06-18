@@ -2,34 +2,77 @@
 
 ### Table of Contents
 
--   [verifyEmail][1]
-    -   [Parameters][2]
+-   [Verifications][1]
+    -   [verifyUser][2]
+        -   [Parameters][3]
+    -   [verifyMobile][4]
+        -   [Parameters][5]
+    -   [verifyEmail][6]
+        -   [Parameters][7]
 
-## verifyEmail
+## Verifications
+
+Verifications class implements `VerificationAPI`
+Used to verify user, email and mobile phone
+
+### verifyUser
+
+Verifies user
+
+#### Parameters
+
+-   `user` **UserRecord** to verify
+-   `verificationData` **any** 
+
+Returns **[Promise][8]&lt;(any | [Error][9])>** 
+
+### verifyMobile
+
+Verifies mobile phone
+
+#### Parameters
+
+-   `user` **UserRecord** to verify
+-   `verificationData` **[object][10]** 
+    -   `verificationData.otp` **[string][11]** 
+
+Returns **[Promise][8]&lt;([boolean][12] \| [Error][9])>** 
+
+### verifyEmail
 
 Verifies a user's email using its profile and the verification code
 
-### Parameters
+#### Parameters
 
 -   `user` **UserRecord** User profile
--   `verificationData` **[object][3]** object sent by the client with required verification data
-    -   `verificationData.code` **[string][4]** code used to verify that the email is valid
+-   `verificationData` **[object][10]** object sent by the client with required verification data
+    -   `verificationData.code` **[string][11]** code used to verify that the email is valid
 
-Returns **[Promise][5]&lt;([boolean][6] \| [Error][7])>** 
+Returns **[Promise][8]&lt;([boolean][12] \| [Error][9])>** 
 
-[1]: #verifyemail
+[1]: #verifications
 
-[2]: #parameters
+[2]: #verifyuser
 
-[3]: https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object
+[3]: #parameters
 
-[4]: https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String
+[4]: #verifymobile
 
-[5]: https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise
+[5]: #parameters-1
 
-[6]: https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean
+[6]: #verifyemail
 
-[7]: https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error
+[7]: #parameters-2
+
+[8]: https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise
+
+[9]: https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error
+
+[10]: https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object
+
+[11]: https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String
+
+[12]: https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean
 ## Source
 [https://github.com/GoodDollar/GoodServer/src/server/verification/verification.js](https://github.com/GoodDollar/GoodServer/src/server/verification/verification.js)
 

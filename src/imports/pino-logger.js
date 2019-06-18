@@ -1,11 +1,13 @@
 import pino from 'pino'
 import Rollbar from 'rollbar'
 import conf from '../server/server.config'
-const rollbar = new Rollbar({
-  accessToken: '9d72fbbedc434c03995f186846f0a126',
-  captureUncaught: true,
-  captureUnhandledRejections: true
-})
+let rollbar
+if (conf.env != 'development')
+  rollbar = new Rollbar({
+    accessToken: '9d72fbbedc434c03995f186846f0a126',
+    captureUncaught: true,
+    captureUnhandledRejections: true
+  })
 const LOG_LEVEL = conf.logLevel || 'debug'
 console.log('Starting logger', { LOG_LEVEL, env: conf.env })
 const logger = pino({
@@ -29,5 +31,5 @@ const printMemory = () => {
   }
   logger.debug('Memory usage:', toPrint)
 }
-setInterval(printMemory, 30000)
+if (conf.env !== 'test') setInterval(printMemory, 30000)
 export { rollbar, logger as default }
