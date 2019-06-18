@@ -77,7 +77,7 @@ class GunDB implements StorageAPI {
     })
     if (s3 && s3.secret) {
       log.info('Starting gun with S3:', { gc_delay, memory })
-      this.gun = Gun({ web: server, file: name, s3, gc_delay, memory, name })
+      this.gun = Gun({ web: server, file: name, s3, gc_delay, memory, name, chunk: 1024 * 512, batch: 1024 })
     } else {
       this.gun = Gun({ web: server, file: name, gc_delay, memory, name })
       log.info('Starting gun with radisk:', { gc_delay, memory })
