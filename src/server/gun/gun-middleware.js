@@ -98,7 +98,7 @@ class GunDB implements StorageAPI {
     })
     if (s3 && s3.secret) {
       log.info('Starting gun with S3:', { gc_delay, memory })
-      this.gun = Gun({ web: server, file: name, s3, gc_delay, memory, name })
+      this.gun = Gun({ web: server, file: name, s3, gc_delay, memory, name, chunk: 1024 * 32, batch: 10 })
     } else {
       this.gun = Gun({ web: server, file: name, gc_delay, memory, name })
       log.info('Starting gun with radisk:', { gc_delay, memory })
@@ -140,6 +140,14 @@ class GunDB implements StorageAPI {
     return this.usersCol.get(identifier).then(this.recordSanitize)
   }
 
+  async getUserByEmail(email: string): Promise<UserRecord> {
+    let identifier = await this.usersCol.get('byemail').get(email)
+    return identifier && this.getUser(identifier)
+  }
+  async getUserByMobile(mobile: string): Promise<UserRecord> {
+    let identifier = await this.usersCol.get('bymobile').get(mobile)
+    return identifier && this.getUser(identifier)
+  }
   getUserField(identifier: string, field: string): Promise<any> {
     return this.usersCol
       .get(identifier)

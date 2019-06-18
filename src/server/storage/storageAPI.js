@@ -85,5 +85,31 @@ const setup = (app: Router, storage: StorageAPI) => {
       res.json({ ok: 1, results })
     })
   )
+
+  app.post(
+    '/admin/user/get',
+    wrapAsync(async (req, res, next) => {
+      const { body } = req
+      if (body.password !== conf.gundbPassword) return res.json({ ok: 0 })
+      let user = {}
+      if (body.email) user = await storage.getUserByEmail(body.email)
+      if (body.mobile) user = await storage.getUserByMobile(body.mobile)
+      if (body.identifier) user = await storage.getUser(body.identifier)
+
+      res.json({ ok: 1, user })
+    })
+  )
+
+  app.post(
+    '/admin/user/delete',
+    wrapAsync(async (req, res, next) => {
+      const { body } = req
+      let result = {}
+      if (body.password !== conf.gundbPassword) return res.json({ ok: 0 })
+      if (body.identifier) result = await storage.deleteUser(body)
+
+      res.json({ ok: 1, result })
+    })
+  )
 }
 export default setup
