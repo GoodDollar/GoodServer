@@ -79,7 +79,7 @@ const Helper = {
     try {
       let res = await ZoomClient.liveness(zoomData)
       let results = res.data
-      results && log.debug('liveness result:', { results })
+      log.debug('liveness result:', { results })
       return res.meta.ok && res.data.livenessResult === 'passed' && res.data.livenessScore > 50
     } catch (e) {
       log.error('Error:', e, { zoomData })
@@ -96,7 +96,7 @@ const Helper = {
     try {
       let res: SearchResult = await ZoomClient.search(zoomData)
       let results = res.data.results
-      //results && log.debug('search result:', results)
+      //log.debug('search result:', results)
       const validMatches = _.filter(
         results,
         r =>
@@ -116,7 +116,7 @@ const Helper = {
     try {
       let res = await ZoomClient.enrollment(zoomData)
       let results = res.data
-      results && log.debug('enroll result:', { results })
+      log.debug('enroll result:', { results })
       if (res.meta.ok) return results
       if (res.meta.subCode === 'nameCollision') return { alreadyEnrolled: true }
       else return false
@@ -130,7 +130,7 @@ const Helper = {
     try {
       let res = await ZoomClient.delete(enrollmentIdentifier)
       let results = res.meta.ok
-      results && log.debug('delete result:', { results })
+      log.debug('delete result:', { results })
       if (res.meta.ok) return true
       else return false
     } catch (e) {
