@@ -89,7 +89,7 @@ const Helper = {
 
   async isDuplicatesExist(zoomData: FormData, identifier: string) {
     if (Config.allowFaceRecognitionDuplicates) {
-      log.info('NOTE: Skipping duplicates test')
+      log.info('isDuplicatesExist:','NOTE: Skipping duplicates test')
       return false
     }
 
