@@ -1,4 +1,5 @@
 // @flow
+import heapdump from 'heapdump'
 import { Router } from 'express'
 import type { $Request, $Response, NextFunction } from 'express'
 import bodyParser from 'body-parser'
@@ -9,8 +10,9 @@ import { setup as addGunMiddlewares, GunDBPrivate } from './gun/gun-middleware'
 import addStorageMiddlewares from './storage/storageAPI'
 import addVerificationMiddlewares from './verification/verificationAPI'
 import addSendMiddlewares from './send/sendAPI'
-import logger from '../imports/pino-logger'
+import logger, { rollbar } from '../imports/pino-logger'
 import VerificationAPI from './verification/verification'
+import fs from 'fs'
 
 export default (app: Router, env: any) => {
   // parse application/x-www-form-urlencoded
@@ -34,6 +36,8 @@ export default (app: Router, env: any) => {
   addStorageMiddlewares(app, GunDBPrivate)
   addVerificationMiddlewares(app, VerificationAPI, GunDBPrivate)
   addSendMiddlewares(app)
+
+  if (rollbar) app.use(rollbar.errorHandler())
 
   app.use((error, req, res, next: NextFunction) => {
     const log = req.log.child({ from: 'errorHandler' })

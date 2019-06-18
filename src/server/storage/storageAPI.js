@@ -2,16 +2,26 @@
 import { Router } from 'express'
 import passport from 'passport'
 import get from 'lodash/get'
-import { type StorageAPI } from '../../imports/types'
+import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync } from '../utils/helpers'
 import { defaults } from 'lodash'
-import { UserRecord } from '../../imports/types'
+
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import AdminWallet from '../blockchain/AdminWallet'
 import Helper from '../verification/faceRecognition/faceRecognitionHelper'
 
 const setup = (app: Router, storage: StorageAPI) => {
+  /**
+   * @api {post} /user/add Add user account
+   * @apiName Add
+   * @apiGroup Storage
+   *
+   * @apiParam {Object} user
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
   app.post(
     '/user/add',
     passport.authenticate('jwt', { session: false }),
@@ -34,15 +44,27 @@ const setup = (app: Router, storage: StorageAPI) => {
       //topwallet of user after registration
       storage.updateUser({ ...user, mauticId: get(mauticRecord, 'contact.fields.all.id', -1) })
       let ok = await AdminWallet.topWallet(userRecord.gdAddress, null, true)
-        .then(r => 1)
+        .then(r => ({ ok: 1 }))
         .catch(e => {
-          logger.error(e)
-          throw e
+          logger.error('New user topping failed', e.message)
+          return { ok: 0, error: 'New user topping failed' }
         })
-      res.json({ ok })
+      log.debug('added new user:', { user, ok })
+      res.json(ok)
     })
   )
 
+  /**
+   * @api {post} /user/delete Delete user account
+   * @apiName Delete
+   * @apiGroup Storage
+   *
+   * @apiParam {String} zoomId
+   *
+   * @apiSuccess {Number} ok
+   * @apiSuccess {[Object]} results
+   * @ignore
+   */
   app.post(
     '/user/delete',
     passport.authenticate('jwt', { session: false }),

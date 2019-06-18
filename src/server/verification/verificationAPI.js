@@ -15,6 +15,21 @@ import fs from 'fs'
 const fsPromises = fs.promises
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   var upload = multer({ dest: 'uploads/' }) // to handle blob parameters of faceReco
+
+  /**
+   * @api {post} /verify/facerecognition Verify users face
+   * @apiName Face Recognition
+   * @apiGroup Verification
+   *
+   * @apiParam {String} enrollmentIdentifier
+   * @apiParam {String} sessionId
+   *
+   * @apiSuccess {Number} ok
+   * @apiSuccess {Boolean} isVerified
+   * @apiSuccess {Object} enrollResult: { alreadyEnrolled: true }
+   * @apiSuccess {Boolean} enrollResult.alreadyEnrolled
+   * @ignore
+   */
   app.post(
     '/verify/facerecognition',
     passport.authenticate('jwt', { session: false }),
@@ -22,10 +37,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'livenesstest' })
       const { body, files, user } = req
-      log.debug({ files, body })
       const verificationData = {
-        facemapFile: _.find(files, { fieldname: 'facemap' }).path,
-        auditTrailImageFile: _.find(files, { fieldname: 'auditTrailImage' }).path,
+        facemapFile: _.get(_.find(files, { fieldname: 'facemap' }), 'path', ''),
+        auditTrailImageFile: _.get(_.find(files, { fieldname: 'auditTrailImage' }), 'path', ''),
         enrollmentIdentifier: body.enrollmentIdentifier,
         sessionId: body.sessionId
       }
@@ -37,7 +51,14 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           fsPromises.unlink(verificationData.facemapFile)
           fsPromises.unlink(verificationData.auditTrailImageFile)
         })
-      else result = { ok: 1, isVerified: true, enrollResult: { alreadyEnrolled: true } } // skip facereco only in dev mode
+      else {
+        // mocked result for verified user or development mode
+        result = {
+          ok: 1,
+          isVerified: true,
+          enrollResult: { alreadyEnrolled: true, enrollmentIdentifier: verificationData.enrollmentIdentifier }
+        } // skip facereco only in dev mode
+      }
       if (result.isVerified) {
         log.debug('Whitelisting new user', user)
         await Promise.all([
@@ -50,6 +71,17 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       res.json(result)
     })
   )
+
+  /**
+   * @api {post} /verify/user Whitelist user
+   * @apiName User
+   * @apiGroup Verification
+   *
+   * @apiParam {Object} verificationData
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
   app.post(
     '/verify/user',
     passport.authenticate('jwt', { session: false }),
@@ -71,6 +103,17 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
     })
   )
+
+  /**
+   * @api {post} /verify/sendotp Sends OTP
+   * @apiName Send OTP
+   * @apiGroup Verification
+   *
+   * @apiParam {UserRecord} user
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
   app.post(
     '/verify/sendotp',
     passport.authenticate('jwt', { session: false }),
@@ -79,7 +122,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { user, body } = req
 
       let userRec: UserRecord = _.defaults(body.user, user, { identifier: user.loggedInAs })
-      if (await storage.isDupUserData(userRec)) {
+      if (conf.allowDuplicateUserData === false && (await storage.isDupUserData(userRec))) {
         return res.json({ ok: 0, error: 'Mobile already exists, please use a different one.' })
       }
       if (!userRec.smsValidated) {
@@ -92,6 +135,17 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     })
   )
 
+  /**
+   * @api {post} /verify/mobile Verify mobile data code
+   * @apiName OTP Code
+   * @apiGroup Verification
+   *
+   * @apiParam {Object} verificationData
+   *
+   * @apiSuccess {Number} ok
+   * @apiSuccess {Claim} attestation
+   * @ignore
+   */
   app.post(
     '/verify/mobile',
     passport.authenticate('jwt', { session: false }),
@@ -103,7 +157,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       log.debug('mobile verified', { user, verificationData })
       if (!user.smsValidated) {
-        await verifier.verifyMobile({ identifier: user.loggedInAs }, verificationData)
+        let verified = await verifier.verifyMobile({ identifier: user.loggedInAs }, verificationData).catch(e => {
+          log.warn('mobile verification failed:', e)
+          res.json(400, { ok: 0, error: 'OTP FAILED', message: e.message })
+          return false
+        })
+        if (verified === false) return
         storage.updateUser({ identifier: user.loggedInAs, smsValidated: true })
       }
       const signedMobile = await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: user.mobile })
@@ -111,6 +170,16 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     })
   )
 
+  /**
+   * @api {post} /verify/topwallet Tops Users Wallet if needed
+   * @apiName Top Wallet
+   * @apiGroup Verification
+   *
+   * @apiParam {LoggedUser} user
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
   app.post(
     '/verify/topwallet',
     passport.authenticate('jwt', { session: false }),
@@ -134,8 +203,16 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       res.json(txRes)
     })
   )
+
   /**
-   * Send verification email endpoint
+   * @api {post} /verify/email Send verification email endpoint
+   * @apiName Send Email
+   * @apiGroup Verification
+   *
+   * @apiParam {UserRecord} user
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
    */
   app.post(
     '/verify/sendemail',
@@ -147,7 +224,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       // log.info({ user, body })
       //merge user details for use by mautic
       let userRec: UserRecord = _.defaults(body.user, user)
-      if (await storage.isDupUserData(userRec)) {
+      if (conf.allowDuplicateUserData === false && (await storage.isDupUserData(userRec))) {
         return res.json({ ok: 0, error: 'Email already exists, please use a different one' })
       }
       if (!user.mauticId) {
@@ -175,6 +252,18 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     })
   )
 
+  /**
+   * @api {post} /verify/email Verify email code
+   * @apiName Email
+   * @apiGroup Verification
+   *
+   * @apiParam {Object} verificationData
+   * @apiParam {String} verificationData.code
+   *
+   * @apiSuccess {Number} ok
+   * @apiSuccess {Claim} attestation
+   * @ignore
+   */
   app.post(
     '/verify/email',
     passport.authenticate('jwt', { session: false }),

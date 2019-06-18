@@ -6,6 +6,17 @@ import { sendLinkByEmail, sendLinkBySMS } from './send.sendgrid'
 import { Mautic } from '../mautic/mauticAPI'
 
 const setup = (app: Router) => {
+  /**
+   * @api {post} /send/linkemail Send link email
+   * @apiName Link Email
+   * @apiGroup Send
+   *
+   * @apiParam {String} to
+   * @apiParam {String} sendLink
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
   app.post(
     '/send/linkemail',
     passport.authenticate('jwt', { session: false }),
@@ -21,6 +32,17 @@ const setup = (app: Router) => {
     })
   )
 
+  /**
+   * @api {post} /send/linksms Send link sms
+   * @apiName Link SMS
+   * @apiGroup Send
+   *
+   * @apiParam {String} to
+   * @apiParam {String} sendLink
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
   app.post(
     '/send/linksms',
     passport.authenticate('jwt', { session: false }),
@@ -36,6 +58,16 @@ const setup = (app: Router) => {
     })
   )
 
+  /**
+   * @api {post} /send/recoveryinstructions Send recovery instructions email
+   * @apiName Recovery Instructions
+   * @apiGroup Send
+   *
+   * @apiParam {String} mnemonic
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
   app.post(
     '/send/recoveryinstructions',
     passport.authenticate('jwt', { session: false }),
