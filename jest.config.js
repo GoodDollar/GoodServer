@@ -150,7 +150,6 @@ module.exports = {
   testPathIgnorePatterns: [
     '/node_modules/',
     '/__tests__/__util__',
-    '/src/imports',
     '/webpack.dev.config.js',
     '/src/server/server-test.js',
     '/src/server/server.config.js'
