@@ -10,7 +10,7 @@
     "build": "webpack --mode production --config webpack.server.config.js",
     "test": "jest --forceExit --detectOpenHandles --maxWorkers=1",
     "test:staging": "jest --forceExit --detectOpenHandles",
-    "coverage": "jest --forceExit --detectOpenHandles --coverage",
+    "coverage": "jest --forceExit --detectOpenHandles --coverage --maxWorkers=1",
     "coveralls": "cat ./coverage/lcov.info | node node_modules/.bin/coveralls",
     "start": "node dist/server.js",
     "start:dev": "webpack  --mode development --config webpack.server.config.js --watch --verbose",

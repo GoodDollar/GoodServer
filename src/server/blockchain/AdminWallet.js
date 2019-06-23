@@ -245,13 +245,16 @@ export class Wallet {
     }
   }
 
+  async getAddressBalance(address: string): Promise<number> {
+    return this.web3.eth.getBalance(address)
+  }
+
   /**
    * get balance for admin wallet
    * @returns {Promise<number>}
    */
   async getBalance(): Promise<number> {
-    return this.web3.eth
-      .getBalance(this.address)
+    return this.getAddressBalance(this.address)
       .then(b => web3Utils.fromWei(b))
       .catch(e => {
         log.error('Error getBalance', e)
