@@ -214,7 +214,8 @@ class GunDB implements StorageAPI {
         .get('byemail')
         .get(user.email)
         .then()
-      if (res && res !== user.identifier) return true
+      const profile = await this.usersCol.get(res)
+      if (res && res !== user.identifier && profile) return true
     }
 
     if (user.mobile) {
@@ -222,7 +223,8 @@ class GunDB implements StorageAPI {
         .get('bymobile')
         .get(user.mobile)
         .then()
-      if (res && res !== user.identifier) return true
+      const profile = await this.usersCol.get(res)
+      if (res && res !== user.identifier && profile) return true
     }
 
     return false
