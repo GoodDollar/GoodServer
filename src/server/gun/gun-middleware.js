@@ -92,7 +92,7 @@ class GunDB implements StorageAPI {
             log.error('Failed authenticating gundb user:', name, authres.error)
             return reject(authres.error)
           }
-          log.info('Authenticated GunDB user:', { name })
+          log.info('Authenticated GunDB user:', { name, pubkey: this.user.is })
           this.usersCol = this.user.get('users')
           resolve(true)
         })
