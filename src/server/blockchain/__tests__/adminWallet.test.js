@@ -23,3 +23,14 @@ test('adminWallet can blacklist user', async () => {
 test('adminWallet throws exception', async () => {
   await expect(AdminWallet.blacklistUser('0x888')).rejects.toThrow()
 })
+
+test('adminWallet get balance correctly', async () => {
+  const balance = await AdminWallet.getBalance()
+  expect(balance > 0).toBeTruthy()
+})
+
+test('adminWallet top wallet throws an error when user is not whitelisted/verified', async () => {
+  const unverifiedAddress = '0xb999A6a8096dE62638f99157E5E05894303F5EA8'
+  await AdminWallet.blacklistUser(unverifiedAddress)
+  await expect(AdminWallet.topWallet(unverifiedAddress, null)).rejects.toThrow()
+})

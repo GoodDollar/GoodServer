@@ -9,12 +9,13 @@ import logger from '../../imports/pino-logger'
 import { wrapAsync, lightLogs } from '../utils/helpers'
 import { GunDBPrivate } from '../gun/gun-middleware'
 import SEA from 'gun/sea'
+import Config from '../server.config.js'
 // const ExtractJwt = passportJWT.ExtractJwt
 // const JwtStrategy = passportJWT.Strategy
 
 const jwtOptions = {}
 jwtOptions.jwtFromRequest = ExtractJwt.fromAuthHeaderAsBearerToken()
-jwtOptions.secretOrKey = 'G00DAPP'
+jwtOptions.secretOrKey = Config.jwtPassword
 // jwtOptions.issuer = 'accounts.examplesoft.com';
 // jwtOptions.audience = 'yoursite.net';
 export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
@@ -63,6 +64,21 @@ const setup = (app: Router) => {
     })
   )
 
+  /**
+   * @api {post} /auth/eth Request user token
+   * @apiName eth
+   * @apiGroup Login
+   *
+   * @apiParam {String} signature
+   * @apiParam {String} gdSignature
+   * @apiParam {String} profilePublickey
+   * @apiParam {String} profileSignature
+   * @apiParam {String} nonce
+   * @apiParam {String} method
+   *
+   * @apiSuccess {String} token
+   * @ignore
+   */
   app.post(
     '/auth/eth',
     lightLogs(async (req, res) => {
@@ -96,7 +112,7 @@ const setup = (app: Router) => {
 
         const token = jwt.sign(
           { method: method, loggedInAs: recovered, gdAddress: gdPublicAddress, profilePublickey: profileReqPublickey },
-          'G00DAPP'
+          Config.jwtPassword
         )
 
         log.info('/auth/eth', `JWT token: ${token}`)

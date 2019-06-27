@@ -12,6 +12,16 @@ import AdminWallet from '../blockchain/AdminWallet'
 import Helper from '../verification/faceRecognition/faceRecognitionHelper'
 
 const setup = (app: Router, storage: StorageAPI) => {
+  /**
+   * @api {post} /user/add Add user account
+   * @apiName Add
+   * @apiGroup Storage
+   *
+   * @apiParam {Object} user
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
   app.post(
     '/user/add',
     passport.authenticate('jwt', { session: false }),
@@ -32,22 +42,29 @@ const setup = (app: Router, storage: StorageAPI) => {
       const mauticRecord = process.env.NODE_ENV === 'development' ? {} : await Mautic.createContact(user).catch(e => {})
       logger.debug('User mautic record', { mauticRecord })
       //topwallet of user after registration
-      let ok = await Promise.all([
-        AdminWallet.topWallet(userRecord.gdAddress, null, true).catch(e =>
-          logger.error('New user topping failed', e.message)
-        ),
-        storage.updateUser({ ...user, mauticId: get(mauticRecord, 'contact.fields.all.id', -1) })
-      ])
-        .then(r => 1)
+      storage.updateUser({ ...user, mauticId: get(mauticRecord, 'contact.fields.all.id', -1) })
+      let ok = await AdminWallet.topWallet(userRecord.gdAddress, null, true)
+        .then(r => ({ ok: 1 }))
         .catch(e => {
-          logger.error(e)
-          throw e
+          logger.error('New user topping failed', e.message)
+          return { ok: 0, error: 'New user topping failed' }
         })
-      log.debug('added new user:', { user })
-      res.json({ ok })
+      log.debug('added new user:', { user, ok })
+      res.json(ok)
     })
   )
 
+  /**
+   * @api {post} /user/delete Delete user account
+   * @apiName Delete
+   * @apiGroup Storage
+   *
+   * @apiParam {String} zoomId
+   *
+   * @apiSuccess {Number} ok
+   * @apiSuccess {[Object]} results
+   * @ignore
+   */
   app.post(
     '/user/delete',
     passport.authenticate('jwt', { session: false }),
@@ -66,6 +83,32 @@ const setup = (app: Router, storage: StorageAPI) => {
           .catch(e => ({ mautic: 'failed' }))
       ])
       res.json({ ok: 1, results })
+    })
+  )
+
+  app.post(
+    '/admin/user/get',
+    wrapAsync(async (req, res, next) => {
+      const { body } = req
+      if (body.password !== conf.gundbPassword) return res.json({ ok: 0 })
+      let user = {}
+      if (body.email) user = await storage.getUserByEmail(body.email)
+      if (body.mobile) user = await storage.getUserByMobile(body.mobile)
+      if (body.identifier) user = await storage.getUser(body.identifier)
+
+      res.json({ ok: 1, user })
+    })
+  )
+
+  app.post(
+    '/admin/user/delete',
+    wrapAsync(async (req, res, next) => {
+      const { body } = req
+      let result = {}
+      if (body.password !== conf.gundbPassword) return res.json({ ok: 0 })
+      if (body.identifier) result = await storage.deleteUser(body)
+
+      res.json({ ok: 1, result })
     })
   )
 }

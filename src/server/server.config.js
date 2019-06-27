@@ -37,6 +37,12 @@ const conf = convict({
     default: '',
     env: 'GUNDB_PASS'
   },
+  jwtPassword: {
+    doc: 'The password to sign the JWT token with',
+    format: '*',
+    default: undefined,
+    env: 'JWT_PASS'
+  },
   mnemonic: {
     doc: 'Wallet mnemonic',
     format: '*',

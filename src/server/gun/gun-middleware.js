@@ -2,22 +2,32 @@
 import express, { Router } from 'express'
 import Gun from 'gun'
 import SEA from 'gun/sea'
+// import les from 'gun/lib/les'
 import { type StorageAPI, type UserRecord } from '../../imports/types'
 import conf from '../server.config'
 import logger from '../../imports/pino-logger'
-import { stringify } from 'querystring'
 
 const log = logger.child({ from: 'GunDB-Middleware' })
 
+/**
+ * @type
+ */
 type ACK = {
   ok: string,
   err: string
 }
 
+/**
+ * @type
+ */
 export type Entity = {
   '@did': string,
   publicKey: string
 }
+
+/**
+ * @type
+ */
 export type Claim = {
   issuer: Entity,
   subject: Entity,
@@ -26,6 +36,10 @@ export type Claim = {
   issuedAt: Date,
   expiresAt?: Date
 }
+
+/**
+ * @type
+ */
 export type S3Conf = {
   key: string,
   secret: string,
@@ -43,12 +57,19 @@ Gun.chain.putAck = function(data, cb) {
   return promise.then(cb)
 }
 
+/**
+ * Make app use Gun.serve and put Gun as global so we can do  `node --inspect` - debug only
+ */
 const setup = (app: Router) => {
   app.use(Gun.serve)
   global.Gun = Gun // / make global to `node --inspect` - debug only
   log.info('Done setup GunDB middleware.')
 }
 
+/**
+ * Gun wrapper that implements `StorageAPI`
+ * Can be instantiated with a private or a public gundb and should be used to access gun accross the API server
+ */
 class GunDB implements StorageAPI {
   gun: Gun
 
@@ -64,13 +85,25 @@ class GunDB implements StorageAPI {
    * @param {typeof express} server The instance to connect gundb with
    * @param {string} password SEA password for GoodDollar user
    * @param {string} name folder to store gundb
-   * @param {[S3Conf]} s3 optional S3 settings instead of local file storage
+   * @param {S3Conf} [s3] optional S3 settings instead of local file storage
    */
   init(server: typeof express | null, password: string, name: string, s3?: S3Conf): Promise<boolean> {
+    //gun lib/les.js settings
+    const gc_delay = conf.gunGCInterval || 1 * 60 * 1000 /*1min*/
+    const memory = conf.gunGCMaxMemoryMB || 512
+    //log connected peers information
+    Gun.on('opt', ctx => {
+      console.log('Starting interval')
+      setInterval(() => log.info({ GunServer: ctx.opt.name, Peers: Object.keys(ctx.opt.peers).length }), gc_delay)
+    })
     if (s3 && s3.secret) {
-      log.info('Starting gun with S3')
-      this.gun = Gun({ web: server, s3 })
-    } else this.gun = Gun({ web: server, file: name })
+      log.info('Starting gun with S3:', { gc_delay, memory })
+      this.gun = Gun({ web: server, file: name, s3, gc_delay, memory, name, chunk: 1024 * 32, batch: 10 })
+    } else {
+      this.gun = Gun({ web: server, file: name, gc_delay, memory, name })
+      log.info('Starting gun with radisk:', { gc_delay, memory })
+      if (conf.env === 'production') log.error('Started production without S3')
+    }
     this.user = this.gun.user()
     this.serverName = name
     this.ready = new Promise((resolve, reject) => {
@@ -107,6 +140,14 @@ class GunDB implements StorageAPI {
     return this.usersCol.get(identifier).then(this.recordSanitize)
   }
 
+  async getUserByEmail(email: string): Promise<UserRecord> {
+    let identifier = await this.usersCol.get('byemail').get(email)
+    return identifier && this.getUser(identifier)
+  }
+  async getUserByMobile(mobile: string): Promise<UserRecord> {
+    let identifier = await this.usersCol.get('bymobile').get(mobile)
+    return identifier && this.getUser(identifier)
+  }
   getUserField(identifier: string, field: string): Promise<any> {
     return this.usersCol
       .get(identifier)
@@ -160,6 +201,7 @@ class GunDB implements StorageAPI {
       return Promise.all(promises)
         .catch(e => logger.error('Update user failed:', { e, user }))
         .then(r => true)
+      // return true
     }
 
     return Promise.reject(new Error('Duplicate user information (phone/email)'))
@@ -172,7 +214,8 @@ class GunDB implements StorageAPI {
         .get('byemail')
         .get(user.email)
         .then()
-      if (res && res !== user.identifier) return true
+      const profile = res && (await this.usersCol.get(res))
+      if (res && res !== user.identifier && profile) return true
     }
 
     if (user.mobile) {
@@ -180,7 +223,8 @@ class GunDB implements StorageAPI {
         .get('bymobile')
         .get(user.mobile)
         .then()
-      if (res && res !== user.identifier) return true
+      const profile = res && (await this.usersCol.get(res))
+      if (res && res !== user.identifier && profile) return true
     }
 
     return false
