@@ -81,7 +81,7 @@ const setup = (app: Router) => {
    */
   app.post(
     '/auth/eth',
-    lightLogs(async (req, res) => {
+    wrapAsync(async (req, res) => {
       const log = req.log.child({ from: 'login-middleware' })
 
       log.debug('/auth/eth', 'authorizing')
@@ -129,7 +129,7 @@ const setup = (app: Router) => {
   app.get(
     '/auth/test',
     passport.authenticate('jwt', { session: false }),
-    lightLogs((req, res) => {
+    wrapAsync((req, res) => {
       const log = req.log.child({ from: 'login-middleware' })
 
       log.debug('/auth/test', req.user)
