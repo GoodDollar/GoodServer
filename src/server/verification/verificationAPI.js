@@ -38,11 +38,15 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log.child({ from: 'facerecognition' })
       const { body, files, user } = req
       log.debug({ user })
+      const sessionId = body.sessionId
+      GunDBPublic.gun.get(sessionId).put({}) // publish initialized data to subscribers
+      log.debug('written FR status to gun', GunDBPublic.gun.get(sessionId))
+
       const verificationData = {
         facemapFile: _.get(_.find(files, { fieldname: 'facemap' }), 'path', ''),
         auditTrailImageFile: _.get(_.find(files, { fieldname: 'auditTrailImage' }), 'path', ''),
         enrollmentIdentifier: body.enrollmentIdentifier,
-        sessionId: body.sessionId
+        sessionId: sessionId
       }
       let result = { ok: 0 }
       if (!user.isVerified && !conf.skipFaceRecognition)
