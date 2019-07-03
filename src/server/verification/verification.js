@@ -17,11 +17,11 @@ class Verifications implements VerificationAPI {
 
   /**
    * Verifies user
-   * @param {UserRecord} user to verify
-   * @param {any} verificationData
-   * @returns {Promise<any | Error>}
+   * @param {UserRecord} user user details of the user going through FR
+   * @param {*} verificationData data from zoomsdk
+   
    */
-  async verifyUser(user: UserRecord, verificationData: any): Promise<any | Error> {
+  async verifyUser(user: UserRecord, verificationData: any) {
     this.log.debug('Verifying user:', { user })
     const searchData = Helper.prepareSearchData(verificationData)
     // log.info('searchData', { searchData })
@@ -32,6 +32,9 @@ class Verifications implements VerificationAPI {
     const enrollData = Helper.prepareEnrollmentData(verificationData)
     // log.info('enrollData', { enrollData })
     const enrollResult: EnrollResult = await Helper.enroll(enrollData)
+    const livenessFailed = enrollResult && enrollResult.livenessResult === 'undetermined'
+    this.log.debug('liveness result:', { user: user.identifier, livenessFailed })
+    if (livenessFailed) return { ok: 1, livenessPassed: false }
 
     //this.log.debug('liveness result:', { user: user.identifier, livenessPassed }) // This is left to support future granularity for user better UX experience. Consider using authenticationFacemapIsLowQuality property https://dev.zoomlogin.com/zoomsdk/#/webservice-guide
     //if (!livenessPassed) return { ok: 1, livenessPassed }

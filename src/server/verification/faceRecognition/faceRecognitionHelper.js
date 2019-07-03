@@ -35,10 +35,10 @@ export type SearchResult = {
       enrollmentIdentifier: string,
       auditTrailImage: string,
       zoomSearchMatchLevel:
-      | 'ZOOM_SEARCH_MATCH_LEVEL_0'
-      | 'ZOOM_SEARCH_MATCH_LEVEL_1'
-      | 'ZOOM_SEARCH_MATCH_LEVEL_2'
-      | 'ZOOM_SEARCH_NO_MATCH_DETERMINED'
+        | 'ZOOM_SEARCH_MATCH_LEVEL_0'
+        | 'ZOOM_SEARCH_MATCH_LEVEL_1'
+        | 'ZOOM_SEARCH_MATCH_LEVEL_2'
+        | 'ZOOM_SEARCH_NO_MATCH_DETERMINED'
     }>
   }
 }
@@ -47,12 +47,10 @@ const Helper = {
   prepareLivenessData(data: VerificationData) {
     let form = new FormData()
     const facemap = fs.createReadStream(data.facemapFile)
-    const auditTrailImage = fs.createReadStream(data.auditTrailImageFile)
     const sessionId = data.sessionId
     // log.debug('body', { body })
     form.append('sessionId', sessionId)
     form.append('facemap', facemap)
-    form.append('auditTrailImage', auditTrailImage)
     return form
   },
 
@@ -62,16 +60,19 @@ const Helper = {
     form.append('facemap', facemap)
     form.append('sessionId', data.sessionId)
     // form.append('minMatchLevel', 2)
+    form.append('minMatchLevel', Config.zoomMinMatchLevel)
     return form
   },
 
   prepareEnrollmentData(data: VerificationData) {
     let form = new FormData()
     const facemap = fs.createReadStream(data.facemapFile)
+    const auditTrailImage = fs.createReadStream(data.auditTrailImageFile)
+
     form.append('facemap', facemap)
     form.append('sessionId', data.sessionId)
     form.append('enrollmentIdentifier', data.enrollmentIdentifier)
-
+    form.append('auditTrailImage', auditTrailImage)
     return form
   },
 
@@ -80,34 +81,33 @@ const Helper = {
       let res = await ZoomClient.liveness(zoomData)
       let results = res.data
       log.debug('liveness result:', { results })
-      return res.meta.ok && res.data.livenessResult === 'passed' && res.data.livenessScore > 50
+      return res.meta.ok && res.data.livenessResult === 'passed'
     } catch (e) {
-      log.error('Error:', e, { zoomData })
+      log.error('isLive Error:', e, { zoomData })
       throw e
     }
   },
 
   async isDuplicatesExist(zoomData: FormData, identifier: string) {
     if (Config.allowFaceRecognitionDuplicates) {
-      log.info('isDuplicatesExist:','NOTE: Skipping duplicates test')
+      log.info('isDuplicatesExist:', 'NOTE: Skipping duplicates test')
       return false
     }
 
     try {
       let res: SearchResult = await ZoomClient.search(zoomData)
-      let results = res.data.results
-      //log.debug('search result:', results)
-      const validMatches = _.filter(
-        results,
-        r =>
-          r.zoomSearchMatchLevel === 'ZOOM_SEARCH_MATCH_LEVEL_0' ||
-          r.zoomSearchMatchLevel === 'ZOOM_SEARCH_MATCH_LEVEL_1'
+      //we dont need the audittrailimages
+      let results = _.map(res.data.results, o => _.omit(o, 'auditTrailImage'))
+      res.data.results = results
+      log.debug('search result:', { res })
+      const validMatches = _.filter(res.data.results, r =>
+        r.zoomSearchMatchLevel.match(/ZOOM_SEARCH_MATCH_LEVEL_[0-2]/)
       )
       return (
         validMatches.length > 0 && _.find(validMatches, { enrollmentIdentifier: identifier }) === undefined // if found matches - verify it's not the user itself
       )
     } catch (e) {
-      log.error('Error:', e, Config.zoomMinMatchLevel, { zoomData })
+      log.error('isDuplicate Error:', e, Config.zoomMinMatchLevel, { zoomData })
       throw e
     }
   },
@@ -119,9 +119,9 @@ const Helper = {
       log.debug('enroll result:', { results })
       if (res.meta.ok) return results
       if (res.meta.subCode === 'nameCollision') return { alreadyEnrolled: true }
-      else return false
+      else return { ok: 0, retryFeedbackSuggestion: _.get(res, 'data.retryFeedbackSuggestion', undefined) }
     } catch (e) {
-      log.error('Error:', e, { zoomData })
+      log.error('enroll error:', e, { zoomData })
       throw e
     }
   },

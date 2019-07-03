@@ -44,14 +44,20 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         enrollmentIdentifier: body.enrollmentIdentifier,
         sessionId: body.sessionId
       }
-      let result = { ok: 1 }
+      let result = { ok: 0 }
       if (!user.isVerified && !conf.skipFaceRecognition)
-        result = await verifier.verifyUser(user, verificationData).finally(() => {
-          //cleanup
-          log.info('cleaning up facerecognition files')
-          fsPromises.unlink(verificationData.facemapFile)
-          fsPromises.unlink(verificationData.auditTrailImageFile)
-        })
+        result = await verifier
+          .verifyUser(user, verificationData)
+          .catch(e => {
+            log.error('Facerecognition error:', e)
+            return { ok: 0, err: e.message }
+          })
+          .finally(() => {
+            //cleanup
+            log.info('cleaning up facerecognition files')
+            fsPromises.unlink(verificationData.facemapFile)
+            fsPromises.unlink(verificationData.auditTrailImageFile)
+          })
       else {
         // mocked result for verified user or development mode
         result = {
@@ -60,6 +66,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           enrollResult: { alreadyEnrolled: true, enrollmentIdentifier: verificationData.enrollmentIdentifier }
         } // skip facereco only in dev mode
       }
+      log.debug('Facerecogintion result:', result)
       if (result.isVerified) {
         log.debug('Whitelisting new user', user)
         await Promise.all([
