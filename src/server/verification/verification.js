@@ -6,7 +6,7 @@ import logger from '../../imports/pino-logger'
 
 /**
  * Verifications class implements `VerificationAPI`
- * Used to verify user, email and mobile phone
+ * Used to verify user, email and mobile phone.
  */
 class Verifications implements VerificationAPI {
   log: any
