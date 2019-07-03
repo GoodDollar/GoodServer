@@ -1,6 +1,6 @@
 // @flow
 import type { UserRecord, VerificationAPI } from '../../imports/types'
-import { GunDBPrivate, GunDBPublic  } from '../gun/gun-middleware'
+import { GunDBPrivate, GunDBPublic } from '../gun/gun-middleware'
 import Helper, { type EnrollResult, type VerificationData } from './faceRecognition/faceRecognitionHelper'
 import logger from '../../imports/pino-logger'
 
@@ -36,8 +36,10 @@ class Verifications implements VerificationAPI {
     // log.info('enrollData', { enrollData })
     const enrollResult: EnrollResult = await Helper.enroll(enrollData)
 
-    GunDBPublic.gun.get(sessionId).put({ enrollResult: enrollResult.alreadyEnrolled || (enrollResult.enrollmentIdentifier ? true : false) }) // publish to subscribers
-    
+    GunDBPublic.gun
+      .get(sessionId)
+      .put({ enrollResult: enrollResult.alreadyEnrolled || (enrollResult.enrollmentIdentifier ? true : false) }) // publish to subscribers
+
     const livenessFailed = enrollResult && enrollResult.livenessResult === 'undetermined'
     this.log.debug('liveness result:', { user: user.identifier, livenessFailed })
 
