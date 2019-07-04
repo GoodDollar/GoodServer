@@ -52,17 +52,6 @@ describe('faceRecognitionHelper', () => {
     expect(result).toBe(false)
   })
 
-  test('it returns liveness=false if zoom liveness failed - livenessScore:<=50', async () => {
-    const faceRecognitionHelper = require('../faceRecognition/faceRecognitionHelper').default
-    const zoomClient = require('../faceRecognition/zoomClient').ZoomClient
-    zoomClient.liveness.mockResolvedValue({
-      meta: { ok: true },
-      data: { livenessResult: 'passed', livenessScore: 49 }
-    })
-    let result = await faceRecognitionHelper.isLivenessPassed(verificationData)
-    expect(result).toBe(false)
-  })
-
   test('it returns liveness=false if zoom liveness failed - meta.ok:false', async () => {
     const faceRecognitionHelper = require('../faceRecognition/faceRecognitionHelper').default
     const zoomClient = require('../faceRecognition/zoomClient').ZoomClient
@@ -88,6 +77,11 @@ describe('faceRecognitionHelper', () => {
   test('it returns duplicate=true if zoom search returned ok and results without the current user enrollment', async () => {
     const faceRecognitionHelper = require('../faceRecognition/faceRecognitionHelper').default
     const zoomClient = require('../faceRecognition/zoomClient').ZoomClient
+    jest.mock('../../server.config', () => ({
+      env: 'test',
+      allowFaceRecognitionDuplicates: false,
+      zoomMinMatchLevel: 1
+    }))
     zoomClient.search.mockResolvedValue({
       meta: { ok: false },
       data: {
