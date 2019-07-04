@@ -45,8 +45,9 @@ class Verifications implements VerificationAPI {
 
     if (livenessFailed) return { ok: 1, livenessPassed: false }
 
-    GunDBPublic.gun.get(sessionId).put({ liveness: !livenessFailed }) // publish to subscribers
-    this.log.debug('written FR LIVENESS status to gun', GunDBPublic.gun.get(sessionId))
+    await GunDBPublic.gun.get(sessionId).put({ liveness: !livenessFailed }) // publish to subscribers
+    let testSessionId = await GunDBPublic.gun.get(sessionId)
+    this.log.debug('written FR LIVENESS status to gun', testSessionId)
 
     //this.log.debug('liveness result:', { user: user.identifier, livenessPassed }) // This is left to support future granularity for user better UX experience. Consider using authenticationFacemapIsLowQuality property https://dev.zoomlogin.com/zoomsdk/#/webservice-guide
     //if (!livenessPassed) return { ok: 1, livenessPassed }
