@@ -1,5 +1,5 @@
 // @flow
-import heapdump from 'heapdump'
+// import heapdump from 'heapdump'
 import { Router } from 'express'
 import type { $Request, $Response, NextFunction } from 'express'
 import bodyParser from 'body-parser'
@@ -12,7 +12,6 @@ import addVerificationMiddlewares from './verification/verificationAPI'
 import addSendMiddlewares from './send/sendAPI'
 import logger, { rollbar } from '../imports/pino-logger'
 import VerificationAPI from './verification/verification'
-import fs from 'fs'
 
 export default (app: Router, env: any) => {
   // parse application/x-www-form-urlencoded

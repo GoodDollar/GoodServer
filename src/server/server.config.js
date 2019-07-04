@@ -224,6 +224,18 @@ const conf = convict({
     format: Boolean,
     env: 'SKIP_EMAIL_VERIFICATION',
     default: false
+  },
+  skipFaceRecognition: {
+    doc: 'Returns FR passed with no Zoom API interaction',
+    format: Boolean,
+    env: 'SKIP_FACE_RECO',
+    default: false
+  },
+  allowFaceRecognitionDuplicates: {
+    doc: 'Allows passing FR process even if duplicate exists',
+    format: Boolean,
+    env: 'ALLOW_FACE_RECO_DUPS',
+    default: false
   }
 })
 

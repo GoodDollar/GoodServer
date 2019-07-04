@@ -47,12 +47,10 @@ const Helper = {
   prepareLivenessData(data: VerificationData) {
     let form = new FormData()
     const facemap = fs.createReadStream(data.facemapFile)
-    const auditTrailImage = fs.createReadStream(data.auditTrailImageFile)
     const sessionId = data.sessionId
     // log.debug('body', { body })
     form.append('sessionId', sessionId)
     form.append('facemap', facemap)
-    form.append('auditTrailImage', auditTrailImage)
     return form
   },
 
@@ -62,45 +60,54 @@ const Helper = {
     form.append('facemap', facemap)
     form.append('sessionId', data.sessionId)
     // form.append('minMatchLevel', 2)
+    form.append('minMatchLevel', Config.zoomMinMatchLevel)
     return form
   },
 
   prepareEnrollmentData(data: VerificationData) {
     let form = new FormData()
     const facemap = fs.createReadStream(data.facemapFile)
+    const auditTrailImage = fs.createReadStream(data.auditTrailImageFile)
+
     form.append('facemap', facemap)
     form.append('sessionId', data.sessionId)
     form.append('enrollmentIdentifier', data.enrollmentIdentifier)
-
+    form.append('auditTrailImage', auditTrailImage)
     return form
   },
 
   async isLivenessPassed(zoomData: FormData) {
     try {
       let res = await ZoomClient.liveness(zoomData)
-      log.debug('liveness result:', { res })
-      return res.meta.ok && res.data.livenessResult === 'passed' && res.data.livenessScore > 50
+      let results = res.data
+      log.debug('liveness result:', { results })
+      return res.meta.ok && res.data.livenessResult === 'passed'
     } catch (e) {
-      log.error('Error:', e, { zoomData })
+      log.error('isLive Error:', e, { zoomData })
       throw e
     }
   },
 
   async isDuplicatesExist(zoomData: FormData, identifier: string) {
+    if (Config.allowFaceRecognitionDuplicates) {
+      log.info('isDuplicatesExist:', 'NOTE: Skipping duplicates test')
+      return false
+    }
+
     try {
       let res: SearchResult = await ZoomClient.search(zoomData)
+      //we dont need the audittrailimages
+      let results = _.map(res.data.results, o => _.omit(o, 'auditTrailImage'))
+      res.data.results = results
       log.debug('search result:', { res })
-      const validMatches = _.filter(
-        res.data.results,
-        r =>
-          r.zoomSearchMatchLevel === 'ZOOM_SEARCH_MATCH_LEVEL_0' ||
-          r.zoomSearchMatchLevel === 'ZOOM_SEARCH_MATCH_LEVEL_1'
+      const validMatches = _.filter(res.data.results, r =>
+        r.zoomSearchMatchLevel.match(/ZOOM_SEARCH_MATCH_LEVEL_[0-2]/)
       )
       return (
         validMatches.length > 0 && _.find(validMatches, { enrollmentIdentifier: identifier }) === undefined // if found matches - verify it's not the user itself
       )
     } catch (e) {
-      log.error('Error:', e, Config.zoomMinMatchLevel, { zoomData })
+      log.error('isDuplicate Error:', e, Config.zoomMinMatchLevel, { zoomData })
       throw e
     }
   },
@@ -108,12 +115,13 @@ const Helper = {
   async enroll(zoomData: FormData): EnrollResult {
     try {
       let res = await ZoomClient.enrollment(zoomData)
-      log.debug('enroll result:', { res })
-      if (res.meta.ok) return res.data
+      let results = res.data
+      log.debug('enroll result:', { results })
+      if (res.meta.ok) return results
       if (res.meta.subCode === 'nameCollision') return { alreadyEnrolled: true }
-      else return false
+      else return { ok: 0, retryFeedbackSuggestion: _.get(res, 'data.retryFeedbackSuggestion', undefined) }
     } catch (e) {
-      log.error('Error:', e, { zoomData })
+      log.error('enroll error:', e, { zoomData })
       throw e
     }
   },
@@ -121,7 +129,8 @@ const Helper = {
   async delete(enrollmentIdentifier: string): Promise<boolean> {
     try {
       let res = await ZoomClient.delete(enrollmentIdentifier)
-      log.debug('delete result:', { res })
+      let results = res.meta.ok
+      log.debug('delete result:', { results })
       if (res.meta.ok) return true
       else return false
     } catch (e) {

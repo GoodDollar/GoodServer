@@ -17,30 +17,30 @@ class Verifications implements VerificationAPI {
 
   /**
    * Verifies user
-   * @param {UserRecord} user to verify
-   * @param {any} verificationData
-   * @returns {Promise<any | Error>}
+   * @param {UserRecord} user user details of the user going through FR
+   * @param {*} verificationData data from zoomsdk
+   
    */
-  async verifyUser(user: UserRecord, verificationData: any): Promise<any | Error> {
-    //this.log.debug('Verifying user:', { user, verificationData })
-    const livenessData = Helper.prepareLivenessData(verificationData)
+  async verifyUser(user: UserRecord, verificationData: any) {
+    this.log.debug('Verifying user:', { user })
     const searchData = Helper.prepareSearchData(verificationData)
     // log.info('searchData', { searchData })
-    const [isDuplicate, livenessPassed] = await Promise.all([
-      Helper.isDuplicatesExist(searchData, verificationData.enrollmentIdentifier),
-      Helper.isLivenessPassed(livenessData)
-    ])
-    this.log.debug('liveness result:', { user: user.identifier, livenessPassed })
-    if (!livenessPassed) return { ok: 1, livenessPassed }
+    const isDuplicate = await Helper.isDuplicatesExist(searchData, verificationData.enrollmentIdentifier)
+
     this.log.debug('isDuplicate result:', { user: user.identifier, isDuplicate })
     if (isDuplicate) return { ok: 1, isDuplicate }
     const enrollData = Helper.prepareEnrollmentData(verificationData)
     // log.info('enrollData', { enrollData })
     const enrollResult: EnrollResult = await Helper.enroll(enrollData)
+    const livenessFailed = enrollResult && enrollResult.livenessResult === 'undetermined'
+    this.log.debug('liveness result:', { user: user.identifier, livenessFailed })
+    if (livenessFailed) return { ok: 1, livenessPassed: false }
+
+    //this.log.debug('liveness result:', { user: user.identifier, livenessPassed }) // This is left to support future granularity for user better UX experience. Consider using authenticationFacemapIsLowQuality property https://dev.zoomlogin.com/zoomsdk/#/webservice-guide
+    //if (!livenessPassed) return { ok: 1, livenessPassed }
+
     const isVerified =
-      livenessPassed &&
-      !isDuplicate &&
-      (enrollResult.alreadyEnrolled || (enrollResult.enrollmentIdentifier ? true : false)) // enrollResult.enrollmentIdentifier should return true if there is value in it (and not the value itself) into isVerified.
+      !isDuplicate && (enrollResult.alreadyEnrolled || (enrollResult.enrollmentIdentifier ? true : false)) // enrollResult.enrollmentIdentifier should return true if there is value in it (and not the value itself) into isVerified.
     return {
       ok: 1,
       isVerified,
