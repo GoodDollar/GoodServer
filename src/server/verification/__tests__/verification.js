@@ -46,13 +46,6 @@ describe('verification', () => {
     })
   })
 
-  test('it calls prepareLivenessData', async () => {
-    const verification = require('../verification').default
-    const Helper = require('../faceRecognition/faceRecognitionHelper').default
-    verification.verifyUser(user, verificationData)
-    expect(Helper.prepareLivenessData).toBeCalledTimes(1)
-  })
-
   test('it calls prepareSearchData', async () => {
     const verification = require('../verification').default
     const Helper = require('../faceRecognition/faceRecognitionHelper').default
@@ -65,21 +58,6 @@ describe('verification', () => {
     const Helper = require('../faceRecognition/faceRecognitionHelper').default
     verification.verifyUser(user, verificationData)
     expect(Helper.isDuplicatesExist).toBeCalledTimes(1)
-  })
-
-  test('it calls isLivenessPassed', async () => {
-    const verification = require('../verification').default
-    const Helper = require('../faceRecognition/faceRecognitionHelper').default
-    verification.verifyUser(user, verificationData)
-    expect(Helper.isLivenessPassed).toBeCalledTimes(1)
-  })
-
-  test('it returns { ok: 1, livenessPassed: false} if Helper.isLivenessPassed=false', async () => {
-    const verification = require('../verification').default
-    const Helper = require('../faceRecognition/faceRecognitionHelper').default
-    Helper.isLivenessPassed.mockResolvedValue(false)
-    const res = await verification.verifyUser(user, verificationData)
-    expect(res).toMatchObject({ ok: 1, livenessPassed: false })
   })
 
   test('it returns { ok: 1, livenessPassed: true, isDuplicatesExist: true} if Helper.isDuplicatesExist=true', async () => {
