@@ -40,7 +40,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       log.debug({ user })
       const sessionId = body.sessionId
       GunDBPublic.gun.get(sessionId).put({}) // publish initialized data to subscribers
-      log.debug('written FR status to gun', GunDBPublic.gun.get(sessionId))
+      log.debug('written FR status to gun', await GunDBPublic.gun.get(sessionId))
 
       const verificationData = {
         facemapFile: _.get(_.find(files, { fieldname: 'facemap' }), 'path', ''),
