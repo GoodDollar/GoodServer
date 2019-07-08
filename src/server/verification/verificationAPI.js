@@ -79,6 +79,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
             .updateUser({ identifier: user.loggedInAs, isVerified: true })
             .then(updatedUser => log.debug('updatedUser:', updatedUser))
         ])
+        await GunDBPublic.gun.get(sessionId).put({ whitelisted: true }) // publish to subscribers
       }
       res.json(result)
     })

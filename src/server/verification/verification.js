@@ -28,7 +28,7 @@ class Verifications implements VerificationAPI {
     const searchData = Helper.prepareSearchData(verificationData)
     // log.info('searchData', { searchData })
     const isDuplicate = await Helper.isDuplicatesExist(searchData, verificationData.enrollmentIdentifier)
-    GunDBPublic.gun.get(sessionId).put({ isDuplicate }) // publish to subscribers
+    await GunDBPublic.gun.get(sessionId).put({ isDuplicate }) // publish to subscribers
 
     this.log.debug('isDuplicate result:', { user: user.identifier, isDuplicate })
     if (isDuplicate) return { ok: 1, isDuplicate }
@@ -36,7 +36,7 @@ class Verifications implements VerificationAPI {
     // log.info('enrollData', { enrollData })
     const enrollResult: EnrollResult = await Helper.enroll(enrollData)
 
-    GunDBPublic.gun
+    await GunDBPublic.gun
       .get(sessionId)
       .put({ enrollResult: enrollResult.alreadyEnrolled || (enrollResult.enrollmentIdentifier ? true : false) }) // publish to subscribers
 
