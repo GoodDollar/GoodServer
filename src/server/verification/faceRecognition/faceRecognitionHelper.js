@@ -116,7 +116,7 @@ const Helper = {
     try {
       let res = await ZoomClient.enrollment(zoomData)
       let results = res.data
-      log.debug('enroll result:', { results })
+      log.debug('enroll result:', { res })
       if (res.meta.ok) return results
       if (res.meta.subCode === 'nameCollision') return { alreadyEnrolled: true }
       else return { ok: 0, retryFeedbackSuggestion: _.get(res, 'data.retryFeedbackSuggestion', undefined) }
