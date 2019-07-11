@@ -28,7 +28,10 @@ class Verifications implements VerificationAPI {
     const searchData = Helper.prepareSearchData(verificationData)
     // log.info('searchData', { searchData })
     const isDuplicate = await Helper.isDuplicatesExist(searchData, verificationData.enrollmentIdentifier)
-    await GunDBPublic.gun.get(sessionId).put({ isDuplicate }) // publish to subscribers
+    GunDBPublic.gun
+      .get(sessionId)
+      .get('isNotDuplicate')
+      .put(!isDuplicate) // publish to subscribers
 
     this.log.debug('isDuplicate result:', { user: user.identifier, isDuplicate })
     if (isDuplicate) return { ok: 1, isDuplicate }
@@ -36,18 +39,18 @@ class Verifications implements VerificationAPI {
     // log.info('enrollData', { enrollData })
     const enrollResult: EnrollResult = await Helper.enroll(enrollData)
 
-    await GunDBPublic.gun
+    GunDBPublic.gun
       .get(sessionId)
-      .put({ enrollResult: enrollResult.alreadyEnrolled || (enrollResult.enrollmentIdentifier ? true : false) }) // publish to subscribers
-
-    const livenessFailed = enrollResult && enrollResult.livenessResult === 'undetermined'
+      .get('isEnrolled')
+      .put(enrollResult.alreadyEnrolled || (enrollResult.enrollmentIdentifier ? true : false)) // publish to subscribers
+    const livenessFailed = (enrollResult && enrollResult.ok == 0) || enrollResult.livenessResult === 'undetermined'
     this.log.debug('liveness result:', { user: user.identifier, livenessFailed })
 
+    GunDBPublic.gun
+      .get(sessionId)
+      .get('isLive')
+      .put(!livenessFailed) // publish to subscribers
     if (livenessFailed) return { ok: 1, livenessPassed: false }
-
-    await GunDBPublic.gun.get(sessionId).put({ liveness: !livenessFailed }) // publish to subscribers
-    let testSessionId = await GunDBPublic.gun.get(sessionId)
-    this.log.debug('written FR LIVENESS status to gun', testSessionId)
 
     //this.log.debug('liveness result:', { user: user.identifier, livenessPassed }) // This is left to support future granularity for user better UX experience. Consider using authenticationFacemapIsLowQuality property https://dev.zoomlogin.com/zoomsdk/#/webservice-guide
     //if (!livenessPassed) return { ok: 1, livenessPassed }

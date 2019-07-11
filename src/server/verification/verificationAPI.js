@@ -54,7 +54,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           .verifyUser(user, verificationData)
           .catch(e => {
             log.error('Facerecognition error:', e)
-            return { ok: 0, err: e.message }
+            return { ok: 0, error: e.message }
           })
           .finally(() => {
             //cleanup
@@ -78,8 +78,18 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           storage
             .updateUser({ identifier: user.loggedInAs, isVerified: true })
             .then(updatedUser => log.debug('updatedUser:', updatedUser))
-        ])
-        await GunDBPublic.gun.get(sessionId).put({ whitelisted: true }) // publish to subscribers
+        ]).catch(e => {
+          log.error('Whitelisting failed', e)
+          GunDBPublic.gun
+            .get(sessionId)
+            .get('isWhitelisted')
+            .put(false) // publish to subscribers
+          throw e
+        })
+        GunDBPublic.gun
+          .get(sessionId)
+          .get('isWhitelisted')
+          .put(true) // publish to subscribers
       }
       res.json(result)
     })
@@ -209,7 +219,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         })
         .catch(e => {
           log.error('Failed top wallet tx', e.message, e.stack)
-          return { ok: -1, err: e.message }
+          return { ok: -1, error: e.message }
         })
       log.info('topping wallet', { txRes, loggedInAs: user.loggedInAs, adminBalance: await AdminWallet.getBalance() })
 
