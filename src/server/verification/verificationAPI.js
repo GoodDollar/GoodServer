@@ -15,34 +15,62 @@ import fs from 'fs'
 const fsPromises = fs.promises
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   var upload = multer({ dest: 'uploads/' }) // to handle blob parameters of faceReco
+
+  /**
+   * @api {post} /verify/facerecognition Verify users face
+   * @apiName Face Recognition
+   * @apiGroup Verification
+   *
+   * @apiParam {String} enrollmentIdentifier
+   * @apiParam {String} sessionId
+   *
+   * @apiSuccess {Number} ok
+   * @apiSuccess {Boolean} isVerified
+   * @apiSuccess {Object} enrollResult: { alreadyEnrolled: true }
+   * @apiSuccess {Boolean} enrollResult.alreadyEnrolled
+   * @ignore
+   */
   app.post(
     '/verify/facerecognition',
     passport.authenticate('jwt', { session: false }),
     upload.any(),
     wrapAsync(async (req, res, next) => {
-      const log = req.log.child({ from: 'livenesstest' })
+      const log = req.log.child({ from: 'facerecognition' })
       const { body, files, user } = req
+      log.debug({ user })
+      const sessionId = body.sessionId
+      GunDBPublic.gun.get(sessionId).put({}) // publish initialized data to subscribers
+      log.debug('written FR status to gun', await GunDBPublic.gun.get(sessionId))
+
       const verificationData = {
         facemapFile: _.get(_.find(files, { fieldname: 'facemap' }), 'path', ''),
         auditTrailImageFile: _.get(_.find(files, { fieldname: 'auditTrailImage' }), 'path', ''),
         enrollmentIdentifier: body.enrollmentIdentifier,
-        sessionId: body.sessionId
+        sessionId: sessionId
       }
-      let result = { ok: 1 }
-      if (!user.isVerified && !['development'].includes(conf.env))
-        result = await verifier.verifyUser(user, verificationData).finally(() => {
-          //cleanup
-          log.info('cleaning up facerecognition files')
-          fsPromises.unlink(verificationData.facemapFile)
-          fsPromises.unlink(verificationData.auditTrailImageFile)
-        })
-      else { // mocked result for verified user or development mode
+      let result = { ok: 0 }
+      if (!user.isVerified && !conf.skipFaceRecognition)
+        result = await verifier
+          .verifyUser(user, verificationData)
+          .catch(e => {
+            log.error('Facerecognition error:', e)
+            return { ok: 0, error: e.message }
+          })
+          .finally(() => {
+            //cleanup
+            log.info('cleaning up facerecognition files')
+            fsPromises.unlink(verificationData.facemapFile)
+            fsPromises.unlink(verificationData.auditTrailImageFile)
+          })
+      else {
+        // mocked result for verified user or development mode
         result = {
           ok: 1,
           isVerified: true,
           enrollResult: { alreadyEnrolled: true, enrollmentIdentifier: verificationData.enrollmentIdentifier }
         } // skip facereco only in dev mode
       }
+      log.debug('Facerecogintion result:', result)
       if (result.isVerified) {
         log.debug('Whitelisting new user', user)
         await Promise.all([
@@ -50,11 +78,33 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           storage
             .updateUser({ identifier: user.loggedInAs, isVerified: true })
             .then(updatedUser => log.debug('updatedUser:', updatedUser))
-        ])
+        ]).catch(e => {
+          log.error('Whitelisting failed', e)
+          GunDBPublic.gun
+            .get(sessionId)
+            .get('isWhitelisted')
+            .put(false) // publish to subscribers
+          throw e
+        })
+        GunDBPublic.gun
+          .get(sessionId)
+          .get('isWhitelisted')
+          .put(true) // publish to subscribers
       }
       res.json(result)
     })
   )
+
+  /**
+   * @api {post} /verify/user Whitelist user
+   * @apiName User
+   * @apiGroup Verification
+   *
+   * @apiParam {Object} verificationData
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
   app.post(
     '/verify/user',
     passport.authenticate('jwt', { session: false }),
@@ -76,6 +126,17 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
     })
   )
+
+  /**
+   * @api {post} /verify/sendotp Sends OTP
+   * @apiName Send OTP
+   * @apiGroup Verification
+   *
+   * @apiParam {UserRecord} user
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
   app.post(
     '/verify/sendotp',
     passport.authenticate('jwt', { session: false }),
@@ -91,12 +152,23 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         const [, code] = await sendOTP(body.user)
         const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
 
-        await storage.updateUser({ identifier: user.loggedInAs, otp: { code, expirationDate } })
+        storage.updateUser({ identifier: user.loggedInAs, otp: { code, expirationDate } })
       }
       res.json({ ok: 1 })
     })
   )
 
+  /**
+   * @api {post} /verify/mobile Verify mobile data code
+   * @apiName OTP Code
+   * @apiGroup Verification
+   *
+   * @apiParam {Object} verificationData
+   *
+   * @apiSuccess {Number} ok
+   * @apiSuccess {Claim} attestation
+   * @ignore
+   */
   app.post(
     '/verify/mobile',
     passport.authenticate('jwt', { session: false }),
@@ -114,13 +186,23 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           return false
         })
         if (verified === false) return
-        await storage.updateUser({ identifier: user.loggedInAs, smsValidated: true })
+        storage.updateUser({ identifier: user.loggedInAs, smsValidated: true })
       }
       const signedMobile = await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: user.mobile })
       res.json({ ok: 1, attestation: signedMobile })
     })
   )
 
+  /**
+   * @api {post} /verify/topwallet Tops Users Wallet if needed
+   * @apiName Top Wallet
+   * @apiGroup Verification
+   *
+   * @apiParam {LoggedUser} user
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
   app.post(
     '/verify/topwallet',
     passport.authenticate('jwt', { session: false }),
@@ -137,15 +219,23 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         })
         .catch(e => {
           log.error('Failed top wallet tx', e.message, e.stack)
-          return { ok: -1, err: e.message }
+          return { ok: -1, error: e.message }
         })
       log.info('topping wallet', { txRes, loggedInAs: user.loggedInAs, adminBalance: await AdminWallet.getBalance() })
 
       res.json(txRes)
     })
   )
+
   /**
-   * Send verification email endpoint
+   * @api {post} /verify/email Send verification email endpoint
+   * @apiName Send Email
+   * @apiGroup Verification
+   *
+   * @apiParam {UserRecord} user
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
    */
   app.post(
     '/verify/sendemail',
@@ -174,7 +264,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           log.debug('send new user email validation link', validationLink)
         }
         // updates/adds user with the emailVerificationCode to be used for verification later and with mauticId
-        await storage.updateUser({
+        storage.updateUser({
           identifier: user.loggedInAs,
           mauticId: userRec.mauticId,
           emailVerificationCode: code
@@ -185,6 +275,18 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     })
   )
 
+  /**
+   * @api {post} /verify/email Verify email code
+   * @apiName Email
+   * @apiGroup Verification
+   *
+   * @apiParam {Object} verificationData
+   * @apiParam {String} verificationData.code
+   *
+   * @apiSuccess {Number} ok
+   * @apiSuccess {Claim} attestation
+   * @ignore
+   */
   app.post(
     '/verify/email',
     passport.authenticate('jwt', { session: false }),
@@ -199,7 +301,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         await verifier.verifyEmail({ identifier: user.loggedInAs }, verificationData)
 
         // if verification succeeds, then set the flag `isEmailConfirmed` to true in the user's record
-        await storage.updateUser({ identifier: user.loggedInAs, isEmailConfirmed: true })
+        storage.updateUser({ identifier: user.loggedInAs, isEmailConfirmed: true })
       }
       const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: user.email })
 

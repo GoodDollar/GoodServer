@@ -18,6 +18,11 @@ import Mutex from 'await-mutex'
 import * as web3Utils from 'web3-utils'
 
 const log = logger.child({ from: 'AdminWallet' })
+
+/**
+ * Exported as AdminWallet
+ * Interface with blockchain contracts via web3 using HDWalletProvider
+ */
 export class Wallet {
   web3: Web3
 
@@ -152,6 +157,12 @@ export class Wallet {
     return true
   }
 
+  /**
+   * whitelist an user in the `Identity` contract
+   * @param {string} address
+   * @param {string} did
+   * @returns {Promise<TransactionReceipt>}
+   */
   async whitelistUser(address: string, did: string): Promise<TransactionReceipt> {
     const tx: TransactionReceipt = await this.sendTransaction(
       this.identityContract.methods.whiteListUser(address, did)
@@ -163,6 +174,11 @@ export class Wallet {
     return tx
   }
 
+  /**
+   * blacklist an user in the `Identity` contract
+   * @param {string} address
+   * @returns {Promise<TransactionReceipt>}
+   */
   async blacklistUser(address: string): Promise<TransactionReceipt> {
     const tx: TransactionReceipt = await this.sendTransaction(
       this.identityContract.methods.blackListUser(address)
@@ -174,6 +190,11 @@ export class Wallet {
     return tx
   }
 
+  /**
+   * verify if an user is verified in the `Identity` contract
+   * @param {string} address
+   * @returns {Promise<boolean>}
+   */
   async isVerified(address: string): Promise<boolean> {
     const tx: boolean = await this.identityContract.methods
       .isWhitelisted(address)
@@ -185,6 +206,13 @@ export class Wallet {
     return tx
   }
 
+  /**
+   * top wallet if needed
+   * @param {string} address
+   * @param {moment.Moment} lastTopping
+   * @param {boolean} force
+   * @returns {PromiEvent<TransactionReceipt>}
+   */
   async topWallet(
     address: string,
     lastTopping?: moment.Moment = moment().subtract(1, 'day'),
@@ -217,9 +245,16 @@ export class Wallet {
     }
   }
 
+  async getAddressBalance(address: string): Promise<number> {
+    return this.web3.eth.getBalance(address)
+  }
+
+  /**
+   * get balance for admin wallet
+   * @returns {Promise<number>}
+   */
   async getBalance(): Promise<number> {
-    return this.web3.eth
-      .getBalance(this.address)
+    return this.getAddressBalance(this.address)
       .then(b => web3Utils.fromWei(b))
       .catch(e => {
         log.error('Error getBalance', e)

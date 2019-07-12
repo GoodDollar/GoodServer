@@ -1,4 +1,3 @@
-'use strict'
 const fs = require('fs')
 const { exec } = require('child_process')
 
@@ -75,6 +74,12 @@ function promiseFromChildProcess(child) {
 
 function execPromise(toExec) {
   return promiseFromChildProcess(exec(toExec)).catch(e => console.log('Failed exec', toExec))
+}
+
+async function generateAPIDocs() {
+  await execPromise('apidoc -i src/server/ -o apidoc/')
+  await execPromise(`apidoc-markdown -p apidoc -o ${BASE_DOCS_FOLDER}/README.md`)
+  await execPromise('rm -rf apidoc')
 }
 
 async function doGenerateToc(docs, { baseFolder, relativeToToc, level }) {
@@ -201,6 +206,8 @@ async function generateDocs(baseFolder, deep, perFile = true) {
     await execPromise("find ./docs -name '*.md'  -size 118c -delete")
     await execPromise('find ./docs -type d -empty -delete')
   }
+
+  await generateAPIDocs()
   console.log('done!')
 }
 
