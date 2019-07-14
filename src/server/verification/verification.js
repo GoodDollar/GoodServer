@@ -59,7 +59,7 @@ class Verifications implements VerificationAPI {
     const otp = await GunDBPrivate.getUserField(user.identifier, 'otp')
     this.log.debug('verifyMobile:', { userId: user.identifier, otp })
     if (otp) {
-      if (verificationData.otp === otp.code) {
+      if (String(verificationData.otp) === String(otp.code)) {
         if (otp.expirationDate < Date.now()) {
           return Promise.reject(new Error('Code expired, retry'))
         }
