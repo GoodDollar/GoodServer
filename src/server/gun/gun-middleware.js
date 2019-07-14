@@ -116,7 +116,6 @@ class GunDB implements StorageAPI {
           }
           log.info('Authenticated GunDB user:', { name, pubkey: this.user.is })
           this.usersCol = this.user.get('users')
-          this.usersCol.map((v, k) => log.info('user:', k, v))
           resolve(true)
         })
       })
