@@ -16,17 +16,19 @@ export type VerificationData = {
 }
 
 export type EnrollResult = {
-  enrollmentIdentifier: string,
-  livenessResult: 'passed' | 'failed',
-  livenessScore: number,
-  glassesScore: number,
-  glassesDecision: boolean,
-  retryFeedbackSuggestion: number,
-  facemapIsLowQuality: boolean,
-  createDate: Date,
-  creationStatusFromZoomServer: string | null,
-  errorFromZoomServer: string | null,
-  alreadyEnrolled: boolean
+  enrollmentIdentifier?: string,
+  livenessResult?: 'passed' | 'failed',
+  livenessScore?: number,
+  glassesScore?: number,
+  glassesDecision?: boolean,
+  retryFeedbackSuggestion?: number,
+  facemapIsLowQuality?: boolean,
+  createDate?: Date,
+  creationStatusFromZoomServer?: string | null,
+  errorFromZoomServer?: string | null,
+  alreadyEnrolled?: boolean,
+  ok: boolean,
+  message?: string
 }
 
 export type SearchResult = {
@@ -112,14 +114,19 @@ const Helper = {
     }
   },
 
-  async enroll(zoomData: FormData): EnrollResult {
+  async enroll(zoomData: FormData): Promise<EnrollResult> {
     try {
       let res = await ZoomClient.enrollment(zoomData)
       let results = res.data
       log.debug('enroll result:', { res })
       if (res.meta.ok) return results
-      if (res.meta.subCode === 'nameCollision') return { alreadyEnrolled: true }
-      else return { ok: 0, retryFeedbackSuggestion: _.get(res, 'data.retryFeedbackSuggestion', undefined) }
+      if (res.meta.subCode === 'nameCollision') return { ok: true, alreadyEnrolled: true }
+      else
+        return {
+          ok: false,
+          message: _.get(res, 'meta.message'),
+          retryFeedbackSuggestion: _.get(res, 'data.retryFeedbackSuggestion', undefined)
+        }
     } catch (e) {
       log.error('enroll error:', e, { zoomData })
       throw e

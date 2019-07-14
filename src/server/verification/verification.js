@@ -43,7 +43,7 @@ class Verifications implements VerificationAPI {
       .get(sessionId)
       .get('isEnrolled')
       .put(enrollResult.alreadyEnrolled || (enrollResult.enrollmentIdentifier ? true : false)) // publish to subscribers
-    const livenessFailed = (enrollResult && enrollResult.ok == 0) || enrollResult.livenessResult === 'undetermined'
+    const livenessFailed = (enrollResult && enrollResult.ok === false) || enrollResult.livenessResult === 'undetermined'
     this.log.debug('liveness result:', { user: user.identifier, livenessFailed })
 
     GunDBPublic.gun
