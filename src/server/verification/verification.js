@@ -32,7 +32,7 @@ class Verifications implements VerificationAPI {
     const enrollData = Helper.prepareEnrollmentData(verificationData)
     // log.info('enrollData', { enrollData })
     const enrollResult: EnrollResult = await Helper.enroll(enrollData)
-    const livenessFailed = enrollResult && enrollResult.livenessResult === 'undetermined'
+    const livenessFailed = (enrollResult && enrollResult.ok === false) || enrollResult.livenessResult === 'undetermined'
     this.log.debug('liveness result:', { user: user.identifier, livenessFailed })
     if (livenessFailed) return { ok: 1, livenessPassed: false }
 
