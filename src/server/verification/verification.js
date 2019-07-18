@@ -42,7 +42,6 @@ class Verifications implements VerificationAPI {
     const enrollData = Helper.prepareEnrollmentData(verificationData)
     // log.info('enrollData', { enrollData })
     const enrollResult: EnrollResult = await Helper.enroll(enrollData)
-
     GunDBPublic.gun
       .get(sessionId)
       .get('isEnrolled')
@@ -77,9 +76,9 @@ class Verifications implements VerificationAPI {
    */
   async verifyMobile(user: UserRecord, verificationData: { otp: string }): Promise<boolean | Error> {
     const otp = await GunDBPrivate.getUserField(user.identifier, 'otp')
-
+    this.log.debug('verifyMobile:', { userId: user.identifier, otp })
     if (otp) {
-      if (verificationData.otp === otp.code) {
+      if (String(verificationData.otp) === String(otp.code)) {
         if (otp.expirationDate < Date.now()) {
           return Promise.reject(new Error('Code expired, retry'))
         }

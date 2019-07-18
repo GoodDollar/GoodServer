@@ -69,8 +69,19 @@ const conf = convict({
   },
   network: {
     doc: 'The blockchain network to connect to',
-    format: ['kovan', 'mainnet', 'rinkbey', 'ropsten', 'truffle', 'ganache', 'fuse', 'production', 'develop'],
-    default: 'kovan',
+    format: [
+      'kovan',
+      'mainnet',
+      'rinkbey',
+      'ropsten',
+      'truffle',
+      'ganache',
+      'fuse',
+      'production',
+      'develop',
+      'staging'
+    ],
+    default: 'develop',
     env: 'NETWORK'
   },
   plivoAuthID: {
@@ -236,6 +247,12 @@ const conf = convict({
     format: Boolean,
     env: 'ALLOW_FACE_RECO_DUPS',
     default: false
+  },
+  rollbarToken: {
+    doc: 'access token for rollbar logging',
+    format: '*',
+    env: 'ROLLBAR_TOKEN',
+    default: undefined
   }
 })
 

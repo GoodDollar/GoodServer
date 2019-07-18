@@ -52,17 +52,6 @@ describe('faceRecognitionHelper', () => {
     expect(result).toBe(false)
   })
 
-  test('it returns liveness=false if zoom liveness failed - livenessScore:<=50', async () => {
-    const faceRecognitionHelper = require('../faceRecognition/faceRecognitionHelper').default
-    const zoomClient = require('../faceRecognition/zoomClient').ZoomClient
-    zoomClient.liveness.mockResolvedValue({
-      meta: { ok: true },
-      data: { livenessResult: 'passed', livenessScore: 49 }
-    })
-    let result = await faceRecognitionHelper.isLivenessPassed(verificationData)
-    expect(result).toBe(false)
-  })
-
   test('it returns liveness=false if zoom liveness failed - meta.ok:false', async () => {
     const faceRecognitionHelper = require('../faceRecognition/faceRecognitionHelper').default
     const zoomClient = require('../faceRecognition/zoomClient').ZoomClient
@@ -88,6 +77,11 @@ describe('faceRecognitionHelper', () => {
   test('it returns duplicate=true if zoom search returned ok and results without the current user enrollment', async () => {
     const faceRecognitionHelper = require('../faceRecognition/faceRecognitionHelper').default
     const zoomClient = require('../faceRecognition/zoomClient').ZoomClient
+    jest.mock('../../server.config', () => ({
+      env: 'test',
+      allowFaceRecognitionDuplicates: false,
+      zoomMinMatchLevel: 1
+    }))
     zoomClient.search.mockResolvedValue({
       meta: { ok: false },
       data: {
@@ -109,6 +103,11 @@ describe('faceRecognitionHelper', () => {
   })
 
   test('it returns duplicate=false if zoom search returned ok and results contain the current user enrollment', async () => {
+    jest.mock('../../server.config', () => ({
+      env: 'test',
+      allowFaceRecognitionDuplicates: false,
+      zoomMinMatchLevel: 1
+    }))
     const faceRecognitionHelper = require('../faceRecognition/faceRecognitionHelper').default
     const zoomClient = require('../faceRecognition/zoomClient').ZoomClient
     zoomClient.search.mockResolvedValue({
@@ -127,29 +126,6 @@ describe('faceRecognitionHelper', () => {
           {
             enrollmentIdentifier: '0x9d5499D5099DE6Fe5A8f39874617dDFc967cA6e2',
             zoomSearchMatchLevel: 'ZOOM_SEARCH_MATCH_LEVEL_0'
-          }
-        ]
-      }
-    })
-    let result = await faceRecognitionHelper.isDuplicatesExist(verificationData, verificationData.enrollmentIdentifier)
-    expect(result).toBe(false)
-  })
-
-  test('it returns duplicate=false if zoom search returned match level <1', async () => {
-    const faceRecognitionHelper = require('../faceRecognition/faceRecognitionHelper').default
-    const zoomClient = require('../faceRecognition/zoomClient').ZoomClient
-    zoomClient.search.mockResolvedValue({
-      meta: { ok: false },
-      data: {
-        results: [
-          // user enrollmentIdentifier is 0x9d5499D5099DE6Fe5A8f39874617dDFc967cA6e5
-          {
-            enrollmentIdentifier: '0x9d5499D5099DE6Fe5A8f39874617dDFc967cA6e3',
-            zoomSearchMatchLevel: 'ZOOM_SEARCH_MATCH_LEVEL_2'
-          },
-          {
-            enrollmentIdentifier: '0x9d5499D5099DE6Fe5A8f39874617dDFc967cA6e2',
-            zoomSearchMatchLevel: 'ZOOM_SEARCH_NO_MATCH_DETERMINED'
           }
         ]
       }
