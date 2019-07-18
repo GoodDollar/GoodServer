@@ -38,11 +38,15 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log.child({ from: 'facerecognition' })
       const { body, files, user } = req
       log.debug({ user })
+      const sessionId = body.sessionId
+      GunDBPublic.gun.get(sessionId).put({}) // publish initialized data to subscribers
+      log.debug('written FR status to gun', await GunDBPublic.gun.get(sessionId))
+
       const verificationData = {
         facemapFile: _.get(_.find(files, { fieldname: 'facemap' }), 'path', ''),
         auditTrailImageFile: _.get(_.find(files, { fieldname: 'auditTrailImage' }), 'path', ''),
         enrollmentIdentifier: body.enrollmentIdentifier,
-        sessionId: body.sessionId
+        sessionId: sessionId
       }
       let result = { ok: 0 }
       if (!user.isVerified && !conf.skipFaceRecognition)
@@ -50,7 +54,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           .verifyUser(user, verificationData)
           .catch(e => {
             log.error('Facerecognition error:', e)
-            return { ok: 0, err: e.message }
+            return { ok: 0, error: e.message }
           })
           .finally(() => {
             //cleanup
@@ -74,7 +78,18 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           storage
             .updateUser({ identifier: user.loggedInAs, isVerified: true })
             .then(updatedUser => log.debug('updatedUser:', updatedUser))
-        ])
+        ]).catch(e => {
+          log.error('Whitelisting failed', e)
+          GunDBPublic.gun
+            .get(sessionId)
+            .get('isWhitelisted')
+            .put(false) // publish to subscribers
+          throw e
+        })
+        GunDBPublic.gun
+          .get(sessionId)
+          .get('isWhitelisted')
+          .put(true) // publish to subscribers
       }
       res.json(result)
     })
@@ -204,7 +219,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         })
         .catch(e => {
           log.error('Failed top wallet tx', e.message, e.stack)
-          return { ok: -1, err: e.message }
+          return { ok: -1, error: e.message }
         })
       log.info('topping wallet', { txRes, loggedInAs: user.loggedInAs, adminBalance: await AdminWallet.getBalance() })
 
