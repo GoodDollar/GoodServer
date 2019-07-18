@@ -24,6 +24,10 @@ class Verifications implements VerificationAPI {
   async verifyUser(user: UserRecord, verificationData: any) {
     this.log.debug('Verifying user:', { user })
     const sessionId = verificationData.sessionId
+    GunDBPublic.gun
+      .get(sessionId)
+      .get('isStarted')
+      .put(true)
     this.log.debug('sessionId:', { sessionId })
     const searchData = Helper.prepareSearchData(verificationData)
     // log.info('searchData', { searchData })
