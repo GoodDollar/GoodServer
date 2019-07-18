@@ -2,11 +2,14 @@ import pino from 'pino'
 import Rollbar from 'rollbar'
 import conf from '../server/server.config'
 let rollbar
-if (conf.env != 'development')
+if (conf.env != 'development' && conf.rollbarToken)
   rollbar = new Rollbar({
-    accessToken: '9d72fbbedc434c03995f186846f0a126',
+    accessToken: conf.rollbarToken,
     captureUncaught: true,
-    captureUnhandledRejections: true
+    captureUnhandledRejections: true,
+    payload: {
+      environment: process.env.NODE_ENV
+    }
   })
 const LOG_LEVEL = conf.logLevel || 'debug'
 console.log('Starting logger', { LOG_LEVEL, env: conf.env })
