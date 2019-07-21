@@ -210,15 +210,17 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log.child({ from: 'verificationAPI - verify/topwallet' })
       const user: LoggedUser = req.user
       //allow topping once a day
-
+      storage.updateUser({ identifier: user.loggedInAs, lastTopWallet: new Date().toISOString() })
       let txRes = await AdminWallet.topWallet(user.gdAddress, user.lastTopWallet)
         .then(tx => {
           log.debug('topping wallet tx', { walletaddress: user.gdAddress, tx })
-          storage.updateUser({ identifier: user.loggedInAs, lastTopWallet: new Date().toISOString() })
           return { ok: 1 }
         })
         .catch(e => {
           log.error('Failed top wallet tx', e.message, e.stack)
+          //restore last top wallet in case of error
+          storage.updateUser({ identifier: user.loggedInAs, lastTopWallet: user.lastTopWallet })
+
           return { ok: -1, error: e.message }
         })
       log.info('topping wallet', { txRes, loggedInAs: user.loggedInAs, adminBalance: await AdminWallet.getBalance() })
