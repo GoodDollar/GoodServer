@@ -8,7 +8,8 @@ mongoose.db = mongoose.createConnection(uri, {
   user,
   pass,
   dbName,
-  useNewUrlParser: true
+  useNewUrlParser: true,
+  useFindAndModify: false
 })
 
 export default mongoose

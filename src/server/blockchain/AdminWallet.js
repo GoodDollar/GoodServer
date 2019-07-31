@@ -305,9 +305,9 @@ export class Wallet {
         })
         
       }, (tx) => {
-        
         resolve(tx)
-        
+      }, (e) => {
+          reject(e)
       })
       
     });
@@ -360,9 +360,11 @@ export class Wallet {
               rejectCb(e)
             });
         })
-      }, (tx) => {
-        resolve(tx)
-      })
+       }, (tx) => {
+         resolve(tx)
+       }, (e) => {
+         reject(e)
+       })
       
     })
   }

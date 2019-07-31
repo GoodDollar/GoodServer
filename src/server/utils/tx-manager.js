@@ -6,9 +6,19 @@ class TransactionRun {
     
     this.model = WalletNonce;
     this.queue = [];
+  
+    const filter = [{
+      $match: {
+        $and: [
+          { "updateDescription.updatedFields.isLock": {$eq:false} },
+          { operationType: "update" }]
+      }
+    }];
+  
+    const options = { fullDocument: 'updateLookup' };
     
     // listen to the collection
-    this.model.watch().on('change', data => {
+    this.model.watch(filter, options).on('change', data => {
       this.run()
     });
     
@@ -88,12 +98,14 @@ class TransactionRun {
    * @param netNonce
    * @param cb
    * @param done
+   * @param fail
+   * @returns {Promise<void>}
    */
-  async addToQueue(address, netNonce, cb, done) {
-  
+  async addToQueue(address, netNonce, cb, done, fail) {
+
     await this.createIfNotExist(address, netNonce);
     
-    this.queue.push({cb, done, address})
+    this.queue.push({cb, done, address, fail})
   
     this.run();
   }
@@ -111,9 +123,9 @@ class TransactionRun {
         const nextTr = this.queue[0];
         
         const walletNonce = await this.getWalletNonce(nextTr.address);
-        
+
         if (walletNonce) {
-          
+        
           this.queue.shift();
           
           let tx = null;
@@ -123,12 +135,11 @@ class TransactionRun {
           } catch (e) {
             console.log(e);
             await this.unlock(nextTr.address, walletNonce.nonce);
+            nextTr.fail(e)
           }
           
           await this.unlock(nextTr.address, walletNonce.nonce + 1);
-          
           nextTr.done(tx)
-          
         }
         
       }
