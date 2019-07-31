@@ -71,6 +71,17 @@ const setup = (app: Router) => {
  * Can be instantiated with a private or a public gundb and should be used to access gun accross the API server
  */
 class GunDB implements StorageAPI {
+  constructor(serverMode: boolean, peers: Array<string> = []) {
+    console.log({ serverMode, peers })
+    this.serverMode = serverMode
+    this.peers = peers
+    if (serverMode === false && peers.length == 0) throw new Error('Atleast one peer required for client mode')
+  }
+
+  serverMode: boolean
+
+  peers: Array<string>
+
   gun: Gun
 
   user: Gun
@@ -87,16 +98,21 @@ class GunDB implements StorageAPI {
    * @param {string} name folder to store gundb
    * @param {S3Conf} [s3] optional S3 settings instead of local file storage
    */
-  init(server: typeof express | null, password: string, name: string, s3?: S3Conf): Promise<boolean> {
+  init(server: typeof express | Array<string> | null, password: string, name: string, s3?: S3Conf): Promise<boolean> {
     //gun lib/les.js settings
     const gc_delay = conf.gunGCInterval || 1 * 60 * 1000 /*1min*/
     const memory = conf.gunGCMaxMemoryMB || 512
     //log connected peers information
-    Gun.on('opt', ctx => {
-      console.log('Starting interval')
-      setInterval(() => log.info({ GunServer: ctx.opt.name, Peers: Object.keys(ctx.opt.peers).length }), gc_delay)
-    })
-    if (s3 && s3.secret) {
+    if (this.serverMode) {
+      Gun.on('opt', ctx => {
+        console.log('Starting interval')
+        setInterval(() => log.info({ GunServer: ctx.opt.name, Peers: Object.keys(ctx.opt.peers).length }), gc_delay)
+      })
+    }
+    if (this.serverMode === false) {
+      log.info('Starting gun as client:', { peers: this.peers })
+      this.gun = Gun({ file: name, peers: this.peers })
+    } else if (s3 && s3.secret) {
       log.info('Starting gun with S3:', { gc_delay, memory })
       this.gun = Gun({ web: server, file: name, s3, gc_delay, memory, name, chunk: 1024 * 32, batch: 10 })
     } else {
@@ -268,7 +284,7 @@ class GunDB implements StorageAPI {
   }
 }
 
-const GunDBPublic = new GunDB()
+const GunDBPublic = new GunDB(conf.gundbServerMode, conf.gundbPeers)
 const GunDBPrivate = new GunDB()
 
 GunDBPrivate.init(null, conf.gundbPassword, 'privatedb', conf.gunPrivateS3).catch(e => {
