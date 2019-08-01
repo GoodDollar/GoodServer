@@ -275,44 +275,39 @@ export class Wallet {
    * @param {number} gasValues.gasPrice
    * @returns {Promise<Promise|Q.Promise<any>|Promise<*>|Promise<*>|Promise<*>|*>}
    */
-  async sendTransaction(tx: any, txCallbacks: PromiEvents = {},{gas, gasPrice}: GasValues = {gas: undefined, gasPrice: undefined}) {
-    
-    return new Promise(async (resolve, reject) => {
-      
-      const {onTransactionHash, onReceipt, onConfirmation, onError} = txCallbacks
-      gas = gas || (await tx.estimateGas())
-      gasPrice = gasPrice || this.gasPrice
-      
-      const netNonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
-  
-      await txManager.addToQueue(this.address, netNonce, (nonce) => {
-        
-        return new Promise((resolveCb, rejectCb) => {
-          tx.send({gas, gasPrice, chainId: this.networkId, nonce})
-            .on('transactionHash', h => {
-              log.debug('sendTransaction nonce increased:', nonce)
-              onTransactionHash && onTransactionHash(h)
-            })
-            .on('receipt', r => {
-              onReceipt && onReceipt(r)
-              resolveCb(r)
-            })
-            .on('confirmation', c => onConfirmation && onConfirmation(c))
-            .on('error', e => {
-              onError && onError(e)
-              rejectCb(e)
-            })
+  async sendTransaction(
+    tx: any,
+    txCallbacks: PromiEvents = {},
+    { gas, gasPrice }: GasValues = { gas: undefined, gasPrice: undefined }
+  ) {
+    const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
+    gas = gas || (await tx.estimateGas())
+    gasPrice = gasPrice || this.gasPrice
+
+    const netNonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
+
+    const { nonce, execute, fail } = await txManager.lock(this.address, netNonce)
+
+    return new Promise((res, rej) => {
+      tx.send({ gas, gasPrice, chainId: this.networkId, nonce })
+        .on('transactionHash', h => {
+          log.debug('sendTransaction nonce increased:', nonce)
+          execute()
+          onTransactionHash && onTransactionHash(h)
         })
-        
-      }, (tx) => {
-        resolve(tx)
-      }, (e) => {
-          reject(e)
-      })
-      
-    });
+        .on('receipt', r => {
+          onReceipt && onReceipt(r)
+          res(r)
+        })
+        .on('confirmation', c => onConfirmation && onConfirmation(c))
+        .on('error', e => {
+          fail()
+          onError && onError(e)
+          rej(e)
+        })
+    })
   }
-  
+
   /**
    * Helper function to handle a tx Send call
    * @param tx
@@ -335,38 +330,25 @@ export class Wallet {
     gas = gas || 100000
     gasPrice = gasPrice || this.gasPrice
 
-    return new Promise(async (resolve, reject) => {
-  
-      const netNonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
-  
-       await txManager.addToQueue(this.address, netNonce, (nonce) => {
-        
-        return new Promise((resolveCb, rejectCb) => {
+    const netNonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
 
-          this.web3.eth
-            .sendTransaction({ gas, gasPrice, chainId: this.networkId, nonce: nonce, ...params })
-            .on('transactionHash', h => {
-              onTransactionHash && onTransactionHash(h)
-            })
-            .on('receipt', r => {
-              onReceipt && onReceipt(r)
-              resolveCb(r)
-            })
-            .on('confirmation', c => {
-              onConfirmation && onConfirmation(c)
-            })
-            .on('error', e => {
-              onError && onError(e)
-              rejectCb(e)
-            });
-        })
-       }, (tx) => {
-         resolve(tx)
-       }, (e) => {
-         reject(e)
-       })
-      
-    })
+    const { nonce, execute, fail } = await txManager.lock(this.address, netNonce)
+    this.web3.eth
+      .sendTransaction({ gas, gasPrice, chainId: this.networkId, nonce, ...params })
+      .on('transactionHash', h => {
+        onTransactionHash && onTransactionHash(h)
+      })
+      .on('receipt', r => {
+        onReceipt && onReceipt(r)
+        execute()
+      })
+      .on('confirmation', c => {
+        onConfirmation && onConfirmation(c)
+      })
+      .on('error', e => {
+        onError && onError(e)
+        fail()
+      })
   }
 }
 
