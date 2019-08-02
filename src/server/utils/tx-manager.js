@@ -91,7 +91,7 @@ class TransactionRun {
       this.addToQueue(address, netNonce, nonce =>
         resolve({
           nonce,
-          execute: async () => await this.unlock(address, nonce + 1),
+          release: async () => await this.unlock(address, nonce + 1),
           fail: async () => await this.unlock(address, nonce)
         })
       )

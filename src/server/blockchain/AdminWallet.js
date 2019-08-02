@@ -286,13 +286,13 @@ export class Wallet {
 
     const netNonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
 
-    const { nonce, execute, fail } = await txManager.lock(this.address, netNonce)
+    const { nonce, release, fail } = await txManager.lock(this.address, netNonce)
 
     return new Promise((res, rej) => {
       tx.send({ gas, gasPrice, chainId: this.networkId, nonce })
         .on('transactionHash', h => {
           log.debug('sendTransaction nonce increased:', nonce)
-          execute()
+          release()
           onTransactionHash && onTransactionHash(h)
         })
         .on('receipt', r => {
@@ -332,23 +332,28 @@ export class Wallet {
 
     const netNonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
 
-    const { nonce, execute, fail } = await txManager.lock(this.address, netNonce)
-    this.web3.eth
-      .sendTransaction({ gas, gasPrice, chainId: this.networkId, nonce, ...params })
-      .on('transactionHash', h => {
-        onTransactionHash && onTransactionHash(h)
-      })
-      .on('receipt', r => {
-        onReceipt && onReceipt(r)
-        execute()
-      })
-      .on('confirmation', c => {
-        onConfirmation && onConfirmation(c)
-      })
-      .on('error', e => {
-        onError && onError(e)
-        fail()
-      })
+    const { nonce, release, fail } = await txManager.lock(this.address, netNonce)
+
+    return new Promise((res, rej) => {
+      this.web3.eth
+        .sendTransaction({ gas, gasPrice, chainId: this.networkId, nonce, ...params })
+        .on('transactionHash', h => {
+          onTransactionHash && onTransactionHash(h)
+          release()
+        })
+        .on('receipt', r => {
+          onReceipt && onReceipt(r)
+          res(r)
+        })
+        .on('confirmation', c => {
+          onConfirmation && onConfirmation(c)
+        })
+        .on('error', e => {
+          fail()
+          onError && onError(e)
+          rej(e)
+        })
+    })
   }
 }
 
