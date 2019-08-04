@@ -2,6 +2,8 @@
 import express, { Router } from 'express'
 import Gun from 'gun'
 import SEA from 'gun/sea'
+import 'gun/lib/load'
+
 // import les from 'gun/lib/les'
 import { type StorageAPI, type UserRecord } from '../../imports/types'
 import conf from '../server.config'
@@ -265,6 +267,10 @@ class GunDB implements StorageAPI {
     let sig = await SEA.sign(attestation, this.user.pair())
     attestation.sig = sig
     return attestation
+  }
+
+  listUsers(cb: ({ [string]: UserRecord }) => void) {
+    this.usersCol.load(cb, { wait: 1000 })
   }
 }
 

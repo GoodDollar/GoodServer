@@ -37,7 +37,10 @@ const setup = (app: Router, storage: StorageAPI) => {
       )
         throw new Error('User email or mobile not verified!')
 
-      const user: UserRecord = defaults(body.user, { identifier: userRecord.loggedInAs })
+      const user: UserRecord = defaults(body.user, {
+        identifier: userRecord.loggedInAs,
+        createdDate: new Date().toString()
+      })
       //mautic contact should already exists since it is first created during the email verification we update it here
       const mauticRecord = process.env.NODE_ENV === 'development' ? {} : await Mautic.createContact(user).catch(e => {})
       logger.debug('User mautic record', { mauticRecord })
@@ -97,6 +100,18 @@ const setup = (app: Router, storage: StorageAPI) => {
       if (body.identifier) user = await storage.getUser(body.identifier)
 
       res.json({ ok: 1, user })
+    })
+  )
+
+  app.post(
+    '/admin/user/list',
+    wrapAsync(async (req, res, next) => {
+      const { body } = req
+      if (body.password !== conf.gundbPassword) return res.json({ ok: 0 })
+      let done = jsonres => {
+        res.json(jsonres)
+      }
+      storage.listUsers(done)
     })
   )
 
