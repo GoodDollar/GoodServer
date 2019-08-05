@@ -43,9 +43,10 @@ const setup = (app: Router, storage: StorageAPI) => {
       })
       //mautic contact should already exists since it is first created during the email verification we update it here
       const mauticRecord = process.env.NODE_ENV === 'development' ? {} : await Mautic.createContact(user).catch(e => {})
-      logger.debug('User mautic record', { mauticRecord })
+      const mauticId = get(mauticRecord, 'contact.fields.all.id', -1)
+      logger.debug('User mautic record', { mauticId, mauticRecord })
       //topwallet of user after registration
-      storage.updateUser({ ...user, mauticId: get(mauticRecord, 'contact.fields.all.id', -1) })
+      storage.updateUser({ ...user, mauticId })
       let ok = await AdminWallet.topWallet(userRecord.gdAddress, null, true)
         .then(r => ({ ok: 1 }))
         .catch(e => {
