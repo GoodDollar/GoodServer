@@ -74,10 +74,13 @@ const setup = (app: Router) => {
  */
 class GunDB implements StorageAPI {
   constructor(serverMode: boolean, peers: Array<string> = []) {
-    console.log({ serverMode, peers })
+    log.debug({ serverMode, peers })
     this.serverMode = serverMode
     this.peers = peers
-    if (serverMode === false && peers.length == 0) throw new Error('Atleast one peer required for client mode')
+    if (serverMode === false && peers.length == 0) {
+      if (conf.env === 'production') throw new Error('Atleast one peer required for client mode')
+      else log.warn('Atleast one peer required for client mode')
+    }
   }
 
   serverMode: boolean
