@@ -67,7 +67,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
             fsPromises.unlink(verificationData.auditTrailImageFile)
           })
       else {
-        GunDBPublic.gun.get(sessionId).put({ isNotDuplicate: false, isLive: true, isEnrolled: true }) // publish to subscribers
+        GunDBPublic.gun.get(sessionId).put({ isNotDuplicate: true, isLive: true, isEnrolled: true }) // publish to subscribers
         // mocked result for verified user or development mode
         result = {
           ok: 1,
