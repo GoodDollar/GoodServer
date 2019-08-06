@@ -113,12 +113,23 @@ class GunDB implements StorageAPI {
     }
     if (this.serverMode === false) {
       log.info('Starting gun as client:', { peers: this.peers })
-      this.gun = Gun({ file: name, peers: this.peers, axe: false, multicast: false })
+      this.gun = Gun({ file: name, peers: this.peers, axe: true, multicast: false })
     } else if (s3 && s3.secret) {
       log.info('Starting gun with S3:', { gc_delay, memory })
-      this.gun = Gun({ web: server, file: name, s3, gc_delay, memory, name, chunk: 1024 * 32, batch: 10 })
+      this.gun = Gun({
+        web: server,
+        file: name,
+        s3,
+        gc_delay,
+        memory,
+        name,
+        chunk: 1024 * 32,
+        batch: 10,
+        axe: true,
+        multicast: false
+      })
     } else {
-      this.gun = Gun({ web: server, file: name, gc_delay, memory, name })
+      this.gun = Gun({ web: server, file: name, gc_delay, memory, name, axe: true, multicast: false })
       log.info('Starting gun with radisk:', { gc_delay, memory })
       if (conf.env === 'production') log.error('Started production without S3')
     }
