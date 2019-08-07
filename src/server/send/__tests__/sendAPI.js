@@ -52,9 +52,11 @@ describe('sendAPÏ', () => {
   test('/verify/sendemail with creds', async () => {
     const token = await getToken(server)
     //make sure fullname is set for user which is required for sending the recovery email
-    const user = await GunDBPrivate.usersCol
+    const user = GunDBPrivate.usersCol
       .get('0x7ac080f6607405705aed79675789701a48c76f55')
       .putAck({ fullName: 'full name', mauticId: 3461 })
+
+    expect(user).resolves.toBeDefined()
     await request(server)
       .post('/send/recoveryinstructions')
       .send({

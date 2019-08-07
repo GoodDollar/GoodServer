@@ -73,11 +73,11 @@ const setup = (app: Router) => {
  * Can be instantiated with a private or a public gundb and should be used to access gun accross the API server
  */
 class GunDB implements StorageAPI {
-  constructor(serverMode: boolean, peers: Array<string> = []) {
+  constructor(serverMode: boolean, peers: Array<string> | void = undefined) {
     log.debug({ serverMode, peers })
     this.serverMode = serverMode
     this.peers = peers
-    if (serverMode === false && peers.length == 0) {
+    if (serverMode === false && peers === undefined) {
       if (conf.env === 'production') throw new Error('Atleast one peer required for client mode')
       else log.warn('Atleast one peer required for client mode')
     }

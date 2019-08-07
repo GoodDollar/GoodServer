@@ -40,7 +40,7 @@ const conf = convict({
   gundbPeers: {
     doc: 'superpeer to connect with for public db',
     format: Array,
-    default: [],
+    default: undefined,
     env: 'GUNDB_PEERS'
   },
   gundbServerMode: {

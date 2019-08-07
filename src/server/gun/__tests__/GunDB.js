@@ -1,13 +1,14 @@
 /**
  * @jest-environment node
  */
-import { GunDB } from '../gun-middleware'
+import { GunDB, GunDBPrivate } from '../gun-middleware'
 import SEA from 'gun/sea'
 
 const storage = new GunDB()
 describe('GunDB', () => {
   beforeAll(async () => {
     await storage.init(null, 'test', 'testdb')
+    await GunDBPrivate.ready
   })
 
   it('Should init correctly without s3', async () => {
@@ -46,5 +47,10 @@ describe('GunDB', () => {
   it('should remove gundb soul from records', async () => {
     let res = await storage.recordSanitize({ _: { '#': 'soul' } })
     expect(res).toEqual({})
+  })
+
+  it('should set private user in database', async () => {
+    const res = GunDBPrivate.usersCol.get('testuser').putAck({ username: 'test' })
+    expect(res).resolves.toBeDefined()
   })
 })
