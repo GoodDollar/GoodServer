@@ -57,6 +57,7 @@ describe('sendAPÏ', () => {
       .putAck({ fullName: 'full name', mauticId: 3461 })
 
     expect(user).resolves.toBeDefined()
+    await user
     await request(server)
       .post('/send/recoveryinstructions')
       .send({
