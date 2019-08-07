@@ -37,7 +37,6 @@ function lightLogs(fn: Function) {
  * @param next
  */
 const onlyInEnv = (...environments: Array<string>) => {
-  console.log('checking envs..current env:', conf.env, ' supplied envs: ', { environments })
   return function(req: $Request, res: $Response, next: NextFunction) {
     if (environments.includes(conf.env)) {
       next()

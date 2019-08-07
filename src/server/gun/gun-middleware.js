@@ -72,7 +72,7 @@ const setup = (app: Router) => {
  */
 class GunDB implements StorageAPI {
   constructor(serverMode: boolean, peers: Array<string> = []) {
-    console.log({ serverMode, peers })
+    log.info({ serverMode, peers })
     this.serverMode = serverMode
     this.peers = peers
     if (serverMode === false && peers.length == 0) throw new Error('Atleast one peer required for client mode')
@@ -105,7 +105,6 @@ class GunDB implements StorageAPI {
     //log connected peers information
     if (this.serverMode) {
       Gun.on('opt', ctx => {
-        console.log('Starting interval')
         setInterval(() => log.info({ GunServer: ctx.opt.name, Peers: Object.keys(ctx.opt.peers).length }), gc_delay)
       })
     }
