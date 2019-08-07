@@ -2,6 +2,8 @@
 import express, { Router } from 'express'
 import Gun from 'gun'
 import SEA from 'gun/sea'
+import 'gun/lib/load'
+
 // import les from 'gun/lib/les'
 import { type StorageAPI, type UserRecord } from '../../imports/types'
 import conf from '../server.config'
@@ -71,11 +73,14 @@ const setup = (app: Router) => {
  * Can be instantiated with a private or a public gundb and should be used to access gun accross the API server
  */
 class GunDB implements StorageAPI {
-  constructor(serverMode: boolean, peers: Array<string> = []) {
+  constructor(serverMode: boolean, peers: Array<string> | void = undefined) {
     log.info({ serverMode, peers })
     this.serverMode = serverMode
     this.peers = peers
-    if (serverMode === false && peers.length == 0) throw new Error('Atleast one peer required for client mode')
+    if (serverMode === false && peers === undefined) {
+      if (conf.env === 'production') throw new Error('Atleast one peer required for client mode')
+      else log.warn('Atleast one peer required for client mode')
+    }
   }
 
   serverMode: boolean
@@ -110,12 +115,23 @@ class GunDB implements StorageAPI {
     }
     if (this.serverMode === false) {
       log.info('Starting gun as client:', { peers: this.peers })
-      this.gun = Gun({ file: name, peers: this.peers })
+      this.gun = Gun({ file: name, peers: this.peers, axe: true, multicast: false })
     } else if (s3 && s3.secret) {
       log.info('Starting gun with S3:', { gc_delay, memory })
-      this.gun = Gun({ web: server, file: name, s3, gc_delay, memory, name, chunk: 1024 * 32, batch: 10 })
+      this.gun = Gun({
+        web: server,
+        file: name,
+        s3,
+        gc_delay,
+        memory,
+        name,
+        chunk: 1024 * 32,
+        batch: 10,
+        axe: true,
+        multicast: false
+      })
     } else {
-      this.gun = Gun({ web: server, file: name, gc_delay, memory, name })
+      this.gun = Gun({ web: server, file: name, gc_delay, memory, name, axe: true, multicast: false })
       log.info('Starting gun with radisk:', { gc_delay, memory })
       if (conf.env === 'production') log.error('Started production without S3')
     }
@@ -280,6 +296,10 @@ class GunDB implements StorageAPI {
     let sig = await SEA.sign(attestation, this.user.pair())
     attestation.sig = sig
     return attestation
+  }
+
+  listUsers(cb: ({ [string]: UserRecord }) => void) {
+    this.usersCol.load(cb, { wait: 1000 })
   }
 }
 
