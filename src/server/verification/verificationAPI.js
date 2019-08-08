@@ -39,7 +39,10 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { body, files, user } = req
       log.debug({ user })
       const sessionId = body.sessionId
-      GunDBPublic.gun.get(sessionId).put({}) // publish initialized data to subscribers
+      GunDBPublic.gun
+        .get(sessionId)
+        .get('isStarted')
+        .put(true) // publish initialized data to subscribers
       log.debug('written FR status to gun', await GunDBPublic.gun.get(sessionId))
 
       const verificationData = {
@@ -54,7 +57,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           .verifyUser(user, verificationData)
           .catch(e => {
             log.error('Facerecognition error:', e)
-            return { ok: 0, error: e.message }
+            GunDBPublic.gun.get(sessionId).put({ isNotDuplicate: false, isLive: false, isError: e.message })
+            return { ok: 1, error: e.message, isVerified: false }
           })
           .finally(() => {
             //cleanup
@@ -63,6 +67,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
             fsPromises.unlink(verificationData.auditTrailImageFile)
           })
       else {
+        GunDBPublic.gun.get(sessionId).put({ isNotDuplicate: true, isLive: true, isEnrolled: true }) // publish to subscribers
         // mocked result for verified user or development mode
         result = {
           ok: 1,
@@ -78,18 +83,18 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           storage
             .updateUser({ identifier: user.loggedInAs, isVerified: true })
             .then(updatedUser => log.debug('updatedUser:', updatedUser))
-        ]).catch(e => {
-          log.error('Whitelisting failed', e)
-          GunDBPublic.gun
-            .get(sessionId)
-            .get('isWhitelisted')
-            .put(false) // publish to subscribers
-          throw e
-        })
-        GunDBPublic.gun
-          .get(sessionId)
-          .get('isWhitelisted')
-          .put(true) // publish to subscribers
+        ])
+          .then(
+            _ =>
+              GunDBPublic.gun
+                .get(sessionId)
+                .get('isWhitelisted')
+                .put(true) // publish to subscribers
+          )
+          .catch(e => {
+            log.error('Whitelisting failed', e)
+            GunDBPublic.gun.get(sessionId).put({ isWhitelisted: false, isError: e.message })
+          })
       }
       res.json(result)
     })

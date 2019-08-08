@@ -1,8 +1,21 @@
+import Helper from '../faceRecognition/faceRecognitionHelper'
+import verification from '../verification'
+import { GunDBPublic, GunDB } from '../../gun/gun-middleware'
+
+jest.mock('../faceRecognition/faceRecognitionHelper') // mock Helper
+jest.genMockFromModule('../../gun/gun-middleware.js')
+// jest.mock('../../gun/gun-middleware.js', () => ({
+//   __esModule: true, // this property makes it work
+//   default: 'mockedDefaultExport',
+//   GunDB: jest.fn()
+// }))
+
 describe('verification', () => {
   let user
   let verificationData
 
-  beforeAll(done => {
+  beforeAll(async done => {
+    await GunDBPublic.init()
     verificationData = {
       sessionId: 'fake-session-id',
       enrollmentIdentifier: '0x9d5499D5099DE6Fe5A8f39874617dDFc967cA6e5',
@@ -23,16 +36,13 @@ describe('verification', () => {
     done()
   })
 
-  beforeEach(() => {
-    jest.mock('../faceRecognition/faceRecognitionHelper') // mock Helper
-  })
+  beforeEach(() => {})
 
   afterEach(() => {
-    jest.resetModules()
+    jest.clearAllMocks()
   })
 
   test('Helper mocked succesfully', () => {
-    const Helper = require('../faceRecognition/faceRecognitionHelper').default
     // console.log('helper', { Helper })
     expect(Helper.prepareLivenessData.mock).toBeTruthy()
     expect(Helper.prepareSearchData.mock).toBeTruthy()
@@ -40,29 +50,22 @@ describe('verification', () => {
   })
 
   test('it doesnt throw error', async () => {
-    const verification = require('../verification').default
     expect(() => {
       verification.verifyUser(user, verificationData).not.toThrow()
     })
   })
 
   test('it calls prepareSearchData', async () => {
-    const verification = require('../verification').default
-    const Helper = require('../faceRecognition/faceRecognitionHelper').default
     verification.verifyUser(user, verificationData)
     expect(Helper.prepareSearchData).toBeCalledTimes(1)
   })
 
   test('it calls isDuplicatesExist', async () => {
-    const verification = require('../verification').default
-    const Helper = require('../faceRecognition/faceRecognitionHelper').default
     verification.verifyUser(user, verificationData)
     expect(Helper.isDuplicatesExist).toBeCalledTimes(1)
   })
 
   test('it returns { ok: 1, livenessPassed: true, isDuplicatesExist: true} if Helper.isDuplicatesExist=true', async () => {
-    const verification = require('../verification').default
-    const Helper = require('../faceRecognition/faceRecognitionHelper').default
     Helper.isLivenessPassed.mockResolvedValue(true)
     Helper.isDuplicatesExist.mockResolvedValue(true)
     const res = await verification.verifyUser(user, verificationData)
@@ -70,8 +73,6 @@ describe('verification', () => {
   })
 
   test('it calls prepareEnrollmentData & enroll if liveness=true and isDuplicate=false', async () => {
-    const verification = require('../verification').default
-    const Helper = require('../faceRecognition/faceRecognitionHelper').default
     Helper.isLivenessPassed.mockResolvedValue(true)
     Helper.isDuplicatesExist.mockResolvedValue(false)
     Helper.enroll.mockResolvedValue({ alreadyEnrolled: true })
@@ -80,8 +81,6 @@ describe('verification', () => {
   })
 
   test('it returns isVerified = true if liveness=true and isDuplicate=false and user was already enrolled', async () => {
-    const verification = require('../verification').default
-    const Helper = require('../faceRecognition/faceRecognitionHelper').default
     Helper.isLivenessPassed.mockResolvedValue(true)
     Helper.isDuplicatesExist.mockResolvedValue(false)
     Helper.enroll.mockResolvedValue({ alreadyEnrolled: true })
@@ -90,8 +89,6 @@ describe('verification', () => {
   })
 
   test('it returns isVerified = true if liveness=true and isDuplicate=false and user was enrolled successfully', async () => {
-    const verification = require('../verification').default
-    const Helper = require('../faceRecognition/faceRecognitionHelper').default
     Helper.isLivenessPassed.mockResolvedValue(true)
     Helper.isDuplicatesExist.mockResolvedValue(false)
     console.log('enrollmentIdentifier', verificationData.enrollmentIdentifier)

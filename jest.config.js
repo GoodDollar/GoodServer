@@ -54,7 +54,7 @@ module.exports = {
   // forceCoverageMatch: [],
 
   // A path to a module which exports an async function that is triggered once before all test suites
-  // globalSetup: './test/env.js',
+  // globalSetup: './jest/setup.js',
 
   // A path to a module which exports an async function that is triggered once after all test suites
   // globalTeardown: null,
@@ -153,7 +153,7 @@ module.exports = {
     '/webpack.dev.config.js',
     '/src/server/server-test.js',
     '/src/server/server.config.js'
-  ]
+  ],
 
   // The regexp pattern Jest uses to detect test files
   // testRegex: "",
@@ -182,7 +182,7 @@ module.exports = {
   // unmockedModulePathPatterns: undefined,
 
   // Indicates whether each individual test should be reported during the run
-  // verbose: null,
+  verbose: true
 
   // An array of regexp patterns that are matched against all source file paths before re-running tests in watch mode
   // watchPathIgnorePatterns: [],
