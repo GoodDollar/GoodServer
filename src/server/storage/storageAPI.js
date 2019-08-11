@@ -80,7 +80,7 @@ const setup = (app: Router, storage: StorageAPI) => {
         Helper.delete(body.zoomId)
           .then(r => ({ zoom: 'ok' }))
           .catch(e => ({ zoom: 'failed' })),
-        (user.identifier ? storage.deleteUser(user) : Promise.resolve())
+        (user.identifier ? storage.deleteUser(user) : Promise.reject())
           .then(r => ({ gundb: 'ok' }))
           .catch(e => ({ gundb: 'failed' })),
         Mautic.deleteContact(user)
