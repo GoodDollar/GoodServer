@@ -38,7 +38,7 @@ const conf = convict({
     env: 'GUNDB_PASS'
   },
   gundbPeers: {
-    doc: 'superpeer to connect with for public db',
+    doc: 'superpeer to connect with for public db as a client if server mode is off',
     format: Array,
     default: undefined,
     env: 'GUNDB_PEERS'
@@ -46,7 +46,7 @@ const conf = convict({
   gundbServerMode: {
     doc: 'should we start as a superpeer',
     format: Boolean,
-    default: false,
+    default: true,
     env: 'GUNDB_SERVERMODE'
   },
   jwtPassword: {
