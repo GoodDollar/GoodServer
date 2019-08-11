@@ -5,7 +5,9 @@ import delay from 'delay'
 import makeServer from '../../server-test'
 import { getToken } from '../../__util__/'
 import { GunDBPrivate } from '../../gun/gun-middleware'
+import Config from '../../server.config'
 
+Config.skipEmailVerification = false
 describe('verificationAPI', () => {
   let server
   beforeAll(done => {
@@ -18,7 +20,6 @@ describe('verificationAPI', () => {
   afterAll(done => {
     console.log('afterAll')
     server.close(err => {
-      console.log({ err })
       done()
     })
   })

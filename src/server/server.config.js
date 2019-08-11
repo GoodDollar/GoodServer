@@ -37,6 +37,18 @@ const conf = convict({
     default: '',
     env: 'GUNDB_PASS'
   },
+  gundbPeers: {
+    doc: 'superpeer to connect with for public db',
+    format: Array,
+    default: undefined,
+    env: 'GUNDB_PEERS'
+  },
+  gundbServerMode: {
+    doc: 'should we start as a superpeer',
+    format: Boolean,
+    default: false,
+    env: 'GUNDB_SERVERMODE'
+  },
   jwtPassword: {
     doc: 'The password to sign the JWT token with',
     format: '*',
