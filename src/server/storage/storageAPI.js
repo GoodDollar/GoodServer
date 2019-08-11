@@ -10,6 +10,7 @@ import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import AdminWallet from '../blockchain/AdminWallet'
 import Helper from '../verification/faceRecognition/faceRecognitionHelper'
+import { LOADIPHLPAPI } from 'dns'
 
 const setup = (app: Router, storage: StorageAPI) => {
   /**
@@ -74,18 +75,19 @@ const setup = (app: Router, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const { body, user, log } = req
-      log.info('deleteing user', { user })
+      log.info('delete user', { user })
       const results = await Promise.all([
         Helper.delete(body.zoomId)
           .then(r => ({ zoom: 'ok' }))
           .catch(e => ({ zoom: 'failed' })),
-        (user.identifier ? storage.deleteUser(user) : Promise.resolve())
+        (user.identifier ? storage.deleteUser(user) : Promise.reject())
           .then(r => ({ gundb: 'ok' }))
           .catch(e => ({ gundb: 'failed' })),
         Mautic.deleteContact(user)
           .then(r => ({ mautic: 'ok' }))
           .catch(e => ({ mautic: 'failed' }))
       ])
+      log.info('delete user results', { results })
       res.json({ ok: 1, results })
     })
   )
