@@ -63,7 +63,7 @@ Gun.chain.putAck = function(data, cb) {
  * Make app use Gun.serve and put Gun as global so we can do  `node --inspect` - debug only
  */
 const setup = (app: Router) => {
-  app.use(Gun.serve)
+  if (conf.gundbServerMode) app.use(Gun.serve)
   global.Gun = Gun // / make global to `node --inspect` - debug only
   log.info('Done setup GunDB middleware.')
 }
@@ -167,8 +167,15 @@ class GunDB implements StorageAPI {
     return obj
   }
 
-  getUser(identifier: string): Promise<UserRecord> {
-    return this.usersCol.get(identifier).then(this.recordSanitize)
+  getUser(identifier: string): Promise<UserRecord | void> {
+    return new Promise(async res => {
+      const profileNode = this.usersCol.get(identifier)
+      profileNode.load(p => res(p))
+      let isNode = await profileNode
+      if (isNode === undefined) {
+        res(undefined)
+      }
+    })
   }
 
   async getUserByEmail(email: string): Promise<UserRecord> {
