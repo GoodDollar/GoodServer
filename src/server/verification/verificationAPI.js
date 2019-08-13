@@ -101,38 +101,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   )
 
   /**
-   * @api {post} /verify/user Whitelist user
-   * @apiName User
-   * @apiGroup Verification
-   *
-   * @apiParam {Object} verificationData
-   *
-   * @apiSuccess {Number} ok
-   * @ignore
-   */
-  app.post(
-    '/verify/user',
-    passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res, next) => {
-      const log = req.log.child({ from: 'verificationAPI - verify/user' })
-      const user: LoggedUser = req.user
-      const { verificationData } = req.body
-      const verified = true
-      if (verified) {
-        log.debug('Whitelisting new user', user)
-        //dont whitelist if already whitelisted
-        if (!(await AdminWallet.isVerified(user.gdAddress)))
-          await AdminWallet.whitelistUser(user.gdAddress, user.profilePublickey)
-        const updatedUser = await storage.updateUser({ identifier: user.loggedInAs, isVerified: true })
-        log.debug('updateUser:', updatedUser)
-        res.json({ ok: 1 })
-      } else {
-        throw new Error("Can't verify user")
-      }
-    })
-  )
-
-  /**
    * @api {post} /verify/sendotp Sends OTP
    * @apiName Send OTP
    * @apiGroup Verification
