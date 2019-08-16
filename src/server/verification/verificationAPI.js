@@ -3,6 +3,7 @@ import { Router } from 'express'
 import passport from 'passport'
 import _ from 'lodash'
 import multer from 'multer'
+import bigNumber from 'big-number'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
@@ -11,6 +12,7 @@ import conf from '../server.config'
 import { GunDBPublic } from '../gun/gun-middleware'
 import { Mautic } from '../mautic/mauticAPI'
 import fs from 'fs'
+import asyncForEach from '../utils/asyncForEach'
 
 const fsPromises = fs.promises
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
@@ -182,6 +184,29 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/topwallet' })
       const user: LoggedUser = req.user
+
+      // check if user send ether out of the good dollar system
+      const transactions = (await AdminWallet.web3.eth.getPastLogs({ address: user.gdAddress })) || []
+      let isUserSendEtherOutOfSystem = false
+
+      await asyncForEach(transactions, async t => {
+        const transactionData = await AdminWallet.web3.eth.getTransaction(t.transactionHash)
+        const bnValue = bigNumber(transactionData.value.toString())
+
+        if (!isUserSendEtherOutOfSystem) {
+          isUserSendEtherOutOfSystem = !bnValue.isZero()
+        }
+      })
+
+      if (isUserSendEtherOutOfSystem) {
+        log.error('User send ether out of system')
+
+        return res.json({
+          ok: 0,
+          sendEtherOutOfSystem: true
+        })
+      }
+
       //allow topping once a day
       storage.updateUser({ identifier: user.loggedInAs, lastTopWallet: new Date().toISOString() })
       let txRes = await AdminWallet.topWallet(user.gdAddress, user.lastTopWallet)

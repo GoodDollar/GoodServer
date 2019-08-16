@@ -48,6 +48,7 @@
     "apidoc-markdown": "^0.2.1",
     "await-mutex": "^1.0.2",
     "aws-sdk": "^2.466.0",
+    "big-number": "^2.0.0",
     "bip39-light": "^1.0.7",
     "body-parser": "^1.19.0",
     "convict": "^4.4.1",
