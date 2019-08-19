@@ -265,6 +265,12 @@ const conf = convict({
     format: '*',
     env: 'ROLLBAR_TOKEN',
     default: undefined
+  },
+  fuse: {
+    doc: 'Main url for fuse api',
+    format: '*',
+    env: 'FUSE_API',
+    default: 'https://explorer.fuse.io'
   }
 })
 

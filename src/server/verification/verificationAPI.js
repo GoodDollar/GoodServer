@@ -7,6 +7,7 @@ import bigNumber from 'big-number'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
+import fuseapi from '../utils/fuseapi'
 import { sendOTP, generateOTP } from '../../imports/otp'
 import conf from '../server.config'
 import { GunDBPublic } from '../gun/gun-middleware'
@@ -184,19 +185,21 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/topwallet' })
       const user: LoggedUser = req.user
-
       // check if user send ether out of the good dollar system
-      const transactions = (await AdminWallet.web3.eth.getPastLogs({ address: user.gdAddress })) || []
+      console.log('user', user)
       let isUserSendEtherOutOfSystem = false
-
-      await asyncForEach(transactions, async t => {
-        const transactionData = await AdminWallet.web3.eth.getTransaction(t.transactionHash)
-        const bnValue = bigNumber(transactionData.value.toString())
-
-        if (!isUserSendEtherOutOfSystem) {
-          isUserSendEtherOutOfSystem = !bnValue.isZero()
-        }
-      })
+      try {
+        const { result = [] } = await fuseapi.getTxList({
+          address: user.gdAddress,
+          page: 1,
+          offset: 0,
+          filterby: 'from'
+        })
+        isUserSendEtherOutOfSystem = result.some(r => Number(r.value) > 0)
+        console.log('result', result)
+      } catch (e) {
+        console.log('aaaaa,e', e)
+      }
 
       if (isUserSendEtherOutOfSystem) {
         log.error('User send ether out of system')
