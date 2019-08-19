@@ -269,7 +269,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/email' })
       const { user, body } = req
-      const verificationData: { code: string } = body.verificationData
+      const verificationData: { code: integer } = body.verificationData
 
       log.debug('email verified', { user, verificationData })
       if (!user.isEmailConfirmed) {
