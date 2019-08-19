@@ -186,7 +186,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log.child({ from: 'verificationAPI - verify/topwallet' })
       const user: LoggedUser = req.user
       // check if user send ether out of the good dollar system
-      console.log('user', user)
       let isUserSendEtherOutOfSystem = false
       try {
         const { result = [] } = await fuseapi.getTxList({
@@ -196,9 +195,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           filterby: 'from'
         })
         isUserSendEtherOutOfSystem = result.some(r => Number(r.value) > 0)
-        console.log('result', result)
       } catch (e) {
-        console.log('aaaaa,e', e)
+        log.error('Check user transactions error', e)
       }
 
       if (isUserSendEtherOutOfSystem) {
