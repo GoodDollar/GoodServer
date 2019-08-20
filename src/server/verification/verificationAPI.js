@@ -232,7 +232,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         log.debug('created new user mautic contact', userRec)
       }
       if (conf.skipEmailVerification === false) {
-        const code = generateOTP(10)
+        const code = generateOTP(6)
         if (!user.isEmailConfirmed) {
           const validationLink = `${conf.walletUrl}/Signup/EmailConfirmation/?validation=${code}`
           Mautic.sendVerificationEmail(userRec, validationLink)
