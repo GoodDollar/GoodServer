@@ -34,3 +34,11 @@ test('adminWallet top wallet throws an error when user is not whitelisted/verifi
   await AdminWallet.blacklistUser(unverifiedAddress)
   await expect(AdminWallet.topWallet(unverifiedAddress, null)).rejects.toThrow()
 })
+
+test('adminWallet receive queue nonce', async () => {
+  const unverifiedAddress = '0x888185b656fe770677a91412f9f09B23A787242A'
+  for (let i = 0; i < 5; i++) {
+    let tx = await AdminWallet.topWallet(unverifiedAddress, null, true)
+    expect(tx).toBeTruthy()
+  }
+})

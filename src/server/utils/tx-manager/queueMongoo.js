@@ -1,11 +1,9 @@
 import WalletNonce from '../../models/wallet-nonce'
-
 export default class queueMongoo {
   constructor() {
     this.model = WalletNonce
     this.queue = []
     this.nonce = null
-    this.mongoo = uri
 
     const filter = [
       {
