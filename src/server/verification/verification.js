@@ -92,7 +92,7 @@ class Verifications implements VerificationAPI {
    * @param {string} verificationData.code - code used to verify that the email is valid
    * @returns {Promise<boolean|Error>}
    */
-  async verifyEmail(user: UserRecord, verificationData: { code: integer }): Promise<boolean | Error> {
+  async verifyEmail(user: UserRecord, verificationData: { code: string }): Promise<boolean | Error> {
     const code = await GunDBPrivate.getUserField(user.identifier, 'emailVerificationCode')
 
     if (code) {
