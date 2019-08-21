@@ -234,9 +234,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       if (conf.skipEmailVerification === false) {
         const code = generateOTP(6)
         if (!user.isEmailConfirmed) {
-          const validationLink = `${conf.walletUrl}/Signup/EmailConfirmation/?validation=${code}`
-          Mautic.sendVerificationEmail(userRec, validationLink)
-          log.debug('send new user email validation link', validationLink)
+          Mautic.sendVerificationEmail(userRec, code)
+          log.debug('send new user email validation code', code)
         }
         // updates/adds user with the emailVerificationCode to be used for verification later and with mauticId
         storage.updateUser({

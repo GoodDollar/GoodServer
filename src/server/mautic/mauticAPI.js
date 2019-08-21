@@ -39,12 +39,12 @@ export const Mautic = {
   createContact(user: UserRecord) {
     return this.baseQuery('/contacts/new', this.baseHeaders, { ...user, tags: ['dappuser'] })
   },
-  sendVerificationEmail(user: UserRecord, link: string) {
-    if (!(link && user.fullName && user.mauticId && Config.mauticVerifyEmailId))
+  sendVerificationEmail(user: UserRecord, code: string) {
+    if (!(code && user.fullName && user.mauticId && Config.mauticVerifyEmailId))
       throw new Error('missing input for sending verification email')
 
     return this.baseQuery(`/emails/${Config.mauticVerifyEmailId}/contact/${user.mauticId}/send`, this.baseHeaders, {
-      tokens: { link, firstName: user.fullName }
+      tokens: { code, firstName: user.fullName }
     })
   },
   sendRecoveryEmail(user: UserRecord, mnemonic: string) {
