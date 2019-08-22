@@ -45,6 +45,8 @@ export class Wallet {
 
   mnemonic: string
 
+  nonce: number
+
   constructor(mnemonic: string) {
     this.mnemonic = mnemonic
     this.ready = this.init()

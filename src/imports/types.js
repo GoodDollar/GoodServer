@@ -21,11 +21,12 @@ export type JWTRecord = {
 export type LoggedUser = JWTRecord & UserRecord
 
 export interface StorageAPI {
-  getUser(identifier: string): Promise<UserRecord>;
+  getUser(identifier: string): Promise<UserRecord | void>;
   getUserField(identifier: string, field: string): Promise<any>;
   addUser(user: UserRecord): Promise<boolean>;
   updateUser(user: UserRecord): Promise<boolean>;
   deleteUser(user: UserRecord): Promise<boolean>;
+  listUsers(cb: ({ [string]: UserRecord }) => void): void;
 }
 
 export interface VerificationAPI {
