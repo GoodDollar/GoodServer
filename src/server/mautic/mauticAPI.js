@@ -28,7 +28,8 @@ export const Mautic = {
       })
       .catch(e => {
         delete body['mnemonic'] //hide confidential information
-        log.error('Mautic Error:', url, e, { body })
+        log.error('Mautic Error:', url, e.message, { body })
+        log.trace(e)
         throw e
       })
   },
@@ -36,7 +37,7 @@ export const Mautic = {
     return this.baseQuery(`/contacts/${user.mauticId}/delete`, this.baseHeaders, {}, 'delete')
   },
   createContact(user: UserRecord) {
-    return this.baseQuery('/contacts/new', this.baseHeaders, user)
+    return this.baseQuery('/contacts/new', this.baseHeaders, { ...user, tags: ['dappuser'] })
   },
   sendVerificationEmail(user: UserRecord, link: string) {
     if (!(link && user.fullName && user.mauticId && Config.mauticVerifyEmailId))

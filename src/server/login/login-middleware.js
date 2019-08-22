@@ -24,7 +24,7 @@ export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
   let user = await GunDBPrivate.getUser(jwtPayload.loggedInAs)
   log.debug('payload received', { jwtPayload, user })
   //if user is empty make sure we have something
-  user = defaults(user, jwtPayload)
+  user = defaults(user, jwtPayload, { identifier: jwtPayload.loggedInAs })
   if (get(jwtPayload, 'loggedInAs')) {
     next(null, user)
   } else {
