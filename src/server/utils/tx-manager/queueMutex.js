@@ -24,7 +24,10 @@ export default class queueMutex {
     return {
       nonce: this.nonce,
       release: release,
-      fail: release
+      fail: () => {
+        this.nonce--;
+        release();
+      }
     }
   }
 }
