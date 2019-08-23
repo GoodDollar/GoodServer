@@ -8,6 +8,8 @@ import 'gun/lib/load'
 import { type StorageAPI, type UserRecord } from '../../imports/types'
 import conf from '../server.config'
 import logger from '../../imports/pino-logger'
+import userPrivatData from '../db/mongo/user-privat-provider'
+import _ from 'lodash'
 
 const log = logger.child({ from: 'GunDB-Middleware' })
 
@@ -96,6 +98,27 @@ class GunDB implements StorageAPI {
   serverName: string
 
   ready: Promise<boolean>
+  
+  userPublicRecord = {
+    identifier: null,
+    fullName: null,
+    jwt: null,
+    smsValidated: null,
+    isEmailConfirmed: null,
+    otp: null,
+    emailVerification: null,
+  }
+  
+  userPrivateRecord = {
+    mobile: null,
+    email: null,
+  }
+  
+  privateFields = [
+    'mobile',
+    'email'
+  ]
+  
   /**
    *
    * @param {typeof express} server The instance to connect gundb with
@@ -180,21 +203,36 @@ class GunDB implements StorageAPI {
     let identifier = await this.usersCol.get('byemail').get(email)
     return identifier && this.getUser(identifier)
   }
+  
   async getUserByMobile(mobile: string): Promise<UserRecord> {
     let identifier = await this.usersCol.get('bymobile').get(mobile)
     return identifier && this.getUser(identifier)
   }
+  
   getUserField(identifier: string, field: string): Promise<any> {
-    return this.usersCol
-      .get(identifier)
-      .get(field)
-      .then(this.recordSanitize)
+    
+    if (this.privateFields.indexOf(field) >=0 ) {
+     console.log('#############################################')
+    } else {
+      return this.usersCol
+        .get(identifier)
+        .get(field)
+        .then(this.recordSanitize)
+    }
+    
   }
 
   async addUser(user: UserRecord): Promise<boolean> {
     return this.updateUser(user)
   }
-
+  
+  /**
+   * Create or update user
+   *
+   * @param {UserRecord} user
+   *
+   * @returns {Promise<*>}
+   */
   async updateUser(user: UserRecord): Promise<boolean> {
     const { identifier } = user
     const isDup = await this.isDupUserData(user)
@@ -202,34 +240,23 @@ class GunDB implements StorageAPI {
     let promises = []
     //for non production we can allowDuplicateUserData
     if (!isDup || conf.allowDuplicateUserData) {
+  
+      console.log(this.usersCol.get(identifier))
+      
       log.info('Updating user', { identifier, user })
+      const publicData = _.pick(user, _.keys(this.userPublicRecord));
+      const privateData = _.pick(user, _.keys(this.userPrivateRecord));
+      
       try {
         promises.push(
-          this.usersCol.get(identifier).put(user)
+          this.usersCol.get(identifier).put(publicData)
           //.then()
         )
-
-        if (user.email) {
-          const { email } = user
-          promises.push(
-            this.usersCol
-              .get('byemail')
-              .get(email)
-              .put(identifier)
-            //.then()
-          )
+        
+        if (privateData.email || privateData.mobile) {
+          userPrivatData.createOrUpdate(identifier, privateData)
         }
-
-        if (user.mobile) {
-          const { mobile } = user
-          promises.push(
-            this.usersCol
-              .get('bymobile')
-              .get(mobile)
-              .put(identifier)
-            //.then()
-          )
-        }
+        
       } catch (ex) {
         logger.error('Update user failed [gun actions]:', { message: ex.message, user })
       }
@@ -245,46 +272,38 @@ class GunDB implements StorageAPI {
   }
 
   async isDupUserData(user: UserRecord) {
-    if (user.email) {
-      const res = await this.usersCol
-        .get('byemail')
-        .get(user.email)
-        .then()
-      const profile = res && (await this.usersCol.get(res))
-      if (res && res !== user.identifier && profile) return true
-    }
-
-    if (user.mobile) {
-      const res = await this.usersCol
-        .get('bymobile')
-        .get(user.mobile)
-        .then()
-      const profile = res && (await this.usersCol.get(res))
-      if (res && res !== user.identifier && profile) return true
-    }
-
-    return false
+    return await userPrivatData.isDupUserData(user)
   }
+  
+  /**
+   * Check data by field and value
+   *
+   * @param {string} field
+   * @param {string} value
+   *
+   * @returns {Promise<boolean>}
+   */
+  async isAlreadyPrivateData (field: string, value: string) {
+    const result = await userPrivatData.getByFieldValue(field, value)
 
+    return (result) ? true : false;
+  }
+  
+  /**
+   * Delete user
+   *
+   * @param {UserRecord} user
+   *
+   * @returns {Promise<boolean>}
+   */
   async deleteUser(user: UserRecord): Promise<boolean> {
     const { identifier } = user
     const userRecord = await this.usersCol.get(identifier).then()
     log.info('deleteUser fetched record:', { userRecord, identifier })
-    if (userRecord.email) {
-      this.usersCol
-        .get('byemail')
-        .get(userRecord.email)
-        .put(null)
-    }
-
-    if (userRecord.mobile) {
-      this.usersCol
-        .get('bymobile')
-        .get(userRecord.mobile)
-        .put(null)
-    }
-
+  
     await this.usersCol.get(identifier).putAck(null)
+    await userPrivatData.delete(identifier)
+
     return true
   }
 

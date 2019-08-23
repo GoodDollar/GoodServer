@@ -26,6 +26,7 @@ export interface StorageAPI {
   addUser(user: UserRecord): Promise<boolean>;
   updateUser(user: UserRecord): Promise<boolean>;
   deleteUser(user: UserRecord): Promise<boolean>;
+  isAlreadyPrivateData(field: string, value: string): Promise<boolean>;
   listUsers(cb: ({ [string]: UserRecord }) => void): void;
 }
 

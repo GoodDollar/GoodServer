@@ -91,6 +91,16 @@ const setup = (app: Router, storage: StorageAPI) => {
       res.json({ ok: 1, results })
     })
   )
+  
+  app.post(
+    '/user/check/field',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res, next) => {
+      const { body } = req
+      const isAlready = await storage.isAlreadyPrivateData(body.field, body.value);
+      res.json({ isAlready })
+    })
+  )
 
   app.post(
     '/admin/user/get',
