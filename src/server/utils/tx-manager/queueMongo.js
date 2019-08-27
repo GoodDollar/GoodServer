@@ -1,5 +1,6 @@
 import WalletNonce from '../../models/wallet-nonce'
-export default class queueMongoo {
+
+export default class queueMongo {
   constructor() {
     this.model = WalletNonce
     this.queue = []
@@ -27,7 +28,7 @@ export default class queueMongoo {
    * @param netNonce
    * @returns {Promise<*>}
    */
-  async getWalletNonce(address, netNonce) {
+  async getWalletNonce(address) {
     try {
       let wallet = await this.model.findOneAndUpdate(
         { address, isLock: false },

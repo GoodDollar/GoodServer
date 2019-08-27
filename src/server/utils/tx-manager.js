@@ -1,5 +1,5 @@
 import config from '../server.config'
-import queueMongoo from './tx-manager/queueMongoo'
+import queueMongo from './tx-manager/queueMongo'
 import queueMutex from './tx-manager/queueMutex'
 
 const network_id = config.ethereum.network_id
@@ -20,7 +20,7 @@ class TransactionRun {
         break
 
       default:
-        queueManager = new queueMongoo()
+        queueManager = new queueMongo()
         break
     }
 
