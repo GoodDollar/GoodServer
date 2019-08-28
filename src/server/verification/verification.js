@@ -97,7 +97,7 @@ class Verifications implements VerificationAPI {
 
     if (code) {
       this.log.info({ verificationData, code })
-      if (verificationData.code === code) {
+      if (String(verificationData.code) === String(code)) {
         return Promise.resolve(true)
       }
       return Promise.reject(new Error("Oops, it's not right code"))
