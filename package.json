@@ -63,6 +63,7 @@
     "jsonwebtoken": "^8.5.1",
     "lodash": "^4.17.11",
     "math-random": "^1.0.4",
+    "md5": "^2.2.1",
     "moment": "^2.24.0",
     "multer": "^1.4.1",
     "newrelic": "^5.9.1",

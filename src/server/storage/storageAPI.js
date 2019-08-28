@@ -5,6 +5,8 @@ import get from 'lodash/get'
 import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync } from '../utils/helpers'
 import { defaults } from 'lodash'
+import fetch from 'cross-fetch'
+import md5 from 'md5'
 
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
@@ -28,6 +30,7 @@ const setup = (app: Router, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const { body, user: userRecord, log } = req
+      const { walletAddress, ...bodyUser } = body.user
       const logger = req.log.child({ from: 'storageAPI - /user/add' })
 
       //check that user passed all min requirements
@@ -38,16 +41,45 @@ const setup = (app: Router, storage: StorageAPI) => {
       )
         throw new Error('User email or mobile not verified!')
 
-      const user: UserRecord = defaults(body.user, {
+      const user: UserRecord = defaults(bodyUser, {
         identifier: userRecord.loggedInAs,
         createdDate: new Date().toString()
       })
+
       //mautic contact should already exists since it is first created during the email verification we update it here
       const mauticRecord = process.env.NODE_ENV === 'development' ? {} : await Mautic.createContact(user).catch(e => {})
       const mauticId = get(mauticRecord, 'contact.fields.all.id', -1)
       logger.debug('User mautic record', { mauticId, mauticRecord })
+
+      const updateUserObj = {
+        ...user,
+        mauticId
+      }
+
+      if (!user.w3Token) {
+        try {
+          const secureHash = md5(`${user.email}${conf.secure_key}`)
+          const web3Response = await fetch(`${conf.web3SiteUrl}/api/wl/user`, {
+            method: 'PUT',
+            body: {
+              secure_hash: secureHash,
+              email: user.email,
+              full_name: user.fullName,
+              wallet_address: walletAddress
+            }
+          }).then(res => res.json())
+
+          if (web3Response.wallet_token) {
+            updateUserObj.w3Token = web3Response.wallet_token
+          }
+        } catch (e) {
+          log.debug('Get Web3 Login Response Failed', e)
+        }
+      }
+
+      storage.updateUser(updateUserObj)
+
       //topwallet of user after registration
-      storage.updateUser({ ...user, mauticId })
       let ok = await AdminWallet.topWallet(userRecord.gdAddress, null, true)
         .then(r => ({ ok: 1 }))
         .catch(e => {
