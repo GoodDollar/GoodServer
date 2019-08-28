@@ -3,6 +3,7 @@ import { Router } from 'express'
 import passport from 'passport'
 import _ from 'lodash'
 import multer from 'multer'
+import crossFetch from 'cross-fetch'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
@@ -280,6 +281,63 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: user.email })
 
       res.json({ ok: 1, attestation: signedEmail })
+    })
+  )
+
+  /**
+   * @api {get} /verify/w3/email Verify email to be equal with email provided by token from web3
+   * @apiName Web3 Email Verify
+   * @apiGroup Verification
+   *
+   * @apiParam {String} email
+   * @apiParam {String} token
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
+  app.post(
+    '/verify/w3/email',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res, next) => {
+      const log = req.log.child({ from: 'verificationAPI - verify/w3/email' })
+
+      const { body } = req
+      const email: string = body.email
+      const token: string = body.token
+
+      log.debug('received email, web3 token', email, token)
+
+      let _w3User
+
+      try {
+        _w3User = await crossFetch(`${conf.web3SiteUrl}/api/wl/user`, {
+          method: 'GET',
+          headers: {
+            Authorization: token
+          }
+        }).then(res => res.json())
+      } catch (e) {}
+
+      let status = 422
+      const responsePayload = {
+        ok: -1,
+        message: 'Invalid web3 token'
+      }
+
+      if (_w3User) {
+        const w3User = _w3User.data
+
+        if (w3User.email === email) {
+          responsePayload.ok = 1
+          delete responsePayload.message
+
+          status = 200
+        } else {
+          responsePayload.message = 'Wrong email used'
+        }
+      }
+
+      res.status(status).json(responsePayload)
     })
   )
 }

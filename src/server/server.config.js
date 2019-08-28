@@ -265,6 +265,12 @@ const conf = convict({
     format: '*',
     env: 'ROLLBAR_TOKEN',
     default: undefined
+  },
+  web3SiteUrl: {
+    doc: 'Web3 site url',
+    format: '*',
+    env: 'WEB3_SITE_URL',
+    default: undefined
   }
 })
 
