@@ -301,7 +301,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/w3/email' })
 
-      const { body } = req
+      const { body, user: currentUser } = req
       const email: string = body.email
       const token: string = body.token
 
@@ -316,7 +316,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
             Authorization: token
           }
         }).then(res => res.json())
-      } catch (e) {}
+      } catch (e) {
+        log.debug('Fetch web3 user error', e)
+      }
 
       let status = 422
       const responsePayload = {
@@ -328,6 +330,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         const w3User = _w3User.data
 
         if (w3User.email === email) {
+          storage.updateUser({ identifier: currentUser.loggedInAs, isEmailConfirmed: true })
+
           responsePayload.ok = 1
           delete responsePayload.message
 
