@@ -30,7 +30,6 @@ const setup = (app: Router, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const { body, user: userRecord, log } = req
-      const { walletAddress, ...bodyUser } = body.user
       const logger = req.log.child({ from: 'storageAPI - /user/add' })
 
       //check that user passed all min requirements
@@ -41,13 +40,40 @@ const setup = (app: Router, storage: StorageAPI) => {
       )
         throw new Error('User email or mobile not verified!')
 
-      const user: UserRecord = defaults(bodyUser, {
+      const user: UserRecord = defaults(body.user, {
         identifier: userRecord.loggedInAs,
         createdDate: new Date().toString()
       })
 
+      const mauticRecordPromise =
+        process.env.NODE_ENV === 'development'
+          ? Promise.resolve({})
+          : Mautic.createContact(user).catch(e => {
+              log.error('Create Mautic Record Failed', e)
+            })
+
+      const secureHash = md5(`${user.email}${conf.secure_key}`)
+      const web3RecordPromise = user.w3Token
+        ? Promise.rewolve()
+        : fetch(`${conf.web3SiteUrl}/api/wl/user`, {
+            method: 'PUT',
+            body: {
+              secure_hash: secureHash,
+              email: user.email,
+              full_name: user.fullName,
+              wallet_address: user.gdAddress
+            }
+          })
+            .then(res => res.json())
+            .catch(e => {
+              log.error('Get Web3 Login Response Failed', e)
+            })
+
+      const [mauticRecord, web3Record] = await Promise.all([mauticRecordPromise, web3RecordPromise])
+
+      log.debug('Web3 user record', web3Record)
+
       //mautic contact should already exists since it is first created during the email verification we update it here
-      const mauticRecord = process.env.NODE_ENV === 'development' ? {} : await Mautic.createContact(user).catch(e => {})
       const mauticId = get(mauticRecord, 'contact.fields.all.id', -1)
       logger.debug('User mautic record', { mauticId, mauticRecord })
 
@@ -56,25 +82,8 @@ const setup = (app: Router, storage: StorageAPI) => {
         mauticId
       }
 
-      if (!user.w3Token) {
-        try {
-          const secureHash = md5(`${user.email}${conf.secure_key}`)
-          const web3Response = await fetch(`${conf.web3SiteUrl}/api/wl/user`, {
-            method: 'PUT',
-            body: {
-              secure_hash: secureHash,
-              email: user.email,
-              full_name: user.fullName,
-              wallet_address: walletAddress
-            }
-          }).then(res => res.json())
-
-          if (web3Response.wallet_token) {
-            updateUserObj.w3Token = web3Response.wallet_token
-          }
-        } catch (e) {
-          log.debug('Get Web3 Login Response Failed', e)
-        }
+      if (web3Record && web3Record.wallet_token) {
+        updateUserObj.w3Token = web3Record.wallet_token
       }
 
       storage.updateUser(updateUserObj)
@@ -87,7 +96,11 @@ const setup = (app: Router, storage: StorageAPI) => {
           return { ok: 0, error: 'New user topping failed' }
         })
       log.debug('added new user:', { user, ok })
-      res.json(ok)
+
+      res.json({
+        ...ok,
+        w3Token: web3Record && web3Record.wallet_token
+      })
     })
   )
 
