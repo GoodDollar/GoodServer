@@ -8,8 +8,6 @@ import 'gun/lib/load'
 import { type StorageAPI, type UserRecord } from '../../imports/types'
 import conf from '../server.config'
 import logger from '../../imports/pino-logger'
-import userPrivatData from '../db/mongo/user-privat-provider'
-import _ from 'lodash'
 
 const log = logger.child({ from: 'GunDB-Middleware' })
 
@@ -50,17 +48,6 @@ export type S3Conf = {
   bucket: string
 }
 
-Gun.chain.putAck = function(data, cb) {
-  var gun = this,
-    cb =
-      cb ||
-      function(ctx) {
-        return ctx
-      }
-  let promise = new Promise((res, rej) => gun.put(data, ack => (ack.err ? rej(ack) : res(ack))))
-  return promise.then(cb)
-}
-
 /**
  * Make app use Gun.serve and put Gun as global so we can do  `node --inspect` - debug only
  */
@@ -98,27 +85,7 @@ class GunDB implements StorageAPI {
   serverName: string
 
   ready: Promise<boolean>
-  
-  userPublicRecord = {
-    identifier: null,
-    fullName: null,
-    jwt: null,
-    smsValidated: null,
-    isEmailConfirmed: null,
-    otp: null,
-    emailVerification: null,
-  }
-  
-  userPrivateRecord = {
-    mobile: null,
-    email: null,
-  }
-  
-  privateFields = [
-    'mobile',
-    'email'
-  ]
-  
+
   /**
    *
    * @param {typeof express} server The instance to connect gundb with
@@ -176,137 +143,13 @@ class GunDB implements StorageAPI {
   }
 
   /**
-   * remove the soul field(_) from gun records
-   * @param {*} gun record
+   * Sign Claim
+   *
+   * @param {string}subjectPubKey
+   * @param claimData
+   *
+   * @returns {Promise<Claim>}
    */
-  recordSanitize(obj: any = {}) {
-    if (obj._ !== undefined) {
-      const { _, ...record } = obj
-      return record
-    }
-
-    return obj
-  }
-
-  getUser(identifier: string): Promise<UserRecord | void> {
-    return new Promise(async res => {
-      const profileNode = this.usersCol.get(identifier)
-      profileNode.load(p => res(p))
-      let isNode = await profileNode
-      if (isNode === undefined) {
-        res(undefined)
-      }
-    })
-  }
-
-  async getUserByEmail(email: string): Promise<UserRecord> {
-    let identifier = await this.usersCol.get('byemail').get(email)
-    return identifier && this.getUser(identifier)
-  }
-  
-  async getUserByMobile(mobile: string): Promise<UserRecord> {
-    let identifier = await this.usersCol.get('bymobile').get(mobile)
-    return identifier && this.getUser(identifier)
-  }
-  
-  getUserField(identifier: string, field: string): Promise<any> {
-    
-    if (this.privateFields.indexOf(field) >=0 ) {
-     console.log('#############################################')
-    } else {
-      return this.usersCol
-        .get(identifier)
-        .get(field)
-        .then(this.recordSanitize)
-    }
-    
-  }
-
-  async addUser(user: UserRecord): Promise<boolean> {
-    return this.updateUser(user)
-  }
-  
-  /**
-   * Create or update user
-   *
-   * @param {UserRecord} user
-   *
-   * @returns {Promise<*>}
-   */
-  async updateUser(user: UserRecord): Promise<boolean> {
-    const { identifier } = user
-    const isDup = await this.isDupUserData(user)
-
-    let promises = []
-    //for non production we can allowDuplicateUserData
-    if (!isDup || conf.allowDuplicateUserData) {
-  
-      console.log(this.usersCol.get(identifier))
-      
-      log.info('Updating user', { identifier, user })
-      const publicData = _.pick(user, _.keys(this.userPublicRecord));
-      const privateData = _.pick(user, _.keys(this.userPrivateRecord));
-      
-      try {
-        promises.push(
-          this.usersCol.get(identifier).put(publicData)
-          //.then()
-        )
-        
-        if (privateData.email || privateData.mobile) {
-          userPrivatData.createOrUpdate(identifier, privateData)
-        }
-        
-      } catch (ex) {
-        logger.error('Update user failed [gun actions]:', { message: ex.message, user })
-      }
-
-      return Promise.all(promises)
-        .catch(e => logger.error('Update user failed:', { e, user }))
-        .then(r => true)
-      // return true
-    }
-
-    return Promise.reject(new Error('Duplicate user information (phone/email)'))
-    // this.user.get('users').get(identifier).secret({...user, jwt})
-  }
-
-  async isDupUserData(user: UserRecord) {
-    return await userPrivatData.isDupUserData(user)
-  }
-  
-  /**
-   * Check data by field and value
-   *
-   * @param {string} field
-   * @param {string} value
-   *
-   * @returns {Promise<boolean>}
-   */
-  async isAlreadyPrivateData (field: string, value: string) {
-    const result = await userPrivatData.getByFieldValue(field, value)
-
-    return (result) ? true : false;
-  }
-  
-  /**
-   * Delete user
-   *
-   * @param {UserRecord} user
-   *
-   * @returns {Promise<boolean>}
-   */
-  async deleteUser(user: UserRecord): Promise<boolean> {
-    const { identifier } = user
-    const userRecord = await this.usersCol.get(identifier).then()
-    log.info('deleteUser fetched record:', { userRecord, identifier })
-  
-    await this.usersCol.get(identifier).putAck(null)
-    await userPrivatData.delete(identifier)
-
-    return true
-  }
-
   async signClaim(subjectPubKey: string, claimData: any): Claim {
     let attestation: Claim = {
       issuer: { '@did': 'did:gooddollar:' + this.user.is.pub, publicKey: this.user.is.pub },
@@ -321,18 +164,8 @@ class GunDB implements StorageAPI {
     attestation.sig = sig
     return attestation
   }
-
-  listUsers(cb: ({ [string]: UserRecord }) => void) {
-    this.usersCol.load(cb, { wait: 1000 })
-  }
 }
 
 const GunDBPublic = new GunDB(conf.gundbServerMode, conf.gundbPeers)
-const GunDBPrivate = new GunDB()
 
-GunDBPrivate.init(null, conf.gundbPassword, 'privatedb', conf.gunPrivateS3).catch(e => {
-  log.error(e)
-  process.exit(-1)
-})
-
-export { setup, GunDBPublic, GunDBPrivate, GunDB }
+export { setup, GunDBPublic, GunDB }

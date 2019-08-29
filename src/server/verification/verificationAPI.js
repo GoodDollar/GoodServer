@@ -125,7 +125,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         const [, code] = await sendOTP(body.user)
         const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
 
-        storage.updateUser({ identifier: user.loggedInAs, otp: { code, expirationDate } })
+        await storage.updateUser({ identifier: user.loggedInAs, otp: { code, expirationDate } })
       }
       res.json({ ok: 1 })
     })
@@ -159,7 +159,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           return false
         })
         if (verified === false) return
-        storage.updateUser({ identifier: user.loggedInAs, smsValidated: true })
+        await storage.updateUser({ identifier: user.loggedInAs, smsValidated: true })
       }
       const signedMobile = await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: user.mobile })
       res.json({ ok: 1, attestation: signedMobile })
@@ -183,16 +183,16 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log.child({ from: 'verificationAPI - verify/topwallet' })
       const user: LoggedUser = req.user
       //allow topping once a day
-      storage.updateUser({ identifier: user.loggedInAs, lastTopWallet: new Date().toISOString() })
+      await storage.updateUser({ identifier: user.loggedInAs, lastTopWallet: new Date().toISOString() })
       let txRes = await AdminWallet.topWallet(user.gdAddress, user.lastTopWallet)
         .then(tx => {
           log.debug('topping wallet tx', { walletaddress: user.gdAddress, tx })
           return { ok: 1 }
         })
-        .catch(e => {
+        .catch(async e => {
           log.error('Failed top wallet tx', e.message, e.stack)
           //restore last top wallet in case of error
-          storage.updateUser({ identifier: user.loggedInAs, lastTopWallet: user.lastTopWallet })
+          await storage.updateUser({ identifier: user.loggedInAs, lastTopWallet: user.lastTopWallet })
 
           return { ok: -1, error: e.message }
         })
@@ -275,7 +275,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         await verifier.verifyEmail({ identifier: user.loggedInAs }, verificationData)
 
         // if verification succeeds, then set the flag `isEmailConfirmed` to true in the user's record
-        storage.updateUser({ identifier: user.loggedInAs, isEmailConfirmed: true })
+        await storage.updateUser({ identifier: user.loggedInAs, isEmailConfirmed: true })
       }
       const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: user.email })
 
