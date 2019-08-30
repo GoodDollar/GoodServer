@@ -52,13 +52,14 @@ const setup = (app: Router, storage: StorageAPI) => {
               log.error('Create Mautic Record Failed', e)
             })
 
-      const secureHash = md5(`${user.email}${conf.secure_key}`)
+      const secureHash = md5(user.email + conf.secure_key)
+
       const web3RecordPromise = user.w3Token
-        ? Promise.rewolve()
+        ? Promise.resolve()
         : fetch(`${conf.web3SiteUrl}/api/wl/user`, {
             method: 'PUT',
             body: {
-              secure_hash: secureHash,
+              secure_hash: secureHash.toLowerCase(),
               email: user.email,
               full_name: user.fullName,
               wallet_address: user.gdAddress
@@ -82,8 +83,10 @@ const setup = (app: Router, storage: StorageAPI) => {
         mauticId
       }
 
-      if (web3Record && web3Record.wallet_token) {
-        updateUserObj.w3Token = web3Record.wallet_token
+      const w3RecordData = web3Record.data
+
+      if (w3RecordData && w3RecordData.login_token) {
+        updateUserObj.loginToken = w3RecordData.login_token
       }
 
       storage.updateUser(updateUserObj)
@@ -99,7 +102,7 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       res.json({
         ...ok,
-        w3Token: web3Record && web3Record.wallet_token
+        loginToken: web3Record && web3Record.wallet_token
       })
     })
   )
