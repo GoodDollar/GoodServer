@@ -54,21 +54,24 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       const secureHash = md5(user.email + conf.secure_key)
 
-      const web3RecordPromise = user.w3Token
-        ? Promise.resolve()
-        : fetch(`${conf.web3SiteUrl}/api/wl/user`, {
-            method: 'PUT',
-            body: {
-              secure_hash: secureHash.toLowerCase(),
-              email: user.email,
-              full_name: user.fullName,
-              wallet_address: user.gdAddress
-            }
-          })
-            .then(res => res.json())
-            .catch(e => {
-              log.error('Get Web3 Login Response Failed', e)
-            })
+      log.debug('secureHash', secureHash)
+
+      const web3RecordPromise = fetch(`${conf.web3SiteUrl}/api/wl/user`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          secure_hash: secureHash.toLowerCase(),
+          email: user.email,
+          full_name: user.fullName,
+          wallet_address: user.gdAddress
+        })
+      })
+        .then(res => res.json())
+        .catch(e => {
+          log.error('Get Web3 Login Response Failed', e)
+        })
 
       const [mauticRecord, web3Record] = await Promise.all([mauticRecordPromise, web3RecordPromise])
 
@@ -102,7 +105,7 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       res.json({
         ...ok,
-        loginToken: web3Record && web3Record.wallet_token
+        loginToken: w3RecordData && w3RecordData.login_token
       })
     })
   )
