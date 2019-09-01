@@ -79,9 +79,6 @@ const setup = (app: Router, storage: StorageAPI) => {
       const { body, user, log } = req
       log.info('delete user', { user })
       const results = await Promise.all([
-        Helper.delete(body.zoomId)
-          .then(r => ({ zoom: 'ok' }))
-          .catch(e => ({ zoom: 'failed' })),
         (user.identifier ? storage.deleteUser(user) : Promise.reject())
           .then(r => ({ gundb: 'ok' }))
           .catch(e => ({ gundb: 'failed' })),
