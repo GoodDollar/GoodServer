@@ -260,6 +260,12 @@ const conf = convict({
     env: 'ALLOW_FACE_RECO_DUPS',
     default: false
   },
+  disableFaceVerification: {
+    doc: 'Whitelist user once they register',
+    format: Boolean,
+    env: 'DISABLE_FACE_VERIFICATION',
+    default: false
+  },
   rollbarToken: {
     doc: 'access token for rollbar logging',
     format: '*',
