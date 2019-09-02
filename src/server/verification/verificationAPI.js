@@ -317,7 +317,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           }
         }).then(res => res.json())
       } catch (e) {
-        log.debug('Fetch web3 user error', e)
+        log.error('Fetch web3 user error', e)
       }
 
       let status = 422
