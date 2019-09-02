@@ -45,7 +45,8 @@ describe('UserPrivate', () => {
 
   it('Should getByIdentifier user', async () => {
     let user = await storage.getByIdentifier(testUser.identifier)
-    expect(String(user.identifier) === String(testUser.identifier)).toBeTruthy()
+    const userDb = _.pick(user, _.keys(testUser))
+    expect(userDb).toMatchObject(testUser)
   })
 
   it('Should getUser user', async () => {
@@ -92,6 +93,8 @@ describe('UserPrivate', () => {
   it('Should getUserByEmail', async () => {
     let user = await storage.getUserByEmail(testUser.email)
     expect(user).toBeTruthy()
+    const userDb = _.pick(user, _.keys(testUser))
+    expect(userDb).toMatchObject(testUser)
   })
 
   it('Should getUserByMobile', async () => {
