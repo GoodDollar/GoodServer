@@ -19,14 +19,20 @@ class UserPrivate {
     let result = null
 
     if (email) {
-      result = await this.model.findOne({ email })
+      result = await this.model
+        .findOne({ email })
+        .select('_id')
+        .lean()
       if (result) {
         return true
       }
     }
 
     if (mobile) {
-      result = await this.model.findOne({ mobile })
+      result = await this.model
+        .findOne({ mobile })
+        .select('_id')
+        .lean()
       if (result) {
         return true
       }
@@ -44,12 +50,7 @@ class UserPrivate {
    */
   async updateUser(user: UserRecord): Promise<boolean> {
     try {
-      const userDb = await this.getByIdentifier(user.identifier)
-      if (userDb) {
-        await this.model.update({ identifier: user.identifier }, { $set: user }, { new: true })
-      } else {
-        await this.model.create(user)
-      }
+      await this.model.updateOne({ identifier: user.identifier }, { $set: user }, { upsert: true })
       return true
     } catch (ex) {
       logger.error('Update user failed [mongo actions]:', { message: ex.message, user })
@@ -78,7 +79,10 @@ class UserPrivate {
    * @returns {object || null}
    */
   async getUserField(identifier: string, field: string): string {
-    const result = await this.model.findOne({ identifier })
+    const result = await this.model
+      .findOne({ identifier })
+      .select(field)
+      .lean()
 
     return result ? result[field] : ''
   }

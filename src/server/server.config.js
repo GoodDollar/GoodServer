@@ -154,24 +154,6 @@ const conf = convict({
       format: '*',
       env: 'MONGO_DB_URI',
       default: ''
-    },
-    user: {
-      doc: 'Mongo DB user',
-      format: '*',
-      env: 'MONGO_DB_USER',
-      default: ''
-    },
-    pass: {
-      doc: 'Mongo DB password',
-      format: '*',
-      env: 'MONGO_DB_PASS',
-      default: ''
-    },
-    dbName: {
-      doc: 'Mongo DB name',
-      format: '*',
-      env: 'MONGO_DB_NAME',
-      default: ''
     }
   },
   noReplyEmail: {

@@ -18,7 +18,8 @@ export const UserPrivateSchema = new mongoose.Schema({
     index: { unique: true }
   },
   mobile: {
-    type: String
+    type: String,
+    index: { unique: true }
   },
   jwt: {
     type: String
@@ -31,24 +32,14 @@ export const UserPrivateSchema = new mongoose.Schema({
     default: false
   },
   otp: {
-    type: Object
+    type: {
+      code: String,
+      expirationDate: String
+    }
   },
   emailVerificationCode: {
     type: String
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: Date
+  }
 })
 
-/**
- * Set Time updat
- */
-UserPrivateSchema.pre('update', function(next) {
-  this.update({}, { $set: { updatedAt: new Date() } })
-  next()
-})
-
-export default mongoose.db.model(MODEL_USER_PRIVATE, UserPrivateSchema)
+export default mongoose.model(MODEL_USER_PRIVATE, UserPrivateSchema)

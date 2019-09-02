@@ -2,14 +2,22 @@
  * @jest-environment node
  */
 import UserDBPrivate from '../mongo/user-privat-provider'
+import mongoose from '../mongo-db'
+import _ from 'lodash'
 
 const storage = UserDBPrivate
 
-const testUser = { identifier: '01', fullName: 'mongo_test', email: 'test@test.test', mobile: '123456789' }
+const testUser = { identifier: '00', fullName: 'mongo_test', email: 'test@test.test', mobile: '123456789' }
+
 jest.setTimeout(30000)
+
 describe('UserPrivate', () => {
   afterAll(async () => {
     await storage.model.deleteMany({ fullName: new RegExp('mongo_test', 'i') })
+  })
+
+  it('Should monogo connect', async () => {
+    expect(mongoose.connection.readyState).toBeTruthy()
   })
 
   it('Should addUser user', async () => {
@@ -24,7 +32,10 @@ describe('UserPrivate', () => {
     let user = await storage.getByIdentifier(testUser.identifier)
     expect(user).toBeTruthy()
 
+    const userDb = _.pick(user, _.keys(testUser))
+
     expect(user.jwt === 'test jwt').toBeTruthy()
+    expect(userDb).toMatchObject(testUser)
   })
 
   it('Should getUserField user', async () => {
@@ -39,7 +50,8 @@ describe('UserPrivate', () => {
 
   it('Should getUser user', async () => {
     let user = await storage.getUser(testUser.identifier)
-    expect(String(user.identifier) === String(testUser.identifier)).toBeTruthy()
+    const userDb = _.pick(user, _.keys(testUser))
+    expect(userDb).toMatchObject(testUser)
   })
 
   it('Should getByIdentifier unidentified identifier', async () => {
