@@ -3,7 +3,6 @@ import { Router } from 'express'
 import passport from 'passport'
 import _ from 'lodash'
 import multer from 'multer'
-import bigNumber from 'big-number'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
@@ -190,7 +189,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         const { result = [] } = await fuseapi.getTxList({
           address: user.gdAddress,
           page: 1,
-          offset: 0,
+          offset: 10,
           filterby: 'from'
         })
         isUserSendEtherOutOfSystem = result.some(r => Number(r.value) > 0)

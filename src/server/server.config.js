@@ -268,9 +268,9 @@ const conf = convict({
   },
   fuse: {
     doc: 'Main url for fuse api',
-    format: '*',
+    format: String,
     env: 'FUSE_API',
-    default: 'https://explorer.fuse.io'
+    default: null
   }
 })
 
