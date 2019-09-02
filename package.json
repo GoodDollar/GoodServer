@@ -9,6 +9,7 @@
   "scripts": {
     "build": "webpack --mode production --config webpack.server.config.js",
     "test": "jest --forceExit --detectOpenHandles --maxWorkers=1",
+    "test_w": "jest src/server/db/",
     "test:staging": "jest --forceExit --detectOpenHandles",
     "coverage": "jest --forceExit --detectOpenHandles --coverage --maxWorkers=1",
     "coveralls": "cat ./coverage/lcov.info | node node_modules/.bin/coveralls",
