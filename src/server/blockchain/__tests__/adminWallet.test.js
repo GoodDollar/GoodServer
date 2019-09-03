@@ -1,6 +1,6 @@
 import AdminWallet from '../AdminWallet'
 
-jest.setTimeout(30000)
+jest.setTimeout(3000000)
 beforeAll(async () => {
   await AdminWallet.ready
 })
@@ -33,4 +33,40 @@ test('adminWallet top wallet throws an error when user is not whitelisted/verifi
   const unverifiedAddress = '0xb999A6a8096dE62638f99157E5E05894303F5EA8'
   await AdminWallet.blacklistUser(unverifiedAddress)
   await expect(AdminWallet.topWallet(unverifiedAddress, null)).rejects.toThrow()
+})
+
+test('adminWallet receive queue nonce', async () => {
+  const unverifiedAddress = '0xC8282816Bbbb5A417762feE6e736479D4809D129'
+  for (let i = 0; i < 5; i++) {
+    let tx = await AdminWallet.topWallet(unverifiedAddress, null, true)
+    expect(tx).toBeTruthy()
+  }
+})
+
+test('adminWallet bad transaction in queue', async () => {
+  
+  const unverifiedAddress = '0xC8282816Bbbb5A417762feE6e736479D4809D129';
+  const from = AdminWallet.address;
+  const testValue = 10;
+  const badGas = 10;
+  let tx;
+  
+  //good tx
+  tx = await AdminWallet.topWallet(unverifiedAddress, null, true)
+  expect(tx).toBeTruthy()
+  
+  //bad tx
+  await expect(AdminWallet.sendNative(
+    {
+      from,
+      to: unverifiedAddress,
+      value: testValue,
+      gas: badGas,
+      gasPrice: badGas
+    })).rejects.toThrow()
+  
+  //good tx
+  tx = await AdminWallet.topWallet(unverifiedAddress, null, true)
+  expect(tx).toBeTruthy()
+  
 })

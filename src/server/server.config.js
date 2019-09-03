@@ -268,6 +268,12 @@ const conf = convict({
     env: 'ALLOW_FACE_RECO_DUPS',
     default: false
   },
+  enableMongoLock: {
+    doc: 'Enable or disable transaction locks for mongo',
+    format: Boolean,
+    env: 'ENABLE_MONGO_LOCK',
+    default: false
+  },
   disableFaceVerification: {
     doc: 'Whitelist user once they register',
     format: Boolean,

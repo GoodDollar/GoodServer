@@ -7,7 +7,7 @@ import config from '../../webpack.dev.config'
 import conf from './server.config'
 import { GunDBPublic } from './gun/gun-middleware'
 import AdminWallet from './blockchain/AdminWallet'
-import mongoose from '../mongo-db'
+import mongoose from './db/mongo-db'
 import app from './app'
 
 const PORT = conf.port || 4000
