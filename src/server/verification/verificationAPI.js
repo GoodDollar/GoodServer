@@ -325,11 +325,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           headers: {
             Authorization: token
           }
-        })
-          .then(res => res.json())
-          .catch(e => {
-            log.error('test err', e)
-          })
+        }).then(res => res.json())
 
         const w3userData = _w3User.data
         w3User = w3userData.email && w3userData
