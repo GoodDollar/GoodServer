@@ -304,43 +304,52 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log.child({ from: 'verificationAPI - verify/w3/email' })
 
       const { body, user: currentUser } = req
+      log.debug('test body', body)
       const email: string = body.email
       const token: string = body.token
 
-      log.debug('received email, web3 token', email, token)
+      if (!email || !token) {
+        log.error('email and w3Token is required', { email, token })
 
-      let _w3User
+        return res.status(422).json({
+          ok: -1,
+          message: 'email and w3Token is required'
+        })
+      }
+
+      let w3User
 
       try {
-        _w3User = await crossFetch(`${conf.web3SiteUrl}/api/wl/user`, {
+        const _w3User = await crossFetch(`${conf.web3SiteUrl}/api/wl/user`, {
           method: 'GET',
           headers: {
             Authorization: token
           }
-        }).then(res => res.json())
+        })
+          .then(res => res.json())
+          .catch(e => {
+            log.error('test err', e)
+          })
+
+        const w3userData = _w3User.data
+        w3User = w3userData.email && w3userData
       } catch (e) {
-        log.error('Fetch web3 user error', e)
+        log.error('Fetch web3 user error', e.message, e)
       }
 
       let status = 422
       const responsePayload = {
         ok: -1,
-        message: 'Invalid web3 token'
+        message: 'Wrong web3 token or email'
       }
 
-      if (_w3User) {
-        const w3User = _w3User.data
+      if (w3User && w3User.email === email) {
+        storage.updateUser({ identifier: currentUser.loggedInAs, isEmailConfirmed: true })
 
-        if (w3User.email === email) {
-          storage.updateUser({ identifier: currentUser.loggedInAs, isEmailConfirmed: true })
+        responsePayload.ok = 1
+        delete responsePayload.message
 
-          responsePayload.ok = 1
-          delete responsePayload.message
-
-          status = 200
-        } else {
-          responsePayload.message = 'Wrong email used'
-        }
+        status = 200
       }
 
       res.status(status).json(responsePayload)
