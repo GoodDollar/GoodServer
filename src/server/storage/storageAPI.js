@@ -42,7 +42,7 @@ const setup = (app: Router, storage: StorageAPI) => {
         createdDate: new Date().toString()
       })
       if (conf.disableFaceVerification) {
-        AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublicKey)
+        AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey)
       }
       //mautic contact should already exists since it is first created during the email verification we update it here
       const mauticRecord = process.env.NODE_ENV === 'development' ? {} : await Mautic.createContact(user).catch(e => {})

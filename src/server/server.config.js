@@ -277,6 +277,12 @@ const conf = convict({
     format: String,
     env: 'FUSE_API',
     default: null
+  },
+  web3SiteUrl: {
+    doc: 'Web3 site url',
+    format: '*',
+    env: 'WEB3_SITE_URL',
+    default: undefined
   }
 })
 
