@@ -126,7 +126,9 @@ class GunDB implements StorageAPI {
         memory,
         name,
         chunk: 1024 * 32,
-        batch: 10
+        batch: 10,
+        axe: true,
+        multicast: false
       })
     } else {
       this.gun = Gun({ web: server, file: name, gc_delay, memory, name, axe: true, multicast: false })
@@ -205,7 +207,7 @@ class GunDB implements StorageAPI {
       log.info('Updating user', { identifier, user })
       try {
         promises.push(
-          this.usersCol.get(identifier).put(user)
+          this.usersCol.get(identifier).putAck(user)
           //.then()
         )
 
@@ -215,7 +217,7 @@ class GunDB implements StorageAPI {
             this.usersCol
               .get('byemail')
               .get(email)
-              .put(identifier)
+              .putAck(identifier)
             //.then()
           )
         }
@@ -226,7 +228,7 @@ class GunDB implements StorageAPI {
             this.usersCol
               .get('bymobile')
               .get(mobile)
-              .put(identifier)
+              .putAck(identifier)
             //.then()
           )
         }

@@ -117,15 +117,17 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res, next) => {
       const { user, body } = req
-
+      const log = req.log.child({ from: 'otp' })
+      log.info('otp request:', user, body)
       let userRec: UserRecord = _.defaults(body.user, user, { identifier: user.loggedInAs })
       if (conf.allowDuplicateUserData === false && (await storage.isDupUserData(userRec))) {
         return res.json({ ok: 0, error: 'Mobile already exists, please use a different one.' })
       }
+      log.debug('sending otp:', user.loggedInAs)
       if (!userRec.smsValidated) {
         const [, code] = await sendOTP(body.user)
         const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
-
+        log.debug('otp sent:', user.loggedInAs)
         storage.updateUser({ identifier: user.loggedInAs, otp: { code, expirationDate } })
       }
       res.json({ ok: 1 })
