@@ -8,7 +8,7 @@ class UserPrivate {
   }
 
   /**
-   * Get new nonce after increment
+   * Is dublicate User
    *
    * @param {UserRecord} user
    *
