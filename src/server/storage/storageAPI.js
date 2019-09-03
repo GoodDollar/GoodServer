@@ -89,7 +89,7 @@ const setup = (app: Router, storage: StorageAPI) => {
         mauticId
       }
 
-      const w3RecordData = web3Record.data
+      const w3RecordData = web3Record && web3Record.data
 
       if (w3RecordData && w3RecordData.login_token) {
         updateUserObj.loginToken = w3RecordData.login_token
