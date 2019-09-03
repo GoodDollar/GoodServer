@@ -10,7 +10,6 @@ import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import AdminWallet from '../blockchain/AdminWallet'
 import Helper from '../verification/faceRecognition/faceRecognitionHelper'
-import { LOADIPHLPAPI } from 'dns'
 
 const setup = (app: Router, storage: StorageAPI) => {
   /**
@@ -29,7 +28,7 @@ const setup = (app: Router, storage: StorageAPI) => {
     wrapAsync(async (req, res, next) => {
       const { body, user: userRecord, log } = req
       const logger = req.log.child({ from: 'storageAPI - /user/add' })
-
+      log.debug('new user request:', { data: body.user, userRecord })
       //check that user passed all min requirements
       if (
         ['production', 'staging'].includes(conf.env) &&
@@ -42,6 +41,9 @@ const setup = (app: Router, storage: StorageAPI) => {
         identifier: userRecord.loggedInAs,
         createdDate: new Date().toString()
       })
+      if (conf.disableFaceVerification) {
+        AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey)
+      }
       //mautic contact should already exists since it is first created during the email verification we update it here
       const mauticRecord = process.env.NODE_ENV === 'development' ? {} : await Mautic.createContact(user).catch(e => {})
       const mauticId = get(mauticRecord, 'contact.fields.all.id', -1)
@@ -77,9 +79,6 @@ const setup = (app: Router, storage: StorageAPI) => {
       const { body, user, log } = req
       log.info('delete user', { user })
       const results = await Promise.all([
-        Helper.delete(body.zoomId)
-          .then(r => ({ zoom: 'ok' }))
-          .catch(e => ({ zoom: 'failed' })),
         (user.identifier ? storage.deleteUser(user) : Promise.reject())
           .then(r => ({ gundb: 'ok' }))
           .catch(e => ({ gundb: 'failed' })),
