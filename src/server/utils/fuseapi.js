@@ -1,4 +1,5 @@
-import axios from 'axios'
+import fetch from 'cross-fetch'
+import qs from 'qs'
 import config from '../server.config'
 class FuseApi {
   constructor() {
@@ -21,19 +22,20 @@ class FuseApi {
      */
   async getTxList(options) {
     const r = await this.runMethod('account', 'txlist', options)
-    console.log('getTxList', r.result.length)
     return this.runMethod('account', 'txlist', options)
   }
 
   async runMethod(module, action, options) {
-    const result = await axios.get(`${this.mainUrl}/api`, {
-      params: {
-        module,
-        action,
-        ...options
-      }
+    const queryParams = qs.stringify({
+      module,
+      action,
+      ...options
     })
-    return result && result.data
+    const res = await fetch(`${this.mainUrl}/api?${queryParams}`)
+    if (res.status >= 400) {
+      throw new Error('Bad response from server')
+    }
+    return await res.json()
   }
 }
 
