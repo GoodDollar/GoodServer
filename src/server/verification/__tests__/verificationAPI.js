@@ -111,21 +111,6 @@ describe('verificationAPI', () => {
     expect(res.body).toMatchObject({ ok: -1, message: 'Wrong web3 token or email' })
   })
 
-  test('/verify/w3/email with valid creds', async () => {
-    const token = await getToken(server)
-    const res = await request(server)
-      .post('/verify/w3/email')
-      .send({
-        token:
-          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjo1OH0sImlhdCI6MTU2NzUyMTk4N30.ELhx-PQs0ypGAIYZ_Y2JD46x7uLX6stxR0a2JqK5gF4',
-        email: 'fedyshyn.y@gmail.com'
-      })
-      .set('Authorization', `Bearer ${token}`)
-
-    expect(res.status).toBe(200)
-    expect(res.body).toMatchObject({ ok: 1 })
-  })
-
   /*test('/verify/facerecognition creates proper verification data from a valid request', async () => {
     const token = await getToken(server)
     let req = new FormData()
