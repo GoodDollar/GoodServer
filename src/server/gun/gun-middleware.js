@@ -126,7 +126,9 @@ class GunDB implements StorageAPI {
         memory,
         name,
         chunk: 1024 * 32,
-        batch: 10
+        batch: 10,
+        axe: true,
+        multicast: false
       })
     } else {
       this.gun = Gun({ web: server, file: name, gc_delay, memory, name, axe: true, multicast: false })

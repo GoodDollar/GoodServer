@@ -3,6 +3,7 @@ import { Router } from 'express'
 import passport from 'passport'
 import _ from 'lodash'
 import multer from 'multer'
+import crossFetch from 'cross-fetch'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
@@ -116,15 +117,17 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res, next) => {
       const { user, body } = req
-
+      const log = req.log.child({ from: 'otp' })
+      log.info('otp request:', user, body)
       let userRec: UserRecord = _.defaults(body.user, user, { identifier: user.loggedInAs })
       if (conf.allowDuplicateUserData === false && (await storage.isDupUserData(userRec))) {
         return res.json({ ok: 0, error: 'Mobile already exists, please use a different one.' })
       }
+      log.debug('sending otp:', user.loggedInAs)
       if (!userRec.smsValidated) {
         const [, code] = await sendOTP(body.user)
         const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
-
+        log.debug('otp sent:', user.loggedInAs)
         storage.updateUser({ identifier: user.loggedInAs, otp: { code, expirationDate } })
       }
       res.json({ ok: 1 })
@@ -280,6 +283,67 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: user.email })
 
       res.json({ ok: 1, attestation: signedEmail })
+    })
+  )
+
+  /**
+   * @api {get} /verify/w3/email Verify email to be equal with email provided by token from web3
+   * @apiName Web3 Email Verify
+   * @apiGroup Verification
+   *
+   * @apiParam {String} email
+   * @apiParam {String} token
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
+  app.post(
+    '/verify/w3/email',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res, next) => {
+      const log = req.log.child({ from: 'verificationAPI - verify/w3/email' })
+
+      const { body, user: currentUser } = req
+      const email: string = body.email
+      const token: string = body.token
+
+      log.debug('received email, web3 token', email, token)
+
+      let _w3User
+
+      try {
+        _w3User = await crossFetch(`${conf.web3SiteUrl}/api/wl/user`, {
+          method: 'GET',
+          headers: {
+            Authorization: token
+          }
+        }).then(res => res.json())
+      } catch (e) {
+        log.error('Fetch web3 user error', e)
+      }
+
+      let status = 422
+      const responsePayload = {
+        ok: -1,
+        message: 'Invalid web3 token'
+      }
+
+      if (_w3User) {
+        const w3User = _w3User.data
+
+        if (w3User.email === email) {
+          storage.updateUser({ identifier: currentUser.loggedInAs, isEmailConfirmed: true })
+
+          responsePayload.ok = 1
+          delete responsePayload.message
+
+          status = 200
+        } else {
+          responsePayload.message = 'Wrong email used'
+        }
+      }
+
+      res.status(status).json(responsePayload)
     })
   )
 }
