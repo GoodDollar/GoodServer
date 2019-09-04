@@ -1,6 +1,6 @@
 import AdminWallet from '../AdminWallet'
 
-jest.setTimeout(3000000)
+jest.setTimeout(100000)
 beforeAll(async () => {
   await AdminWallet.ready
 })
@@ -44,29 +44,28 @@ test('adminWallet receive queue nonce', async () => {
 })
 
 test('adminWallet bad transaction in queue', async () => {
-  
-  const unverifiedAddress = '0xC8282816Bbbb5A417762feE6e736479D4809D129';
-  const from = AdminWallet.address;
-  const testValue = 10;
-  const badGas = 10;
-  let tx;
-  
+  const unverifiedAddress = '0xC8282816Bbbb5A417762feE6e736479D4809D129'
+  const from = AdminWallet.address
+  const testValue = 10
+  const badGas = 10
+  let tx
+
   //good tx
   tx = await AdminWallet.topWallet(unverifiedAddress, null, true)
   expect(tx).toBeTruthy()
-  
+
   //bad tx
-  await expect(AdminWallet.sendNative(
-    {
+  await expect(
+    AdminWallet.sendNative({
       from,
       to: unverifiedAddress,
       value: testValue,
       gas: badGas,
       gasPrice: badGas
-    })).rejects.toThrow()
-  
+    })
+  ).rejects.toThrow()
+
   //good tx
   tx = await AdminWallet.topWallet(unverifiedAddress, null, true)
   expect(tx).toBeTruthy()
-  
 })

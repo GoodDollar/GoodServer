@@ -1,5 +1,5 @@
 import WalletNonce from '../../db/mongo/models/wallet-nonce'
-
+import logger from '../../../imports/pino-logger'
 export default class queueMongo {
   constructor() {
     this.model = WalletNonce
@@ -39,7 +39,7 @@ export default class queueMongo {
 
       return wallet
     } catch (e) {
-      console.log(e)
+      logger.error('TX queueMongo (getWalletNonce)', e)
       return false
     }
   }
@@ -63,7 +63,7 @@ export default class queueMongo {
         })
       }
     } catch (e) {
-      console.log(e)
+      logger.error('TX queueMongo (createIfNotExist)', e)
     }
   }
 
@@ -141,7 +141,7 @@ export default class queueMongo {
         }
       }
     } catch (e) {
-      console.log(e)
+      log.error('TX queueMongo (run)', e)
     }
   }
 }
