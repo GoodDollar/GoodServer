@@ -93,6 +93,42 @@ describe('verificationAPI', () => {
     expect(dbUser.emailVerificationCode).toBeTruthy()
   })
 
+  test('/verify/w3/email without auth creds -> 401', () => {
+    return request(server)
+      .post('/verify/w3/email')
+      .then(res => {
+        console.log('res test', res.statusCode)
+        expect(res.statusCode).toBe(401)
+      })
+  })
+
+  test('/verify/w3/email without w3 token', async () => {
+    const token = await getToken(server)
+    const res = await request(server)
+      .post('/verify/w3/email')
+      .send({
+        email: 'johndoe@gooddollar.org'
+      })
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toBe(422)
+    expect(res.body).toMatchObject({ ok: -1, message: 'email and w3Token is required' })
+  })
+
+  test('/verify/w3/email with wrong w3 token', async () => {
+    const token = await getToken(server)
+    const res = await request(server)
+      .post('/verify/w3/email')
+      .send({
+        token: 'wrong_token',
+        email: 'johndoe@gooddollar.org'
+      })
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toBe(422)
+    expect(res.body).toMatchObject({ ok: -1, message: 'Wrong web3 token or email' })
+  })
+
   /*test('/verify/facerecognition creates proper verification data from a valid request', async () => {
     const token = await getToken(server)
     let req = new FormData()

@@ -286,6 +286,12 @@ const conf = convict({
     env: 'ROLLBAR_TOKEN',
     default: undefined
   },
+  secure_key: {
+    doc: 'Secure key word used to create secure hash by which server can communicate with web3',
+    format: '*',
+    env: 'SECURE_KEY',
+    default: undefined
+  },
   web3SiteUrl: {
     doc: 'Web3 site url',
     format: '*',

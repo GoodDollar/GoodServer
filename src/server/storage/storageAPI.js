@@ -5,6 +5,8 @@ import get from 'lodash/get'
 import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync } from '../utils/helpers'
 import { defaults } from 'lodash'
+import fetch from 'cross-fetch'
+import md5 from 'md5'
 
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
@@ -41,15 +43,61 @@ const setup = (app: Router, storage: StorageAPI) => {
         identifier: userRecord.loggedInAs,
         createdDate: new Date().toString()
       })
+
       if (conf.disableFaceVerification) {
         AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey)
       }
+
+      const mauticRecordPromise =
+        process.env.NODE_ENV === 'development'
+          ? Promise.resolve({})
+          : Mautic.createContact(user).catch(e => {
+              log.error('Create Mautic Record Failed', e)
+            })
+
+      const secureHash = md5(user.email + conf.secure_key)
+
+      log.debug('secureHash', secureHash)
+
+      const web3RecordPromise = fetch(`${conf.web3SiteUrl}/api/wl/user`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          secure_hash: secureHash.toLowerCase(),
+          email: user.email,
+          full_name: user.fullName,
+          wallet_address: user.gdAddress
+        })
+      })
+        .then(res => res.json())
+        .catch(e => {
+          log.error('Get Web3 Login Response Failed', e)
+        })
+
+      const [mauticRecord, web3Record] = await Promise.all([mauticRecordPromise, web3RecordPromise])
+
+      log.debug('Web3 user record', web3Record)
+
       //mautic contact should already exists since it is first created during the email verification we update it here
-      const mauticRecord = process.env.NODE_ENV === 'development' ? {} : await Mautic.createContact(user).catch(e => {})
       const mauticId = get(mauticRecord, 'contact.fields.all.id', -1)
       logger.debug('User mautic record', { mauticId, mauticRecord })
+
+      const updateUserObj = {
+        ...user,
+        mauticId
+      }
+
+      const w3RecordData = web3Record && web3Record.data
+
+      if (w3RecordData && w3RecordData.login_token) {
+        updateUserObj.loginToken = w3RecordData.login_token
+      }
+
+      storage.updateUser(updateUserObj)
+
       //topwallet of user after registration
-      storage.updateUser({ ...user, mauticId })
       let ok = await AdminWallet.topWallet(userRecord.gdAddress, null, true)
         .then(r => ({ ok: 1 }))
         .catch(e => {
@@ -57,7 +105,11 @@ const setup = (app: Router, storage: StorageAPI) => {
           return { ok: 0, error: 'New user topping failed' }
         })
       log.debug('added new user:', { user, ok })
-      res.json(ok)
+
+      res.json({
+        ...ok,
+        loginToken: w3RecordData && w3RecordData.login_token
+      })
     })
   )
 
@@ -126,6 +178,55 @@ const setup = (app: Router, storage: StorageAPI) => {
       if (body.identifier) result = await storage.deleteUser(body)
 
       res.json({ ok: 1, result })
+    })
+  )
+
+  /**
+   * @api {get} /login/token get W3 login token for current user
+   * @apiName Get
+   * @apiGroup Storage
+   *
+   * @apiSuccess {Number} ok
+   * @apiSuccess {String} loginToken
+   * @ignore
+   */
+  app.get(
+    '/storage/login/token',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res, next) => {
+      const { user, log } = req
+      const logger = log.child({ from: 'storageAPI - login/token' })
+
+      let loginToken = user.loginToken
+
+      if (!loginToken) {
+        const secureHash = md5(user.email + conf.secure_key)
+        const web3Response = await fetch(`${conf.web3SiteUrl}/api/wl/user`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            secure_hash: secureHash.toLowerCase(),
+            email: user.email
+          })
+        })
+          .then(res => res.json())
+          .catch(e => {
+            logger.error('Get Web3 Login Response Failed', e)
+          })
+
+        const web3ResponseData = web3Response && web3Response.data
+
+        if (web3ResponseData && web3ResponseData.login_token) {
+          loginToken = web3ResponseData.login_token
+        }
+      }
+
+      res.json({
+        ok: +Boolean(loginToken),
+        loginToken
+      })
     })
   )
 }
