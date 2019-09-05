@@ -1,6 +1,7 @@
 import Helper from '../faceRecognition/faceRecognitionHelper'
 import verification from '../verification'
-import {GunDBPublic, GunDB, GunDBPrivate} from '../../gun/gun-middleware'
+import { GunDBPublic, GunDB } from '../../gun/gun-middleware'
+import UserDBPrivate from '../../db/mongo/user-privat-provider'
 
 jest.mock('../faceRecognition/faceRecognitionHelper') // mock Helper
 jest.genMockFromModule('../../gun/gun-middleware.js')
@@ -10,9 +11,16 @@ jest.genMockFromModule('../../gun/gun-middleware.js')
 //   GunDB: jest.fn()
 // }))
 
-const emailVerificationCode ={
-  code: 123456,
-};
+const emailVerificationCode = {
+  code: 123456
+}
+const testUser = {
+  identifier: '01',
+  fullName: 'mongo_test',
+  email: 'test@test.test',
+  mobile: '123456789',
+  emailVerificationCode: emailVerificationCode.code
+}
 
 describe('verification', () => {
   let user
@@ -28,12 +36,9 @@ describe('verification', () => {
     }
 
     user = { identifier: 1, fullName: 'hadar', email: 'hadarbe@gooddollar.org' }
-  
-    await GunDBPrivate.updateUser({
-      identifier: user.identifier,
-      emailVerificationCode: emailVerificationCode.code,
-    })
-    
+
+    await UserDBPrivate.updateUser(testUser)
+
     /*let data = new FormData()
     facemap: fs.createReadStream('./facemap.zip'),
       auditTrailImage: fs.createReadStream('./auditTrailImage.jpg'),
@@ -50,6 +55,24 @@ describe('verification', () => {
 
   afterEach(() => {
     jest.clearAllMocks()
+  })
+
+  afterAll(async () => {
+    await UserDBPrivate.model.deleteMany({ fullName: new RegExp('mongo_test', 'i') })
+  })
+
+  test('verifyUser email true', async () => {
+    const isVerified = await verification.verifyEmail(testUser, emailVerificationCode)
+
+    expect(isVerified).toBeTruthy()
+  })
+
+  test('verifyUser email false', async () => {
+    const emailVerificationCodeBad = {
+      code: 123457
+    }
+
+    await expect(verification.verifyEmail(testUser, emailVerificationCodeBad)).rejects.toThrow()
   })
 
   test('Helper mocked succesfully', () => {
@@ -111,24 +134,7 @@ describe('verification', () => {
       enrollResult: { enrollmentIdentifier: verificationData.enrollmentIdentifier }
     })
   })
-  
-  test('verifyUser email true', async () => {
-    
-    const isVerified = await verification.verifyEmail(user, emailVerificationCode);
-    
-    expect(isVerified).toBeTruthy()
-  })
-  
-  test('verifyUser email false', async () => {
-    
-    const emailVerificationCodeBad = {
-      code: 123457,
-    };
-    
-    await expect(verification.verifyEmail(user, emailVerificationCodeBad)).rejects.toThrow()
-  })
 })
-
 
 //const mock = jest.spyOn(Helper, 'prepareLivenessData')
 //Helper = jest.genMockFromModule('../faceRecognition/faceRecognitionHelper').default

@@ -1,6 +1,6 @@
 {
   "name": "@gooddollar/goodserver",
-  "version": "0.9.0",
+  "version": "0.9.1-2",
   "description": "GoodDollar Server",
   "main": "src/server/index.js",
   "engines": {
@@ -65,6 +65,7 @@
     "math-random": "^1.0.4",
     "md5": "^2.2.1",
     "moment": "^2.24.0",
+    "mongoose": "^5.6.11",
     "multer": "^1.4.1",
     "newrelic": "^5.9.1",
     "passport": "^0.4.0",
