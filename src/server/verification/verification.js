@@ -1,6 +1,7 @@
 // @flow
 import type { UserRecord, VerificationAPI } from '../../imports/types'
-import { GunDBPrivate, GunDBPublic } from '../gun/gun-middleware'
+import { GunDBPublic } from '../gun/gun-middleware'
+import UserDBPrivate from '../db/mongo/user-privat-provider'
 import Helper, { type EnrollResult, type VerificationData } from './faceRecognition/faceRecognitionHelper'
 import logger from '../../imports/pino-logger'
 
@@ -71,7 +72,7 @@ class Verifications implements VerificationAPI {
    * @returns {Promise<boolean | Error>}
    */
   async verifyMobile(user: UserRecord, verificationData: { otp: string }): Promise<boolean | Error> {
-    const otp = await GunDBPrivate.getUserField(user.identifier, 'otp')
+    const otp = await UserDBPrivate.getUserField(user.identifier, 'otp')
     this.log.debug('verifyMobile:', { userId: user.identifier, otp })
     if (otp) {
       if (String(verificationData.otp) === String(otp.code)) {
@@ -93,7 +94,7 @@ class Verifications implements VerificationAPI {
    * @returns {Promise<boolean|Error>}
    */
   async verifyEmail(user: UserRecord, verificationData: { code: string }): Promise<boolean | Error> {
-    const code = await GunDBPrivate.getUserField(user.identifier, 'emailVerificationCode')
+    const code = await UserDBPrivate.getUserField(user.identifier, 'emailVerificationCode')
 
     if (code) {
       this.log.info({ verificationData, code })

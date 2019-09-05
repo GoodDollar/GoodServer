@@ -6,7 +6,8 @@ import bodyParser from 'body-parser'
 import cors from 'cors'
 import pino from 'express-pino-logger'
 import addLoginMiddlewares from './login/login-middleware'
-import { setup as addGunMiddlewares, GunDBPrivate } from './gun/gun-middleware'
+import { setup as addGunMiddlewares } from './gun/gun-middleware'
+import UserDBPrivate from './db/mongo/user-privat-provider'
 import addStorageMiddlewares from './storage/storageAPI'
 import addVerificationMiddlewares from './verification/verificationAPI'
 import addSendMiddlewares from './send/sendAPI'
@@ -32,8 +33,8 @@ export default (app: Router, env: any) => {
 
   addLoginMiddlewares(app)
   addGunMiddlewares(app)
-  addStorageMiddlewares(app, GunDBPrivate)
-  addVerificationMiddlewares(app, VerificationAPI, GunDBPrivate)
+  addStorageMiddlewares(app, UserDBPrivate)
+  addVerificationMiddlewares(app, VerificationAPI, UserDBPrivate)
   addSendMiddlewares(app)
 
   if (rollbar) app.use(rollbar.errorHandler())

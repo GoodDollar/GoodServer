@@ -8,7 +8,7 @@ export type UserRecord = {
   smsValidated?: boolean,
   isEmailConfirmed?: boolean,
   otp?: { code: number, expirationDate: number },
-  emailVerification?: { code: string, expirationDate: number }
+  emailVerificationCode?: string
 }
 
 export type JWTRecord = {
