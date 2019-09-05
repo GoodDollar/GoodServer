@@ -12,6 +12,7 @@ import conf from '../server.config'
 import { GunDBPublic } from '../gun/gun-middleware'
 import { Mautic } from '../mautic/mauticAPI'
 import fs from 'fs'
+import md5 from 'md5'
 
 const fsPromises = fs.promises
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
@@ -348,6 +349,55 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       res.status(status).json(responsePayload)
+    })
+  )
+
+  /**
+   * @api {get} /verify/w3/logintoken get W3 login token for current user
+   * @apiName Get W3 Login Token
+   * @apiGroup Verification
+   *
+   * @apiSuccess {Number} ok
+   * @apiSuccess {String} loginToken
+   * @ignore
+   */
+  app.get(
+    '/verify/w3/logintoken',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res, next) => {
+      const { user, log } = req
+      const logger = log.child({ from: 'storageAPI - login/token' })
+
+      let loginToken = user.loginToken
+
+      if (!loginToken) {
+        const secureHash = md5(user.email + conf.secure_key)
+        const web3Response = await fetch(`${conf.web3SiteUrl}/api/wl/user`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            secure_hash: secureHash.toLowerCase(),
+            email: user.email
+          })
+        })
+          .then(res => res.json())
+          .catch(e => {
+            logger.error('Get Web3 Login Response Failed', e)
+          })
+
+        const web3ResponseData = web3Response && web3Response.data
+
+        if (web3ResponseData && web3ResponseData.login_token) {
+          loginToken = web3ResponseData.login_token
+        }
+      }
+
+      res.json({
+        ok: +Boolean(loginToken),
+        loginToken
+      })
     })
   )
 }

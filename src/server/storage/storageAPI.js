@@ -7,7 +7,6 @@ import { wrapAsync } from '../utils/helpers'
 import { defaults } from 'lodash'
 import fetch from 'cross-fetch'
 import md5 from 'md5'
-
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import AdminWallet from '../blockchain/AdminWallet'
@@ -178,55 +177,6 @@ const setup = (app: Router, storage: StorageAPI) => {
       if (body.identifier) result = await storage.deleteUser(body)
 
       res.json({ ok: 1, result })
-    })
-  )
-
-  /**
-   * @api {get} /login/token get W3 login token for current user
-   * @apiName Get
-   * @apiGroup Storage
-   *
-   * @apiSuccess {Number} ok
-   * @apiSuccess {String} loginToken
-   * @ignore
-   */
-  app.get(
-    '/storage/login/token',
-    passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res, next) => {
-      const { user, log } = req
-      const logger = log.child({ from: 'storageAPI - login/token' })
-
-      let loginToken = user.loginToken
-
-      if (!loginToken) {
-        const secureHash = md5(user.email + conf.secure_key)
-        const web3Response = await fetch(`${conf.web3SiteUrl}/api/wl/user`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            secure_hash: secureHash.toLowerCase(),
-            email: user.email
-          })
-        })
-          .then(res => res.json())
-          .catch(e => {
-            logger.error('Get Web3 Login Response Failed', e)
-          })
-
-        const web3ResponseData = web3Response && web3Response.data
-
-        if (web3ResponseData && web3ResponseData.login_token) {
-          loginToken = web3ResponseData.login_token
-        }
-      }
-
-      res.json({
-        ok: +Boolean(loginToken),
-        loginToken
-      })
     })
   )
 }
