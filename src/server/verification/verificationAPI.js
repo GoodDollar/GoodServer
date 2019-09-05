@@ -1,9 +1,11 @@
 // @flow
+import fs from 'fs'
 import { Router } from 'express'
 import passport from 'passport'
 import _ from 'lodash'
 import multer from 'multer'
 import crossFetch from 'cross-fetch'
+import md5 from 'md5'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
@@ -11,7 +13,6 @@ import { sendOTP, generateOTP } from '../../imports/otp'
 import conf from '../server.config'
 import { GunDBPublic } from '../gun/gun-middleware'
 import { Mautic } from '../mautic/mauticAPI'
-import fs from 'fs'
 
 const fsPromises = fs.promises
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
@@ -287,7 +288,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   )
 
   /**
-   * @api {get} /verify/w3/email Verify email to be equal with email provided by token from web3
+   * @api {post} /verify/w3/email Verify email to be equal with email provided by token from web3
    * @apiName Web3 Email Verify
    * @apiGroup Verification
    *
@@ -304,7 +305,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log.child({ from: 'verificationAPI - verify/w3/email' })
 
       const { body, user: currentUser } = req
-      log.debug('test body', body)
       const email: string = body.email
       const token: string = body.token
 
@@ -349,6 +349,113 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       res.status(status).json(responsePayload)
+    })
+  )
+
+  /**
+   * @api {get} /verify/bonuses check if there is available bonuses to charge on user's wallet and do it
+   * @apiName Web3 Charge Bonuses
+   * @apiGroup Verification
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
+  app.get(
+    '/verify/bonuses',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res, next) => {
+      const log = req.log.child({ from: 'verificationAPI - verify/bonuses' })
+
+      const { user: currentUser } = req
+      let wallet_token = currentUser.w3Token
+
+      if (!wallet_token) {
+        const secureHash = md5(currentUser.email + conf.secure_key)
+
+        const w3UserRes = await crossFetch(`${conf.web3SiteUrl}/api/wl/user`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            secure_hash: secureHash,
+            email: currentUser.email
+          })
+        })
+          .then(res => res.json())
+          .catch(err => {
+            log.error('Failed to fetch w3 token from W3 api', err.message, err)
+          })
+
+        const resData = w3UserRes && w3UserRes.data
+
+        if (resData && resData.wallet_token) {
+          await storage.updateUser({ identifier: currentUser.loggedInAs, w3Token: resData.wallet_token })
+
+          wallet_token = resData.wallet_token
+        }
+      }
+
+      if (!wallet_token) {
+        return res.status(400).json({
+          ok: -1,
+          message: 'Missed W3 token'
+        })
+      }
+
+      log.debug('wallet_token', wallet_token)
+
+      const w3UserRes = await crossFetch(`${conf.web3SiteUrl}/api/wl/user`, {
+        method: 'GET',
+        headers: {
+          Authorization: wallet_token
+        }
+      })
+        .then(res => res.json())
+        .catch(err => {
+          log.error('Failed to fetch w3 user from W3 api', err.message, err)
+        })
+
+      log.debug('Fetched w3 user res', w3UserRes)
+
+      const w3User = w3UserRes && w3UserRes.data
+
+      log.debug('Fetched w3 user', w3User)
+
+      if (!w3User) {
+        return res.status(400).json({
+          ok: -1,
+          message: 'Missed bonuses data'
+        })
+      }
+
+      if (!w3User.bonus) {
+        return res.status(200).json({
+          ok: 1,
+          message: 'No bonuses yet'
+        })
+      }
+
+      const bonus = w3User.bonus
+
+      // initiate bonus smart contract to send bonus to user
+      // await AdminWallet.awardUser(currentUser.gdAddress, bonus)
+
+      // updates W3 backend on bonus redeemed
+      /*const redeemRes = await crossFetch(`${conf.web3SiteUrl}/api/wl/user/redeem`, {
+        method: 'PUT',
+        headers: {
+          Authorization: wallet_token,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          redeemed_bonus: bonus
+        })
+      })*/
+
+      res.status(200).json({
+        bonus
+      })
     })
   )
 }

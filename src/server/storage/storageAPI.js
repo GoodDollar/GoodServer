@@ -93,6 +93,7 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       if (w3RecordData && w3RecordData.login_token) {
         updateUserObj.loginToken = w3RecordData.login_token
+        updateUserObj.w3Token = w3RecordData.wallet_token
       }
 
       storage.updateUser(updateUserObj)
@@ -108,7 +109,8 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       res.json({
         ...ok,
-        loginToken: w3RecordData && w3RecordData.login_token
+        loginToken: w3RecordData && w3RecordData.login_token,
+        w3Token: w3RecordData && w3RecordData.wallet_token
       })
     })
   )
