@@ -4,7 +4,7 @@ import makeServer from '../../server-test'
 import { getToken, getCreds } from '../../__util__/'
 import type { UserRecord } from '../../../imports/types'
 
-jest.setTimeout(10000)
+jest.setTimeout(30000)
 describe('storageAPI', () => {
   let server
   beforeAll(done => {

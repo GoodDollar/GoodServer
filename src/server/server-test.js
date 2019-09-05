@@ -5,8 +5,9 @@ import webpackDevMiddleware from 'webpack-dev-middleware'
 import webpackHotMiddleware from 'webpack-hot-middleware'
 import config from '../../webpack.dev.config'
 import conf from './server.config'
-import { GunDBPublic, GunDBPrivate } from './gun/gun-middleware'
+import { GunDBPublic } from './gun/gun-middleware'
 import AdminWallet from './blockchain/AdminWallet'
+import mongoose from './db/mongo-db'
 import app from './app'
 
 const PORT = conf.port || 4000
@@ -23,7 +24,7 @@ const makeServer = done => {
     GunDBPublic.init(server, conf.gundbPassword, 'publicdb')
   })
   serverPromise
-    .then(x => GunDBPrivate.ready)
+    .then(x => mongoose.connection.readyState)
     .then(x => GunDBPublic.ready)
     .then(r => {
       setTimeout(done, 1000)

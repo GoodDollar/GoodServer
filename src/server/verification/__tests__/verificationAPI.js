@@ -4,21 +4,26 @@ import FormData from 'form-data'
 import delay from 'delay'
 import makeServer from '../../server-test'
 import { getToken } from '../../__util__/'
-import { GunDBPrivate } from '../../gun/gun-middleware'
+import UserDBPrivate from '../../db/mongo/user-privat-provider'
 import Config from '../../server.config'
+
+const storage = UserDBPrivate
 
 Config.skipEmailVerification = false
 describe('verificationAPI', () => {
   let server
   beforeAll(done => {
-    jest.setTimeout(10000)
+    jest.setTimeout(50000)
     server = makeServer(done)
     console.log('the server is ..')
     console.log({ server })
   })
 
-  afterAll(done => {
+  afterAll(async done => {
     console.log('afterAll')
+
+    await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
+
     server.close(err => {
       done()
     })
@@ -42,7 +47,7 @@ describe('verificationAPI', () => {
       profilePublickey: 'kxudRZes6qS44fus50kd0knUVftOeyDTQnmsnMmiaWA.uzJ1fJM0evhtave7yZ5OWBa2O91MBU7DNAHau8xUXYw'
     }
     const token = await getToken(server, userCredentials)
-    await GunDBPrivate.updateUser({ identifier: token, smsValidated: false })
+    await UserDBPrivate.updateUser({ identifier: token, smsValidated: false, fullName: 'test_user_sendemail' })
 
     await request(server)
       .post('/verify/sendotp')
@@ -60,6 +65,16 @@ describe('verificationAPI', () => {
 
   test('/verify/sendemail with creds', async () => {
     const token = await getToken(server)
+
+    await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
+
+    const user = await UserDBPrivate.updateUser({
+      identifier: '0x7ac080f6607405705aed79675789701a48c76f55',
+      fullName: 'test_user_sendemail'
+    })
+
+    expect(user).toBeTruthy()
+
     const res = await request(server)
       .post('/verify/sendemail')
       .send({
@@ -71,8 +86,11 @@ describe('verificationAPI', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(200, { ok: 1 })
     await delay(500)
-    const dbUser = await GunDBPrivate.getUser('0x7ac080f6607405705aed79675789701a48c76f55')
-    expect(dbUser).toMatchObject({ mauticId: expect.any(Number), emailVerificationCode: expect.any(Number) })
+
+    const dbUser = await UserDBPrivate.getUser('0x7ac080f6607405705aed79675789701a48c76f55')
+
+    expect(dbUser.mauticId).toBeTruthy()
+    expect(dbUser.emailVerificationCode).toBeTruthy()
   })
 
   /*test('/verify/facerecognition creates proper verification data from a valid request', async () => {

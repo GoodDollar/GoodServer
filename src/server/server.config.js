@@ -148,6 +148,14 @@ const conf = convict({
       }
     }
   },
+  mongodb: {
+    uri: {
+      doc: 'Mongo DB URI',
+      format: '*',
+      env: 'MONGO_DB_URI',
+      default: ''
+    }
+  },
   noReplyEmail: {
     doc: 'no-reply GD email',
     format: '*',
@@ -258,6 +266,12 @@ const conf = convict({
     doc: 'Allows passing FR process even if duplicate exists',
     format: Boolean,
     env: 'ALLOW_FACE_RECO_DUPS',
+    default: false
+  },
+  enableMongoLock: {
+    doc: 'Enable or disable transaction locks for mongo',
+    format: Boolean,
+    env: 'ENABLE_MONGO_LOCK',
     default: false
   },
   disableFaceVerification: {
