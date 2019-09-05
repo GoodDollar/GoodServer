@@ -103,21 +103,21 @@ const setup = (app: Router, storage: StorageAPI) => {
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'sendAPI - /send/magiclink' })
       const { user } = req
-      const { magicLine } = req.body
+      const { magiclink } = req.body
       let userRec = user
       if (!user.mauticId || user.mauticId < 0) {
         const mauticContact = await Mautic.createContact(userRec)
         userRec.mauticId = mauticContact.contact.fields.all.id
         log.debug('created new user mautic contact', userRec)
       }
-      const magicLink = `${conf.walletUrl}/?magicline=${magicLine}`
-      log.info('sending magiclink email', userRec, magicLink)
+      const fullMagicLink = `${conf.walletUrl}/?magiclink=${magiclink}`
+      log.info('sending fullMagicLink email', userRec, fullMagicLink)
       //at this stage user record should contain all his details
       storage.updateUser({
         identifier: user.loggedInAs,
         mauticId: userRec.mauticId
       })
-      await Mautic.sendMagicLinkEmail(userRec, magicLink)
+      await Mautic.sendMagicLinkEmail(userRec, fullMagicLink)
       res.json({ ok: 1 })
     })
   )
