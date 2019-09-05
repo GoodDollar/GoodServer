@@ -35,7 +35,7 @@ export default (app: Router, env: any) => {
   addGunMiddlewares(app)
   addStorageMiddlewares(app, UserDBPrivate)
   addVerificationMiddlewares(app, VerificationAPI, UserDBPrivate)
-  addSendMiddlewares(app)
+  addSendMiddlewares(app, UserDBPrivate)
 
   if (rollbar) app.use(rollbar.errorHandler())
 

@@ -5,8 +5,9 @@ import { wrapAsync, onlyInEnv } from '../utils/helpers'
 import { sendLinkByEmail, sendLinkBySMS } from './send.sendgrid'
 import { Mautic } from '../mautic/mauticAPI'
 import conf from "../server.config";
+import type { StorageAPI } from '../../imports/types'
 
-const setup = (app: Router) => {
+const setup = (app: Router, storage: StorageAPI) => {
   /**
    * @api {post} /send/linkemail Send link email
    * @apiName Link Email
@@ -58,7 +59,7 @@ const setup = (app: Router) => {
       res.json({ ok: 1 })
     })
   )
-
+  
   /**
    * @api {post} /send/recoveryinstructions Send recovery instructions email
    * @apiName Recovery Instructions
@@ -72,9 +73,35 @@ const setup = (app: Router) => {
   app.post(
     '/send/recoveryinstructions',
     passport.authenticate('jwt', { session: false }),
-    onlyInEnv('production', 'staging', 'test', 'development'),
+    onlyInEnv('production', 'staging', 'test'),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'sendAPI - /send/recoveryinstructions' })
+      const { user } = req
+      const { mnemonic } = req.body
+      
+      log.info('sending recovery email', user)
+      //at this stage user record should contain all his details
+      await Mautic.sendRecoveryEmail(user, mnemonic)
+      res.json({ ok: 1 })
+    })
+  )
+  
+  /**
+   * @api {post} /send/magiclink Send recovery instructions email
+   * @apiName Recovery Instructions
+   * @apiGroup Send
+   *
+   * @apiParam {String} magicLine
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
+  app.post(
+    '/send/magiclink',
+    passport.authenticate('jwt', { session: false }),
+    onlyInEnv('production', 'staging', 'test', 'development'),
+    wrapAsync(async (req, res, next) => {
+      const log = req.log.child({ from: 'sendAPI - /send/magiclink' })
       const { user } = req
       const { magicLine } = req.body
       let userRec = user
@@ -84,9 +111,13 @@ const setup = (app: Router) => {
         log.debug('created new user mautic contact', userRec)
       }
       const magicLink = `${conf.walletUrl}/?magicline=${magicLine}`
-      log.info('sending recovery email', userRec, magicLink)
+      log.info('sending magiclink email', userRec, magicLink)
       //at this stage user record should contain all his details
-       await Mautic.sendRecoveryEmail(userRec, magicLink)
+      storage.updateUser({
+        identifier: user.loggedInAs,
+        mauticId: userRec.mauticId
+      })
+      await Mautic.sendMagicLinkEmail(userRec, magicLink)
       res.json({ ok: 1 })
     })
   )
