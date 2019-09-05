@@ -278,7 +278,7 @@ const conf = convict({
     doc: 'Whitelist user once they register',
     format: Boolean,
     env: 'DISABLE_FACE_VERIFICATION',
-    default: false
+    default: true
   },
   rollbarToken: {
     doc: 'access token for rollbar logging',
