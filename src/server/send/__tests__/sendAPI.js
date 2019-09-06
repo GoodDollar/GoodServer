@@ -78,6 +78,7 @@ describe('sendAPÏ', () => {
       mauticId: null
     })
     const user = await UserDBPrivate.getByIdentifier('0x7ac080f6607405705aed79675789701a48c76f55')
+    expect(user).toBeDefined()
     const res = await request(server)
       .post('/send/recoveryinstructions')
       .send({
@@ -85,6 +86,12 @@ describe('sendAPÏ', () => {
       })
       .set('Authorization', `Bearer ${token}`)
       .expect(400)
+  })
+
+  test('/send/magiclink without creds -> 401', async () => {
+    await request(server)
+      .post('/send/magiclink')
+      .expect(401)
   })
 
   test('/send/magiclink with creds', async () => {
@@ -117,12 +124,15 @@ describe('sendAPÏ', () => {
     })
 
     const user = await UserDBPrivate.getByIdentifier('0x7ac080f6607405705aed79675789701a48c76f55')
+
+    expect(user).toBeDefined()
+
     const res = await request(server)
       .post('/send/magiclink')
       .send({
         magiclink: 'unit test magicLine'
       })
       .set('Authorization', `Bearer ${token}`)
-      .expect(200, { ok: 1 })
+      .expect(400)
   })
 })

@@ -5,9 +5,8 @@ import { wrapAsync, onlyInEnv } from '../utils/helpers'
 import { sendLinkByEmail, sendLinkBySMS } from './send.sendgrid'
 import { Mautic } from '../mautic/mauticAPI'
 import conf from "../server.config";
-import type { StorageAPI } from '../../imports/types'
 
-const setup = (app: Router, storage: StorageAPI) => {
+const setup = (app: Router) => {
   /**
    * @api {post} /send/linkemail Send link email
    * @apiName Link Email
@@ -99,24 +98,15 @@ const setup = (app: Router, storage: StorageAPI) => {
   app.post(
     '/send/magiclink',
     passport.authenticate('jwt', { session: false }),
-    onlyInEnv('production', 'staging', 'test', 'development'),
+    onlyInEnv('production', 'staging', 'test'),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'sendAPI - /send/magiclink' })
       const { user } = req
       const { magiclink } = req.body
       let userRec = user
-      if (!user.mauticId || user.mauticId < 0) {
-        const mauticContact = await Mautic.createContact(userRec)
-        userRec.mauticId = mauticContact.contact.fields.all.id
-        log.debug('created new user mautic contact', userRec)
-      }
       const fullMagicLink = `${conf.walletUrl}/?magiclink=${magiclink}`
       log.info('sending fullMagicLink email', userRec, fullMagicLink)
       //at this stage user record should contain all his details
-      storage.updateUser({
-        identifier: user.loggedInAs,
-        mauticId: userRec.mauticId
-      })
       await Mautic.sendMagicLinkEmail(userRec, fullMagicLink)
       res.json({ ok: 1 })
     })
