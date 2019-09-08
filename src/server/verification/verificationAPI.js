@@ -3,7 +3,7 @@ import { Router } from 'express'
 import passport from 'passport'
 import _ from 'lodash'
 import multer from 'multer'
-import crossFetch from 'cross-fetch'
+import fetch from 'cross-fetch'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
@@ -320,7 +320,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       let w3User
 
       try {
-        const _w3User = await crossFetch(`${conf.web3SiteUrl}/api/wl/user`, {
+        const _w3User = await fetch(`${conf.web3SiteUrl}/api/wl/user`, {
           method: 'GET',
           headers: {
             Authorization: token
@@ -366,7 +366,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const { user, log } = req
-      const logger = log.child({ from: 'storageAPI - login/token' })
+      const logger = log.child({ from: 'verificationAPI - login/token' })
 
       let loginToken = user.loginToken
 
