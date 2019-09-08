@@ -10,18 +10,11 @@
     "prettier/flowtype",
     "prettier/react"
   ],
-  "plugins": [
-    "dependencies",
-    "flowtype",
-    "import",
-    "prettier",
-    "react",
-    "jest"
-  ],
+  "plugins": ["dependencies", "flowtype", "import", "prettier", "react", "jest"],
   "settings": {
     "react": {
       "pragma": "React",
-      "version": "detect",
+      "version": "0.58",
       "flowVersion": "0.91"
     }
   },
@@ -33,9 +26,7 @@
     "dependencies/no-unresolved": [
       "warn",
       {
-        "ignore": [
-          "web3"
-        ]
+        "ignore": ["web3"]
       }
     ],
     "import/no-unresolved": "warn"
