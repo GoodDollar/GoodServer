@@ -421,7 +421,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       if (!wallet_token) {
         const secureHash = md5(currentUser.email + conf.secure_key)
 
-        const w3UserRes = await crossFetch(`${conf.web3SiteUrl}/api/wl/user`, {
+        const w3UserRes = await fetch(`${conf.web3SiteUrl}/api/wl/user`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
@@ -454,7 +454,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       log.debug('wallet_token', wallet_token)
 
-      const w3UserRes = await crossFetch(`${conf.web3SiteUrl}/api/wl/user`, {
+      const w3UserRes = await fetch(`${conf.web3SiteUrl}/api/wl/user`, {
         method: 'GET',
         headers: {
           Authorization: wallet_token
