@@ -353,55 +353,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   )
 
   /**
-   * @api {get} /verify/w3/logintoken get W3 login token for current user
-   * @apiName Get W3 Login Token
-   * @apiGroup Verification
-   *
-   * @apiSuccess {Number} ok
-   * @apiSuccess {String} loginToken
-   * @ignore
-   */
-  app.get(
-    '/verify/w3/logintoken',
-    passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res, next) => {
-      const { user, log } = req
-      const logger = log.child({ from: 'verificationAPI - login/token' })
-
-      let loginToken = user.loginToken
-
-      if (!loginToken) {
-        const secureHash = md5(user.email + conf.secure_key)
-        const web3Response = await fetch(`${conf.web3SiteUrl}/api/wl/user`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            secure_hash: secureHash.toLowerCase(),
-            email: user.email
-          })
-        })
-          .then(res => res.json())
-          .catch(e => {
-            logger.error('Get Web3 Login Response Failed', e)
-          })
-
-        const web3ResponseData = web3Response && web3Response.data
-
-        if (web3ResponseData && web3ResponseData.login_token) {
-          loginToken = web3ResponseData.login_token
-        }
-      }
-
-      res.json({
-        ok: +Boolean(loginToken),
-        loginToken
-      })
-    })
-  )
-
-  /**
    * @api {get} /verify/bonuses check if there is available bonuses to charge on user's wallet and do it
    * @apiName Web3 Charge Bonuses
    * @apiGroup Verification
