@@ -4,6 +4,7 @@ import passport from 'passport'
 import { wrapAsync, onlyInEnv } from '../utils/helpers'
 import { sendLinkByEmail, sendLinkBySMS } from './send.sendgrid'
 import { Mautic } from '../mautic/mauticAPI'
+import conf from "../server.config";
 
 const setup = (app: Router) => {
   /**
@@ -57,7 +58,7 @@ const setup = (app: Router) => {
       res.json({ ok: 1 })
     })
   )
-
+  
   /**
    * @api {post} /send/recoveryinstructions Send recovery instructions email
    * @apiName Recovery Instructions
@@ -76,10 +77,37 @@ const setup = (app: Router) => {
       const log = req.log.child({ from: 'sendAPI - /send/recoveryinstructions' })
       const { user } = req
       const { mnemonic } = req.body
-
+      
       log.info('sending recovery email', user)
       //at this stage user record should contain all his details
       await Mautic.sendRecoveryEmail(user, mnemonic)
+      res.json({ ok: 1 })
+    })
+  )
+  
+  /**
+   * @api {post} /send/magiclink Send recovery instructions email
+   * @apiName Recovery Instructions
+   * @apiGroup Send
+   *
+   * @apiParam {String} magicLine
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
+  app.post(
+    '/send/magiclink',
+    passport.authenticate('jwt', { session: false }),
+    onlyInEnv('production', 'staging', 'test'),
+    wrapAsync(async (req, res, next) => {
+      const log = req.log.child({ from: 'sendAPI - /send/magiclink' })
+      const { user } = req
+      const { magiclink } = req.body
+      let userRec = user
+      const fullMagicLink = `${conf.walletUrl}/?magiclink=${magiclink}`
+      log.info('sending fullMagicLink email', userRec, fullMagicLink)
+      //at this stage user record should contain all his details
+      await Mautic.sendMagicLinkEmail(userRec, fullMagicLink)
       res.json({ ok: 1 })
     })
   )

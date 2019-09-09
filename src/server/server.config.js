@@ -192,6 +192,12 @@ const conf = convict({
     env: 'MAUTIC_RECOVERY_ID',
     default: '9'
   },
+  mauticmagicLinkEmailId: {
+    doc: 'id of email template',
+    format: '*',
+    env: 'MAUTIC_MAGICLINK_ID',
+    default: '9'
+  },
   mauticVerifyEmailId: {
     doc: 'id of email template',
     format: '*',
