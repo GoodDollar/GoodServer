@@ -148,6 +148,14 @@ const conf = convict({
       }
     }
   },
+  mongodb: {
+    uri: {
+      doc: 'Mongo DB URI',
+      format: '*',
+      env: 'MONGO_DB_URI',
+      default: ''
+    }
+  },
   noReplyEmail: {
     doc: 'no-reply GD email',
     format: '*',
@@ -260,11 +268,17 @@ const conf = convict({
     env: 'ALLOW_FACE_RECO_DUPS',
     default: false
   },
+  enableMongoLock: {
+    doc: 'Enable or disable transaction locks for mongo',
+    format: Boolean,
+    env: 'ENABLE_MONGO_LOCK',
+    default: false
+  },
   disableFaceVerification: {
     doc: 'Whitelist user once they register',
     format: Boolean,
     env: 'DISABLE_FACE_VERIFICATION',
-    default: false
+    default: true
   },
   rollbarToken: {
     doc: 'access token for rollbar logging',

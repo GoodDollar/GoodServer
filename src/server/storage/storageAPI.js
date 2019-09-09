@@ -7,7 +7,6 @@ import { wrapAsync } from '../utils/helpers'
 import { defaults } from 'lodash'
 import fetch from 'cross-fetch'
 import md5 from 'md5'
-
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import AdminWallet from '../blockchain/AdminWallet'
