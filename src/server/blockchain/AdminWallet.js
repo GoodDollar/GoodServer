@@ -4,6 +4,7 @@ import HDKey from 'hdkey'
 import bip39 from 'bip39-light'
 import type { HttpProvider, WebSocketProvider } from 'web3-providers'
 import IdentityABI from '@gooddollar/goodcontracts/build/contracts/Identity.json'
+import RedemptionDataABI from '@gooddollar/goodcontracts/build/contracts/RedemptionData.json'
 import RedemptionABI from '@gooddollar/goodcontracts/build/contracts/RedemptionFunctional.json'
 import GoodDollarABI from '@gooddollar/goodcontracts/build/contracts/GoodDollar.json'
 import ReserveABI from '@gooddollar/goodcontracts/build/contracts/GoodDollarReserve.json'
@@ -34,6 +35,8 @@ export class Wallet {
   tokenContract: Web3.eth.Contract
 
   identityContract: Web3.eth.Contract
+
+  redemptionDataContract: Web3.eth.Contract
 
   claimContract: Web3.eth.Contract
 
@@ -115,6 +118,15 @@ export class Wallet {
         gasPrice: web3Utils.toWei('1', 'gwei')
       }
     )
+    this.redemptionDataContract = new this.web3.eth.Contract(
+      RedemptionDataABI.abi,
+      get(ContractsAddress, `${this.network}.RedemptionData`, RedemptionDataABI.networks[this.networkId].address),
+      {
+        from: this.address,
+        gas: 500000,
+        gasPrice: web3Utils.toWei('1', 'gwei')
+      }
+    )
     this.claimContract = new this.web3.eth.Contract(
       RedemptionABI.abi,
       get(ContractsAddress, `${this.network}.RedemptionFunctional`, RedemptionABI.networks[this.networkId].address),
@@ -157,6 +169,32 @@ export class Wallet {
       log.error('Error initializing wallet', { e }, e.message)
     }
     return true
+  }
+
+  /**
+   * charge bonuses for user via `claim` contract
+   * @param {string} address
+   * @param {string} amountInWei
+   * @param {object} event callbacks
+   * @returns {Promise<String>}
+   */
+  async redeemBonuses(address: string, amountInWei: string, { onReceipt }): Promise<string> {
+    return new Promise((resolve, reject) => {
+      log.debug('inside reddem bonus', amountInWei, address)
+      this.sendTransaction(this.redemptionDataContract.methods.awardUser(address, amountInWei), {
+        onTransactionHash: hash => {
+          log.info('Bonus charge - hash created', { address, amount: amountInWei, hash })
+
+          resolve(hash)
+        },
+        onReceipt,
+        onError: e => {
+          log.error('Bonuses charge failed', e.message, e)
+
+          reject(e)
+        }
+      })
+    })
   }
 
   /**

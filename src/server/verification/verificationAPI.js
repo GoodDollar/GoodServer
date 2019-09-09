@@ -9,10 +9,12 @@ import md5 from 'md5'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
+import gdToWei from '../utils/gdToWei'
 import { sendOTP, generateOTP } from '../../imports/otp'
 import conf from '../server.config'
 import { GunDBPublic } from '../gun/gun-middleware'
 import { Mautic } from '../mautic/mauticAPI'
+import txManager from '../utils/tx-manager'
 
 const fsPromises = fs.promises
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
@@ -403,7 +405,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         })
       }
 
-      log.debug('wallet_token', wallet_token)
+      //const { release, fail } = await txManager.lock(currentUser.gdAddress, '')
 
       const w3UserRes = await fetch(`${conf.web3SiteUrl}/api/wl/user`, {
         method: 'GET',
@@ -420,41 +422,65 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       const w3User = w3UserRes && w3UserRes.data
 
-      log.debug('Fetched w3 user', w3User)
-
       if (!w3User) {
+        //release()
+
         return res.status(400).json({
           ok: -1,
           message: 'Missed bonuses data'
         })
       }
 
-      if (!w3User.bonus) {
+      const bonus = w3User.bonus
+      const redeemedBonus = w3User.redeemed_bonus
+      const toRedeem = +bonus - +redeemedBonus
+
+      if (toRedeem <= 0) {
+        //release()
+
         return res.status(200).json({
           ok: 1,
-          message: 'No bonuses yet'
+          message: 'There is no bonuses yet'
         })
       }
 
-      const bonus = w3User.bonus
+      const toRedeemInWei = gdToWei(5)
+      let txHash
 
-      // initiate bonus smart contract to send bonus to user
-      // await AdminWallet.awardUser(currentUser.gdAddress, bonus)
+      // initiate smart contract to send bonus to user
+      try {
+        txHash = await AdminWallet.redeemBonuses(currentUser.gdAddress, toRedeemInWei, {
+          onReceipt: r => {
+            log.info('Bonus charge - receipt received', r)
 
-      // updates W3 backend on bonus redeemed
-      /*const redeemRes = await crossFetch(`${conf.web3SiteUrl}/api/wl/user/redeem`, {
-        method: 'PUT',
-        headers: {
-          Authorization: wallet_token,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          redeemed_bonus: bonus
+            fetch(`${conf.web3SiteUrl}/api/wl/user/redeem`, {
+              method: 'PUT',
+              headers: {
+                Authorization: wallet_token,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                redeemed_bonus: 5
+              })
+            })
+          }
         })
-      })*/
+      } catch (e) {
+        log.error('Failed to charge bonuses for user', e.message, e)
+
+        //fail()
+
+        return res.status(400).json({
+          ok: -1,
+          message: 'Failed to charge bonuses for user'
+        })
+      }
+
+      //release()
 
       res.status(200).json({
-        bonus
+        bonusAmount: toRedeem,
+        hash: txHash
       })
     })
   )
