@@ -408,7 +408,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         })
       }
 
-      const toRedeemInWei = gdToWei(5) // 5 value is temp for tests
+      const toRedeemInWei = gdToWei(toRedeem)
       let txHash
 
       // initiate smart contract to send bonus to user
@@ -417,7 +417,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           onReceipt: r => {
             log.info('Bonus charge - receipt received', r)
 
-            W3Helper.informW3ThatBonusCharged(5, wallet_token) // 5 value is temp for tests
+            W3Helper.informW3ThatBonusCharged(toRedeem, wallet_token)
           }
         })
       } catch (e) {
