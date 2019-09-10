@@ -2,8 +2,7 @@ import Mutex from 'await-mutex'
 
 export default class queueMutex {
   constructor() {
-    this.nonce = null
-    this.mutex = new Mutex()
+    this.queue = []
   }
 
   /**
@@ -15,19 +14,30 @@ export default class queueMutex {
    * @returns {Promise<any>}
    */
   async lock(address, netNonce) {
-    if (!this.nonce) {
-      this.nonce = netNonce
+    const index = this.queue.findIndex(i => i.address === address)
+    let obj
+
+    if (~index) {
+      obj = this.queue[index]
     } else {
-      this.nonce++
+      this.queue.push({
+        address,
+        nonce: netNonce,
+        mutex: new Mutex()
+      })
+
+      obj = this.queue[this.queue.length - 1]
     }
 
-    let release = await this.mutex.lock()
+    let release = await obj.mutex.lock()
 
     return {
-      nonce: this.nonce,
-      release: release,
+      nonce: obj.nonce,
+      release: () => {
+        obj.nonce++
+        release()
+      },
       fail: () => {
-        this.nonce--
         release()
       }
     }

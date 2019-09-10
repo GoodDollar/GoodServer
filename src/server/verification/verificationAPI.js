@@ -4,8 +4,6 @@ import { Router } from 'express'
 import passport from 'passport'
 import _ from 'lodash'
 import multer from 'multer'
-import fetch from 'cross-fetch'
-import md5 from 'md5'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
@@ -18,6 +16,9 @@ import txManager from '../utils/tx-manager'
 import * as W3Helper from '../utils/W3Helper'
 
 const fsPromises = fs.promises
+
+const BONUS_CLAIM_TX_MANAGER_LOCK = 'BonusClaim'
+
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   var upload = multer({ dest: 'uploads/' }) // to handle blob parameters of faceReco
 
@@ -381,14 +382,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         })
       }
 
-      //const { release, fail } = await txManager.lock(currentUser.gdAddress, 0)
+      const { release, fail } = await txManager.lock(BONUS_CLAIM_TX_MANAGER_LOCK, 0)
 
       const w3User = await W3Helper.getUser(wallet_token)
 
-      log.debug('Fetched w3 user res', w3User)
-
       if (!w3User) {
-        //release()
+        release()
 
         return res.status(400).json({
           ok: -1,
@@ -401,7 +400,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const toRedeem = +bonus - +redeemedBonus
 
       if (toRedeem <= 0) {
-        //release()
+        release()
 
         return res.status(200).json({
           ok: 1,
@@ -424,7 +423,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       } catch (e) {
         log.error('Failed to charge bonuses for user', e.message, e)
 
-        //fail()
+        fail()
 
         return res.status(400).json({
           ok: -1,
@@ -432,7 +431,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         })
       }
 
-      //release()
+      release()
 
       res.status(200).json({
         bonusAmount: toRedeem,
