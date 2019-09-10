@@ -21,6 +21,16 @@ import * as web3Utils from 'web3-utils'
 
 const log = logger.child({ from: 'AdminWallet' })
 
+const WEB3_DEFAULT_BLOCK = 'latest'
+const WEB3_DEFAULT_GAS = 200000
+const WEB3_DEFAULT_GAS_PRICE = 1000000
+const WEB3_TRANSACTION_BLOCK_TIMEOUT = 5
+const WEB3_TRANSACTION_CONFIRMATION_BLOCKS = 1
+const WEB3_TRANSACTION_POLLING_TIMEOUT = 30
+const CONTRACT_GAS = 500000
+const DEFAULT_TRANSACTION_GAS_PRICE = 100000
+const TOP_WALLET_GWEI_AMOUNT = '1000000'
+
 /**
  * Exported as AdminWallet
  * Interface with blockchain contracts via web3 using HDWalletProvider
@@ -84,12 +94,12 @@ export class Wallet {
     log.debug('Initializing wallet:', { conf: conf.ethereum })
 
     this.web3 = new Web3(this.getWeb3TransportProvider(), null, {
-      defaultBlock: 'latest',
-      defaultGas: 200000,
-      defaultGasPrice: 1000000,
-      transactionBlockTimeout: 5,
-      transactionConfirmationBlocks: 1,
-      transactionPollingTimeout: 30
+      defaultBlock: WEB3_DEFAULT_BLOCK,
+      defaultGas: WEB3_DEFAULT_GAS,
+      defaultGasPrice: WEB3_DEFAULT_GAS_PRICE,
+      transactionBlockTimeout: WEB3_TRANSACTION_BLOCK_TIMEOUT,
+      transactionConfirmationBlocks: WEB3_TRANSACTION_CONFIRMATION_BLOCKS,
+      transactionPollingTimeout: WEB3_TRANSACTION_POLLING_TIMEOUT
     })
     if (conf.privateKey) {
       let account = this.web3.eth.accounts.privateKeyToAccount(conf.privateKey)
@@ -114,7 +124,7 @@ export class Wallet {
       get(ContractsAddress, `${this.network}.Identity`, IdentityABI.networks[this.networkId].address),
       {
         from: this.address,
-        gas: 500000,
+        gas: CONTRACT_GAS,
         gasPrice: web3Utils.toWei('1', 'gwei')
       }
     )
@@ -123,7 +133,7 @@ export class Wallet {
       get(ContractsAddress, `${this.network}.RedemptionData`, RedemptionDataABI.networks[this.networkId].address),
       {
         from: this.address,
-        gas: 500000,
+        gas: CONTRACT_GAS,
         gasPrice: web3Utils.toWei('1', 'gwei')
       }
     )
@@ -132,7 +142,7 @@ export class Wallet {
       get(ContractsAddress, `${this.network}.RedemptionFunctional`, RedemptionABI.networks[this.networkId].address),
       {
         from: this.address,
-        gas: 500000,
+        gas: CONTRACT_GAS,
         gasPrice: web3Utils.toWei('1', 'gwei')
       }
     )
@@ -141,7 +151,7 @@ export class Wallet {
       get(ContractsAddress, `${this.network}.GoodDollar`, GoodDollarABI.networks[this.networkId].address),
       {
         from: this.address,
-        gas: 500000,
+        gas: CONTRACT_GAS,
         gasPrice: web3Utils.toWei('1', 'gwei')
       }
     )
@@ -150,7 +160,7 @@ export class Wallet {
       get(ContractsAddress, `${this.network}.GoodDollarReserve`, ReserveABI.networks[this.networkId].address),
       {
         from: this.address,
-        gas: 500000,
+        gas: CONTRACT_GAS,
         gasPrice: web3Utils.toWei('1', 'gwei')
       }
     )
@@ -264,14 +274,14 @@ export class Wallet {
       const isVerified = force || (await this.isVerified(address))
       if (isVerified) {
         let userBalance = await this.web3.eth.getBalance(address)
-        let toTop = parseInt(web3Utils.toWei('1000000', 'gwei')) - userBalance
+        let toTop = parseInt(web3Utils.toWei(TOP_WALLET_GWEI_AMOUNT, 'gwei')) - userBalance
         log.debug('TopWallet:', { userBalance, toTop })
-        if (force || toTop / 1000000 >= 0.75) {
+        if (force || toTop / +TOP_WALLET_GWEI_AMOUNT >= 0.75) {
           let res = await this.sendNative({
             from: this.address,
             to: address,
             value: toTop,
-            gas: 100000,
+            gas: DEFAULT_TRANSACTION_GAS_PRICE,
             gasPrice: web3Utils.toWei('1', 'gwei')
           })
           log.debug('Topwallet result:', res)
@@ -367,7 +377,7 @@ export class Wallet {
     { gas, gasPrice }: GasValues = { gas: undefined, gasPrice: undefined }
   ) {
     const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
-    gas = gas || 100000
+    gas = gas || DEFAULT_TRANSACTION_GAS_PRICE
     gasPrice = gasPrice || this.gasPrice
 
     const netNonce = parseInt(await this.web3.eth.getTransactionCount(this.address))

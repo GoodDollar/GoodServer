@@ -405,7 +405,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         })
       }
 
-      //const { release, fail } = await txManager.lock(currentUser.gdAddress, '')
+      const { release, fail } = await txManager.lock(currentUser.gdAddress, 0)
 
       const w3UserRes = await fetch(`${conf.web3SiteUrl}/api/wl/user`, {
         method: 'GET',
@@ -423,7 +423,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const w3User = w3UserRes && w3UserRes.data
 
       if (!w3User) {
-        //release()
+        release()
 
         return res.status(400).json({
           ok: -1,
@@ -436,7 +436,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const toRedeem = +bonus - +redeemedBonus
 
       if (toRedeem <= 0) {
-        //release()
+        release()
 
         return res.status(200).json({
           ok: 1,
@@ -468,7 +468,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       } catch (e) {
         log.error('Failed to charge bonuses for user', e.message, e)
 
-        //fail()
+        fail()
 
         return res.status(400).json({
           ok: -1,
@@ -476,7 +476,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         })
       }
 
-      //release()
+      release()
 
       res.status(200).json({
         bonusAmount: toRedeem,
