@@ -40,20 +40,4 @@ describe('storageAPI', () => {
       .send({ user })
     expect(res).toMatchObject({ status: 400 })
   })
-
-  test('/storage/login/token witout auth creds', async () => {
-    let res = await request(server).get('/storage/login/token')
-
-    expect(res.status).toBe(401)
-  })
-
-  test('/storage/login/token', async () => {
-    const token = await getToken(server)
-
-    let res = await request(server)
-      .get('/storage/login/token')
-      .set('Authorization', `Bearer ${token}`)
-
-    expect(res.status).toBe(200)
-  })
 })

@@ -146,4 +146,20 @@ describe('verificationAPI', () => {
       .set('Accept', `multipart/form-data;`)
     console.log({ res })
   })*/
+
+  test('/verify/w3/logintoken witout auth creds', async () => {
+    let res = await request(server).get('/verify/w3/logintoken')
+
+    expect(res.status).toBe(401)
+  })
+
+  test('/verify/w3/logintoken', async () => {
+    const token = await getToken(server)
+
+    let res = await request(server)
+      .get('/verify/w3/logintoken')
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toBe(200)
+  })
 })
