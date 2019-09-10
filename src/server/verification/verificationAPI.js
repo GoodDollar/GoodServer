@@ -15,6 +15,7 @@ import conf from '../server.config'
 import { GunDBPublic } from '../gun/gun-middleware'
 import { Mautic } from '../mautic/mauticAPI'
 import txManager from '../utils/tx-manager'
+import * as W3Helper from '../utils/W3Helper'
 
 const fsPromises = fs.promises
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
@@ -322,15 +323,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       let w3User
 
       try {
-        const _w3User = await fetch(`${conf.web3SiteUrl}/api/wl/user`, {
-          method: 'GET',
-          headers: {
-            Authorization: token
-          }
-        }).then(res => res.json())
-
-        const w3userData = _w3User.data
-        w3User = w3userData.email && w3userData
+        w3User = await W3Helper.getUser(token)
       } catch (e) {
         log.error('Fetch web3 user error', e.message, e)
       }
@@ -372,29 +365,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       let wallet_token = currentUser.w3Token
 
       if (!wallet_token) {
-        const secureHash = md5(currentUser.email + conf.secure_key)
+        const w3Data = await W3Helper.getLoginOrWalletToken(currentUser)
 
-        const w3UserRes = await fetch(`${conf.web3SiteUrl}/api/wl/user`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            secure_hash: secureHash,
-            email: currentUser.email
-          })
-        })
-          .then(res => res.json())
-          .catch(err => {
-            log.error('Failed to fetch w3 token from W3 api', err.message, err)
-          })
+        if (w3Data && w3Data.wallet_token) {
+          wallet_token = w3Data.wallet_token
 
-        const resData = w3UserRes && w3UserRes.data
-
-        if (resData && resData.wallet_token) {
-          await storage.updateUser({ identifier: currentUser.loggedInAs, w3Token: resData.wallet_token })
-
-          wallet_token = resData.wallet_token
+          storage.updateUser({ identifier: currentUser.loggedInAs, w3Token: w3Data.wallet_token })
         }
       }
 
@@ -405,25 +381,14 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         })
       }
 
-      const { release, fail } = await txManager.lock(currentUser.gdAddress, 0)
+      //const { release, fail } = await txManager.lock(currentUser.gdAddress, 0)
 
-      const w3UserRes = await fetch(`${conf.web3SiteUrl}/api/wl/user`, {
-        method: 'GET',
-        headers: {
-          Authorization: wallet_token
-        }
-      })
-        .then(res => res.json())
-        .catch(err => {
-          log.error('Failed to fetch w3 user from W3 api', err.message, err)
-        })
+      const w3User = await W3Helper.getUser(wallet_token)
 
-      log.debug('Fetched w3 user res', w3UserRes)
-
-      const w3User = w3UserRes && w3UserRes.data
+      log.debug('Fetched w3 user res', w3User)
 
       if (!w3User) {
-        release()
+        //release()
 
         return res.status(400).json({
           ok: -1,
@@ -436,7 +401,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const toRedeem = +bonus - +redeemedBonus
 
       if (toRedeem <= 0) {
-        release()
+        //release()
 
         return res.status(200).json({
           ok: 1,
@@ -444,7 +409,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         })
       }
 
-      const toRedeemInWei = gdToWei(5)
+      const toRedeemInWei = gdToWei(5) // 5 value is temp for tests
       let txHash
 
       // initiate smart contract to send bonus to user
@@ -453,22 +418,13 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           onReceipt: r => {
             log.info('Bonus charge - receipt received', r)
 
-            fetch(`${conf.web3SiteUrl}/api/wl/user/redeem`, {
-              method: 'PUT',
-              headers: {
-                Authorization: wallet_token,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                redeemed_bonus: 5
-              })
-            })
+            W3Helper.informW3ThatBonusCharged(5, wallet_token) // 5 value is temp for tests
           }
         })
       } catch (e) {
         log.error('Failed to charge bonuses for user', e.message, e)
 
-        fail()
+        //fail()
 
         return res.status(400).json({
           ok: -1,
@@ -476,7 +432,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         })
       }
 
-      release()
+      //release()
 
       res.status(200).json({
         bonusAmount: toRedeem,

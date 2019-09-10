@@ -190,7 +190,6 @@ export class Wallet {
    */
   async redeemBonuses(address: string, amountInWei: string, { onReceipt }): Promise<string> {
     return new Promise((resolve, reject) => {
-      log.debug('inside reddem bonus', amountInWei, address)
       this.sendTransaction(this.redemptionDataContract.methods.awardUser(address, amountInWei), {
         onTransactionHash: hash => {
           log.info('Bonus charge - hash created', { address, amount: amountInWei, hash })
