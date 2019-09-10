@@ -9,10 +9,12 @@ const w3PUTUserReq = (user, options) => {
   options = options || {
     getResponse: false
   }
+
   const secureHash = md5(user.email + conf.secure_key)
+  const url = `${conf.web3SiteUrl}/api/wl/user`
 
   return new Promise((resolve, reject) => {
-    fetch(`${conf.web3SiteUrl}/api/wl/user`, {
+    fetch(url, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json'
@@ -56,7 +58,9 @@ export const getLoginOrWalletToken = (user, options) => {
 }
 
 export const informW3ThatBonusCharged = (bonusAmount, walletToken) => {
-  fetch(`${conf.web3SiteUrl}/api/wl/user/redeem`, {
+  const url = `${conf.web3SiteUrl}/api/wl/user/redeem`
+
+  fetch(url, {
     method: 'PUT',
     headers: {
       Authorization: walletToken,
@@ -75,8 +79,10 @@ export const getUser = (walletToken, options) => {
     getResponse: false
   }
 
+  const url = `${conf.web3SiteUrl}/api/wl/user`
+
   return new Promise((resolve, reject) => {
-    fetch(`${conf.web3SiteUrl}/api/wl/user`, {
+    fetch(url, {
       method: 'GET',
       headers: {
         Authorization: walletToken
