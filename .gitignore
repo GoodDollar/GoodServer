@@ -15,3 +15,4 @@ testdb
 config/*/*
 test/jest-envs/*
 uploads/*
+.idea/
