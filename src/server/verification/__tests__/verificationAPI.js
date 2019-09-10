@@ -165,6 +165,27 @@ describe('verificationAPI', () => {
     expect(res.body).toMatchObject({ ok: -1, message: 'Wrong web3 token or email' })
   })
 
+  test('/verify/bonuses without auth creds -> 401', () => {
+    return request(server)
+      .get('/verify/bonuses')
+      .then(res => {
+        expect(res.statusCode).toBe(401)
+      })
+  })
+
+  test('/verify/bonuses should faile with 400 ', async () => {
+    const token = await getToken(server)
+    const res = await request(server)
+      .get('/verify/bonuses')
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toBe(400)
+    expect(res.body).toMatchObject({
+      ok: -1,
+      message: 'Missed W3 token'
+    })
+  })
+
   /*test('/verify/facerecognition creates proper verification data from a valid request', async () => {
     const token = await getToken(server)
     let req = new FormData()
