@@ -13,7 +13,8 @@ import logger from '../../imports/pino-logger'
 import { type TransactionReceipt } from './blockchain-types'
 import moment from 'moment'
 import get from 'lodash/get'
-import Mutex from 'await-mutex'
+
+import txManager from '../utils/tx-manager'
 
 import * as web3Utils from 'web3-utils'
 
@@ -49,7 +50,6 @@ export class Wallet {
   constructor(mnemonic: string) {
     this.mnemonic = mnemonic
     this.ready = this.init()
-    this.mutex = new Mutex()
   }
 
   getWeb3TransportProvider(): HttpProvider | WebSocketProvider {
@@ -286,13 +286,14 @@ export class Wallet {
     gas = gas || (await tx.estimateGas())
     gasPrice = gasPrice || this.gasPrice
 
-    let release = await this.mutex.lock()
-    this.nonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
+    const netNonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
+
+    const { nonce, release, fail } = await txManager.lock(this.address, netNonce)
+
     return new Promise((res, rej) => {
-      tx.send({ gas, gasPrice, chainId: this.networkId, nonce: this.nonce })
+      tx.send({ gas, gasPrice, chainId: this.networkId, nonce })
         .on('transactionHash', h => {
-          this.nonce = this.nonce + 1
-          log.debug('sendTransaction nonce increased:', this.nonce)
+          log.debug('sendTransaction nonce increased:', nonce)
           release()
           onTransactionHash && onTransactionHash(h)
         })
@@ -302,7 +303,7 @@ export class Wallet {
         })
         .on('confirmation', c => onConfirmation && onConfirmation(c))
         .on('error', e => {
-          release()
+          fail()
           onError && onError(e)
           rej(e)
         })
@@ -331,25 +332,26 @@ export class Wallet {
     gas = gas || 100000
     gasPrice = gasPrice || this.gasPrice
 
-    let release = await this.mutex.lock()
-    this.nonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
+    const netNonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
+
+    const { nonce, release, fail } = await txManager.lock(this.address, netNonce)
 
     return new Promise((res, rej) => {
       this.web3.eth
-        .sendTransaction({ gas, gasPrice, chainId: this.networkId, nonce: this.nonce, ...params })
+        .sendTransaction({ gas, gasPrice, chainId: this.networkId, nonce, ...params })
         .on('transactionHash', h => {
-          this.nonce = this.nonce + 1
-          log.debug('sendNative nonce increase:', this.nonce)
-          release()
           onTransactionHash && onTransactionHash(h)
+          release()
         })
         .on('receipt', r => {
           onReceipt && onReceipt(r)
           res(r)
         })
-        .on('confirmation', c => onConfirmation && onConfirmation(c))
+        .on('confirmation', c => {
+          onConfirmation && onConfirmation(c)
+        })
         .on('error', e => {
-          release()
+          fail()
           onError && onError(e)
           rej(e)
         })

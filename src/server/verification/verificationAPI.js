@@ -3,7 +3,7 @@ import { Router } from 'express'
 import passport from 'passport'
 import _ from 'lodash'
 import multer from 'multer'
-import crossFetch from 'cross-fetch'
+import fetch from 'cross-fetch'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
@@ -13,6 +13,7 @@ import conf from '../server.config'
 import { GunDBPublic } from '../gun/gun-middleware'
 import { Mautic } from '../mautic/mauticAPI'
 import fs from 'fs'
+import md5 from 'md5'
 
 const fsPromises = fs.promises
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
@@ -129,7 +130,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         const [, code] = await sendOTP(body.user)
         const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
         log.debug('otp sent:', user.loggedInAs)
-        storage.updateUser({ identifier: user.loggedInAs, otp: { code, expirationDate } })
+        await storage.updateUser({ identifier: user.loggedInAs, otp: { code, expirationDate } })
       }
       res.json({ ok: 1 })
     })
@@ -163,7 +164,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           return false
         })
         if (verified === false) return
-        storage.updateUser({ identifier: user.loggedInAs, smsValidated: true })
+        await storage.updateUser({ identifier: user.loggedInAs, smsValidated: true })
       }
       const signedMobile = await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: user.mobile })
       res.json({ ok: 1, attestation: signedMobile })
@@ -210,16 +211,16 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       //allow topping once a day
-      storage.updateUser({ identifier: user.loggedInAs, lastTopWallet: new Date().toISOString() })
+      await storage.updateUser({ identifier: user.loggedInAs, lastTopWallet: new Date().toISOString() })
       let txRes = await AdminWallet.topWallet(user.gdAddress, user.lastTopWallet)
         .then(tx => {
           log.debug('topping wallet tx', { walletaddress: user.gdAddress, tx })
           return { ok: 1 }
         })
-        .catch(e => {
+        .catch(async e => {
           log.error('Failed top wallet tx', e.message, e.stack)
           //restore last top wallet in case of error
-          storage.updateUser({ identifier: user.loggedInAs, lastTopWallet: user.lastTopWallet })
+          await storage.updateUser({ identifier: user.loggedInAs, lastTopWallet: user.lastTopWallet })
 
           return { ok: -1, error: e.message }
         })
@@ -302,7 +303,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         await verifier.verifyEmail({ identifier: user.loggedInAs }, verificationData)
 
         // if verification succeeds, then set the flag `isEmailConfirmed` to true in the user's record
-        storage.updateUser({ identifier: user.loggedInAs, isEmailConfirmed: true })
+        await storage.updateUser({ identifier: user.loggedInAs, isEmailConfirmed: true })
       }
       const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: user.email })
 
@@ -331,43 +332,96 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const email: string = body.email
       const token: string = body.token
 
-      log.debug('received email, web3 token', email, token)
+      if (!email || !token) {
+        log.error('email and w3Token is required', { email, token })
 
-      let _w3User
+        return res.status(422).json({
+          ok: -1,
+          message: 'email and w3Token is required'
+        })
+      }
+
+      let w3User
 
       try {
-        _w3User = await crossFetch(`${conf.web3SiteUrl}/api/wl/user`, {
+        const _w3User = await fetch(`${conf.web3SiteUrl}/api/wl/user`, {
           method: 'GET',
           headers: {
             Authorization: token
           }
         }).then(res => res.json())
+
+        const w3userData = _w3User.data
+        w3User = w3userData.email && w3userData
       } catch (e) {
-        log.error('Fetch web3 user error', e)
+        log.error('Fetch web3 user error', e.message, e)
       }
 
       let status = 422
       const responsePayload = {
         ok: -1,
-        message: 'Invalid web3 token'
+        message: 'Wrong web3 token or email'
       }
 
-      if (_w3User) {
-        const w3User = _w3User.data
+      if (w3User && w3User.email === email) {
+        await storage.updateUser({ identifier: currentUser.loggedInAs, isEmailConfirmed: true })
 
-        if (w3User.email === email) {
-          storage.updateUser({ identifier: currentUser.loggedInAs, isEmailConfirmed: true })
+        responsePayload.ok = 1
+        delete responsePayload.message
 
-          responsePayload.ok = 1
-          delete responsePayload.message
-
-          status = 200
-        } else {
-          responsePayload.message = 'Wrong email used'
-        }
+        status = 200
       }
 
       res.status(status).json(responsePayload)
+    })
+  )
+
+  /**
+   * @api {get} /verify/w3/logintoken get W3 login token for current user
+   * @apiName Get W3 Login Token
+   * @apiGroup Verification
+   *
+   * @apiSuccess {Number} ok
+   * @apiSuccess {String} loginToken
+   * @ignore
+   */
+  app.get(
+    '/verify/w3/logintoken',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res, next) => {
+      const { user, log } = req
+      const logger = log.child({ from: 'verificationAPI - login/token' })
+
+      let loginToken = user.loginToken
+
+      if (!loginToken) {
+        const secureHash = md5(user.email + conf.secure_key)
+        const web3Response = await fetch(`${conf.web3SiteUrl}/api/wl/user`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            secure_hash: secureHash.toLowerCase(),
+            email: user.email
+          })
+        })
+          .then(res => res.json())
+          .catch(e => {
+            logger.error('Get Web3 Login Response Failed', e)
+          })
+
+        const web3ResponseData = web3Response && web3Response.data
+
+        if (web3ResponseData && web3ResponseData.login_token) {
+          loginToken = web3ResponseData.login_token
+        }
+      }
+
+      res.json({
+        ok: +Boolean(loginToken),
+        loginToken
+      })
     })
   )
 }

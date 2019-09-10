@@ -1,0 +1,4 @@
+diff a/src/server/utils/fuseapi.js b/src/server/utils/fuseapi.js	(rejected hunks)
+@@ -36 +36 @@ class FuseApi {
+-      throw new Error("Bad response from server");
++      throw new Error('Bad response from server')

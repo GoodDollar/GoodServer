@@ -148,6 +148,14 @@ const conf = convict({
       }
     }
   },
+  mongodb: {
+    uri: {
+      doc: 'Mongo DB URI',
+      format: '*',
+      env: 'MONGO_DB_URI',
+      default: ''
+    }
+  },
   noReplyEmail: {
     doc: 'no-reply GD email',
     format: '*',
@@ -182,6 +190,12 @@ const conf = convict({
     doc: 'id of email template',
     format: '*',
     env: 'MAUTIC_RECOVERY_ID',
+    default: '9'
+  },
+  mauticmagicLinkEmailId: {
+    doc: 'id of email template',
+    format: '*',
+    env: 'MAUTIC_MAGICLINK_ID',
     default: '9'
   },
   mauticVerifyEmailId: {
@@ -260,16 +274,28 @@ const conf = convict({
     env: 'ALLOW_FACE_RECO_DUPS',
     default: false
   },
+  enableMongoLock: {
+    doc: 'Enable or disable transaction locks for mongo',
+    format: Boolean,
+    env: 'ENABLE_MONGO_LOCK',
+    default: false
+  },
   disableFaceVerification: {
     doc: 'Whitelist user once they register',
     format: Boolean,
     env: 'DISABLE_FACE_VERIFICATION',
-    default: false
+    default: true
   },
   rollbarToken: {
     doc: 'access token for rollbar logging',
     format: '*',
     env: 'ROLLBAR_TOKEN',
+    default: undefined
+  },
+  secure_key: {
+    doc: 'Secure key word used to create secure hash by which server can communicate with web3',
+    format: '*',
+    env: 'SECURE_KEY',
     default: undefined
   },
   fuse: {
