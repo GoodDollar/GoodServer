@@ -221,6 +221,8 @@ const setup = (app: Router, storage: StorageAPI) => {
 
         if (web3ResponseData && web3ResponseData.login_token) {
           loginToken = web3ResponseData.login_token
+
+          storage.updateUser({ ...user, loginToken })
         }
       }
 
