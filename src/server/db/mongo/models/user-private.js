@@ -3,7 +3,7 @@ import { MODEL_USER_PRIVATE } from './constants'
 
 export const UserPrivateSchema = new mongoose.Schema({
   identifier: {
-    type: String
+    type: String,
     index: { unique: true },
     required: true
   },
