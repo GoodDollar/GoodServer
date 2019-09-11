@@ -14,12 +14,10 @@ export const UserPrivateSchema = new mongoose.Schema({
     type: String
   },
   email: {
-    type: String,
-    index: { unique: true }
+    type: String
   },
   mobile: {
-    type: String,
-    index: { unique: true }
+    type: String
   },
   jwt: {
     type: String
