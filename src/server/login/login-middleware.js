@@ -10,6 +10,7 @@ import { wrapAsync, lightLogs } from '../utils/helpers'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
 import SEA from 'gun/sea'
 import Config from '../server.config.js'
+import AdminWallet from "../blockchain/AdminWallet";
 // const ExtractJwt = passportJWT.ExtractJwt
 // const JwtStrategy = passportJWT.Strategy
 
@@ -137,7 +138,25 @@ const setup = (app: Router) => {
       res.end()
     })
   )
-
+  
+  /**
+   * Only for loadtets
+   */
+  app.post(
+    '/test/add/whitelistUser',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res, next) => {
+        const { body, user } = req
+        const gdSignature = body.gdSignature
+        const nonce = body.nonce
+        const msg = 'Login to GoodDAPP'
+        const gdPublicAddress = recoverPublickey(gdSignature, msg, nonce)
+        await AdminWallet.whitelistUser(gdPublicAddress, body.profilePublickey)
+        res.json({ ok: 1})
+    })
+  )
+  
+  
   logger.child({ from: 'login-middleware' }).info('Done setup login middleware.')
 }
 
