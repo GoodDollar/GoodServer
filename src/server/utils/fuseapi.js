@@ -21,7 +21,6 @@ class FuseApi {
      * } options
      */
   async getTxList(options) {
-    const r = await this.runMethod('account', 'txlist', options)
     return this.runMethod('account', 'txlist', options)
   }
 
