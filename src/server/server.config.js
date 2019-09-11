@@ -192,6 +192,12 @@ const conf = convict({
     env: 'MAUTIC_RECOVERY_ID',
     default: '9'
   },
+  mauticmagicLinkEmailId: {
+    doc: 'id of email template',
+    format: '*',
+    env: 'MAUTIC_MAGICLINK_ID',
+    default: '9'
+  },
   mauticVerifyEmailId: {
     doc: 'id of email template',
     format: '*',
@@ -291,6 +297,12 @@ const conf = convict({
     format: '*',
     env: 'SECURE_KEY',
     default: undefined
+  },
+  fuse: {
+    doc: 'Main url for fuse api',
+    format: String,
+    env: 'FUSE_API',
+    default: null
   },
   web3SiteUrl: {
     doc: 'Web3 site url',

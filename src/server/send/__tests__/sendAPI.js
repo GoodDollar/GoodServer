@@ -78,10 +78,59 @@ describe('sendAPÏ', () => {
       mauticId: null
     })
     const user = await UserDBPrivate.getByIdentifier('0x7ac080f6607405705aed79675789701a48c76f55')
+    expect(user).toBeDefined()
     const res = await request(server)
       .post('/send/recoveryinstructions')
       .send({
         mnemonic: 'unit test send recovery instructions'
+      })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(400)
+  })
+
+  test('/send/magiclink without creds -> 401', async () => {
+    await request(server)
+      .post('/send/magiclink')
+      .expect(401)
+  })
+
+  test('/send/magiclink with creds', async () => {
+    const token = await getToken(server)
+    //make sure fullname is set for user which is required for sending the recovery email
+    const user = await UserDBPrivate.updateUser({
+      identifier: '0x7ac080f6607405705aed79675789701a48c76f55',
+      fullName: 'full name',
+      mauticId: 3461
+    })
+
+    expect(user).toBeDefined()
+
+    await request(server)
+      .post('/send/magiclink')
+      .send({
+        magiclink: 'unit test magicLine'
+      })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200, { ok: 1 })
+  })
+
+  test('/send/magiclink without required fields should ok', async () => {
+    const token = await getToken(server)
+    //make sure fullname is set for user which is required for sending the recovery email
+    await UserDBPrivate.updateUser({
+      identifier: '0x7ac080f6607405705aed79675789701a48c76f55',
+      fullName: 'full name',
+      mauticId: null
+    })
+
+    const user = await UserDBPrivate.getByIdentifier('0x7ac080f6607405705aed79675789701a48c76f55')
+
+    expect(user).toBeDefined()
+
+    const res = await request(server)
+      .post('/send/magiclink')
+      .send({
+        magiclink: 'unit test magicLine'
       })
       .set('Authorization', `Bearer ${token}`)
       .expect(400)

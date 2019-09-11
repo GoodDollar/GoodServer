@@ -23,7 +23,7 @@ describe('tx manager only for mongo', () => {
       const testAddress = `${prefixTestAddress} - ${Date.now()}`
 
       for (let i = 0; i < 5; i++) {
-        const { nonce, release, fail } = await txManagerMongo.lock(testAddress, netNonce)
+        const { nonce, release } = await txManagerMongo.lock(testAddress, netNonce)
 
         release()
 
@@ -36,7 +36,7 @@ describe('tx manager only for mongo', () => {
       const testAddress = `${prefixTestAddress} - ${Date.now()}`
 
       for (let i = 0; i < 5; i++) {
-        const { nonce, release, fail } = await txManagerMongo.lock(testAddress, netNonce)
+        const { nonce, fail } = await txManagerMongo.lock(testAddress, netNonce)
 
         fail()
 

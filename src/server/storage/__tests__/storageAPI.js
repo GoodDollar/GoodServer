@@ -1,7 +1,7 @@
 // @flow
 import request from 'supertest'
 import makeServer from '../../server-test'
-import { getToken, getCreds } from '../../__util__/'
+import { getToken } from '../../__util__/'
 import type { UserRecord } from '../../../imports/types'
 
 jest.setTimeout(30000)
@@ -39,21 +39,5 @@ describe('storageAPI', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ user })
     expect(res).toMatchObject({ status: 400 })
-  })
-
-  test('/storage/login/token witout auth creds', async () => {
-    let res = await request(server).get('/storage/login/token')
-
-    expect(res.status).toBe(401)
-  })
-
-  test('/storage/login/token', async () => {
-    const token = await getToken(server)
-
-    let res = await request(server)
-      .get('/storage/login/token')
-      .set('Authorization', `Bearer ${token}`)
-
-    expect(res.status).toBe(200)
   })
 })

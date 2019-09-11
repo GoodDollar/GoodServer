@@ -106,7 +106,7 @@ const setup = (app: Router, storage: StorageAPI) => {
     '/user/delete',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
-      const { body, user, log } = req
+      const { user, log } = req
       log.info('delete user', { user })
       const results = await Promise.all([
         (user.identifier ? storage.deleteUser(user) : Promise.reject())

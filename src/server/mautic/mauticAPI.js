@@ -54,5 +54,13 @@ export const Mautic = {
     return this.baseQuery(`/emails/${Config.mauticRecoveryEmailId}/contact/${user.mauticId}/send`, this.baseHeaders, {
       tokens: { seed: mnemonic, firstName: user.fullName }
     })
+  },
+  sendMagicLinkEmail(user: UserRecord, magicLink: string) {
+    if (!(magicLink && user.fullName && user.mauticId && Config.mauticmagicLinkEmailId))
+      throw new Error('missing input for sending magicLink email')
+
+    return this.baseQuery(`/emails/${Config.mauticmagicLinkEmailId}/contact/${user.mauticId}/send`, this.baseHeaders, {
+      tokens: { seed: magicLink, firstName: user.fullName }
+    })
   }
 }
