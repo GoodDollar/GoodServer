@@ -11,7 +11,7 @@ const w3PUTUserReq = (user, options) => {
   }
 
   const secureHash = md5(user.email + conf.secure_key)
-  const url = `${conf.web3SiteUrl}/api/wl/user`
+  const url = conf.web3SiteUrl + '/api/wl/user'
 
   return new Promise((resolve, reject) => {
     fetch(url, {
@@ -58,7 +58,7 @@ export const getLoginOrWalletToken = (user, options) => {
 }
 
 export const informW3ThatBonusCharged = (bonusAmount, walletToken) => {
-  const url = `${conf.web3SiteUrl}/api/wl/user/redeem`
+  const url = conf.web3SiteUrl + '/api/wl/user/redeem'
 
   fetch(url, {
     method: 'PUT',
@@ -79,7 +79,7 @@ export const getUser = (walletToken, options) => {
     getResponse: false
   }
 
-  const url = `${conf.web3SiteUrl}/api/wl/user`
+  const url = conf.web3SiteUrl + '/api/wl/user'
 
   return new Promise((resolve, reject) => {
     fetch(url, {
