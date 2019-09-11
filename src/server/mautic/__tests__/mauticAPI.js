@@ -40,7 +40,7 @@ describe('Send', () => {
     )
     expect(res).toEqual({ success: true })
   })
-  
+
   it('should send magic link email', async () => {
     const res = await Mautic.sendMagicLinkEmail(
       {

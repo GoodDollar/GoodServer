@@ -10,7 +10,7 @@ import md5 from 'md5'
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import AdminWallet from '../blockchain/AdminWallet'
-import Helper from '../verification/faceRecognition/faceRecognitionHelper'
+// import Helper from '../verification/faceRecognition/faceRecognitionHelper'
 
 const setup = (app: Router, storage: StorageAPI) => {
   /**
@@ -127,7 +127,7 @@ const setup = (app: Router, storage: StorageAPI) => {
     '/user/delete',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
-      const { body, user, log } = req
+      const { user, log } = req
       log.info('delete user', { user })
       const results = await Promise.all([
         (user.identifier ? storage.deleteUser(user) : Promise.reject())

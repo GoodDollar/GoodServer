@@ -7,6 +7,7 @@ import fetch from 'cross-fetch'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
+import fuseapi from '../utils/fuseapi'
 import { sendOTP, generateOTP } from '../../imports/otp'
 import conf from '../server.config'
 import { GunDBPublic } from '../gun/gun-middleware'
@@ -186,6 +187,29 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/topwallet' })
       const user: LoggedUser = req.user
+      // check if user send ether out of the good dollar system
+      let isUserSendEtherOutOfSystem = false
+      try {
+        const { result = [] } = await fuseapi.getTxList({
+          address: user.gdAddress,
+          page: 1,
+          offset: 10,
+          filterby: 'from'
+        })
+        isUserSendEtherOutOfSystem = result.some(r => Number(r.value) > 0)
+      } catch (e) {
+        log.error('Check user transactions error', e)
+      }
+
+      if (isUserSendEtherOutOfSystem) {
+        log.error('User send ether out of system')
+
+        return res.json({
+          ok: 0,
+          sendEtherOutOfSystem: true
+        })
+      }
+
       //allow topping once a day
       await storage.updateUser({ identifier: user.loggedInAs, lastTopWallet: new Date().toISOString() })
       let txRes = await AdminWallet.topWallet(user.gdAddress, user.lastTopWallet)

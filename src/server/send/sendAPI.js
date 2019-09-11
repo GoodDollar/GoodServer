@@ -4,7 +4,7 @@ import passport from 'passport'
 import { wrapAsync, onlyInEnv } from '../utils/helpers'
 import { sendLinkByEmail, sendLinkBySMS } from './send.sendgrid'
 import { Mautic } from '../mautic/mauticAPI'
-import conf from "../server.config";
+import conf from '../server.config'
 
 const setup = (app: Router) => {
   /**
@@ -58,7 +58,7 @@ const setup = (app: Router) => {
       res.json({ ok: 1 })
     })
   )
-  
+
   /**
    * @api {post} /send/recoveryinstructions Send recovery instructions email
    * @apiName Recovery Instructions
@@ -77,14 +77,14 @@ const setup = (app: Router) => {
       const log = req.log.child({ from: 'sendAPI - /send/recoveryinstructions' })
       const { user } = req
       const { mnemonic } = req.body
-      
+
       log.info('sending recovery email', user)
       //at this stage user record should contain all his details
       await Mautic.sendRecoveryEmail(user, mnemonic)
       res.json({ ok: 1 })
     })
   )
-  
+
   /**
    * @api {post} /send/magiclink Send recovery instructions email
    * @apiName Recovery Instructions

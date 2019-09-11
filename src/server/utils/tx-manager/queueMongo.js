@@ -1,5 +1,8 @@
 import WalletNonce from '../../db/mongo/models/wallet-nonce'
 import logger from '../../../imports/pino-logger'
+
+const log = logger.child({ from: 'queueMongo' })
+
 export default class queueMongo {
   constructor() {
     this.model = WalletNonce

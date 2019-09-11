@@ -1,6 +1,6 @@
-import fs from 'fs'
+// import fs from 'fs'
 import request from 'supertest'
-import FormData from 'form-data'
+// import FormData from 'form-data'
 import delay from 'delay'
 import makeServer from '../../server-test'
 import { getToken } from '../../__util__/'
@@ -75,7 +75,7 @@ describe('verificationAPI', () => {
 
     expect(user).toBeTruthy()
 
-    const res = await request(server)
+    await request(server)
       .post('/verify/sendemail')
       .send({
         user: {
