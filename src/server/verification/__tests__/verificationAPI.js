@@ -173,7 +173,7 @@ describe('verificationAPI', () => {
       })
   })
 
-  test('/verify/bonuses should faile with 400 ', async () => {
+  test('/verify/bonuses should fail with 400 ', async () => {
     const token = await getToken(server)
     const res = await request(server)
       .get('/verify/bonuses')
