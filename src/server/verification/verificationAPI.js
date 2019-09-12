@@ -18,8 +18,6 @@ import * as W3Helper from '../utils/W3Helper'
 
 const fsPromises = fs.promises
 
-const BONUS_CLAIM_TX_MANAGER_LOCK = 'BonusClaim'
-
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   var upload = multer({ dest: 'uploads/' }) // to handle blob parameters of faceReco
 
@@ -443,7 +441,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         })
       }
 
-      const { release, fail } = await txManager.lock(BONUS_CLAIM_TX_MANAGER_LOCK, 0)
+      const { release, fail } = await txManager.lock(currentUser.gdAddress, 0)
 
       const w3User = await W3Helper.getUser(wallet_token)
 
