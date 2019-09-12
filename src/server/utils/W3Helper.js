@@ -105,3 +105,38 @@ export const getUser = (walletToken, options) => {
       })
   })
 }
+
+export const deleteWallet = (token, options) => {
+  options = options || {
+    getResponse: false
+  }
+
+  const url = conf.web3SiteUrl + '/api/wl/user/update_profile'
+
+  return new Promise((resolve, reject) => {
+    fetch(url, {
+      method: 'PUT',
+      headers: {
+        Authorization: token
+      },
+      body: JSON.stringify({
+        wallet_address: null
+      })
+    })
+      .then(res => res.json())
+      .then(response => {
+        let toReturn = response.data
+
+        if (options.getResponse) {
+          toReturn = response
+        }
+
+        resolve(toReturn)
+      })
+      .catch(e => {
+        log.error('Failed to delete wallet address on W3', e.message, e)
+
+        reject(e)
+      })
+  })
+}

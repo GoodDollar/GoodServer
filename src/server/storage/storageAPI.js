@@ -114,7 +114,10 @@ const setup = (app: Router, storage: StorageAPI) => {
           .catch(e => ({ gundb: 'failed' })),
         Mautic.deleteContact(user)
           .then(r => ({ mautic: 'ok' }))
-          .catch(e => ({ mautic: 'failed' }))
+          .catch(e => ({ mautic: 'failed' })),
+        W3Helper.deleteWallet(user.w3Token || user.loginToken)
+          .then(r => ({ w3DeleteWallet: 'ok' }))
+          .catch(e => ({ w3DeleteWallet: 'failed' }))
       ])
       log.info('delete user results', { results })
       res.json({ ok: 1, results })
