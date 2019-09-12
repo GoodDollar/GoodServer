@@ -418,7 +418,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    * @ignore
    */
   app.get(
-    '/verify/bonuses',
+    '/verify/w3/bonuses',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/bonuses' })

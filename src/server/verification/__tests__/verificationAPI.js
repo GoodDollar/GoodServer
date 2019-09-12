@@ -163,18 +163,18 @@ describe('verificationAPI', () => {
     expect(res.body).toMatchObject({ ok: -1, message: 'Wrong web3 token or email' })
   })
 
-  test('/verify/bonuses without auth creds -> 401', () => {
+  test('/verify/w3/bonuses without auth creds -> 401', () => {
     return request(server)
-      .get('/verify/bonuses')
+      .get('/verify/w3/bonuses')
       .then(res => {
         expect(res.statusCode).toBe(401)
       })
   })
 
-  test('/verify/bonuses should fail with 400 ', async () => {
+  test('/verify/w3/bonuses should fail with 400 ', async () => {
     const token = await getToken(server)
     const res = await request(server)
-      .get('/verify/bonuses')
+      .get('/verify/w3/bonuses')
       .set('Authorization', `Bearer ${token}`)
 
     expect(res.status).toBe(400)
