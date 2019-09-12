@@ -441,6 +441,15 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         })
       }
 
+      const isQueueLocked = await txManager.isLocked(currentUser.gdAddress)
+
+      if (isQueueLocked) {
+        return res.status(200).json({
+          ok: 1,
+          message: 'The bonuses are in minting process'
+        })
+      }
+
       const { release, fail } = await txManager.lock(currentUser.gdAddress, 0)
 
       const w3User = await W3Helper.getUser(wallet_token)
@@ -473,10 +482,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       // initiate smart contract to send bonus to user
       try {
         txHash = await AdminWallet.redeemBonuses(currentUser.gdAddress, toRedeemInWei, {
-          onReceipt: r => {
+          onReceipt: async r => {
             log.info('Bonus charge - receipt received', r)
 
-            W3Helper.informW3ThatBonusCharged(toRedeem, wallet_token)
+            await W3Helper.informW3ThatBonusCharged(toRedeem, wallet_token)
+
+            release()
           }
         })
       } catch (e) {
@@ -489,8 +500,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           message: 'Failed to charge bonuses for user'
         })
       }
-
-      release()
 
       res.status(200).json({
         bonusAmount: toRedeem,

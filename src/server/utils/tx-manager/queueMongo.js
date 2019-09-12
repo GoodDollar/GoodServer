@@ -147,4 +147,17 @@ export default class queueMongo {
       log.error('TX queueMongo (run)', e)
     }
   }
+
+  /**
+   * Get lock status for address
+   *
+   * @param {string} address
+   *
+   * @returns {Boolean}
+   */
+  async isLocked(address) {
+    const wallet = await this.model.findOne({ address })
+
+    return Boolean(wallet && wallet.isLock)
+  }
 }

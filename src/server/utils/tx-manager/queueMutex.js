@@ -42,4 +42,25 @@ export default class queueMutex {
       }
     }
   }
+
+  /**
+   * Get lock status for address
+   *
+   * @param {string} address
+   *
+   * @returns {Boolean}
+   */
+  async isLocked(address) {
+    const index = this.queue.findIndex(i => i.address === address)
+    let result = false
+
+    if (~index) {
+      const obj = this.queue[index]
+      const mutex = obj.mutex
+
+      result = mutex.isLocked()
+    }
+
+    return result
+  }
 }

@@ -60,7 +60,7 @@ export const getLoginOrWalletToken = (user, options) => {
 export const informW3ThatBonusCharged = (bonusAmount, walletToken) => {
   const url = conf.web3SiteUrl + '/api/wl/user/redeem'
 
-  fetch(url, {
+  return fetch(url, {
     method: 'PUT',
     headers: {
       Authorization: walletToken,
