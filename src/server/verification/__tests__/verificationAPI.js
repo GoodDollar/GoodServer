@@ -184,6 +184,22 @@ describe('verificationAPI', () => {
     })
   })
 
+  test('/verify/w3/logintoken without auth creds', async () => {
+    let res = await request(server).get('/verify/w3/logintoken')
+
+    expect(res.status).toBe(401)
+  })
+
+  test('/verify/w3/logintoken', async () => {
+    const token = await getToken(server)
+
+    let res = await request(server)
+      .get('/verify/w3/logintoken')
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toBe(200)
+  })
+
   /*test('/verify/facerecognition creates proper verification data from a valid request', async () => {
     const token = await getToken(server)
     let req = new FormData()
