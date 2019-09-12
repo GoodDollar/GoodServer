@@ -158,42 +158,5 @@ const setup = (app: Router, storage: StorageAPI) => {
       res.json({ ok: 1, result })
     })
   )
-
-  /**
-   * @api {get} /login/token get W3 login token for current user
-   * @apiName Get
-   * @apiGroup Storage
-   *
-   * @apiSuccess {Number} ok
-   * @apiSuccess {String} loginToken
-   * @ignore
-   */
-  app.get(
-    '/storage/login/token',
-    passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res, next) => {
-      const { user, log } = req
-      const logger = log.child({ from: 'storageAPI - login/token' })
-
-      let loginToken = user.loginToken
-
-      if (!loginToken) {
-        const w3Data = await W3Helper.getLoginOrWalletToken(user)
-
-        if (w3Data && w3Data.login_token) {
-          loginToken = w3Data.login_token
-
-          storage.updateUser({ ...user, loginToken })
-        }
-      }
-
-      logger.info('loginToken', loginToken)
-
-      res.json({
-        ok: +Boolean(loginToken),
-        loginToken
-      })
-    })
-  )
 }
 export default setup
