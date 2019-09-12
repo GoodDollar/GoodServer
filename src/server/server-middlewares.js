@@ -11,6 +11,7 @@ import UserDBPrivate from './db/mongo/user-privat-provider'
 import addStorageMiddlewares from './storage/storageAPI'
 import addVerificationMiddlewares from './verification/verificationAPI'
 import addSendMiddlewares from './send/sendAPI'
+import addLoadTestMiddlewares from './loadtest/loadtest-middleware'
 import logger, { rollbar } from '../imports/pino-logger'
 import VerificationAPI from './verification/verification'
 
@@ -32,6 +33,7 @@ export default (app: Router, env: any) => {
   app.use(pino({ logger }))
 
   addLoginMiddlewares(app)
+  addLoadTestMiddlewares(app)
   addGunMiddlewares(app)
   addStorageMiddlewares(app, UserDBPrivate)
   addVerificationMiddlewares(app, VerificationAPI, UserDBPrivate)
