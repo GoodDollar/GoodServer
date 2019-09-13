@@ -1,0 +1,21 @@
+diff a/src/server/verification/verificationAPI.js b/src/server/verification/verificationAPI.js	(rejected hunks)
+@@ -189 +189 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
+-      console.log('user',user)
++      console.log('user', user)
+@@ -191,2 +191,2 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
+-      try{
+-        const {result=[]} = await fuseapi.getTxList({
++      try {
++        const { result = [] } = await fuseapi.getTxList({
+@@ -198,4 +198,4 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
+-        isUserSendEtherOutOfSystem=result.some(r=>Number(r.value)>0)
+-        console.log('result',result)
+-      }catch(e){
+-        console.log('aaaaa,e',e)
++        isUserSendEtherOutOfSystem = result.some(r => Number(r.value) > 0)
++        console.log('result', result)
++      } catch (e) {
++        console.log('aaaaa,e', e)
+@@ -203 +203 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
+-     
++

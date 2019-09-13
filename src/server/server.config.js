@@ -298,6 +298,12 @@ const conf = convict({
     env: 'SECURE_KEY',
     default: undefined
   },
+  fuse: {
+    doc: 'Main url for fuse api',
+    format: String,
+    env: 'FUSE_API',
+    default: null
+  },
   web3SiteUrl: {
     doc: 'Web3 site url',
     format: '*',

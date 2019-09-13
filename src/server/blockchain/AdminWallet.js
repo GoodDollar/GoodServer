@@ -285,11 +285,11 @@ export class Wallet {
     const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
     gas = gas || (await tx.estimateGas())
     gasPrice = gasPrice || this.gasPrice
-    
+
     const netNonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
-    
+
     const { nonce, release, fail } = await txManager.lock(this.address, netNonce)
-    
+
     return new Promise((res, rej) => {
       tx.send({ gas, gasPrice, chainId: this.networkId, nonce })
         .on('transactionHash', h => {
@@ -331,11 +331,11 @@ export class Wallet {
     const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
     gas = gas || 100000
     gasPrice = gasPrice || this.gasPrice
-    
+
     const netNonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
-    
+
     const { nonce, release, fail } = await txManager.lock(this.address, netNonce)
-    
+
     return new Promise((res, rej) => {
       this.web3.eth
         .sendTransaction({ gas, gasPrice, chainId: this.networkId, nonce, ...params })

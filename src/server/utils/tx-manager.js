@@ -3,7 +3,6 @@ import queueMongo from './tx-manager/queueMongo'
 import queueMutex from './tx-manager/queueMutex'
 
 class TransactionRun {
-  
   /**
    * Return manager instance
    *
@@ -11,7 +10,7 @@ class TransactionRun {
    */
   static getManagerInstance() {
     let queueManager = null
-    
+
     if (config.enableMongoLock) {
       queueManager = new queueMongo()
     } else {

@@ -2,7 +2,7 @@
 import type { UserRecord, VerificationAPI } from '../../imports/types'
 import { GunDBPublic } from '../gun/gun-middleware'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
-import Helper, { type EnrollResult, type VerificationData } from './faceRecognition/faceRecognitionHelper'
+import Helper, { type EnrollResult } from './faceRecognition/faceRecognitionHelper'
 import logger from '../../imports/pino-logger'
 
 /**
@@ -20,7 +20,7 @@ class Verifications implements VerificationAPI {
    * Verifies user
    * @param {UserRecord} user user details of the user going through FR
    * @param {*} verificationData data from zoomsdk
-   
+
    */
   async verifyUser(user: UserRecord, verificationData: any) {
     this.log.debug('Verifying user:', { user })
