@@ -33,12 +33,12 @@ export default (app: Router, env: any) => {
   app.use(pino({ logger }))
 
   addLoginMiddlewares(app)
-  addLoadTestMiddlewares(app)
   addGunMiddlewares(app)
   addStorageMiddlewares(app, UserDBPrivate)
   addVerificationMiddlewares(app, VerificationAPI, UserDBPrivate)
   addSendMiddlewares(app)
-
+  addLoadTestMiddlewares(app)
+  
   if (rollbar) app.use(rollbar.errorHandler())
 
   app.use((error, req, res, next: NextFunction) => {
