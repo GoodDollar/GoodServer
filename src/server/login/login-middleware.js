@@ -10,6 +10,7 @@ import { wrapAsync, lightLogs } from '../utils/helpers'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
 import SEA from 'gun/sea'
 import Config from '../server.config.js'
+import { recoverPublickey } from "../utils/eth";
 // const ExtractJwt = passportJWT.ExtractJwt
 // const JwtStrategy = passportJWT.Strategy
 
@@ -32,17 +33,6 @@ export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
   }
 })
 
-const recoverPublickey = (signature, msg, nonce) => {
-  const sig = ethUtil.fromRpcSig(signature)
-
-  const messageHash = ethUtil.keccak(
-    `\u0019Ethereum Signed Message:\n${(msg.length + nonce.length).toString()}${msg}${nonce}`
-  )
-
-  const publicKey = ethUtil.ecrecover(messageHash, sig.v, sig.r, sig.s)
-  const recovered = ethUtil.bufferToHex(ethUtil.pubToAddress(publicKey))
-  return recovered
-}
 const setup = (app: Router) => {
   passport.use(strategy)
 
