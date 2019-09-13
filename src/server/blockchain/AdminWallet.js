@@ -188,21 +188,15 @@ export class Wallet {
    * @param {object} event callbacks
    * @returns {Promise<String>}
    */
-  async redeemBonuses(address: string, amountInWei: string, { onReceipt }): Promise<string> {
-    return new Promise((resolve, reject) => {
-      this.sendTransaction(this.redemptionDataContract.methods.awardUser(address, amountInWei), {
-        onTransactionHash: hash => {
-          log.info('Bonus charge - hash created', { address, amount: amountInWei, hash })
-
-          resolve(hash)
-        },
-        onReceipt,
-        onError: e => {
-          log.error('Bonuses charge failed', e.message, e)
-
-          reject(e)
-        }
-      })
+  async redeemBonuses(
+    address: string,
+    amountInWei: string,
+    { onReceipt, onTransactionHash, onError }
+  ): Promise<string> {
+    this.sendTransaction(this.redemptionDataContract.methods.awardUser(address, amountInWei), {
+      onTransactionHash,
+      onReceipt,
+      onError
     })
   }
 

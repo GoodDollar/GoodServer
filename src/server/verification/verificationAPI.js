@@ -477,33 +477,34 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       const toRedeemInWei = gdToWei(toRedeem)
-      let txHash
 
       // initiate smart contract to send bonus to user
-      try {
-        txHash = await AdminWallet.redeemBonuses(currentUser.gdAddress, toRedeemInWei, {
-          onReceipt: async r => {
-            log.info('Bonus charge - receipt received', r)
+      AdminWallet.redeemBonuses(currentUser.gdAddress, toRedeemInWei, {
+        onTransactionHash: hash => {
+          log.info('Bonus redeem - hash created', { hash })
 
-            await W3Helper.informW3ThatBonusCharged(toRedeem, wallet_token)
+          res.status(200).json({
+            bonusAmount: toRedeem,
+            hash: hash
+          })
+        },
+        onReceipt: async r => {
+          log.info('Bonus redeem - receipt received', r)
 
-            release()
-          }
-        })
-      } catch (e) {
-        log.error('Failed to charge bonuses for user', e.message, e)
+          await W3Helper.informW3ThatBonusCharged(toRedeem, wallet_token)
 
-        fail()
+          release()
+        },
+        onError: e => {
+          log.error('Bonuses charge failed', e.message, e)
 
-        return res.status(400).json({
-          ok: -1,
-          message: 'Failed to charge bonuses for user'
-        })
-      }
+          fail()
 
-      res.status(200).json({
-        bonusAmount: toRedeem,
-        hash: txHash
+          return res.status(400).json({
+            ok: -1,
+            message: 'Failed to redeem bonuses for user'
+          })
+        }
       })
     })
   )
