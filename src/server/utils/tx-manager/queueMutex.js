@@ -20,6 +20,20 @@ export default class queueMutex {
       this.lastFail()
     }
   }
+
+  /**
+   * Unlock for queue
+   *
+   * @param {string} address
+   * @param {string} nextNonce
+   *
+   * @returns {Promise<void>}
+   */
+  async unlock(address, nonce) {
+    if (typeof this.lastFail === 'function') {
+      this.lastFail()
+    }
+  }
   /**
    * lock for queue
    *
