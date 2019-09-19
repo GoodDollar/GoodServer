@@ -1,0 +1,7 @@
+diff a/src/server/loadtest/loadtest-middleware.js b/src/server/loadtest/loadtest-middleware.js	(rejected hunks)
+@@ -5,3 +5,2 @@ import { wrapAsync, onlyInEnv } from '../utils/helpers'
+-import { recoverPublickey } from "../utils/eth";
+-import AdminWallet from "../blockchain/AdminWallet";
+-
++import { recoverPublickey } from '../utils/eth'
++import AdminWallet from '../blockchain/AdminWallet'

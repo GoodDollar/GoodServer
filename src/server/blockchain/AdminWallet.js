@@ -10,6 +10,7 @@ import ReserveABI from '@gooddollar/goodcontracts/build/contracts/GoodDollarRese
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
 import conf from '../server.config'
 import logger from '../../imports/pino-logger'
+import { isNonceError } from '../utils/eth'
 import { type TransactionReceipt } from './blockchain-types'
 import moment from 'moment'
 import get from 'lodash/get'
@@ -282,30 +283,43 @@ export class Wallet {
     txCallbacks: PromiEvents = {},
     { gas, gasPrice }: GasValues = { gas: undefined, gasPrice: undefined }
   ) {
-    const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
-    gas = gas || (await tx.estimateGas())
-    gasPrice = gasPrice || this.gasPrice
-
-    const { nonce, release, fail } = await txManager.lock(this.address, this.web3.eth.getTransactionCount)
-
-    return new Promise((res, rej) => {
-      tx.send({ gas, gasPrice, chainId: this.networkId, nonce })
-        .on('transactionHash', h => {
-          log.debug('sendTransaction nonce increased:', nonce)
-          release()
-          onTransactionHash && onTransactionHash(h)
-        })
-        .on('receipt', r => {
-          onReceipt && onReceipt(r)
-          res(r)
-        })
-        .on('confirmation', c => onConfirmation && onConfirmation(c))
-        .on('error', e => {
-          fail()
-          onError && onError(e)
-          rej(e)
-        })
-    })
+    try {
+      const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
+      gas = gas || (await tx.estimateGas())
+      gasPrice = gasPrice || this.gasPrice
+      const { nonce, release, fail } = await txManager.lock(this.address, this.web3.eth.getTransactionCount)
+      return new Promise((res, rej) => {
+        tx.send({ gas, gasPrice, chainId: this.networkId, nonce })
+          .on('transactionHash', h => {
+            release()
+            onTransactionHash && onTransactionHash(h)
+          })
+          .on('receipt', r => {
+            onReceipt && onReceipt(r)
+            res(r)
+          })
+          .on('confirmation', c => onConfirmation && onConfirmation(c))
+          .on('error', async e => {
+            if (isNonceError(e)) {
+              const netNonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
+              await txManager.unlock(this.address, netNonce)
+              try {
+                res(await this.sendTransaction(tx, txCallbacks, { gas, gasPrice }))
+              } catch (e) {
+                await txManager.errorUnlock(this.address)
+                rej(e)
+              }
+            } else {
+              fail()
+              onError && onError(e)
+              rej(e)
+            }
+          })
+      })
+    } catch (e) {
+      await txManager.errorUnlock(this.address)
+      throw new Error(e)
+    }
   }
 
   /**
@@ -326,34 +340,48 @@ export class Wallet {
     txCallbacks: PromiEvents = {},
     { gas, gasPrice }: GasValues = { gas: undefined, gasPrice: undefined }
   ) {
-    const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
-    gas = gas || 100000
-    gasPrice = gasPrice || this.gasPrice
+    try {
+      const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
+      gas = gas || 100000
+      gasPrice = gasPrice || this.gasPrice
 
-    // const netNonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
+      const { nonce, release, fail } = await txManager.lock(this.address, this.web3.eth.getTransactionCount)
 
-    const { nonce, release, fail } = await txManager.lock(this.address, this.web3.eth.getTransactionCount)
-
-    return new Promise((res, rej) => {
-      this.web3.eth
-        .sendTransaction({ gas, gasPrice, chainId: this.networkId, nonce, ...params })
-        .on('transactionHash', h => {
-          onTransactionHash && onTransactionHash(h)
-          release()
-        })
-        .on('receipt', r => {
-          onReceipt && onReceipt(r)
-          res(r)
-        })
-        .on('confirmation', c => {
-          onConfirmation && onConfirmation(c)
-        })
-        .on('error', e => {
-          fail()
-          onError && onError(e)
-          rej(e)
-        })
-    })
+      return new Promise((res, rej) => {
+        this.web3.eth
+          .sendTransaction({ gas, gasPrice, chainId: this.networkId, nonce, ...params })
+          .on('transactionHash', h => {
+            onTransactionHash && onTransactionHash(h)
+            release()
+          })
+          .on('receipt', r => {
+            onReceipt && onReceipt(r)
+            res(r)
+          })
+          .on('confirmation', c => {
+            onConfirmation && onConfirmation(c)
+          })
+          .on('error', async e => {
+            if (isNonceError(e)) {
+              const netNonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
+              await txManager.unlock(this.address, netNonce)
+              try {
+                res(await this.sendNative(params, txCallbacks, { gas, gasPrice }))
+              } catch (e) {
+                await txManager.errorUnlock(this.address)
+                rej(e)
+              }
+            } else {
+              fail()
+              onError && onError(e)
+              rej(e)
+            }
+          })
+      })
+    } catch (e) {
+      await txManager.errorUnlock(this.address)
+      throw new Error(e)
+    }
   }
 }
 
