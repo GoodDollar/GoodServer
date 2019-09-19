@@ -286,9 +286,7 @@ export class Wallet {
     gas = gas || (await tx.estimateGas())
     gasPrice = gasPrice || this.gasPrice
 
-    const netNonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
-
-    const { nonce, release, fail } = await txManager.lock(this.address, netNonce)
+    const { nonce, release, fail } = await txManager.lock(this.address, this.web3.eth.getTransactionCount)
 
     return new Promise((res, rej) => {
       tx.send({ gas, gasPrice, chainId: this.networkId, nonce })
