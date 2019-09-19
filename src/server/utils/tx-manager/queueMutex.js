@@ -4,8 +4,36 @@ export default class queueMutex {
   constructor() {
     this.nonce = null
     this.mutex = new Mutex()
+    this.lastFail = null
   }
 
+  /**
+   * Unlock for queue
+   *
+   * @param {string} address
+   * @param {string} nextNonce
+   *
+   * @returns {Promise<void>}
+   */
+  async errorUnlock(address, nonce) {
+    if (typeof this.lastFail === 'function') {
+      this.lastFail()
+    }
+  }
+
+  /**
+   * Unlock for queue
+   *
+   * @param {string} address
+   * @param {string} nextNonce
+   *
+   * @returns {Promise<void>}
+   */
+  async unlock(address, nonce) {
+    if (typeof this.lastFail === 'function') {
+      this.lastFail()
+    }
+  }
   /**
    * lock for queue
    *
@@ -22,14 +50,14 @@ export default class queueMutex {
     }
 
     let release = await this.mutex.lock()
-
+    this.lastFail = () => {
+      this.nonce--
+      release()
+    }
     return {
       nonce: this.nonce,
       release: release,
-      fail: () => {
-        this.nonce--
-        release()
-      }
+      fail: this.lastFail
     }
   }
 }
