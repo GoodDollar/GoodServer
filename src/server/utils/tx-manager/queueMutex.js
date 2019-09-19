@@ -10,13 +10,13 @@ export default class queueMutex {
    * lock for queue
    *
    * @param {string} address
-   * @param {string} netNonce
+   * @param {function} getTransactionCount
    *
    * @returns {Promise<any>}
    */
-  async lock(address, netNonce) {
+  async lock(address, getTransactionCount) {
     if (!this.nonce) {
-      this.nonce = netNonce
+      this.nonce = await getTransactionCount(address)
     } else {
       this.nonce++
     }

@@ -51,18 +51,18 @@ export default class queueMongo {
    * Create if not exist nonce to db
    *
    * @param {string} address
-   * @param {string} netNonce
    *
    * @returns {Promise<void>}
    */
-  async createIfNotExist(address, netNonce) {
+  async createIfNotExist(address) {
     try {
       let wallet = await this.model.findOne({ address })
 
       if (!wallet) {
+        const nonce = await this.getTransactionCount(address)
         await this.model.create({
           address,
-          nonce: netNonce
+          nonce
         })
       }
     } catch (e) {
@@ -93,13 +93,14 @@ export default class queueMongo {
    * lock for queue
    *
    * @param {string}address
-   * @param {string}netNonce
+   * @param {function}getTransactionCount
    *
    * @returns {Promise<any>}
    */
-  async lock(address, netNonce) {
+  async lock(address, getTransactionCount) {
+    this.getTransactionCount = getTransactionCount
     return new Promise(resolve => {
-      this.addToQueue(address, netNonce, nonce =>
+      this.addToQueue(address, nonce =>
         resolve({
           nonce,
           release: async () => await this.unlock(address, nonce + 1),
@@ -118,8 +119,8 @@ export default class queueMongo {
    *
    * @returns {Promise<void>}
    */
-  async addToQueue(address, netNonce, cb) {
-    await this.createIfNotExist(address, netNonce)
+  async addToQueue(address, cb) {
+    await this.createIfNotExist(address)
 
     this.queue.push({ cb, address })
 
