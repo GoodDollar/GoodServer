@@ -29,11 +29,15 @@ export default class queueMutex {
    *
    * @returns {Promise<void>}
    */
-  async unlock(address, nonce) {
+  async unlock(address, nextNonce) {
     if (typeof this.lastFail === 'function') {
       this.lastFail()
+      if (nextNonce) {
+        this.nonce = nextNonce
+      }
     }
   }
+
   /**
    * lock for queue
    *
@@ -45,10 +49,9 @@ export default class queueMutex {
   async lock(address, getTransactionCount) {
     if (!this.nonce) {
       this.nonce = await getTransactionCount(address)
-    } else {
-      this.nonce++
     }
-
+    this.nonce++
+    console.log('+++++++ SET NONCE +++++', this.nonce)
     let release = await this.mutex.lock()
     this.lastFail = () => {
       this.nonce--
