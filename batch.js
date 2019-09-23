@@ -85,21 +85,30 @@ const getContract = (id) => {
   // console.log('----- contract abi ',IdentityABI.abi)
   return new web3.eth.Contract(
     IdentityABI.abi,
-    get(ContractsAddress, `fuse.Identity`, IdentityABI.networks['121'].address),
+    get(ContractsAddress, `Identity`, IdentityABI.networks[String(id)].address),
     {
       from: address,
-      gas: 500000,
+      gas: 1000000,
       gasPrice: web3Utils.toWei('1', 'gwei'),
     },
   )
 }
 
 const test = async () => {
-  setProvider('http://localhost:9545')
-  // getFirstWallet('drip industry pizza deny pistol stem must device citizen crowd offer now') // fuse
-  // contract = getContract(121) //fuse
-  getFirstWallet('myth like bonus scare over problem client lizard pioneer submit female collect') // local
-  contract = getContract(4447) //local
+  // FUSE
+  // setProvider('wss://explorer-node.fuse.io/ws')
+  setProvider('https://rpc.fuse.io/')
+  getFirstWallet('drip industry pizza deny pistol stem must device citizen crowd offer now') // fuse
+  contract = getContract(121) //fuse
+
+
+  // LOCAL
+  // setProvider('http://localhost:9545')
+  // getFirstWallet('myth like bonus scare over problem client lizard pioneer submit female collect') // local
+  // contract = getContract(4447) //local
+
+
+
   const params = {
     from: address,
     gas: 1000000,
