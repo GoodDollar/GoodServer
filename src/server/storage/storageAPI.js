@@ -10,8 +10,8 @@ import md5 from 'md5'
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import AdminWallet from '../blockchain/AdminWallet'
-import { recoverPublickey } from "../utils/eth";
-// import Helper from '../verification/faceRecognition/faceRecognitionHelper'
+import { recoverPublickey } from '../utils/eth'
+import zoomHelper from '../verification/faceRecognition/faceRecognitionHelper'
 
 const setup = (app: Router, storage: StorageAPI) => {
   /**
@@ -130,13 +130,17 @@ const setup = (app: Router, storage: StorageAPI) => {
     wrapAsync(async (req, res, next) => {
       const { user, log, body } = req
       log.info('delete user', { user })
-      
+
       const recovered = recoverPublickey(body.zoomSignature, body.zoomId, '').replace('0x', '')
-      if (recovered === body.zoomId) {
+      if (recovered === body.zoomId.toLowerCase()) {
         const results = await Promise.all([
           (user.identifier ? storage.deleteUser(user) : Promise.reject())
-            .then(r => ({ gundb: 'ok' }))
-            .catch(e => ({ gundb: 'failed' })),
+            .then(r => ({ mongodb: 'ok' }))
+            .catch(e => ({ mongodb: 'failed' })),
+          zoomHelper
+            .delete(body.zoomId)
+            .then(r => ({ zoom: 'ok' }))
+            .catch(e => ({ zoom: 'failed' })),
           Mautic.deleteContact(user)
             .then(r => ({ mautic: 'ok' }))
             .catch(e => ({ mautic: 'failed' }))
@@ -147,7 +151,6 @@ const setup = (app: Router, storage: StorageAPI) => {
         log.error('/user/delete', 'SigUtil unable to recover the message signer')
         throw new Error('Unable to verify credentials')
       }
-      
     })
   )
 
