@@ -129,28 +129,34 @@ const setup = (app: Router, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const { user, log, body } = req
+      const {zoomSignature, zoomId} = body
       log.info('delete user', { user })
-
-      const recovered = recoverPublickey(body.zoomSignature, body.zoomId, '').replace('0x', '')
-      if (recovered === body.zoomId.toLowerCase()) {
-        const results = await Promise.all([
-          (user.identifier ? storage.deleteUser(user) : Promise.reject())
-            .then(r => ({ mongodb: 'ok' }))
-            .catch(e => ({ mongodb: 'failed' })),
-          zoomHelper
-            .delete(body.zoomId)
-            .then(r => ({ zoom: 'ok' }))
-            .catch(e => ({ zoom: 'failed' })),
-          Mautic.deleteContact(user)
-            .then(r => ({ mautic: 'ok' }))
-            .catch(e => ({ mautic: 'failed' }))
-        ])
-        log.info('delete user results', { results })
-        res.json({ ok: 1, results })
-      } else {
-        log.error('/user/delete', 'SigUtil unable to recover the message signer')
-        throw new Error('Unable to verify credentials')
+      
+      if (zoomId && zoomSignature) {
+        
+        const recovered = recoverPublickey(zoomSignature, zoomId, '').replace('0x', '')
+        
+        if (recovered === body.zoomId.toLowerCase()) {
+          await zoomHelper.delete(zoomId)
+          log.info('zoom delete', { zoomId })
+        } else {
+          log.error('/user/delete', 'SigUtil unable to recover the message signer')
+          throw new Error('Unable to verify credentials')
+        }
+        
       }
+      
+      const results = await Promise.all([
+        (user.identifier ? storage.deleteUser(user) : Promise.reject())
+          .then(r => ({ mongodb: 'ok' }))
+          .catch(e => ({ mongodb: 'failed' })),
+        Mautic.deleteContact(user)
+          .then(r => ({ mautic: 'ok' }))
+          .catch(e => ({ mautic: 'failed' }))
+      ])
+      
+      log.info('delete user results', { results })
+      res.json({ ok: 1, results })
     })
   )
 
