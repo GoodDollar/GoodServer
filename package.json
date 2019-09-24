@@ -42,7 +42,7 @@
   "homepage": "https://gooddollar.org",
   "dependencies": {
     "@babel/polyfill": "^7.4.4",
-    "@gooddollar/goodcontracts": "0.0.18",
+    "@gooddollar/goodcontracts": "0.0.19",
     "@sendgrid/mail": "^6.4.0",
     "apidoc": "^0.17.7",
     "apidoc-markdown": "^0.2.1",
