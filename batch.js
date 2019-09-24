@@ -91,14 +91,15 @@ const getContract = id => {
 const test = async () => {
   // FUSE
   // setProvider('wss://explorer-node.fuse.io/ws')
-  // setProvider('https://rpc.fuse.io/')
-  // getFirstWallet(process.env.MNEMONIC) // fuse
-  // contract = getContract(121) //fuse
+  setProvider('https://rpc.fuse.io/')
+  getFirstWallet(process.env.MNEMONIC) // fuse
+  console.log('MNEMONIC: ','-'+process.env.MNEMONIC+'-')
+  contract = getContract(121) //fuse
 
   // LOCAL
-  setProvider('http://localhost:9545')
-  getFirstWallet('myth like bonus scare over problem client lizard pioneer submit female collect') // local
-  contract = getContract(4447) //local
+  // setProvider('http://localhost:9545')
+  // getFirstWallet('myth like bonus scare over problem client lizard pioneer submit female collect') // local
+  // contract = getContract(4447) //local
 
   const params = {
     from: address,
@@ -110,25 +111,35 @@ const test = async () => {
   const batch = new web3.BatchRequest()
   let nonce = await getTxCount(address)
   console.log('nonce: ', nonce)
-  batch.add(
-    contract.methods
-      .whiteListUser('0x919b99dcabae3fea4909af23b8dfa9f2d2c273de', 'ab')
-      .send.request(params, async (err, res) => {
-        console.log('TX 1: ', { err, res })
-        setTimeout(async () => console.log('receipt', await web3.eth.getTransactionReceipt(res)), 10000)
-      })
-  )
-  let amethod = contract.methods.whiteListUser('0x919b99dcabae3fea4909af23b8dfa9f2d2c273de', 'ab').send
-  batch.add(amethod.request(params, (err, res) => console.log('TX 2: ', { err, res })))
-  batch.add(
-    contract.methods
-      .whiteListUser('0x919b99dcabae3fea4909af23b8dfa9f2d2c273de', 'ab')
-      .send.request(params, (err, res) => console.log('TX 3: ', { err, res }))
-  )
+  for(let i=0;i<2;i++){
+    batch.add(
+      contract.methods
+        .whiteListUser('0x919b99dcabae3fea4909af23b8dfa9f2d2c273de', 'ab')
+        .send({...params,nonce}, async (err, res) => {
+          console.log(`TX ${i}: `, { err, res })
+          // setTimeout(async () => console.log('receipt', await web3.eth.getTransactionReceipt(res)), 10000)
+        })
+    )
+    nonce++
+  }
+
+  //
+  // let amethod = contract.methods.whiteListUser('0x919b99dcabae3fea4909af23b8dfa9f2d2c273de', 'ab').send
+  // batch.add(amethod({...params,nonce}, (err, res) => console.log('TX 2: ', { err, res })))
+  // nonce++
+  // batch.add(
+  //   contract.methods
+  //     .whiteListUser('0x919b99dcabae3fea4909af23b8dfa9f2d2c273de', 'ab')
+  //     .send({...params,nonce}, (err, res) => console.log('TX 3: ', { err, res }))
+  // )
+
+
 
   // console.log(contract.methods.whiteListUser('0x54d418cce9ffbe5ddeded187b6510a78e0181e5b','ab').call.request(params,(a)=>console.log('111',a)))
   // batch.add(this.identityContract.methods.whiteListUser('0xfb5db2f6991ab80869b31c80ef65061a73ec5751', 'some string').request({from:this.address}))
-  const batchResults = await batch.execute()
+  const batchResults = await batch.execute().catch(e=>{
+    console.log('batch error',e)
+  })
   console.log('FINISH: ', batchResults, amethod, await getTxCount(address))
   amethod.afterExecution = console.log
 }
