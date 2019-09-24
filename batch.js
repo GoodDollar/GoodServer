@@ -1,4 +1,6 @@
-const bip39 = require('bip39-light')
+
+require('dotenv').config()
+const bip39 = require("bip39-light")
 
 const IdentityABI = require('@gooddollar/goodcontracts/build/contracts/Identity.json')
 const ContractsAddress = require('@gooddollar/goodcontracts/releases/deployment.json')
@@ -8,12 +10,7 @@ const web3Utils = require('web3-utils')
 const Web3 = require('web3')
 const HDKey = require('hdkey')
 const Wallet = require('ethereumjs-wallet')
-const config = {
-  web3: {
-    gasValue: 4000000,
-    waitDelay: 1000
-  }
-}
+
 let currentProvider
 let web3 = new Web3()
 const getTxCount = async from => await web3.eth.getTransactionCount(from)
@@ -73,7 +70,6 @@ const getFirstWallet = mnemonic => {
   // return wallets[addresses[0]]
 }
 
-let wallet
 let contract
 let address
 
@@ -95,9 +91,9 @@ const getContract = id => {
 const test = async () => {
   // FUSE
   // setProvider('wss://explorer-node.fuse.io/ws')
-  setProvider('https://rpc.fuse.io/')
-  getFirstWallet('drip industry pizza deny pistol stem must device citizen crowd offer now') // fuse
-  contract = getContract(121) //fuse
+  // setProvider('https://rpc.fuse.io/')
+  // getFirstWallet(process.env.MNEMONIC) // fuse
+  // contract = getContract(121) //fuse
 
   // LOCAL
   setProvider('http://localhost:9545')
