@@ -29,10 +29,10 @@ test('adminWallet get balance correctly', async () => {
   expect(balance > 0).toBeTruthy()
 })
 
-test('adminWallet top wallet throws an error when user is not whitelisted/verified', async () => {
-  const unverifiedAddress = '0xb999A6a8096dE62638f99157E5E05894303F5EA8'
+test(`adminWallet top wallet shouldn't throws an error when user is not whitelisted/verified`, async () => {
+  const unverifiedAddress = '0x5d1b321087c9273c7efb0815c43c019df180fa56'
   await AdminWallet.blacklistUser(unverifiedAddress)
-  await expect(AdminWallet.topWallet(unverifiedAddress, null)).rejects.toThrow()
+  await expect(AdminWallet.topWallet(unverifiedAddress, null)).toBeTruthy()
 })
 
 test('adminWallet receive queue nonce', async () => {
