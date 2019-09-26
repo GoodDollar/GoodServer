@@ -79,7 +79,8 @@ export default class queueMongo {
       if (!wallet) {
         await this.model.create({
           address,
-          nonce: netNonce
+          nonce: netNonce,
+          networkId: this.networkId
         })
       }
     } catch (e) {
@@ -99,7 +100,8 @@ export default class queueMongo {
     await this.model.findOneAndUpdate(
       { address },
       {
-        isLock: false
+        isLock: false,
+        networkId: this.networkId
       },
       { returnNewDocument: true }
     )
@@ -119,7 +121,8 @@ export default class queueMongo {
         { address },
         {
           isLock: false,
-          nonce: nextNonce
+          nonce: nextNonce,
+          networkId: this.networkId
         },
         { returnNewDocument: true }
       )
