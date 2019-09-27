@@ -2,13 +2,13 @@ import WalletNonce from '../../db/mongo/models/wallet-nonce'
 import logger from '../../../imports/pino-logger'
 
 const log = logger.child({ from: 'queueMongo' })
-
+const MAX_LOCK_TIME = 30 // seconds
 export default class queueMongo {
   constructor() {
     this.model = WalletNonce
     this.queue = []
     this.nonce = null
-
+    this.reRunQueue = null
     const filter = [
       {
         $match: {
@@ -20,8 +20,8 @@ export default class queueMongo {
     const options = { fullDocument: 'updateLookup' }
 
     // listen to the collection
-    this.model.watch(filter, options).on('change', data => {
-      this.run()
+    this.model.watch(filter, options).on('change', async data => {
+      await this.run()
     })
   }
 
@@ -35,11 +35,25 @@ export default class queueMongo {
   async getWalletNonce(address) {
     try {
       let wallet = await this.model.findOneAndUpdate(
-        { address, isLock: false },
-        { isLock: true },
+        {
+          address,
+          $or: [
+            { isLock: false },
+            {
+              lockedAt: { $lte: +new Date() - MAX_LOCK_TIME * 1000 },
+              isLock: true
+            }
+          ]
+        },
+        { isLock: true, lockedAt: +new Date() },
         { returnNewDocument: true }
       )
-
+      if (this.reRunQueue) {
+        clearTimeout(this.reRunQueue)
+      }
+      this.reRunQueue = setTimeout(() => {
+        this.run()
+      }, MAX_LOCK_TIME * 1000)
       return wallet
     } catch (e) {
       logger.error('TX queueMongo (getWalletNonce)', e)
@@ -78,15 +92,37 @@ export default class queueMongo {
    *
    * @returns {Promise<void>}
    */
-  async unlock(address, nextNonce) {
-    const res = await this.model.findOneAndUpdate(
+  async errorUnlock(address) {
+    await this.model.findOneAndUpdate(
       { address },
       {
-        isLock: false,
-        nonce: nextNonce
+        isLock: false
       },
       { returnNewDocument: true }
     )
+  }
+
+  /**
+   * Unlock for queue
+   *
+   * @param {string} address
+   * @param {string} nextNonce
+   *
+   * @returns {Promise<void>}
+   */
+  async unlock(address, nextNonce) {
+    try {
+      await this.model.findOneAndUpdate(
+        { address },
+        {
+          isLock: false,
+          nonce: nextNonce
+        },
+        { returnNewDocument: true }
+      )
+    } catch (e) {
+      logger.error('unlock error', e)
+    }
   }
 
   /**
@@ -103,7 +139,7 @@ export default class queueMongo {
         resolve({
           nonce,
           release: async () => await this.unlock(address, nonce + 1),
-          fail: async () => await this.unlock(address, nonce)
+          fail: async () => await this.errorUnlock(address)
         })
       )
     })
@@ -137,7 +173,6 @@ export default class queueMongo {
         const nextTr = this.queue[0]
 
         const walletNonce = await this.getWalletNonce(nextTr.address)
-
         if (walletNonce) {
           this.queue.shift()
           nextTr.cb(walletNonce.nonce)

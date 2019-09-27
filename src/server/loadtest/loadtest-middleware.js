@@ -2,9 +2,8 @@
 import { Router } from 'express'
 import passport from 'passport'
 import { wrapAsync, onlyInEnv } from '../utils/helpers'
-import { recoverPublickey } from "../utils/eth";
-import AdminWallet from "../blockchain/AdminWallet";
-
+import { recoverPublickey } from '../utils/eth'
+import AdminWallet from '../blockchain/AdminWallet'
 
 const setup = (app: Router) => {
   /**
@@ -13,9 +12,9 @@ const setup = (app: Router) => {
   app.post(
     '/test/add/whitelistUser',
     passport.authenticate('jwt', { session: false }),
-    onlyInEnv('test'),
+    onlyInEnv('test', 'development'),
     wrapAsync(async (req, res, next) => {
-      const { body }= req
+      const { body } = req
       const gdSignature = body.gdSignature
       const nonce = body.nonce
       const msg = 'Login to GoodDAPP'
@@ -23,11 +22,11 @@ const setup = (app: Router) => {
       console.log('#############################################')
       console.log(gdPublicAddress)
       console.log('#############################################')
-      await AdminWallet.whitelistUser(gdPublicAddress, body.profilePublickey)
+      const hash = await AdminWallet.whitelistUser(gdPublicAddress, body.profilePublickey)
+      console.log('xxxxxxxx hash', hash)
       res.json({ ok: 1 })
     })
   )
-
 }
 
 export default setup

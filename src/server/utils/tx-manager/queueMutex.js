@@ -6,6 +6,33 @@ export default class queueMutex {
   }
 
   /**
+   * Unlock for queue
+   *
+   * @param {string} address
+   * @param {string} nextNonce
+   *
+   * @returns {Promise<void>}
+   */
+  async errorUnlock(address, nonce) {
+    return this.unlock()
+  }
+
+  /**
+   * Unlock for queue
+   *
+   * @param {string} address
+   * @param {string} nextNonce
+   *
+   * @returns {Promise<void>}
+   */
+  async unlock(address, nonce) {
+    const obj = this.queue.find(i => i.address === address) || {}
+
+    if (typeof obj.lastFail === 'function') {
+      obj.lastFail()
+    }
+  }
+  /**
    * lock for queue
    *
    * @param {string} address
@@ -19,6 +46,8 @@ export default class queueMutex {
 
     if (~index) {
       obj = this.queue[index]
+
+      obj.nonce++
     } else {
       this.queue.push({
         address,
@@ -31,15 +60,15 @@ export default class queueMutex {
 
     let release = await obj.mutex.lock()
 
+    obj.lastFail = () => {
+      obj.nonce--
+      release()
+    }
+
     return {
       nonce: obj.nonce,
-      release: () => {
-        obj.nonce++
-        release()
-      },
-      fail: () => {
-        release()
-      }
+      release,
+      fail: obj.lastFail
     }
   }
 
