@@ -137,6 +137,45 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   )
 
   /**
+   * @api {post} /verify/sendnewotp Sends OTP for new phone entered by user
+   * @apiName Send New OTP
+   * @apiGroup Verification
+   *
+   * @apiParam {String} mobile
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
+  app.post(
+    '/verify/sendnewotp',
+    passport.authenticate('jwt', { session: false }),
+    onlyInEnv('production', 'staging'),
+    wrapAsync(async (req, res, next) => {
+      const { user, body } = req
+      const log = req.log.child({ from: 'sendnewotp' })
+
+      log.info('New Phone Otp Request:', user, body)
+
+      let userRec: UserRecord = _.defaults({ mobile: body.mobile }, user, { identifier: user.loggedInAs })
+
+      if (conf.allowDuplicateUserData === false && (await storage.isDupUserData(userRec))) {
+        return res.json({ ok: 0, error: 'Mobile already exists, please use a different one.' })
+      }
+
+      log.debug('sending otp:', user.loggedInAs)
+
+      const [, code] = await sendOTP({ mobile: body.mobile })
+      const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
+
+      log.debug('otp sent:', user.loggedInAs)
+
+      await storage.updateUser({ identifier: user.loggedInAs, otp: { code, expirationDate } })
+
+      res.json({ ok: 1 })
+    })
+  )
+
+  /**
    * @api {post} /verify/mobile Verify mobile data code
    * @apiName OTP Code
    * @apiGroup Verification
@@ -168,6 +207,45 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
       const signedMobile = await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: user.mobile })
       res.json({ ok: 1, attestation: signedMobile })
+    })
+  )
+
+  /**
+   * @api {post} /verify/newmobile Verify new mobile data code
+   * @apiName OTP New Code
+   * @apiGroup Verification
+   *
+   * @apiParam {String} otp
+   *
+   * @apiSuccess {Number} ok
+   * @apiSuccess {Claim} attestation
+   * @ignore
+   */
+  app.post(
+    '/verify/newmobile',
+    passport.authenticate('jwt', { session: false }),
+    onlyInEnv('production', 'staging'),
+    wrapAsync(async (req, res, next) => {
+      const log = req.log.child({ from: 'verificationAPI - verify/newmobile' })
+      const { user, body } = req
+
+      log.debug('mobile verification', { user, otp: body.otp })
+
+      let verified = await verifier.verifyMobile({ identifier: user.loggedInAs }, { otp: body.otp }).catch(e => {
+        log.warn('New Mobile Verification Failed:', e.message, e)
+
+        res.json(400, { ok: 0, error: 'OTP FAILED', message: e.message })
+
+        return false
+      })
+
+      if (verified === false) return
+      await storage.updateUser({ identifier: user.loggedInAs, smsValidated: true })
+
+      // dont sure whether the line below should be called here or not
+      // await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: user.mobile })
+
+      res.json({ ok: 1 })
     })
   )
 
@@ -278,6 +356,46 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   )
 
   /**
+   * @api {post} /verify/newemail Send verification for new email entered by user
+   * @apiName Send Code For New Email
+   * @apiGroup Verification
+   *
+   * @apiParam {String} email
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
+  app.post(
+    '/verify/sendnewemail',
+    passport.authenticate('jwt', { session: false }),
+    onlyInEnv('production', 'staging', 'test'),
+    wrapAsync(async (req, res, next) => {
+      const { user, body } = req
+      const log = req.log.child({ from: 'verificationAPI - verify/sendnewemail' })
+      let userRec: UserRecord = _.defaults({ email: body.email }, user)
+
+      if (conf.allowDuplicateUserData === false && (await storage.isDupUserData(userRec))) {
+        return res.json({ ok: 0, error: 'Email already exists, please use a different one' })
+      }
+
+      if (conf.skipEmailVerification === false) {
+        const code = generateOTP(6)
+
+        Mautic.sendVerificationEmail(userRec, code)
+
+        log.debug('send new user email verification code', code)
+
+        storage.updateUser({
+          identifier: user.loggedInAs,
+          emailVerificationCode: code
+        })
+      }
+
+      res.json({ ok: 1 })
+    })
+  )
+
+  /**
    * @api {post} /verify/email Verify email code
    * @apiName Email
    * @apiGroup Verification
@@ -308,6 +426,36 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: user.email })
 
       res.json({ ok: 1, attestation: signedEmail })
+    })
+  )
+
+  /**
+   * @api {post} /verify/newemail Verify new email entered by user
+   * @apiName New Email Verification
+   * @apiGroup Verification
+   *
+   * @apiParam {String} code
+   *
+   * @apiSuccess {Number} ok
+   * @apiSuccess {Claim} attestation
+   * @ignore
+   */
+  app.post(
+    '/verify/newemail',
+    passport.authenticate('jwt', { session: false }),
+    onlyInEnv('production', 'staging', 'test'),
+    wrapAsync(async (req, res, next) => {
+      const log = req.log.child({ from: 'verificationAPI - verify/newemail' })
+      const { user, body } = req
+
+      log.debug('New Email Verification', { user, code: body.code })
+
+      await verifier.verifyEmail({ identifier: user.loggedInAs }, { code: body.code })
+
+      // dont sure whether the line below should be called here or not
+      // await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: user.email })
+
+      res.json({ ok: 1 })
     })
   )
 
