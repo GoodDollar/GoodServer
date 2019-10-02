@@ -51,6 +51,7 @@ export class Wallet {
   constructor(mnemonic: string) {
     this.mnemonic = mnemonic
     this.ready = this.init()
+    this.filledAddresses = []
   }
 
   getWeb3TransportProvider(): HttpProvider | WebSocketProvider {
@@ -77,14 +78,13 @@ export class Wallet {
 
     return web3Provider
   }
-
   async init(): Promise<any> {
     log.debug('Initializing wallet:', { conf: conf.ethereum })
     try {
       this.ready = WalletFactory.create()
       this.wallet = await this.ready
       this.accounts = this.wallet.web3.eth.accounts.wallet
-      this.wallet.web3.eth.defaultAccount = this.account
+      this.wallet.web3.eth.defaultAccount = this.accounts[0]
       this.networkId = ContractsAddress[conf.network].networkId
       this.network = conf.network
       log.info(`networkId: ${this.networkId}`)
@@ -141,12 +141,15 @@ export class Wallet {
         network: this.networkId
       })
 
-      for (let address of this.wallet.mulWallet.addresses) {
-        let nonce = parseInt(await this.wallet.web3.eth.getTransactionCount(address))
-        await txManager.createIfNotExist(address, nonce)
-        log.debug(`init wallet ${address} with nonce ${nonce} in mongo`)
+      txManager.getTransactionCount = this.wallet.web3.eth.getTransactionCount
+      await txManager.createListIfNotExists(this.wallet.mulWallet.addresses)
+      for (let addr of this.wallet.mulWallet.addresses) {
+        const balance = await this.wallet.web3.eth.getBalance(addr)
+        log.info(`admin wallet ${addr} balance ${balance}`)
+        if (balance > 1000000000000000000) {
+          this.filledAddresses.push(addr)
+        }
       }
-
       // const whitelistTest = await this.whitelistUser('0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1', 'x')
       // const topwalletTest = await this.topWallet(
       //   '0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1',
@@ -285,10 +288,11 @@ export class Wallet {
       const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
       gas = gas || (await tx.estimateGas())
       gasPrice = gasPrice || this.gasPrice
-      let netNonce = parseInt(await this.wallet.web3.eth.getTransactionCount(this.address))
-      const { nonce, release, fail } = await txManager.lock(this.address, netNonce)
+
+      const { nonce, release, fail, address } = await txManager.lock(this.filledAddresses)
+      log.debug(`sending tx from: ${address} | nonce: ${nonce}`)
       return new Promise((res, rej) => {
-        tx.send({ gas, gasPrice, chainId: this.networkId, nonce })
+        tx.send({ gas, gasPrice, chainId: this.networkId, nonce, from: address })
           .on('transactionHash', h => {
             release()
             onTransactionHash && onTransactionHash(h)
@@ -300,8 +304,8 @@ export class Wallet {
           .on('confirmation', c => onConfirmation && onConfirmation(c))
           .on('error', async e => {
             if (isNonceError(e)) {
-              netNonce = parseInt(await this.wallet.web3.eth.getTransactionCount(this.address))
-              await txManager.unlock(this.address, netNonce)
+              let netNonce = parseInt(await this.wallet.web3.eth.getTransactionCount(address))
+              await txManager.unlock(address, netNonce)
               try {
                 res(await this.sendTransaction(tx, txCallbacks, { gas, gasPrice }))
               } catch (e) {
@@ -344,13 +348,11 @@ export class Wallet {
       gas = gas || 100000
       gasPrice = gasPrice || this.gasPrice
 
-      let netNonce = parseInt(await this.wallet.web3.eth.getTransactionCount(this.address))
-
-      const { nonce, release, fail } = await txManager.lock(this.address, netNonce)
+      const { nonce, release, fail, address } = await txManager.lock(this.filledAddresses)
 
       return new Promise((res, rej) => {
         this.wallet.web3.eth
-          .sendTransaction({ gas, gasPrice, chainId: this.networkId, nonce, ...params })
+          .sendTransaction({ gas, gasPrice, chainId: this.networkId, nonce, ...params, from: address })
           .on('transactionHash', h => {
             onTransactionHash && onTransactionHash(h)
             release()
@@ -364,12 +366,12 @@ export class Wallet {
           })
           .on('error', async e => {
             if (isNonceError(e)) {
-              netNonce = parseInt(await this.wallet.web3.eth.getTransactionCount(this.address))
-              await txManager.unlock(this.address, netNonce)
+              let netNonce = parseInt(await this.wallet.web3.eth.getTransactionCount(address))
+              await txManager.unlock(address, netNonce)
               try {
                 res(await this.sendNative(params, txCallbacks, { gas, gasPrice }))
               } catch (e) {
-                await txManager.errorUnlock(this.address)
+                await txManager.errorUnlock(address)
                 rej(e)
               }
             } else {

@@ -33,12 +33,12 @@ class SoftwareWalletProvider {
     //and we want privacy
     this.mulWallet = new MultipleAddressWallet(conf.mnemonic, conf.numberOfAdminWalletAccounts)
     this.web3 = new Web3(provider, null, this.defaults)
-    this.mulWallet.addresses.forEach(addr => {
-      let wallet = this.web3.eth.accounts.privateKeyToAccount(
-        '0x' + this.mulWallet.wallets[addr].getPrivateKey().toString('hex')
-      )
+    for (const addr of this.mulWallet.addresses) {
+      let pk = '0x' + this.mulWallet.wallets[addr].getPrivateKey().toString('hex')
+      let wallet = this.web3.eth.accounts.privateKeyToAccount(pk)
+      log.info(`address ${addr} pk=${pk}`)
       this.web3.eth.accounts.wallet.add(wallet)
-    })
+    }
     this.web3.eth.defaultAccount = this.mulWallet.addresses[0]
     return this
   }

@@ -10,6 +10,7 @@ export default class queueMongo {
     this.model = WalletNonce
     this.queue = []
     this.nonce = null
+    this.getTransactionCount = () => 0
     this.reRunQueue = null
     const filter = [
       {
@@ -34,23 +35,25 @@ export default class queueMongo {
 
    * @returns {Promise<*>}
    */
-  async getWalletNonce(address) {
+  async getWalletNonce(addresses) {
     try {
-      let wallet = await this.model.findOneAndUpdate(
-        {
-          address,
-          $or: [
-            { isLock: false },
-            {
-              lockedAt: { $lte: +new Date() - MAX_LOCK_TIME * 1000 },
-              isLock: true,
-              networkId: this.networkId
-            }
-          ]
-        },
-        { isLock: true, lockedAt: +new Date(), networkId: this.networkId },
-        { returnNewDocument: true }
-      )
+      let wallet = await this.model
+        .findOneAndUpdate(
+          {
+            address: { $in: addresses },
+            $or: [
+              { isLock: false },
+              {
+                lockedAt: { $lte: +new Date() - MAX_LOCK_TIME * 1000 },
+                isLock: true,
+                networkId: this.networkId
+              }
+            ]
+          },
+          { isLock: true, lockedAt: +new Date(), networkId: this.networkId },
+          { returnNewDocument: true }
+        )
+        .sort({ lockedAt: -1 })
       if (this.reRunQueue) {
         clearTimeout(this.reRunQueue)
       }
@@ -65,21 +68,35 @@ export default class queueMongo {
   }
 
   /**
-   * Create if not exist nonce to db
+   * Create array of addresses if not exists to db
    *
-   * @param {string} address
-   * @param {string} netNonce
+   * @param {array} addresses
    *
    * @returns {Promise<void>}
    */
-  async createIfNotExist(address, netNonce) {
-    try {
-      let wallet = await this.model.findOne({ address })
+  async createListIfNotExists(addresses) {
+    for (let address of addresses) {
+      await this.createIfNotExist(address)
+    }
+  }
 
+  /**
+   * Create if not exists to db
+   *
+   * @param {string} address
+   *
+   * @returns {Promise<void>}
+   */
+  async createIfNotExist(address) {
+    try {
+      // log.debug(`create if not exists wallet ${address}`)
+      let wallet = await this.model.findOne({ address })
       if (!wallet) {
+        const nonce = await this.getTransactionCount(address)
+        log.debug(`init wallet ${address} with nonce ${nonce} in mongo`)
         await this.model.create({
           address,
-          nonce: netNonce,
+          nonce,
           networkId: this.networkId
         })
       }
@@ -134,36 +151,44 @@ export default class queueMongo {
   /**
    * lock for queue
    *
-   * @param {string}address
-   * @param {string}netNonce
+   * @param {array}addresses
+   * @param {function}getTransactionCount
    *
    * @returns {Promise<any>}
    */
-  async lock(address, netNonce) {
+  async lock(addresses) {
     return new Promise(resolve => {
-      this.addToQueue(address, netNonce, nonce =>
+      this.addToQueue(addresses, ({ nonce, address }) => {
+        log.debug(`lock ${address} nonce ${nonce + 1}`)
         resolve({
+          address,
           nonce,
-          release: async () => await this.unlock(address, nonce + 1),
-          fail: async () => await this.errorUnlock(address)
+          release: async () => {
+            log.debug(`unlock ${address} nonce ${nonce + 1}`)
+            return await this.unlock(address, nonce + 1)
+          },
+          fail: async () => {
+            log.debug(`fail ${address} nonce ${nonce} --`)
+            return await this.errorUnlock(address)
+          }
         })
-      )
+      })
     })
   }
 
   /**
    *  Add new tr to
    *
-   * @param {string} address
+   * @param {array} addresses
    * @param {string} netNonce
    * @param {function} cb
    *
    * @returns {Promise<void>}
    */
-  async addToQueue(address, netNonce, cb) {
-    await this.createIfNotExist(address, netNonce)
+  async addToQueue(addresses, cb) {
+    await this.createListIfNotExists(addresses)
 
-    this.queue.push({ cb, address })
+    this.queue.push({ cb, addresses })
 
     this.run()
   }
@@ -178,10 +203,10 @@ export default class queueMongo {
       if (this.queue.length > 0) {
         const nextTr = this.queue[0]
 
-        const walletNonce = await this.getWalletNonce(nextTr.address)
+        const walletNonce = await this.getWalletNonce(nextTr.addresses)
         if (walletNonce) {
           this.queue.shift()
-          nextTr.cb(walletNonce.nonce)
+          nextTr.cb({ nonce: walletNonce.nonce, address: walletNonce.address })
         }
       }
     } catch (e) {
