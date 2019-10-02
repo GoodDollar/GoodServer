@@ -229,7 +229,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log.child({ from: 'verificationAPI - verify/newmobile' })
       const { user, body } = req
 
-      log.debug('mobile verification', { user, otp: body.otp })
+      log.debug('mobile verification', { user, otp: body.otp, mobile: body.mobile })
 
       let verified = await verifier.verifyMobile({ identifier: user.loggedInAs }, { otp: body.otp }).catch(e => {
         log.warn('New Mobile Verification Failed:', e.message, e)
@@ -240,7 +240,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       })
 
       if (verified === false) return
-      await storage.updateUser({ identifier: user.loggedInAs, smsValidated: true })
+
+      await storage.updateUser({ identifier: user.loggedInAs, mobile: body.mobile, smsValidated: true })
 
       // dont sure whether the line below should be called here or not
       // await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: user.mobile })
@@ -448,9 +449,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log.child({ from: 'verificationAPI - verify/newemail' })
       const { user, body } = req
 
-      log.debug('New Email Verification', { user, code: body.code })
+      log.debug('New Email Verification', { user, code: body.code, email: body.email })
 
       await verifier.verifyEmail({ identifier: user.loggedInAs }, { code: body.code })
+
+      await storage.updateuser({ identifier: user.loggedInAs, email: body.email })
 
       // dont sure whether the line below should be called here or not
       // await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: user.email })
