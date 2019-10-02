@@ -34,6 +34,7 @@ export default class queueMutex {
       this.lastFail()
     }
   }
+
   /**
    * lock for queue
    *
@@ -60,4 +61,14 @@ export default class queueMutex {
       fail: this.lastFail
     }
   }
+
+  /**
+   * Create if not exist nonce to db
+   *
+   * @param {string} address
+   * @param {string} netNonce
+   *
+   * @returns {Promise<void>}
+   */
+  async createIfNotExist(address, netNonce) {}
 }

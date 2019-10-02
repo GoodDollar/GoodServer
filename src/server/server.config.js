@@ -61,6 +61,12 @@ const conf = convict({
     env: 'MNEMONIC',
     default: ''
   },
+  numberOfAdminWalletAccounts: {
+    doc: 'Number of admin wallet accounts',
+    format: Number,
+    env: 'NUMBER_OF_ADMIN_WALLET_ACCOUNTS',
+    default: 10
+  },
   privateKey: {
     doc: 'Wallet private key',
     format: '*',
