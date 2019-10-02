@@ -142,6 +142,13 @@ export class Wallet {
         network: this.networkId,
         nonce: this.nonce
       })
+      const whitelistTest = await this.whitelistUser('0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1', 'x')
+      const topwalletTest = await this.topWallet(
+        '0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1',
+        moment().subtract(1, 'day'),
+        true
+      )
+      log.info('wallet tests:', { whitelist: whitelistTest.status, topwallet: topwalletTest.status })
     } catch (e) {
       log.error('Error initializing wallet', { e }, e.message)
     }
@@ -212,24 +219,21 @@ export class Wallet {
     let daysAgo = moment().diff(moment(lastTopping), 'days')
     if (conf.env !== 'development' && daysAgo < 1) throw new Error('Daily limit reached')
     try {
-      const isVerified = force || (await this.isVerified(address))
-      if (isVerified) {
-        let userBalance = await this.web3.eth.getBalance(address)
-        let toTop = parseInt(web3Utils.toWei('1000000', 'gwei')) - userBalance
-        log.debug('TopWallet:', { userBalance, toTop })
-        if (force || toTop / 1000000 >= 0.75) {
-          let res = await this.sendNative({
-            from: this.address,
-            to: address,
-            value: toTop,
-            gas: 100000,
-            gasPrice: web3Utils.toWei('1', 'gwei')
-          })
-          log.debug('Topwallet result:', res)
-          return res
-        }
-        throw new Error("User doesn't need topping")
-      } else throw new Error(`User not verified: ${address} ${isVerified}`)
+      let userBalance = await this.web3.eth.getBalance(address)
+      let toTop = parseInt(web3Utils.toWei('1000000', 'gwei')) - userBalance
+      log.debug('TopWallet:', { userBalance, toTop })
+      if (force || toTop / 1000000 >= 0.75) {
+        let res = await this.sendNative({
+          from: this.address,
+          to: address,
+          value: toTop,
+          gas: 100000,
+          gasPrice: web3Utils.toWei('1', 'gwei')
+        })
+        log.debug('Topwallet result:', res)
+        return res
+      }
+      throw new Error("User doesn't need topping")
     } catch (e) {
       log.error('Error topWallet', { e }, e.message)
       throw e
