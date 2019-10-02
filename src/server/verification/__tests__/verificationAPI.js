@@ -63,6 +63,20 @@ describe('verificationAPI', () => {
       .expect(200, { ok: 1, onlyInEnv: { current: 'test', onlyIn: ['production', 'staging'] } })
   })
 
+  test('/verify/sendnewotp without creds -> 401', async () => {
+    await request(server)
+      .post('/verify/sendnewotp')
+      .expect(401)
+  })
+
+  test('/verify/sendnewotp with creds', async () => {
+    const token = await getToken(server)
+    await request(server)
+      .post('/verify/sendnewotp')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200, { ok: 1, onlyInEnv: { current: 'test', onlyIn: ['production', 'staging'] } })
+  })
+
   test('/verify/sendemail with creds', async () => {
     const token = await getToken(server)
 
@@ -76,20 +90,17 @@ describe('verificationAPI', () => {
     expect(user).toBeTruthy()
 
     await request(server)
-      .post('/verify/sendemail')
+      .post('/verify/sendnewemail')
       .send({
-        user: {
-          fullName: 'h r',
-          email: 'johndoe@gooddollar.org'
-        }
+        email: 'johndoe@gooddollar.org'
       })
       .set('Authorization', `Bearer ${token}`)
       .expect(200, { ok: 1 })
-    await delay(500)
+
+    await delay(1000)
 
     const dbUser = await UserDBPrivate.getUser('0x7ac080f6607405705aed79675789701a48c76f55')
 
-    expect(dbUser.mauticId).toBeTruthy()
     expect(dbUser.emailVerificationCode).toBeTruthy()
   })
 
