@@ -34,5 +34,8 @@ function start() {
 
   GunDBPublic.init(server, conf.gundbPassword, 'publicdb', conf.gunPublicS3)
 }
+console.log('webConcurrency from env', process.env.WEB_CONCURRENCY)
+console.log('webConcurrency from config', conf.webConcurrency)
 
-throng({ workers: conf.webConcurrency, lifetime: Infinity }, start)
+const workers = process.env.WEB_CONCURRENCY || conf.webConcurrency
+throng({ workers, lifetime: Infinity }, start)

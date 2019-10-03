@@ -54,4 +54,8 @@ function start() {
   })
 }
 
-throng({ workers: conf.webConcurrency, lifetime: Infinity }, start)
+console.log('webConcurrency from env', process.env.WEB_CONCURRENCY)
+console.log('webConcurrency from config', conf.webConcurrency)
+
+const workers = process.env.WEB_CONCURRENCY || conf.webConcurrency
+throng({ workers, lifetime: Infinity }, start)
