@@ -90,18 +90,48 @@ describe('verificationAPI', () => {
     expect(user).toBeTruthy()
 
     await request(server)
+      .post('/verify/sendemail')
+      .send({
+        user: {
+          fullName: 'h r',
+          email: 'johndoe@gooddollar.org'
+        }
+      })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200, { ok: 1 })
+
+    await delay(500)
+
+    const dbUser = await UserDBPrivate.getUser('0x7ac080f6607405705aed79675789701a48c76f55')
+
+    expect(dbUser.emailVerificationCode).toBeTruthy()
+  })
+
+  test('/verify/sendnewemail without creds -> 401', async () => {
+    await request(server)
+      .post('/verify/sendnewemail')
+      .expect(401)
+  })
+
+  test('/verify/sendnewemail with creds', async () => {
+    const token = await getToken(server)
+
+    await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
+
+    const user = await UserDBPrivate.updateUser({
+      identifier: '0x7ac080f6607405705aed79675789701a48c76f55',
+      fullName: 'test_user_sendemail'
+    })
+
+    expect(user).toBeTruthy()
+
+    await request(server)
       .post('/verify/sendnewemail')
       .send({
         email: 'johndoe@gooddollar.org'
       })
       .set('Authorization', `Bearer ${token}`)
       .expect(200, { ok: 1 })
-
-    await delay(1000)
-
-    const dbUser = await UserDBPrivate.getUser('0x7ac080f6607405705aed79675789701a48c76f55')
-
-    expect(dbUser.emailVerificationCode).toBeTruthy()
   })
 
   test('/verify/w3/email without auth creds -> 401', () => {
