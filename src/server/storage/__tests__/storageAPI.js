@@ -40,4 +40,38 @@ describe('storageAPI', () => {
       .send({ user })
     expect(res).toMatchObject({ status: 400 })
   })
+  
+  test('/user/delete with zoomId and bad signature', async () => {
+    const token = await getToken(server)
+    let res = await request(server)
+      .post('/user/delete')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        zoomId: "DEc4f150b719957a2dD434C48Dff9Bc57466e764",
+        zoomSignature: "Bad signature"
+      })
+    expect(res).toMatchObject({ status: 400 })
+  })
+  
+  test('/user/delete without zoomId ', async () => {
+    const token = await getToken(server)
+    let res = await request(server)
+      .post('/user/delete')
+      .set('Authorization', `Bearer ${token}`)
+      .send()
+    expect(res).toMatchObject({ status: 200 })
+  })
+  
+  test('/user/delete with zoomId and good signature', async () => {
+    const token = await getToken(server)
+    let res = await request(server)
+      .post('/user/delete')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        zoomId: "DEc4f150b719957a2dD434C48Dff9Bc57466e764",
+        zoomSignature: "0xda0c23e71a589adfb4f29b021549371f44de105678284e4d9acecb8b670a35c63bd1e200ae9293dcca0064ae87438094df7e7db3268c47e638cdffdfe8c386a11c"
+      })
+    expect(res).toMatchObject({ status: 200 })
+  })
+  
 })
