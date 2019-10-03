@@ -116,15 +116,6 @@ describe('verificationAPI', () => {
   test('/verify/sendnewemail with creds', async () => {
     const token = await getToken(server)
 
-    await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
-
-    const user = await UserDBPrivate.updateUser({
-      identifier: '0x7ac080f6607405705aed79675789701a48c76f55',
-      fullName: 'test_user_sendemail'
-    })
-
-    expect(user).toBeTruthy()
-
     await request(server)
       .post('/verify/sendnewemail')
       .send({
