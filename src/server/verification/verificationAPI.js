@@ -203,10 +203,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { user, body } = req
       const verificationData: { otp: string } = body.verificationData
       const savedMobile = user.otp && user.otp.mobile
+      const currentMobile = user.mobile
 
       log.debug('mobile verified', { user, verificationData })
 
-      if (!user.smsValidated) {
+      if (!user.smsValidated || currentMobile !== savedMobile) {
         let verified = await verifier.verifyMobile({ identifier: user.loggedInAs }, verificationData).catch(e => {
           log.warn('mobile verification failed:', e)
 
@@ -223,47 +224,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const signedMobile = await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: savedMobile })
 
       res.json({ ok: 1, attestation: signedMobile })
-    })
-  )
-
-  /**
-   * @api {post} /verify/newmobile Verify new mobile data code
-   * @apiName OTP New Code
-   * @apiGroup Verification
-   *
-   * @apiParam {String} otp
-   *
-   * @apiSuccess {Number} ok
-   * @apiSuccess {Claim} attestation
-   * @ignore
-   */
-  app.post(
-    '/verify/newmobile',
-    passport.authenticate('jwt', { session: false }),
-    onlyInEnv('production', 'staging'),
-    wrapAsync(async (req, res, next) => {
-      const log = req.log.child({ from: 'verificationAPI - verify/newmobile' })
-      const { user, body } = req
-      const savedMobile = user.otp && user.otp.mobile
-
-      log.debug('mobile verification', { user, otp: body.otp })
-
-      let verified = await verifier.verifyMobile({ identifier: user.loggedInAs }, { otp: body.otp }).catch(e => {
-        log.warn('New Mobile Verification Failed:', e.message, e)
-
-        res.json(400, { ok: 0, error: 'OTP FAILED', message: e.message })
-
-        return false
-      })
-
-      if (verified === false) return
-
-      await storage.updateUser({ identifier: user.loggedInAs, mobile: savedMobile, smsValidated: true })
-
-      // dont sure whether the line below should be called here or not
-      // await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: user.mobile })
-
-      res.json({ ok: 1 })
     })
   )
 
@@ -443,9 +403,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { user, body } = req
       const verificationData: { code: string } = body.verificationData
       const savedEmail = user.otp && user.otp.email
+      const currentEmail = user.email
 
       log.debug('email verified', { user, verificationData })
-      if (!user.isEmailConfirmed) {
+
+      if (!user.isEmailConfirmed || currentEmail !== savedEmail) {
         await verifier.verifyEmail({ identifier: user.loggedInAs }, verificationData)
 
         // if verification succeeds, then set the flag `isEmailConfirmed` to true in the user's record
@@ -454,39 +416,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: savedEmail })
 
       res.json({ ok: 1, attestation: signedEmail })
-    })
-  )
-
-  /**
-   * @api {post} /verify/newemail Verify new email entered by user
-   * @apiName New Email Verification
-   * @apiGroup Verification
-   *
-   * @apiParam {String} code
-   *
-   * @apiSuccess {Number} ok
-   * @apiSuccess {Claim} attestation
-   * @ignore
-   */
-  app.post(
-    '/verify/newemail',
-    passport.authenticate('jwt', { session: false }),
-    onlyInEnv('production', 'staging', 'test'),
-    wrapAsync(async (req, res, next) => {
-      const log = req.log.child({ from: 'verificationAPI - verify/newemail' })
-      const { user, body } = req
-      const savedEmail = user.otp && user.otp.email
-
-      log.debug('New Email Verification', { user, code: body.code })
-
-      await verifier.verifyEmail({ identifier: user.loggedInAs }, { code: body.code })
-
-      await storage.updateuser({ identifier: user.loggedInAs, email: savedEmail })
-
-      // dont sure whether the line below should be called here or not
-      // await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: user.email })
-
-      res.json({ ok: 1 })
     })
   )
 
