@@ -146,7 +146,7 @@ export class Wallet {
       for (let addr of this.wallet.mulWallet.addresses) {
         const balance = await this.wallet.web3.eth.getBalance(addr)
         log.info(`admin wallet ${addr} balance ${balance}`)
-        if (balance > 1000000000000000000) {
+        if (balance > web3Utils.toWei('1000000', 'gwei')) {
           this.filledAddresses.push(addr)
         }
       }

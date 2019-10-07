@@ -41,12 +41,12 @@ export default class queueMongo {
         .findOneAndUpdate(
           {
             address: { $in: addresses },
+            networkId: this.networkId,
             $or: [
               { isLock: false },
               {
                 lockedAt: { $lte: +new Date() - MAX_LOCK_TIME * 1000 },
-                isLock: true,
-                networkId: this.networkId
+                isLock: true
               }
             ]
           },
