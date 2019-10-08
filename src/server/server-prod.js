@@ -5,7 +5,7 @@ import conf from './server.config'
 import { GunDBPublic } from './gun/gun-middleware'
 import throng from 'throng'
 
-function start() {
+function start(workerId) {
   const app = require('./app').default
   process.on('uncaughtException', (err, origin) => {
     console.log(`Caught exception: ${err}\n` + `Exception origin: ${origin}`)
@@ -32,7 +32,7 @@ function start() {
     console.log('Press Ctrl+C to quit.')
   })
 
-  GunDBPublic.init(server, conf.gundbPassword, 'publicdb', conf.gunPublicS3)
+  GunDBPublic.init(server, conf.gundbPassword, `publicdb${workerId}`, conf.gunPublicS3)
 }
 console.log('webConcurrency from env', process.env.WEB_CONCURRENCY)
 console.log('webConcurrency from config', conf.webConcurrency)

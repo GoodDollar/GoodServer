@@ -7,7 +7,7 @@ import config from '../../webpack.dev.config'
 import conf from './server.config'
 import { GunDBPublic } from './gun/gun-middleware'
 
-function start() {
+function start(workerId) {
   const app = require('./app').default
 
   process.on('uncaughtException', (err, origin) => {
@@ -48,7 +48,7 @@ function start() {
     console.log(`App listening to ${PORT}....`)
     console.log('Press Ctrl+C to quit.')
   })
-  GunDBPublic.init(server, conf.gundbPassword, 'publicdb', conf.gunPublicS3).catch(e => {
+  GunDBPublic.init(server, conf.gundbPassword, `publicdb${workerId}`, conf.gunPublicS3).catch(e => {
     console.error(e)
     process.exit(-1)
   })
