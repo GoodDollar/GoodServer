@@ -18,6 +18,7 @@ import txManager from '../utils/tx-manager'
 import * as web3Utils from 'web3-utils'
 import WalletFactory from './wallet/WalletFactory'
 import SoftwareWalletProvider from './wallet/SoftwareWalletProvider'
+import { fileLog } from '../utils/tx-manager/queueMongo'
 
 const log = logger.child({ from: 'AdminWallet' })
 
@@ -284,43 +285,58 @@ export class Wallet {
     txCallbacks: PromiEvents = {},
     { gas, gasPrice }: GasValues = { gas: undefined, gasPrice: undefined }
   ) {
+    let currentAddress
     try {
-      const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
+      // const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
       gas = gas || (await tx.estimateGas())
       gasPrice = gasPrice || this.gasPrice
 
       const { nonce, release, fail, address } = await txManager.lock(this.filledAddresses)
-      log.debug(`sending tx from: ${address} | nonce: ${nonce}`)
+      currentAddress = address
+
       return new Promise((res, rej) => {
-        tx.send({ gas, gasPrice, chainId: this.networkId, nonce, from: address })
-          .on('transactionHash', h => {
-            release()
-            onTransactionHash && onTransactionHash(h)
-          })
-          .on('receipt', r => {
-            onReceipt && onReceipt(r)
-            res(r)
-          })
-          .on('confirmation', c => onConfirmation && onConfirmation(c))
-          .on('error', async e => {
-            if (isNonceError(e)) {
-              let netNonce = parseInt(await this.wallet.web3.eth.getTransactionCount(address))
-              await txManager.unlock(address, netNonce)
-              try {
-                res(await this.sendTransaction(tx, txCallbacks, { gas, gasPrice }))
-              } catch (e) {
-                await txManager.errorUnlock(this.address)
-                rej(e)
-              }
-            } else {
-              fail()
-              onError && onError(e)
-              rej(e)
-            }
-          })
+        setTimeout(() => {
+          fileLog('RELEASE', currentAddress)
+          // if(Math.random()>0.5){
+          release()
+          // }else{
+          //   fail()
+          // }
+          res()
+        }, 1000)
       })
+      // log.debug(`sending tx from: ${address} | nonce: ${nonce}`)
+      // return new Promise((res, rej) => {
+      //   tx.send({ gas, gasPrice, chainId: this.networkId, nonce, from: address })
+      //     .on('transactionHash', h => {
+      //       release()
+      //       onTransactionHash && onTransactionHash(h)
+      //     })
+      //     .on('receipt', r => {
+      //       onReceipt && onReceipt(r)
+      //       res(r)
+      //     })
+      //     .on('confirmation', c => onConfirmation && onConfirmation(c))
+      //     .on('error', async e => {
+      //       if (isNonceError(e)) {
+      //         let netNonce = parseInt(await this.wallet.web3.eth.getTransactionCount(address))
+      //         await txManager.unlock(currentAddress, netNonce)
+      //         try {
+      //           res(await this.sendTransaction(tx, txCallbacks, { gas, gasPrice }))
+      //         } catch (e) {
+      //           await txManager.errorUnlock(currentAddress)
+      //           rej(e)
+      //         }
+      //       } else {
+      //         fail()
+      //         onError && onError(e)
+      //         rej(e)
+      //       }
+      //     })
+      // })
     } catch (e) {
-      await txManager.errorUnlock(this.address)
+      fileLog('catch (e) currentAddress', currentAddress)
+      await txManager.errorUnlock(currentAddress)
       throw new Error(e)
     }
   }
@@ -343,13 +359,14 @@ export class Wallet {
     txCallbacks: PromiEvents = {},
     { gas, gasPrice }: GasValues = { gas: undefined, gasPrice: undefined }
   ) {
+    let currentAddress
     try {
       const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
       gas = gas || 100000
       gasPrice = gasPrice || this.gasPrice
 
       const { nonce, release, fail, address } = await txManager.lock(this.filledAddresses)
-
+      currentAddress = address
       return new Promise((res, rej) => {
         this.wallet.web3.eth
           .sendTransaction({ gas, gasPrice, chainId: this.networkId, nonce, ...params, from: address })
@@ -382,7 +399,7 @@ export class Wallet {
           })
       })
     } catch (e) {
-      await txManager.errorUnlock(this.address)
+      await txManager.errorUnlock(currentAddress)
       throw new Error(e)
     }
   }
