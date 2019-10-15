@@ -129,13 +129,12 @@ const setup = (app: Router, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const { user, log, body } = req
-      const {zoomSignature, zoomId} = body
+      const { zoomSignature, zoomId } = body
       log.info('delete user', { user })
-      
+
       if (zoomId && zoomSignature) {
-        
         const recovered = recoverPublickey(zoomSignature, zoomId, '').replace('0x', '')
-        
+
         if (recovered === body.zoomId.toLowerCase()) {
           await zoomHelper.delete(zoomId)
           log.info('zoom delete', { zoomId })
@@ -143,9 +142,8 @@ const setup = (app: Router, storage: StorageAPI) => {
           log.error('/user/delete', 'SigUtil unable to recover the message signer')
           throw new Error('Unable to verify credentials')
         }
-        
       }
-      
+
       const results = await Promise.all([
         (user.identifier ? storage.deleteUser(user) : Promise.reject())
           .then(r => ({ mongodb: 'ok' }))
@@ -154,7 +152,7 @@ const setup = (app: Router, storage: StorageAPI) => {
           .then(r => ({ mautic: 'ok' }))
           .catch(e => ({ mautic: 'failed' }))
       ])
-      
+
       log.info('delete user results', { results })
       res.json({ ok: 1, results })
     })
