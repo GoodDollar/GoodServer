@@ -138,7 +138,15 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         const [, code] = await sendOTP({ mobile })
         const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
         log.debug('otp sent:', user.loggedInAs)
-        await storage.updateUser({ identifier: user.loggedInAs, otp: { code, expirationDate, mobile } })
+        await storage.updateUser({
+          identifier: user.loggedInAs,
+          otp: {
+            ...userRec.otp,
+            code,
+            expirationDate,
+            mobile
+          }
+        })
       }
 
       res.json({ ok: 1 })
@@ -296,7 +304,10 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           identifier: user.loggedInAs,
           mauticId: userRec.mauticId,
           emailVerificationCode: code,
-          otp: { email }
+          otp: {
+            ...userRec.otp,
+            email
+          }
         })
       }
 
