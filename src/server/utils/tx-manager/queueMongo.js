@@ -1,11 +1,6 @@
 import WalletNonce from '../../db/mongo/models/wallet-nonce'
 import logger from '../../../imports/pino-logger'
 import conf from '../../server.config'
-import fs from 'fs'
-
-export const fileLog = (...props) => {
-  fs.appendFileSync('log.txt', `${JSON.stringify(props)}\n`)
-}
 
 const log = logger.child({ from: 'queueMongo' })
 const MAX_LOCK_TIME = 30 // seconds
@@ -21,7 +16,7 @@ export default class queueMongo {
       {
         $match: {
           $and: [
-            // { 'updateDescription.updatedFields.isLock': { $eq: false } },
+            { 'updateDescription.updatedFields.isLock': { $eq: false } },
             { operationType: 'update' },
             { 'fullDocument.networkId': { $eq: String(this.networkId) } }
           ]
@@ -31,14 +26,7 @@ export default class queueMongo {
 
     const options = { fullDocument: 'updateLookup' }
 
-    // listen to the collection
     this.model.watch(filter, options).on('change', async data => {
-      fileLog(
-        'mongo change',
-        data.fullDocument.address,
-        data.updateDescription.updatedFields.nonce,
-        data.updateDescription.updatedFields.isLock
-      )
       await this.run()
     })
   }
@@ -63,10 +51,8 @@ export default class queueMongo {
           }
         ]
       }
-      const update = { isLock: true, lockedAt: +new Date(), networkId: this.networkId }
-      // fileLog('Get wallet nonce',{ filter, update })
-      let wallet = await this.model.findOneAndUpdate(filter, update, { returnNewDocument: true }).sort({ lockedAt: -1 })
-      fileLog('getWalletNonce', wallet && wallet.address)
+      const update = { isLock: true, lockedAt: +new Date() }
+      let wallet = await this.model.findOneAndUpdate(filter, update, { returnNewDocument: true })
       if (this.reRunQueue) {
         clearTimeout(this.reRunQueue)
       }
@@ -75,7 +61,7 @@ export default class queueMongo {
       }, MAX_LOCK_TIME * 1000)
       return wallet
     } catch (e) {
-      logger.error('TX queueMongo (getWalletNonce)', e)
+      log.error('TX queueMongo (getWalletNonce)', e)
       return false
     }
   }
@@ -105,13 +91,12 @@ export default class queueMongo {
    */
   async createIfNotExist(address) {
     try {
-      // log.debug(`create if not exists wallet ${address}`)
       let wallet = await this.model.findOne({ address })
       if (!wallet) {
         await this.createWallet(wallet)
       }
     } catch (e) {
-      logger.error('TX queueMongo (createIfNotExist)', e)
+      log.error('TX queueMongo (createIfNotExist)', e)
     }
   }
 
@@ -123,7 +108,6 @@ export default class queueMongo {
    * @returns {Promise<void>}
    */
   async createWallet(address) {
-    fileLog('createWallet', address)
     try {
       const nonce = await this.getTransactionCount(address)
       log.debug(`init wallet ${address} with nonce ${nonce} in mongo`)
@@ -133,7 +117,7 @@ export default class queueMongo {
         networkId: this.networkId
       })
     } catch (e) {
-      logger.error('TX queueMongo (create)', e)
+      log.error('TX queueMongo (create)', e)
     }
   }
 
@@ -146,7 +130,6 @@ export default class queueMongo {
    * @returns {Promise<void>}
    */
   async errorUnlock(address) {
-    fileLog('errorunlock', address)
     try {
       await this.model.findOneAndUpdate(
         {
@@ -160,7 +143,7 @@ export default class queueMongo {
         { returnNewDocument: true }
       )
     } catch (e) {
-      fileLog('errorunlock', address, e)
+      log.error('errorunlock', address, e)
     }
   }
 
@@ -173,7 +156,6 @@ export default class queueMongo {
    * @returns {Promise<void>}
    */
   async unlock(address, nextNonce) {
-    fileLog('unlock', address, nextNonce)
     try {
       await this.model.findOneAndUpdate(
         {
@@ -187,7 +169,7 @@ export default class queueMongo {
         { returnNewDocument: true }
       )
     } catch (e) {
-      logger.error('unlock error', e)
+      log.error('unlock error', e)
     }
   }
 
@@ -202,18 +184,11 @@ export default class queueMongo {
   async lock(addresses) {
     return new Promise(resolve => {
       this.addToQueue(addresses, ({ nonce, address }) => {
-        fileLog(`lock ${address} nonce ${nonce + 1}`)
         resolve({
           address,
           nonce,
-          release: async () => {
-            // fileLog(`unlock ${address} nonce ${nonce + 1}`)
-            return await this.unlock(address, nonce + 1)
-          },
-          fail: async () => {
-            // fileLog(`fail ${address} nonce ${nonce} --`)
-            return await this.errorUnlock(address)
-          }
+          release: async () => await this.unlock(address, nonce + 1),
+          fail: async () => await this.errorUnlock(address)
         })
       })
     })
@@ -244,11 +219,10 @@ export default class queueMongo {
   async run() {
     try {
       if (this.queue.length > 0) {
-        const nextTr = this.queue[0]
+        const nextTr = this.queue.shift()
 
         const walletNonce = await this.getWalletNonce(nextTr.addresses)
         if (walletNonce) {
-          this.queue.shift()
           nextTr.cb({ nonce: walletNonce.nonce, address: walletNonce.address })
         }
       }
