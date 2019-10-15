@@ -247,19 +247,13 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/sendemail' })
       const { user, body } = req
-      let userData
       // log.info({ user, body })
       //merge user details for use by mautic
-      try {
-        userData = user.toJSON()
-      } catch (e) {
-        userData = user
-      }
-      let userRec: UserRecord = _.defaults(body.user, userData)
+      let userRec: UserRecord = _.defaults(body.user, user)
       if (conf.allowDuplicateUserData === false && (await storage.isDupUserData(userRec))) {
         return res.json({ ok: 0, error: 'Email already exists, please use a different one' })
       }
-      if (!userData.mauticId || userData.email !== body.email) {
+      if (!user.mauticId || user.email !== body.email) {
         //first time create contact for user in mautic
         const mauticContact = await Mautic.createContact(userRec)
         userRec.mauticId = mauticContact.contact.fields.all.id
@@ -267,7 +261,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
       if (conf.skipEmailVerification === false) {
         const code = generateOTP(6)
-        if (!userData.isEmailConfirmed) {
+        if (!user.isEmailConfirmed) {
           await Mautic.sendVerificationEmail(userRec, code)
           log.debug('send new user email validation code', code)
         }
