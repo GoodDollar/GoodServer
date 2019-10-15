@@ -126,6 +126,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { mobile } = body.user
 
       let userRec: UserRecord = _.defaults(body.user, user, { identifier: user.loggedInAs })
+      const savedMobile = userRec.mobile
 
       if (conf.allowDuplicateUserData === false && (await storage.isDupUserData(userRec))) {
         return res.json({ ok: 0, error: 'Mobile already exists, please use a different one.' })
@@ -133,51 +134,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       log.debug('sending otp:', user.loggedInAs)
 
-      if (!userRec.smsValidated) {
+      if (!userRec.smsValidated || mobile !== savedMobile) {
         const [, code] = await sendOTP({ mobile })
         const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
         log.debug('otp sent:', user.loggedInAs)
         await storage.updateUser({ identifier: user.loggedInAs, otp: { code, expirationDate, mobile } })
       }
-
-      res.json({ ok: 1 })
-    })
-  )
-
-  /**
-   * @api {post} /verify/sendnewotp Sends OTP for new phone entered by user
-   * @apiName Send New OTP
-   * @apiGroup Verification
-   *
-   * @apiParam {String} mobile
-   *
-   * @apiSuccess {Number} ok
-   * @ignore
-   */
-  app.post(
-    '/verify/sendnewotp',
-    passport.authenticate('jwt', { session: false }),
-    onlyInEnv('production', 'staging'),
-    wrapAsync(async (req, res, next) => {
-      const { user, body } = req
-      const log = req.log.child({ from: 'sendnewotp' })
-
-      log.info('New Phone Otp Request:', user, body)
-
-      let userRec: UserRecord = _.defaults({ mobile: body.mobile }, user, { identifier: user.loggedInAs })
-
-      if (conf.allowDuplicateUserData === false && (await storage.isDupUserData(userRec))) {
-        return res.json({ ok: 0, error: 'Mobile already exists, please use a different one.' })
-      }
-
-      log.debug('sending otp:', user.loggedInAs)
-
-      const [, code] = await sendOTP({ mobile: body.mobile })
-      const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
-
-      log.debug('otp sent:', user.loggedInAs)
-
-      await storage.updateUser({ identifier: user.loggedInAs, otp: { code, expirationDate, mobile: body.mobile } })
 
       res.json({ ok: 1 })
     })
@@ -308,6 +270,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       //merge user details for use by mautic
       let userRec: UserRecord = _.defaults(body.user, user)
+      const savedEmail = userRec.email
 
       if (conf.allowDuplicateUserData === false && (await storage.isDupUserData(userRec))) {
         return res.json({ ok: 0, error: 'Email already exists, please use a different one' })
@@ -323,7 +286,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       if (conf.skipEmailVerification === false) {
         const code = generateOTP(6)
 
-        if (!user.isEmailConfirmed) {
+        if (!user.isEmailConfirmed || email !== savedEmail) {
           Mautic.sendVerificationEmail(userRec, code)
           log.debug('send new user email validation code', code)
         }
@@ -334,47 +297,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           mauticId: userRec.mauticId,
           emailVerificationCode: code,
           otp: { email }
-        })
-      }
-
-      res.json({ ok: 1 })
-    })
-  )
-
-  /**
-   * @api {post} /verify/newemail Send verification for new email entered by user
-   * @apiName Send Code For New Email
-   * @apiGroup Verification
-   *
-   * @apiParam {String} email
-   *
-   * @apiSuccess {Number} ok
-   * @ignore
-   */
-  app.post(
-    '/verify/sendnewemail',
-    passport.authenticate('jwt', { session: false }),
-    onlyInEnv('production', 'staging', 'test'),
-    wrapAsync(async (req, res, next) => {
-      const { user, body } = req
-      const log = req.log.child({ from: 'verificationAPI - verify/sendnewemail' })
-      let userRec: UserRecord = _.defaults({ email: body.email }, user)
-
-      if (conf.allowDuplicateUserData === false && (await storage.isDupUserData(userRec))) {
-        return res.json({ ok: 0, error: 'Email already exists, please use a different one' })
-      }
-
-      if (conf.skipEmailVerification === false) {
-        const code = generateOTP(6)
-
-        Mautic.sendVerificationEmail(userRec, code)
-
-        log.debug('send new user email verification code', code)
-
-        storage.updateUser({
-          identifier: user.loggedInAs,
-          emailVerificationCode: code,
-          otp: { email: body.email }
         })
       }
 
