@@ -178,14 +178,14 @@ export default class queueMongo {
     try {
       if (this.queue.length > 0) {
         nextTr = this.queue.shift()
-
         const walletNonce = await this.getWalletNonce(nextTr.addresses)
         if (walletNonce) {
           nextTr.cb({ nonce: walletNonce.nonce, address: walletNonce.address })
+        } else {
+          this.queue.splice(0, 0, nextTr)
         }
       }
     } catch (e) {
-      this.queue.push(nextTr)
       log.error('TX queueMongo (run)', e)
     }
   }
