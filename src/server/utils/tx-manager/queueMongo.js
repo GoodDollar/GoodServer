@@ -89,24 +89,6 @@ export default class queueMongo {
    *
    * @returns {Promise<void>}
    */
-  async createIfNotExist(address) {
-    try {
-      let wallet = await this.model.findOne({ address })
-      if (!wallet) {
-        await this.createWallet(wallet)
-      }
-    } catch (e) {
-      log.error('TX queueMongo (createIfNotExist)', e)
-    }
-  }
-
-  /**
-   * Create if not exists to db
-   *
-   * @param {string} address
-   *
-   * @returns {Promise<void>}
-   */
   async createWallet(address) {
     try {
       const nonce = await this.getTransactionCount(address)
@@ -129,47 +111,24 @@ export default class queueMongo {
    *
    * @returns {Promise<void>}
    */
-  async errorUnlock(address) {
+  async unlock(address, nextNonce) {
+    const update = {
+      isLock: false
+    }
+    if (nextNonce) {
+      update.nonce = nextNonce
+    }
     try {
       await this.model.findOneAndUpdate(
         {
           address,
-          isLock: true,
           networkId: this.networkId
         },
-        {
-          isLock: false
-        },
+        update,
         { returnNewDocument: true }
       )
     } catch (e) {
       log.error('errorunlock', address, e)
-    }
-  }
-
-  /**
-   * Unlock for queue
-   *
-   * @param {string} address
-   * @param {string} nextNonce
-   *
-   * @returns {Promise<void>}
-   */
-  async unlock(address, nextNonce) {
-    try {
-      await this.model.findOneAndUpdate(
-        {
-          address,
-          networkId: this.networkId
-        },
-        {
-          isLock: false,
-          nonce: nextNonce
-        },
-        { returnNewDocument: true }
-      )
-    } catch (e) {
-      log.error('unlock error', e)
     }
   }
 

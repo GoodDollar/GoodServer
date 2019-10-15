@@ -262,6 +262,12 @@ const conf = convict({
     env: 'ALLOW_DUPLICATE_USER_DATA',
     default: false
   },
+  webConcurrency: {
+    doc: 'Amount of concurrency nodes',
+    format: Number,
+    env: 'WEB_CONCURRENCY',
+    default: 1
+  },
   skipEmailVerification: {
     doc: 'Allow to register with unverified email',
     format: Boolean,
@@ -321,6 +327,7 @@ const conf = convict({
 // Load environment dependent configuration
 const env = conf.get('env')
 const network = conf.get('network')
+
 const networkId = ContractsAddress[network].networkId
 conf.set('ethereum', networks[networkId])
 //parse S3 details for gundb in format of key,secret,bucket

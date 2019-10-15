@@ -150,17 +150,6 @@ export class Wallet {
           this.filledAddresses.push(addr)
         }
       }
-
-      if (!conf.enableMongoLock) {
-        this.filledAddresses = [this.filledAddresses[0]]
-      }
-      // const whitelistTest = await this.whitelistUser('0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1', 'x')
-      // const topwalletTest = await this.topWallet(
-      //   '0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1',
-      //   moment().subtract(1, 'day'),
-      //   true
-      // )
-      // log.info('wallet tests:', { whitelist: whitelistTest.status, topwallet: topwalletTest.status })
     } catch (e) {
       log.error('Failed initializing GoodWallet', e.message, e)
       throw e
@@ -311,11 +300,11 @@ export class Wallet {
           .on('error', async e => {
             if (isNonceError(e)) {
               let netNonce = parseInt(await this.wallet.web3.eth.getTransactionCount(address))
-              await txManager.unlock(currentAddress, netNonce)
+              await txManager.unlock(address, netNonce)
               try {
                 res(await this.sendTransaction(tx, txCallbacks, { gas, gasPrice }))
               } catch (e) {
-                await txManager.errorUnlock(currentAddress)
+                await txManager.unlock(address)
                 rej(e)
               }
             } else {
@@ -326,7 +315,7 @@ export class Wallet {
           })
       })
     } catch (e) {
-      await txManager.errorUnlock(currentAddress)
+      await txManager.unlock(currentAddress)
       throw new Error(e)
     }
   }
@@ -356,8 +345,8 @@ export class Wallet {
       gasPrice = gasPrice || this.gasPrice
 
       const { nonce, release, fail, address } = await txManager.lock(this.filledAddresses)
-
       currentAddress = address
+
       return new Promise((res, rej) => {
         this.wallet.web3.eth
           .sendTransaction({ gas, gasPrice, chainId: this.networkId, nonce, ...params, from: address })
@@ -379,7 +368,7 @@ export class Wallet {
               try {
                 res(await this.sendNative(params, txCallbacks, { gas, gasPrice }))
               } catch (e) {
-                await txManager.errorUnlock(address)
+                await txManager.unlock(address)
                 rej(e)
               }
             } else {
@@ -390,7 +379,7 @@ export class Wallet {
           })
       })
     } catch (e) {
-      await txManager.errorUnlock(currentAddress)
+      await txManager.unlock(currentAddress)
       throw new Error(e)
     }
   }
