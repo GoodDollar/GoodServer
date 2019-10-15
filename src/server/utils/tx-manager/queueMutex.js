@@ -5,6 +5,7 @@ export default class queueMutex {
     this.nonce = null
     this.mutex = new Mutex()
     this.lastFail = null
+    this.getTransactionCount = () => 0
   }
 
   /**
@@ -43,9 +44,9 @@ export default class queueMutex {
    *
    * @returns {Promise<any>}
    */
-  async lock(address, getTransactionCount) {
+  async lock(addresses) {
     if (!this.nonce) {
-      this.nonce = await getTransactionCount(address)
+      this.nonce = await this.getTransactionCount(addresses[0])
     }
 
     let release = await this.mutex.lock()

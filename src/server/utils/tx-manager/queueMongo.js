@@ -177,7 +177,6 @@ export default class queueMongo {
    * lock for queue
    *
    * @param {array}addresses
-   * @param {function}getTransactionCount
    *
    * @returns {Promise<any>}
    */
@@ -198,7 +197,6 @@ export default class queueMongo {
    *  Add new tr to
    *
    * @param {array} addresses
-   * @param {string} netNonce
    * @param {function} cb
    *
    * @returns {Promise<void>}

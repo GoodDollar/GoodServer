@@ -77,6 +77,7 @@ export class Wallet {
 
     return web3Provider
   }
+
   async init(): Promise<any> {
     log.debug('Initializing wallet:', { conf: conf.ethereum })
     try {
@@ -148,6 +149,10 @@ export class Wallet {
         if (balance > web3Utils.toWei('1000000', 'gwei')) {
           this.filledAddresses.push(addr)
         }
+      }
+
+      if (!conf.enableMongoLock) {
+        this.filledAddresses = [this.filledAddresses[0]]
       }
       // const whitelistTest = await this.whitelistUser('0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1', 'x')
       // const topwalletTest = await this.topWallet(
