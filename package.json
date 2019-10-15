@@ -1,6 +1,6 @@
 {
   "name": "@gooddollar/goodserver",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "description": "GoodDollar Server",
   "main": "src/server/index.js",
   "engines": {
@@ -76,7 +76,10 @@
     "plivo": "^4.1.2",
     "qs": "^6.8.0",
     "rollbar": "^2.7.1",
+    "twilio": "^3.35.0",
+    "throng": "^4.0.0",
     "web3": "^2.0.0-alpha.1",
+    "web3-provider-engine": "^15.0.3",
     "web3-utils": "^1.0.0-beta.55",
     "winston": "^3.2.1"
   },

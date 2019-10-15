@@ -6,6 +6,7 @@ export const WalletNonceSchema = new mongoose.Schema({
     type: String,
     index: { unique: true }
   },
+  networkId: String,
   nonce: {
     type: Number,
     default: 0

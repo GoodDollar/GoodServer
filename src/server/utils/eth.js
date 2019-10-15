@@ -8,9 +8,7 @@ export const recoverPublickey = (signature, msg, nonce) => {
   )
 
   const publicKey = ethUtil.ecrecover(messageHash, sig.v, sig.r, sig.s)
-  const recovered = ethUtil.bufferToHex(ethUtil.pubToAddress(publicKey))
-
-  return recovered
+  return ethUtil.bufferToHex(ethUtil.pubToAddress(publicKey))
 }
 
 /**
@@ -21,6 +19,8 @@ export const recoverPublickey = (signature, msg, nonce) => {
 export const isNonceError = e => {
   const message = (e && e.message && String(e.message)) || ''
   return !!(
-    ~message.indexOf('Transaction nonce is too low') || ~message.indexOf("the tx doesn't have the correct nonce")
+    ~message.indexOf('Transaction nonce is too low') ||
+    ~message.indexOf("the tx doesn't have the correct nonce") ||
+    ~message.indexOf('transaction with same nonce in the queue')
   )
 }
