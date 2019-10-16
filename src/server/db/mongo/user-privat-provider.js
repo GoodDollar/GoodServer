@@ -95,7 +95,7 @@ class UserPrivate {
    * @returns {object || null}
    */
   async getByIdentifier(identifier) {
-    return await this.model.findOne({ identifier })
+    return await this.model.findOne({ identifier }).lean()
   }
 
   /**
@@ -123,7 +123,7 @@ class UserPrivate {
    * @returns {Promise<*>}
    */
   async getUserByEmail(email: string): Promise<UserRecord> {
-    return await this.model.findOne({ email })
+    return await this.model.findOne({ email }).lean()
   }
 
   /**
@@ -134,7 +134,7 @@ class UserPrivate {
    * @returns {Promise<*>}
    */
   async getUserByMobile(mobile: string): Promise<UserRecord> {
-    return await this.model.findOne({ mobile })
+    return await this.model.findOne({ mobile }).lean()
   }
 
   /**
@@ -143,7 +143,7 @@ class UserPrivate {
    * @returns {Promise<*>}
    */
   async listUsers(): Promise<UserRecord> {
-    return await this.model.find()
+    return await this.model.find().lean()
   }
 
   /**

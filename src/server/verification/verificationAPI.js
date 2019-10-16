@@ -283,8 +283,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       if (conf.allowDuplicateUserData === false && (await storage.isDupUserData(userRec))) {
         return res.json({ ok: 0, error: 'Email already exists, please use a different one' })
       }
-
-      if (!user.mauticId) {
+      if (!user.mauticId || user.email !== body.email) {
         //first time create contact for user in mautic
         const mauticContact = await Mautic.createContact(userRec)
         userRec.mauticId = mauticContact.contact.fields.all.id
@@ -293,15 +292,14 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       if (conf.skipEmailVerification === false) {
         const code = generateOTP(6)
-
         if (!user.isEmailConfirmed || email !== savedEmail) {
           Mautic.sendVerificationEmail(userRec, code)
           log.debug('send new user email validation code', code)
         }
 
         // updates/adds user with the emailVerificationCode to be used for verification later and with mauticId
-        storage.updateUser({
-          identifier: user.loggedInAs,
+        await storage.updateUser({
+          identifier: user.identifier,
           mauticId: userRec.mauticId,
           emailVerificationCode: code,
           otp: {
