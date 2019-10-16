@@ -280,7 +280,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       let userRec: UserRecord = _.defaults(body.user, user)
       const savedEmail = userRec.email
 
-      if (conf.allowDuplicateUserData === false && (await storage.isDupUserData(userRec))) {
+      if (conf.allowDuplicateUserData === false && (await storage.isDupUserData({ email }))) {
         return res.json({ ok: 0, error: 'Email already exists, please use a different one' })
       }
       if (!user.mauticId || user.email !== body.email) {
