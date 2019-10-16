@@ -25,11 +25,6 @@ export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
   let user = await UserDBPrivate.getUser(jwtPayload.loggedInAs)
   log.debug('payload received', { jwtPayload, user })
   //if user is empty make sure we have something
-  try {
-    user = user.toJSON()
-  } catch (e) {
-    log.debug('user', { user })
-  }
   user = defaults(user, jwtPayload, { identifier: jwtPayload.loggedInAs })
   if (get(jwtPayload, 'loggedInAs')) {
     next(null, user)
