@@ -162,4 +162,25 @@ describe('verificationAPI', () => {
 
     expect(res.status).toBe(200)
   })
+
+  test('/verify/w3/bonuses without auth creds -> 401', () => {
+    return request(server)
+      .get('/verify/w3/bonuses')
+      .then(res => {
+        expect(res.statusCode).toBe(401)
+      })
+  })
+
+  test('/verify/w3/bonuses should faile with 400 ', async () => {
+    const token = await getToken(server)
+    const res = await request(server)
+      .get('/verify/w3/bonuses')
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toBe(400)
+    expect(res.body).toMatchObject({
+      ok: -1,
+      message: 'Missed W3 token'
+    })
+  })
 })

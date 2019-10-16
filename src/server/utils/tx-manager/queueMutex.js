@@ -2,9 +2,7 @@ import Mutex from 'await-mutex'
 
 export default class queueMutex {
   constructor() {
-    this.nonce = null
-    this.mutex = new Mutex()
-    this.lastFail = null
+    this.queue = []
   }
 
   /**
@@ -16,9 +14,7 @@ export default class queueMutex {
    * @returns {Promise<void>}
    */
   async errorUnlock(address, nonce) {
-    if (typeof this.lastFail === 'function') {
-      this.lastFail()
-    }
+    return this.unlock()
   }
 
   /**
@@ -30,8 +26,10 @@ export default class queueMutex {
    * @returns {Promise<void>}
    */
   async unlock(address, nonce) {
-    if (typeof this.lastFail === 'function') {
-      this.lastFail()
+    const obj = this.queue.find(i => i.address === address) || {}
+
+    if (typeof obj.lastFail === 'function') {
+      obj.lastFail()
     }
   }
   /**
@@ -43,21 +41,55 @@ export default class queueMutex {
    * @returns {Promise<any>}
    */
   async lock(address, netNonce) {
-    if (!this.nonce) {
-      this.nonce = netNonce
+    const index = this.queue.findIndex(i => i.address === address)
+    let obj
+
+    if (~index) {
+      obj = this.queue[index]
+
+      obj.nonce++
     } else {
-      this.nonce++
+      this.queue.push({
+        address,
+        nonce: netNonce,
+        mutex: new Mutex()
+      })
+
+      obj = this.queue[this.queue.length - 1]
     }
 
-    let release = await this.mutex.lock()
-    this.lastFail = () => {
-      this.nonce--
+    let release = await obj.mutex.lock()
+
+    obj.lastFail = () => {
+      obj.nonce--
       release()
     }
+
     return {
-      nonce: this.nonce,
-      release: release,
-      fail: this.lastFail
+      nonce: obj.nonce,
+      release,
+      fail: obj.lastFail
     }
+  }
+
+  /**
+   * Get lock status for address
+   *
+   * @param {string} address
+   *
+   * @returns {Boolean}
+   */
+  async isLocked(address) {
+    const index = this.queue.findIndex(i => i.address === address)
+    let result = false
+
+    if (~index) {
+      const obj = this.queue[index]
+      const mutex = obj.mutex
+
+      result = mutex.isLocked()
+    }
+
+    return result
   }
 }

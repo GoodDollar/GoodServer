@@ -14,6 +14,9 @@ import { GunDBPublic } from '../gun/gun-middleware'
 import { Mautic } from '../mautic/mauticAPI'
 import fs from 'fs'
 import md5 from 'md5'
+import * as W3Helper from '../utils/W3Helper'
+import gdToWei from '../utils/gdToWei'
+import txManager from '../utils/tx-manager'
 
 const fsPromises = fs.promises
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
@@ -344,15 +347,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       let w3User
 
       try {
-        const _w3User = await fetch(`${conf.web3SiteUrl}/api/wl/user`, {
-          method: 'GET',
-          headers: {
-            Authorization: token
-          }
-        }).then(res => res.json())
-
-        const w3userData = _w3User.data
-        w3User = w3userData.email && w3userData
+        w3User = await W3Helper.getUser(token)
       } catch (e) {
         log.error('Fetch web3 user error', e.message, e)
       }
@@ -395,32 +390,122 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       let loginToken = user.loginToken
 
       if (!loginToken) {
-        const secureHash = md5(user.email + conf.secure_key)
-        const web3Response = await fetch(`${conf.web3SiteUrl}/api/wl/user`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            secure_hash: secureHash.toLowerCase(),
-            email: user.email
-          })
-        })
-          .then(res => res.json())
-          .catch(e => {
-            logger.error('Get Web3 Login Response Failed', e)
-          })
+        const w3Data = await W3Helper.getLoginOrWalletToken(user)
 
-        const web3ResponseData = web3Response && web3Response.data
+        if (w3Data && w3Data.login_token) {
+          loginToken = w3Data.login_token
 
-        if (web3ResponseData && web3ResponseData.login_token) {
-          loginToken = web3ResponseData.login_token
+          storage.updateUser({ ...user, loginToken })
         }
       }
+
+      logger.info('loginToken', loginToken)
 
       res.json({
         ok: +Boolean(loginToken),
         loginToken
+      })
+    })
+  )
+
+  /**
+   * @api {get} /verify/bonuses check if there is available bonuses to charge on user's wallet and do it
+   * @apiName Web3 Charge Bonuses
+   * @apiGroup Verification
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
+  app.get(
+    '/verify/w3/bonuses',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res, next) => {
+      const log = req.log.child({ from: 'verificationAPI - verify/bonuses' })
+
+      const { user: currentUser } = req
+      let wallet_token = currentUser.w3Token
+
+      if (!wallet_token) {
+        const w3Data = await W3Helper.getLoginOrWalletToken(currentUser)
+
+        if (w3Data && w3Data.wallet_token) {
+          wallet_token = w3Data.wallet_token
+
+          storage.updateUser({ identifier: currentUser.loggedInAs, w3Token: w3Data.wallet_token })
+        }
+      }
+
+      if (!wallet_token) {
+        return res.status(400).json({
+          ok: -1,
+          message: 'Missed W3 token'
+        })
+      }
+
+      const isQueueLocked = await txManager.isLocked(currentUser.gdAddress)
+
+      if (isQueueLocked) {
+        return res.status(200).json({
+          ok: 1,
+          message: 'The bonuses are in minting process'
+        })
+      }
+
+      const { release, fail } = await txManager.lock(currentUser.gdAddress, 0)
+
+      const w3User = await W3Helper.getUser(wallet_token)
+
+      if (!w3User) {
+        release()
+
+        return res.status(400).json({
+          ok: -1,
+          message: 'Missed bonuses data'
+        })
+      }
+
+      const bonus = w3User.bonus
+      const redeemedBonus = w3User.redeemed_bonus
+      const toRedeem = +bonus - +redeemedBonus
+
+      if (toRedeem <= 0) {
+        release()
+
+        return res.status(200).json({
+          ok: 1,
+          message: 'There is no bonuses yet'
+        })
+      }
+
+      const toRedeemInWei = gdToWei(toRedeem)
+
+      // initiate smart contract to send bonus to user
+      AdminWallet.redeemBonuses(currentUser.gdAddress, toRedeemInWei, {
+        onTransactionHash: hash => {
+          log.info('Bonus redeem - hash created', { hash })
+
+          res.status(200).json({
+            bonusAmount: toRedeem,
+            hash: hash
+          })
+        },
+        onReceipt: async r => {
+          log.info('Bonus redeem - receipt received', r)
+
+          await W3Helper.informW3ThatBonusCharged(toRedeem, wallet_token)
+
+          release()
+        },
+        onError: e => {
+          log.error('Bonuses charge failed', e.message, e)
+
+          fail()
+
+          return res.status(400).json({
+            ok: -1,
+            message: 'Failed to redeem bonuses for user'
+          })
+        }
       })
     })
   )

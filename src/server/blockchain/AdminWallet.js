@@ -5,6 +5,7 @@ import bip39 from 'bip39-light'
 import type { HttpProvider, WebSocketProvider } from 'web3-providers'
 import IdentityABI from '@gooddollar/goodcontracts/build/contracts/Identity.json'
 import GoodDollarABI from '@gooddollar/goodcontracts/build/contracts/GoodDollar.json'
+import RedemptionDataABI from '@gooddollar/goodcontracts/build/contracts/RedemptionData.json'
 import UBIABI from '@gooddollar/goodcontracts/build/contracts/FixedUBI.json'
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
 import conf from '../server.config'
@@ -36,6 +37,8 @@ export class Wallet {
   identityContract: Web3.eth.Contract
 
   UBIContract: Web3.eth.Contract
+
+  redemptionDataContract: Web3.eth.Contract
 
   address: string
 
@@ -113,6 +116,15 @@ export class Wallet {
         gasPrice: web3Utils.toWei('1', 'gwei')
       }
     )
+    this.redemptionDataContract = new this.web3.eth.Contract(
+      RedemptionDataABI.abi,
+      get(ContractsAddress, `${this.network}.RedemptionData`, RedemptionDataABI.networks[this.networkId].address),
+      {
+        from: this.address,
+        gas: 500000,
+        gasPrice: web3Utils.toWei('1', 'gwei')
+      }
+    )
     this.UBIContract = new this.web3.eth.Contract(
       UBIABI.abi,
       get(ContractsAddress, `${this.network}.FixedUBI`, UBIABI.networks[this.networkId].address),
@@ -153,6 +165,25 @@ export class Wallet {
       log.error('Error initializing wallet', { e }, e.message)
     }
     return true
+  }
+
+  /**
+   * charge bonuses for user via `bonus` contract
+   * @param {string} address
+   * @param {string} amountInWei
+   * @param {object} event callbacks
+   * @returns {Promise<String>}
+   */
+  async redeemBonuses(
+    address: string,
+    amountInWei: string,
+    { onReceipt, onTransactionHash, onError }
+  ): Promise<string> {
+    this.sendTransaction(this.redemptionDataContract.methods.awardUser(address, amountInWei), {
+      onTransactionHash,
+      onReceipt,
+      onError
+    })
   }
 
   /**
