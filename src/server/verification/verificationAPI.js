@@ -128,7 +128,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       let userRec: UserRecord = _.defaults(body.user, user, { identifier: user.loggedInAs })
       const savedMobile = userRec.mobile
 
-      if (conf.allowDuplicateUserData === false && (await storage.isDupUserData(userRec))) {
+      if (conf.allowDuplicateUserData === false && (await storage.isDupUserData({ mobile }))) {
         return res.json({ ok: 0, error: 'Mobile already exists, please use a different one.' })
       }
 
