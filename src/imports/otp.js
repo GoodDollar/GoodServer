@@ -31,7 +31,7 @@ const sendOTP = (user: UserRecord): Promise<any> => {
 
   const otp = generateOTP(conf.otpDigits)
   const msg = 'Your GoodDollar Verification Code Is: ' + otp
-  return Promise.all([client.messages.create({ to: mobile, from: twilioPhoneNumber, body: msg })])
+  return Promise.all([client.messages.create({ to: mobile, from: twilioPhoneNumber, body: msg }), otp])
 }
 
 export { generateOTP, sendOTP }
