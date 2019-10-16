@@ -120,18 +120,35 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     wrapAsync(async (req, res, next) => {
       const { user, body } = req
       const log = req.log.child({ from: 'otp' })
+
       log.info('otp request:', user, body)
+
+      const { mobile } = body.user
+
       let userRec: UserRecord = _.defaults(body.user, user, { identifier: user.loggedInAs })
+      const savedMobile = userRec.mobile
+
       if (conf.allowDuplicateUserData === false && (await storage.isDupUserData(userRec))) {
         return res.json({ ok: 0, error: 'Mobile already exists, please use a different one.' })
       }
+
       log.debug('sending otp:', user.loggedInAs)
-      if (!userRec.smsValidated) {
-        const [, code] = await sendOTP(body.user)
+
+      if (!userRec.smsValidated || mobile !== savedMobile) {
+        const [, code] = await sendOTP({ mobile })
         const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
         log.debug('otp sent:', user.loggedInAs)
-        await storage.updateUser({ identifier: user.loggedInAs, otp: { code, expirationDate } })
+        await storage.updateUser({
+          identifier: user.loggedInAs,
+          otp: {
+            ...userRec.otp,
+            code,
+            expirationDate,
+            mobile
+          }
+        })
       }
+
       res.json({ ok: 1 })
     })
   )
@@ -155,18 +172,27 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log.child({ from: 'verificationAPI - verify/mobile' })
       const { user, body } = req
       const verificationData: { otp: string } = body.verificationData
+      const savedMobile = user.otp && user.otp.mobile
+      const currentMobile = user.mobile
 
       log.debug('mobile verified', { user, verificationData })
-      if (!user.smsValidated) {
+
+      if (!user.smsValidated || currentMobile !== savedMobile) {
         let verified = await verifier.verifyMobile({ identifier: user.loggedInAs }, verificationData).catch(e => {
           log.warn('mobile verification failed:', e)
+
           res.json(400, { ok: 0, error: 'OTP FAILED', message: e.message })
+
           return false
         })
+
         if (verified === false) return
-        await storage.updateUser({ identifier: user.loggedInAs, smsValidated: true })
+
+        await storage.updateUser({ identifier: user.loggedInAs, smsValidated: true, mobile: savedMobile })
       }
-      const signedMobile = await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: user.mobile })
+
+      const signedMobile = await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: savedMobile })
+
       res.json({ ok: 1, attestation: signedMobile })
     })
   )
@@ -246,10 +272,14 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     onlyInEnv('production', 'staging', 'test'),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/sendemail' })
+
       const { user, body } = req
-      // log.info({ user, body })
+      const { email } = body.user
+
       //merge user details for use by mautic
       let userRec: UserRecord = _.defaults(body.user, user)
+      const savedEmail = userRec.email
+
       if (conf.allowDuplicateUserData === false && (await storage.isDupUserData(userRec))) {
         return res.json({ ok: 0, error: 'Email already exists, please use a different one' })
       }
@@ -259,17 +289,23 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         userRec.mauticId = mauticContact.contact.fields.all.id
         log.debug('created new user mautic contact', userRec)
       }
+
       if (conf.skipEmailVerification === false) {
         const code = generateOTP(6)
-        if (!user.isEmailConfirmed) {
-          await Mautic.sendVerificationEmail(userRec, code)
+        if (!user.isEmailConfirmed || email !== savedEmail) {
+          Mautic.sendVerificationEmail(userRec, code)
           log.debug('send new user email validation code', code)
         }
+
         // updates/adds user with the emailVerificationCode to be used for verification later and with mauticId
         await storage.updateUser({
           identifier: user.identifier,
           mauticId: userRec.mauticId,
-          emailVerificationCode: code
+          emailVerificationCode: code,
+          otp: {
+            ...userRec.otp,
+            email
+          }
         })
       }
 
@@ -297,15 +333,18 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log.child({ from: 'verificationAPI - verify/email' })
       const { user, body } = req
       const verificationData: { code: string } = body.verificationData
+      const savedEmail = user.otp && user.otp.email
+      const currentEmail = user.email
 
       log.debug('email verified', { user, verificationData })
-      if (!user.isEmailConfirmed) {
+
+      if (!user.isEmailConfirmed || currentEmail !== savedEmail) {
         await verifier.verifyEmail({ identifier: user.loggedInAs }, verificationData)
 
         // if verification succeeds, then set the flag `isEmailConfirmed` to true in the user's record
-        await storage.updateUser({ identifier: user.loggedInAs, isEmailConfirmed: true })
+        await storage.updateUser({ identifier: user.loggedInAs, isEmailConfirmed: true, email: savedEmail })
       }
-      const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: user.email })
+      const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: savedEmail })
 
       res.json({ ok: 1, attestation: signedEmail })
     })

@@ -39,7 +39,8 @@ const setup = (app: Router, storage: StorageAPI) => {
       )
         throw new Error('User email or mobile not verified!')
 
-      const user: UserRecord = defaults(body.user, {
+      const { email, mobile, ...bodyUser } = body.user
+      const user: UserRecord = defaults(bodyUser, {
         identifier: userRecord.loggedInAs,
         createdDate: new Date().toString()
       })
@@ -133,11 +134,10 @@ const setup = (app: Router, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const { user, log, body } = req
-      const {zoomSignature, zoomId} = body
+      const { zoomSignature, zoomId } = body
       log.info('delete user', { user })
 
       if (zoomId && zoomSignature) {
-
         const recovered = recoverPublickey(zoomSignature, zoomId, '').replace('0x', '')
 
         if (recovered === body.zoomId.toLowerCase()) {
@@ -147,7 +147,6 @@ const setup = (app: Router, storage: StorageAPI) => {
           log.error('/user/delete', 'SigUtil unable to recover the message signer')
           throw new Error('Unable to verify credentials')
         }
-
       }
 
       const results = await Promise.all([

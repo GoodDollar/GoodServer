@@ -96,24 +96,25 @@ const conf = convict({
     default: 'develop',
     env: 'NETWORK'
   },
-  plivoAuthID: {
-    doc: "Plivo's authorization ID",
+  twilioAuthID: {
+    doc: "Twilio's authorization ID",
     format: '*',
-    env: 'PLIVO_AUTH_ID',
+    env: 'TWILIO_AUTH_ID',
     default: ''
   },
-  plivoAuthToken: {
-    doc: "Plivo's authorization Token",
+  twilioAuthToken: {
+    doc: "Twilio's authorization Token",
     format: '*',
-    env: 'PLIVO_AUTH_TOKEN',
+    env: 'TWILIO_AUTH_TOKEN',
     default: ''
   },
-  plivoPhoneNumber: {
+  twilioPhoneNumber: {
     doc: "Plivo's Phone Number",
     format: '*',
-    env: 'PLIVO_PHONE_NUMBER',
+    env: 'TWILIO_PHONE_NUMBER',
     default: ''
   },
+
   otpDigits: {
     doc: 'Amount of digits for the OTP',
     format: '*',
