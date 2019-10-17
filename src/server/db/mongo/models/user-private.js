@@ -22,6 +22,12 @@ export const UserPrivateSchema = new mongoose.Schema({
   jwt: {
     type: String
   },
+  loginToken: {
+    type: String
+  },
+  w3Token: {
+    type: String
+  },
   smsValidated: {
     type: Boolean
   },
