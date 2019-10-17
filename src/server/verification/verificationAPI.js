@@ -421,6 +421,15 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log.child({ from: 'verificationAPI - verify/bonuses' })
 
       const { user: currentUser } = req
+      const isUserWhitelisted = await AdminWallet.isVerified(currentUser.gdAddress)
+
+      if (!isUserWhitelisted) {
+        return res.status(200).json({
+          ok: 0,
+          message: 'User should be verified to get bonuses'
+        })
+      }
+
       let wallet_token = currentUser.w3Token
 
       if (!wallet_token) {
@@ -446,15 +455,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         return res.status(200).json({
           ok: 1,
           message: 'The bonuses are in minting process'
-        })
-      }
-
-      const isUserWhitelisted = await AdminWallet.isVerified(currentUser.gdAddress)
-
-      if (!isUserWhitelisted) {
-        return res.status(200).json({
-          ok: 0,
-          message: 'User should be verified to get bonuses'
         })
       }
 
