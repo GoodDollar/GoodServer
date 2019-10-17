@@ -5,9 +5,10 @@ import logger from '../../imports/pino-logger'
 
 const log = logger.child({ from: 'W3Helper' })
 
-const w3PUTUserReq = (user, options) => {
-  options = options || {
-    getResponse: false
+const w3PUTUserReq = (user, _options) => {
+  const options = {
+    getResponse: false,
+    ..._options
   }
   const secureHash = md5(user.email + conf.secure_key)
 
@@ -33,7 +34,7 @@ const w3PUTUserReq = (user, options) => {
         resolve(toReturn)
       })
       .catch(e => {
-        log.error('Register W3 User Failed', e.message, e)
+        log.error('Fetch W3 User Failed', e.message, e)
 
         reject(e)
       })

@@ -479,6 +479,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       const toRedeemInWei = gdToWei(toRedeem)
 
+      log.debug('user address and bonus', {
+        address: currentUser.gdAddress,
+        bonus: toRedeem,
+        bonusInWei: toRedeemInWei
+      })
+
       // initiate smart contract to send bonus to user
       AdminWallet.redeemBonuses(currentUser.gdAddress, toRedeemInWei, {
         onTransactionHash: hash => {

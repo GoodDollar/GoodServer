@@ -5,7 +5,7 @@ import bip39 from 'bip39-light'
 import type { HttpProvider, WebSocketProvider } from 'web3-providers'
 import IdentityABI from '@gooddollar/goodcontracts/build/contracts/Identity.json'
 import GoodDollarABI from '@gooddollar/goodcontracts/build/contracts/GoodDollar.json'
-import RedemptionDataABI from '@gooddollar/goodcontracts/build/contracts/RedemptionData.json'
+import SignUpBonusABI from '@gooddollar/goodcontracts/build/contracts/SignUpBonus.json'
 import UBIABI from '@gooddollar/goodcontracts/build/contracts/FixedUBI.json'
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
 import conf from '../server.config'
@@ -38,7 +38,7 @@ export class Wallet {
 
   UBIContract: Web3.eth.Contract
 
-  redemptionDataContract: Web3.eth.Contract
+  signUpBonusContract: Web3.eth.Contract
 
   address: string
 
@@ -109,16 +109,16 @@ export class Wallet {
     this.networkId = conf.ethereum.network_id
     this.identityContract = new this.web3.eth.Contract(
       IdentityABI.abi,
-      get(ContractsAddress, `${this.network}.Identity`, IdentityABI.networks[this.networkId].address),
+      get(ContractsAddress, `${this.network}.Identity` /*IdentityABI.networks[this.networkId].address*/),
       {
         from: this.address,
         gas: 500000,
         gasPrice: web3Utils.toWei('1', 'gwei')
       }
     )
-    this.redemptionDataContract = new this.web3.eth.Contract(
-      RedemptionDataABI.abi,
-      get(ContractsAddress, `${this.network}.RedemptionData`, RedemptionDataABI.networks[this.networkId].address),
+    this.signUpBonusContract = new this.web3.eth.Contract(
+      SignUpBonusABI.abi,
+      get(ContractsAddress, `${this.network}.SignupBonus` /*SignUpBonusABI.networks[this.networkId].address*/),
       {
         from: this.address,
         gas: 500000,
@@ -127,7 +127,7 @@ export class Wallet {
     )
     this.UBIContract = new this.web3.eth.Contract(
       UBIABI.abi,
-      get(ContractsAddress, `${this.network}.FixedUBI`, UBIABI.networks[this.networkId].address),
+      get(ContractsAddress, `${this.network}.UBI` /*UBIABI.networks[this.networkId].address*/),
       {
         from: this.address,
         gas: 500000,
@@ -136,7 +136,7 @@ export class Wallet {
     )
     this.tokenContract = new this.web3.eth.Contract(
       GoodDollarABI.abi,
-      get(ContractsAddress, `${this.network}.GoodDollar`, GoodDollarABI.networks[this.networkId].address),
+      get(ContractsAddress, `${this.network}.GoodDollar` /*GoodDollarABI.networks[this.networkId].address*/),
       {
         from: this.address,
         gas: 500000,
@@ -174,12 +174,8 @@ export class Wallet {
    * @param {object} event callbacks
    * @returns {Promise<String>}
    */
-  async redeemBonuses(
-    address: string,
-    amountInWei: string,
-    { onReceipt, onTransactionHash, onError }
-  ): Promise<string> {
-    this.sendTransaction(this.redemptionDataContract.methods.awardUser(address, amountInWei), {
+  async redeemBonuses(address: string, amountInWei: string, { onReceipt, onTransactionHash, onError }): Promise<any> {
+    this.sendTransaction(this.signUpBonusContract.methods.awardUser(address, amountInWei), {
       onTransactionHash,
       onReceipt,
       onError
@@ -308,7 +304,7 @@ export class Wallet {
   ) {
     try {
       const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
-      gas = gas || (await tx.estimateGas())
+      gas = gas || (await tx.estimateGas().catch(e => log.error('Failed to estimate gas for tx', e.message, e)))
       gasPrice = gasPrice || this.gasPrice
       let netNonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
       const { nonce, release, fail } = await txManager.lock(this.address, netNonce)
