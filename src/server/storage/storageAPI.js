@@ -39,7 +39,8 @@ const setup = (app: Router, storage: StorageAPI) => {
       )
         throw new Error('User email or mobile not verified!')
 
-      const user: UserRecord = defaults(body.user, {
+      const { email, mobile, ...bodyUser } = body.user
+      const user: UserRecord = defaults(bodyUser, {
         identifier: userRecord.loggedInAs,
         createdDate: new Date().toString()
       })
@@ -48,12 +49,16 @@ const setup = (app: Router, storage: StorageAPI) => {
         AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey)
       }
 
-      const mauticRecordPromise =
-        process.env.NODE_ENV === 'development'
-          ? Promise.resolve({})
-          : Mautic.createContact(user).catch(e => {
-              log.error('Create Mautic Record Failed', e)
-            })
+      let mauticRecordPromise = Promise.resolve({})
+
+      if (!userRecord.mauticId) {
+        mauticRecordPromise =
+          process.env.NODE_ENV === 'development'
+            ? Promise.resolve({})
+            : Mautic.createContact(user).catch(e => {
+                log.error('Create Mautic Record Failed', e)
+              })
+      }
 
       const secureHash = md5(user.email + conf.secure_key)
 
@@ -81,7 +86,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       log.debug('Web3 user record', web3Record)
 
       //mautic contact should already exists since it is first created during the email verification we update it here
-      const mauticId = get(mauticRecord, 'contact.fields.all.id', -1)
+      const mauticId = !userRecord.mauticId ? get(mauticRecord, 'contact.fields.all.id', -1) : userRecord.mauticId
       logger.debug('User mautic record', { mauticId, mauticRecord })
 
       const updateUserObj = {
@@ -129,13 +134,12 @@ const setup = (app: Router, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const { user, log, body } = req
-      const {zoomSignature, zoomId} = body
+      const { zoomSignature, zoomId } = body
       log.info('delete user', { user })
-      
+
       if (zoomId && zoomSignature) {
-        
         const recovered = recoverPublickey(zoomSignature, zoomId, '').replace('0x', '')
-        
+
         if (recovered === body.zoomId.toLowerCase()) {
           await zoomHelper.delete(zoomId)
           log.info('zoom delete', { zoomId })
@@ -143,9 +147,8 @@ const setup = (app: Router, storage: StorageAPI) => {
           log.error('/user/delete', 'SigUtil unable to recover the message signer')
           throw new Error('Unable to verify credentials')
         }
-        
       }
-      
+
       const results = await Promise.all([
         (user.identifier ? storage.deleteUser(user) : Promise.reject())
           .then(r => ({ mongodb: 'ok' }))
@@ -154,7 +157,7 @@ const setup = (app: Router, storage: StorageAPI) => {
           .then(r => ({ mautic: 'ok' }))
           .catch(e => ({ mautic: 'failed' }))
       ])
-      
+
       log.info('delete user results', { results })
       res.json({ ok: 1, results })
     })

@@ -102,24 +102,25 @@ const conf = convict({
     default: 'develop',
     env: 'NETWORK'
   },
-  plivoAuthID: {
-    doc: "Plivo's authorization ID",
+  twilioAuthID: {
+    doc: "Twilio's authorization ID",
     format: '*',
-    env: 'PLIVO_AUTH_ID',
+    env: 'TWILIO_AUTH_ID',
     default: ''
   },
-  plivoAuthToken: {
-    doc: "Plivo's authorization Token",
+  twilioAuthToken: {
+    doc: "Twilio's authorization Token",
     format: '*',
-    env: 'PLIVO_AUTH_TOKEN',
+    env: 'TWILIO_AUTH_TOKEN',
     default: ''
   },
-  plivoPhoneNumber: {
+  twilioPhoneNumber: {
     doc: "Plivo's Phone Number",
     format: '*',
-    env: 'PLIVO_PHONE_NUMBER',
+    env: 'TWILIO_PHONE_NUMBER',
     default: ''
   },
+
   otpDigits: {
     doc: 'Amount of digits for the OTP',
     format: '*',
@@ -262,12 +263,6 @@ const conf = convict({
     env: 'ALLOW_DUPLICATE_USER_DATA',
     default: false
   },
-  webConcurrency: {
-    doc: 'Amount of concurrency nodes',
-    format: Number,
-    env: 'WEB_CONCURRENCY',
-    default: 1
-  },
   skipEmailVerification: {
     doc: 'Allow to register with unverified email',
     format: Boolean,
@@ -327,7 +322,6 @@ const conf = convict({
 // Load environment dependent configuration
 const env = conf.get('env')
 const network = conf.get('network')
-
 const networkId = ContractsAddress[network].networkId
 conf.set('ethereum', networks[networkId])
 //parse S3 details for gundb in format of key,secret,bucket
