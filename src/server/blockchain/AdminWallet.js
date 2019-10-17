@@ -222,7 +222,7 @@ export class Wallet {
    */
   async isVerified(address: string): Promise<boolean> {
     const tx: boolean = await this.identityContract.methods
-      .isClaimer(address)
+      .isWhitelisted(address)
       .call()
       .catch(e => {
         log.error('Error isVerified', { e }, e.message)

@@ -3,7 +3,6 @@ import { Router } from 'express'
 import passport from 'passport'
 import _ from 'lodash'
 import multer from 'multer'
-import fetch from 'cross-fetch'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
@@ -13,7 +12,6 @@ import conf from '../server.config'
 import { GunDBPublic } from '../gun/gun-middleware'
 import { Mautic } from '../mautic/mauticAPI'
 import fs from 'fs'
-import md5 from 'md5'
 import * as W3Helper from '../utils/W3Helper'
 import gdToWei from '../utils/gdToWei'
 import txManager from '../utils/tx-manager'
@@ -448,6 +446,15 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         return res.status(200).json({
           ok: 1,
           message: 'The bonuses are in minting process'
+        })
+      }
+
+      const isUserWhitelisted = await AdminWallet.isVerified(currentUser.gdAddress)
+
+      if (!isUserWhitelisted) {
+        return res.status(200).json({
+          ok: 0,
+          message: 'User should be verified to get bonuses'
         })
       }
 
