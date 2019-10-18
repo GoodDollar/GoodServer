@@ -146,7 +146,7 @@ export default class queueMongo {
           address,
           nonce,
           release: async () => await this.unlock(address, nonce + 1),
-          fail: async () => await this.errorUnlock(address)
+          fail: async () => await this.unlock(address)
         })
       })
     })
