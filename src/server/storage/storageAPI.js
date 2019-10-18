@@ -39,8 +39,14 @@ const setup = (app: Router, storage: StorageAPI) => {
       )
         throw new Error('User email or mobile not verified!')
 
-      const { email, mobile, ...bodyUser } = body.user
-      const user: UserRecord = defaults(bodyUser, {
+      const { email } = body.user
+      const isDuplicatedEmail = await storage.isDupUserData({ email })
+
+      if (!conf.allowDuplicateUserData && isDuplicatedEmail) {
+        throw new Error('This email is already in use')
+      }
+
+      const user: UserRecord = defaults(body.user, {
         identifier: userRecord.loggedInAs,
         createdDate: new Date().toString()
       })
