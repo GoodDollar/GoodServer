@@ -63,6 +63,15 @@ describe('verificationAPI', () => {
       .expect(200, { ok: 1, onlyInEnv: { current: 'test', onlyIn: ['production', 'staging'] } })
   })
 
+  test('/verify/sendotp should fail with 429 status - too many requests (rate limiter)', async () => {
+    // the 4th request should fail with status 429
+    // we see only 1 requests executed from this test. But in previous tests we executing 3 more api calls to the same endpoint.
+    // so in summary we have 4 requests
+    await request(server)
+      .post('/verify/sendotp')
+      .expect(429)
+  })
+
   test('/verify/sendemail with creds', async () => {
     const token = await getToken(server)
 
@@ -91,6 +100,37 @@ describe('verificationAPI', () => {
     const dbUser = await UserDBPrivate.getUser('0x7ac080f6607405705aed79675789701a48c76f55')
 
     expect(dbUser.emailVerificationCode).toBeTruthy()
+  })
+
+  test('/verify/sendemail should fail with 429 status - too many requests (rate limiter)', async () => {
+    const token = await getToken(server)
+
+    await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
+
+    const user = await UserDBPrivate.updateUser({
+      identifier: '0x7ac080f6607405705aed79675789701a48c76f55',
+      fullName: 'test_user_sendemail'
+    })
+
+    expect(user).toBeTruthy()
+
+    // the 4th request should fail with status 429
+    // we see only 3 requests executed from this test. But in previous test we executing one more api call to the same endpoint.
+    // so in summary we have 4 requests
+    for (let i = 1; i <= 3; i++) {
+      const expect = i === 3 ? 429 : 200
+
+      await request(server)
+        .post('/verify/sendemail')
+        .send({
+          user: {
+            fullName: 'h r',
+            email: 'johndoe@gooddollar.org'
+          }
+        })
+        .set('Authorization', `Bearer ${token}`)
+        .expect(expect)
+    }
   })
 
   test('/verify/w3/email without auth creds -> 401', () => {

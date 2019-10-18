@@ -33,7 +33,15 @@ module.exports = {
     '/src/imports',
     '/webpack.dev.config.js',
     '/src/server/server-test.js',
-    '/src/server/server.config.js'
+    '/src/server/server.config.js',
+    'src/server/blockchain',
+    'src/server/db',
+    'src/server/gun',
+    'src/server/loadtest',
+    'src/server/login',
+    'src/server/mautic',
+    'src/server/send',
+    'src/server/storage',
   ],
 
   // A list of reporter names that Jest uses when writing coverage reports
@@ -152,7 +160,15 @@ module.exports = {
     '/__tests__/__util__',
     '/webpack.dev.config.js',
     '/src/server/server-test.js',
-    '/src/server/server.config.js'
+    '/src/server/server.config.js',
+    'src/server/blockchain',
+    'src/server/db',
+    'src/server/gun',
+    'src/server/loadtest',
+    'src/server/login',
+    'src/server/mautic',
+    'src/server/send',
+    'src/server/storage',
   ],
 
   // The regexp pattern Jest uses to detect test files
