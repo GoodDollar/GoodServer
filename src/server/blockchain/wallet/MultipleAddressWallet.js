@@ -37,7 +37,7 @@ class MultipleAddressWallet {
     // i starts from 1
     for (let i = 0; i < this.numOfAccounts; i++) {
       let root = HDKey.fromMasterSeed(this.mnemonic)
-      let path = "m/44'/60'/0'/0/" + (i + 1)
+      let path = "m/44'/60'/0'/0/" + i
       let addrNode = root.derive(path)
       let privateKeyBuffer = Buffer.from(addrNode._privateKey, 'hex')
       let wallet = Wallet.fromPrivateKey(privateKeyBuffer)
