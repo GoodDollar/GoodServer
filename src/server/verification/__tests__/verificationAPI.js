@@ -74,7 +74,7 @@ describe('verificationAPI', () => {
       }
     }
 
-    expect(isFailsWithRateLimit).toBeTrue()
+    expect(isFailsWithRateLimit).toBeTruthy()
   })
 
   test('/verify/sendemail with creds', async () => {
@@ -135,7 +135,7 @@ describe('verificationAPI', () => {
       }
     }
 
-    expect(isFailsWithRateLimit).toBeTrue()
+    expect(isFailsWithRateLimit).toBeTruthy()
   })
 
   test('/verify/w3/email without auth creds -> 401', () => {
