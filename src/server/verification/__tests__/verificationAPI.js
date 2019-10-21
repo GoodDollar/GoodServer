@@ -64,12 +64,17 @@ describe('verificationAPI', () => {
   })
 
   test('/verify/sendotp should fail with 429 status - too many requests (rate limiter)', async () => {
-    // the 4th request should fail with status 429
-    // we see only 1 requests executed from this test. But in previous tests we executing 3 more api calls to the same endpoint.
-    // so in summary we have 4 requests
-    await request(server)
-      .post('/verify/sendotp')
-      .expect(429)
+    let isFailsWithRateLimit = false
+
+    while (!isFailsWithRateLimit) {
+      const res = await request(server).post('/verify/sendotp')
+
+      if (res.status === 429) {
+        isFailsWithRateLimit = true
+      }
+    }
+
+    expect(isFailsWithRateLimit).toBeTrue()
   })
 
   test('/verify/sendemail with creds', async () => {
@@ -113,14 +118,10 @@ describe('verificationAPI', () => {
     })
 
     expect(user).toBeTruthy()
+    let isFailsWithRateLimit = false
 
-    // the 4th request should fail with status 429
-    // we see only 3 requests executed from this test. But in previous test we executing one more api call to the same endpoint.
-    // so in summary we have 4 requests
-    for (let i = 1; i <= 3; i++) {
-      const expect = i === 3 ? 429 : 200
-
-      await request(server)
+    while (!isFailsWithRateLimit) {
+      const res = await request(server)
         .post('/verify/sendemail')
         .send({
           user: {
@@ -128,9 +129,13 @@ describe('verificationAPI', () => {
             email: 'johndoe@gooddollar.org'
           }
         })
-        .set('Authorization', `Bearer ${token}`)
-        .expect(expect)
+
+      if (res.status === 429) {
+        isFailsWithRateLimit = true
+      }
     }
+
+    expect(isFailsWithRateLimit).toBeTrue()
   })
 
   test('/verify/w3/email without auth creds -> 401', () => {
