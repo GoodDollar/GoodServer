@@ -74,7 +74,7 @@ export default class queueMongo {
    * @returns {Promise<void>}
    */
   async createListIfNotExists(addresses) {
-    const exists = await this.model.find({ address: { $in: addresses } }).lean()
+    const exists = await this.model.find({ address: { $in: addresses }, networkId: this.networkId }).lean()
     for (let address of addresses) {
       if (!~exists.findIndex(e => e.address === address)) {
         await this.createWallet(address)
