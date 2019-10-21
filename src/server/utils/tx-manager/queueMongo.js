@@ -1,10 +1,12 @@
 import WalletNonce from '../../db/mongo/models/wallet-nonce'
 import logger from '../../../imports/pino-logger'
+import conf from '../../server.config'
 
 const log = logger.child({ from: 'queueMongo' })
 const MAX_LOCK_TIME = 30 // seconds
 export default class queueMongo {
   constructor() {
+    this.networkId = conf.ethereum.network_id
     this.model = WalletNonce
     this.queue = []
     this.nonce = null
@@ -41,11 +43,12 @@ export default class queueMongo {
             { isLock: false },
             {
               lockedAt: { $lte: +new Date() - MAX_LOCK_TIME * 1000 },
-              isLock: true
+              isLock: true,
+              networkId: this.networkId
             }
           ]
         },
-        { isLock: true, lockedAt: +new Date() },
+        { isLock: true, lockedAt: +new Date(), networkId: this.networkId },
         { returnNewDocument: true }
       )
       if (this.reRunQueue) {
@@ -76,7 +79,8 @@ export default class queueMongo {
       if (!wallet) {
         await this.model.create({
           address,
-          nonce: netNonce
+          nonce: netNonce,
+          networkId: this.networkId
         })
       }
     } catch (e) {
@@ -96,6 +100,7 @@ export default class queueMongo {
     await this.model.findOneAndUpdate(
       { address },
       {
+        networkId: this.networkId,
         isLock: false
       },
       { returnNewDocument: true }
@@ -116,6 +121,7 @@ export default class queueMongo {
         { address },
         {
           isLock: false,
+          networkId: this.networkId,
           nonce: nextNonce
         },
         { returnNewDocument: true }
