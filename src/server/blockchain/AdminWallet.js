@@ -154,7 +154,16 @@ export class Wallet {
         network: this.networkId,
         nonce: this.nonce
       })
-      const whitelistTest = await this.whitelistUser('0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1', 'x')
+
+      const isWhitelisted = await this.isVerified('0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1')
+      let whitelistTest
+
+      if (isWhitelisted) {
+        whitelistTest = { status: true }
+      } else {
+        whitelistTest = await this.whitelistUser('0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1', 'x')
+      }
+
       const topwalletTest = await this.topWallet(
         '0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1',
         moment().subtract(1, 'day'),
