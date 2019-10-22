@@ -24,6 +24,8 @@ const log = logger.child({ from: 'AdminWallet' })
  * Exported as AdminWallet
  * Interface with blockchain contracts via web3 using HDWalletProvider
  */
+const defaultGas = 500000
+
 export class Wallet {
   web3: Web3
 
@@ -101,7 +103,7 @@ export class Wallet {
         get(ContractsAddress, `${this.network}.Identity`, IdentityABI.networks[this.networkId].address),
         {
           from: this.address,
-          gas: 500000,
+          gas: defaultGas,
           gasPrice: web3Utils.toWei('1', 'gwei')
         }
       )
@@ -110,7 +112,7 @@ export class Wallet {
         get(ContractsAddress, `${this.network}.RedemptionFunctional`, RedemptionABI.networks[this.networkId].address),
         {
           from: this.address,
-          gas: 500000,
+          gas: defaultGas,
           gasPrice: web3Utils.toWei('1', 'gwei')
         }
       )
@@ -119,7 +121,7 @@ export class Wallet {
         get(ContractsAddress, `${this.network}.GoodDollar`, GoodDollarABI.networks[this.networkId].address),
         {
           from: this.address,
-          gas: 500000,
+          gas: defaultGas,
           gasPrice: web3Utils.toWei('1', 'gwei')
         }
       )
@@ -128,7 +130,7 @@ export class Wallet {
         get(ContractsAddress, `${this.network}.GoodDollarReserve`, ReserveABI.networks[this.networkId].address),
         {
           from: this.address,
-          gas: 500000,
+          gas: defaultGas,
           gasPrice: web3Utils.toWei('1', 'gwei')
         }
       )
