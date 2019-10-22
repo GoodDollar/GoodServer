@@ -10,7 +10,7 @@ import { wrapAsync, lightLogs } from '../utils/helpers'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
 import SEA from 'gun/sea'
 import Config from '../server.config.js'
-import { recoverPublickey } from "../utils/eth";
+import { recoverPublickey } from '../utils/eth'
 // const ExtractJwt = passportJWT.ExtractJwt
 // const JwtStrategy = passportJWT.Strategy
 

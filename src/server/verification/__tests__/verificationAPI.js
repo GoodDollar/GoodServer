@@ -85,11 +85,11 @@ describe('verificationAPI', () => {
       })
       .set('Authorization', `Bearer ${token}`)
       .expect(200, { ok: 1 })
+
     await delay(500)
 
     const dbUser = await UserDBPrivate.getUser('0x7ac080f6607405705aed79675789701a48c76f55')
 
-    expect(dbUser.mauticId).toBeTruthy()
     expect(dbUser.emailVerificationCode).toBeTruthy()
   })
 
