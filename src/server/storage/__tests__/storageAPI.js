@@ -38,7 +38,7 @@ describe('storageAPI', () => {
     await UserDBPrivate.updateUser({ identifier: '0x7ac080f6607405705aed79675789701a48c76f55', mauticId: mauticId })
     const user: UserRecord = {
       identifier: '0x7ac080f6607405705aed79675789701a48c76f55',
-      email: 'useraddtest@gooddollar.org' // required for mautic create contact
+      email: 'useraddtest1@gooddollar.org' // required for mautic create contact
     }
     let res = await request(server)
       .post('/user/add')
