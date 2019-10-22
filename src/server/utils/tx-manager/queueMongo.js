@@ -174,10 +174,9 @@ export default class queueMongo {
    * @returns {Promise<void>}
    */
   async run() {
-    let nextTr
     try {
       if (this.queue.length > 0) {
-        nextTr = this.queue.shift()
+        const nextTr = this.queue.shift()
         const walletNonce = await this.getWalletNonce(nextTr.addresses)
         if (walletNonce) {
           nextTr.cb({ nonce: walletNonce.nonce, address: walletNonce.address })
