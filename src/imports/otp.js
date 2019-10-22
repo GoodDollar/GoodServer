@@ -1,6 +1,7 @@
 // @flow
 import random from 'math-random'
 import * as plivo from 'plivo'
+import Twilio from 'twilio'
 import conf from '../server/server.config'
 import type { UserRecord } from './types'
 
@@ -23,12 +24,14 @@ const generateOTP = (length: number = 0): string => {
  * @returns {Promise<$TupleMap<*[], typeof $await>>}
  */
 const sendOTP = (user: UserRecord): Promise<any> => {
-  const { plivoAuthID, plivoAuthToken, plivoPhoneNumber } = conf
+  const { twilioAuthID, twilioAuthToken, twilioPhoneNumber } = conf
   const { mobile } = user
-  const client = new plivo.Client(plivoAuthID, plivoAuthToken)
+
+  const client = Twilio(twilioAuthID, twilioAuthToken)
+
   const otp = generateOTP(conf.otpDigits)
   const msg = 'Your GoodDollar Verification Code Is: ' + otp
-  return Promise.all([client.messages.create(plivoPhoneNumber, mobile, msg), otp])
+  return Promise.all([client.messages.create({ to: mobile, from: twilioPhoneNumber, body: msg }), otp])
 }
 
 export { generateOTP, sendOTP }
