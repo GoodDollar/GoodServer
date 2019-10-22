@@ -51,8 +51,17 @@ export const Mautic = {
     if (!(mnemonic && user.fullName && user.mauticId && Config.mauticRecoveryEmailId))
       throw new Error('missing input for sending recovery email')
 
+    const mnemonicFirstPart = mnemonic
+      .split(' ')
+      .slice(0, 6)
+      .join(' ')
+    const mnemonicSecondPart = mnemonic
+      .split(' ')
+      .slice(6)
+      .join(' ')
+
     return this.baseQuery(`/emails/${Config.mauticRecoveryEmailId}/contact/${user.mauticId}/send`, this.baseHeaders, {
-      tokens: { seed: mnemonic, firstName: user.fullName }
+      tokens: { firstName: user.fullName, seedFirst: mnemonicFirstPart, seedSecond: mnemonicSecondPart }
     })
   },
   sendMagicLinkEmail(user: UserRecord, magicLink: string) {
