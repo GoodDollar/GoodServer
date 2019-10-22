@@ -6,6 +6,7 @@ import { GunDBPublic } from './gun/gun-middleware'
 import throng from 'throng'
 
 function start(workerId) {
+  console.log(`start workerId ${workerId}`)
   const app = require('./app').default
   process.on('uncaughtException', (err, origin) => {
     console.log(`Caught exception: ${err}\n` + `Exception origin: ${origin}`)
