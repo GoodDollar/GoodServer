@@ -195,7 +195,11 @@ export class Wallet {
    * @param {string} did
    * @returns {Promise<TransactionReceipt>}
    */
-  async whitelistUser(address: string, did: string): Promise<TransactionReceipt> {
+  async whitelistUser(address: string, did: string): Promise<TransactionReceipt | boolean> {
+    const isVerified = await this.isVerified(address)
+    if (isVerified) {
+      return true
+    }
     const tx: TransactionReceipt = await this.sendTransaction(
       this.identityContract.methods.addWhitelistedWithDID(address, did)
     ).catch(e => {
@@ -389,7 +393,6 @@ export class Wallet {
       gasPrice = gasPrice || this.gasPrice
 
       let netNonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
-
       const { nonce, release, fail } = await txManager.lock(this.address, netNonce)
 
       return new Promise((res, rej) => {
@@ -407,7 +410,9 @@ export class Wallet {
             onConfirmation && onConfirmation(c)
           })
           .on('error', async e => {
+            log.error('sendNative failed', e.message, e)
             if (isNonceError(e)) {
+              log.debug('sendNative retrying after nonce error', params)
               netNonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
               await txManager.unlock(this.address, netNonce)
               try {
