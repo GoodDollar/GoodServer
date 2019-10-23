@@ -103,40 +103,45 @@ export class Wallet {
       this.web3.eth.accounts.wallet.add(account)
       this.web3.eth.defaultAccount = account.address
       this.address = account.address
-      log.debug('Initialized by mnemonic:', account.address)
+      log.debug('Initialized by mnemonic:', this.address)
     }
     this.network = conf.network
     this.networkId = conf.ethereum.network_id
     this.identityContract = new this.web3.eth.Contract(
       IdentityABI.abi,
-      get(ContractsAddress, `${this.network}.Identity` /*IdentityABI.networks[this.networkId].address*/),
+      get(ContractsAddress, `${this.network}.Identity`),
       {
         from: this.address,
         gas: 500000,
         gasPrice: web3Utils.toWei('1', 'gwei')
       }
     )
+
     this.signUpBonusContract = new this.web3.eth.Contract(
       SignUpBonusABI.abi,
-      get(ContractsAddress, `${this.network}.SignupBonus` /*SignUpBonusABI.networks[this.networkId].address*/),
+      get(ContractsAddress, `${this.network}.SignupBonus`),
       {
         from: this.address,
         gas: 500000,
         gasPrice: web3Utils.toWei('1', 'gwei')
       }
     )
-    this.UBIContract = new this.web3.eth.Contract(
-      UBIABI.abi,
-      get(ContractsAddress, `${this.network}.UBI` /*UBIABI.networks[this.networkId].address*/),
-      {
-        from: this.address,
-        gas: 500000,
-        gasPrice: web3Utils.toWei('1', 'gwei')
-      }
-    )
+
+    this.UBIContract = new this.web3.eth.Contract(UBIABI.abi, get(ContractsAddress, `${this.network}.UBI`), {
+      from: this.address,
+      gas: 500000,
+      gasPrice: web3Utils.toWei('1', 'gwei')
+    })
+
+    this.UBIContract = new this.web3.eth.Contract(UBIABI.abi, get(ContractsAddress, `${this.network}.FixedUBI`), {
+      from: this.address,
+      gas: 500000,
+      gasPrice: web3Utils.toWei('1', 'gwei')
+    })
+
     this.tokenContract = new this.web3.eth.Contract(
       GoodDollarABI.abi,
-      get(ContractsAddress, `${this.network}.GoodDollar` /*GoodDollarABI.networks[this.networkId].address*/),
+      get(ContractsAddress, `${this.network}.GoodDollar`),
       {
         from: this.address,
         gas: 500000,
@@ -154,24 +159,17 @@ export class Wallet {
         network: this.networkId,
         nonce: this.nonce
       })
-
-      const isWhitelisted = await this.isVerified('0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1')
-      let whitelistTest
-
-      if (isWhitelisted) {
-        whitelistTest = { status: true }
-      } else {
-        whitelistTest = await this.whitelistUser('0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1', 'x')
-      }
-
+      await this.removeWhitelisted('0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63').catch(_ => _)
+      const whitelistTest = await this.whitelistUser('0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63', 'x')
       const topwalletTest = await this.topWallet(
-        '0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1',
+        '0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63',
         moment().subtract(1, 'day'),
         true
       )
       log.info('wallet tests:', { whitelist: whitelistTest.status, topwallet: topwalletTest.status })
     } catch (e) {
       log.error('Error initializing wallet', { e }, e.message)
+      process.exit(-1)
     }
     return true
   }
@@ -218,6 +216,22 @@ export class Wallet {
       this.identityContract.methods.addBlacklisted(address)
     ).catch(e => {
       log.error('Error blackListUser', { e }, e.message)
+      throw e
+    })
+
+    return tx
+  }
+
+  /**
+   * remove a user in the `Identity` contract
+   * @param {string} address
+   * @returns {Promise<TransactionReceipt>}
+   */
+  async removeWhitelisted(address: string): Promise<TransactionReceipt> {
+    const tx: TransactionReceipt = await this.sendTransaction(
+      this.identityContract.methods.removeWhitelisted(address)
+    ).catch(e => {
+      log.error('Error removeWhitelisted', { e }, e.message)
       throw e
     })
 
