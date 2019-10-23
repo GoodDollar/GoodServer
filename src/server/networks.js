@@ -8,8 +8,8 @@ const networks = {
   4447: {
     network_id: 4447,
     web3Transport: 'HttpProvider',
-    httpWeb3Provider: 'http://localhost:8545/',
-    websocketWeb3Provider: 'ws://localhost:8545/ws'
+    httpWeb3Provider: 'http://localhost:9545/',
+    websocketWeb3Provider: 'ws://localhost:9545/ws'
   },
   121: {
     network_id: 121,
