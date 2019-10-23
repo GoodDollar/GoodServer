@@ -61,7 +61,6 @@ export default class queueMutex {
     let release = await obj.mutex.lock()
 
     obj.lastFail = () => {
-      obj.nonce--
       release()
     }
 
