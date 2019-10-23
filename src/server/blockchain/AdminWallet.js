@@ -100,31 +100,27 @@ export class Wallet {
       this.web3.eth.accounts.wallet.add(account)
       this.web3.eth.defaultAccount = account.address
       this.address = account.address
-      log.debug('Initialized by mnemonic:', account.address)
+      log.debug('Initialized by mnemonic:', this.address)
     }
     this.network = conf.network
     this.networkId = conf.ethereum.network_id
     this.identityContract = new this.web3.eth.Contract(
       IdentityABI.abi,
-      get(ContractsAddress, `${this.network}.Identity`, IdentityABI.networks[this.networkId].address),
+      get(ContractsAddress, `${this.network}.Identity`),
       {
         from: this.address,
         gas: 500000,
         gasPrice: web3Utils.toWei('1', 'gwei')
       }
     )
-    this.UBIContract = new this.web3.eth.Contract(
-      UBIABI.abi,
-      get(ContractsAddress, `${this.network}.FixedUBI`, UBIABI.networks[this.networkId].address),
-      {
-        from: this.address,
-        gas: 500000,
-        gasPrice: web3Utils.toWei('1', 'gwei')
-      }
-    )
+    this.UBIContract = new this.web3.eth.Contract(UBIABI.abi, get(ContractsAddress, `${this.network}.FixedUBI`), {
+      from: this.address,
+      gas: 500000,
+      gasPrice: web3Utils.toWei('1', 'gwei')
+    })
     this.tokenContract = new this.web3.eth.Contract(
       GoodDollarABI.abi,
-      get(ContractsAddress, `${this.network}.GoodDollar`, GoodDollarABI.networks[this.networkId].address),
+      get(ContractsAddress, `${this.network}.GoodDollar`),
       {
         from: this.address,
         gas: 500000,
@@ -142,15 +138,17 @@ export class Wallet {
         network: this.networkId,
         nonce: this.nonce
       })
-      const whitelistTest = await this.whitelistUser('0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1', 'x')
+      const removeTest = await this.removeWhitelisted('0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63').catch(_ => _)
+      const whitelistTest = await this.whitelistUser('0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63', 'x')
       const topwalletTest = await this.topWallet(
-        '0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1',
+        '0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63',
         moment().subtract(1, 'day'),
         true
       )
       log.info('wallet tests:', { whitelist: whitelistTest.status, topwallet: topwalletTest.status })
     } catch (e) {
       log.error('Error initializing wallet', { e }, e.message)
+      process.exit(-1)
     }
     return true
   }
@@ -163,7 +161,7 @@ export class Wallet {
    */
   async whitelistUser(address: string, did: string): Promise<TransactionReceipt> {
     const tx: TransactionReceipt = await this.sendTransaction(
-      this.identityContract.methods.addClaimerWithDID(address, did)
+      this.identityContract.methods.addWhitelistedWithDID(address, did)
     ).catch(e => {
       log.error('Error whitelistUser', { e }, e.message)
       throw e
@@ -189,13 +187,29 @@ export class Wallet {
   }
 
   /**
+   * remove a user in the `Identity` contract
+   * @param {string} address
+   * @returns {Promise<TransactionReceipt>}
+   */
+  async removeWhitelisted(address: string): Promise<TransactionReceipt> {
+    const tx: TransactionReceipt = await this.sendTransaction(
+      this.identityContract.methods.removeWhitelisted(address)
+    ).catch(e => {
+      log.error('Error removeWhitelisted', { e }, e.message)
+      throw e
+    })
+
+    return tx
+  }
+
+  /**
    * verify if an user is verified in the `Identity` contract
    * @param {string} address
    * @returns {Promise<boolean>}
    */
   async isVerified(address: string): Promise<boolean> {
     const tx: boolean = await this.identityContract.methods
-      .isClaimer(address)
+      .isWhitelisted(address)
       .call()
       .catch(e => {
         log.error('Error isVerified', { e }, e.message)
