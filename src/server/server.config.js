@@ -295,21 +295,21 @@ const conf = convict({
   },
   secure_key: {
     doc: 'Secure key word used to create secure hash by which server can communicate with web3',
-    format: '*',
+    format: String,
     env: 'SECURE_KEY',
-    default: undefined
+    default: null
   },
   fuse: {
     doc: 'Main url for fuse api',
-    format: String,
+    format: 'url',
     env: 'FUSE_API',
-    default: null
+    default: 'https://explorer.fusenet.io'
   },
   web3SiteUrl: {
     doc: 'Web3 site url',
-    format: '*',
+    format: 'url',
     env: 'WEB3_SITE_URL',
-    default: undefined
+    default: 'https://w3.gooddollar.org'
   }
 })
 
