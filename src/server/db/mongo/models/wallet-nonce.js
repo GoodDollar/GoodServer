@@ -3,8 +3,7 @@ import { MODEL_WALLET_NONCE } from './constants'
 
 export const WalletNonceSchema = new mongoose.Schema({
   address: {
-    type: String,
-    index: { unique: true }
+    type: String
   },
   networkId: String,
   nonce: {
