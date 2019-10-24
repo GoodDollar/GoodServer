@@ -2,109 +2,62 @@ import Mutex from 'await-mutex'
 
 export default class queueMutex {
   constructor() {
-    this.wallets = {}
-    this.getTransactionCount = () => 0
-  }
-
-  /**
-   * Create object of wallets by addresses
-   *
-   * @param {array} addresses
-   *
-   * @returns {Promise<void>}
-   */
-  async createListIfNotExists(addresses) {
-    for (let address of addresses) {
-      if (!this.getWallet(address)) {
-        await this.createWallet(address)
-      }
-    }
-  }
-
-  /**
-   * Create object of wallet by address
-   * @param address
-   */
-  async createWallet(address) {
-    this.wallets[address] = {
-      address,
-      nonce: await this.getTransactionCount(address),
-      mutex: new Mutex()
-    }
-  }
-
-  /**
-   * Get wallet by address
-   * @param address
-   * @returns {T}
-   */
-  getWallet(address) {
-    return this.wallets[address]
+    this.nonce = null
+    this.mutex = new Mutex()
+    this.lastFail = null
   }
 
   /**
    * Unlock for queue
    *
    * @param {string} address
-   * @param {string} netNonce
+   * @param {string} nextNonce
    *
    * @returns {Promise<void>}
    */
-  async unlock(address, netNonce) {
-    const wallet = this.getWallet(address)
-
-    if (wallet && typeof wallet.lastFail === 'function') {
-      wallet.lastFail(netNonce)
+  async errorUnlock(address, nonce) {
+    if (typeof this.lastFail === 'function') {
+      this.lastFail()
     }
   }
 
+  /**
+   * Unlock for queue
+   *
+   * @param {string} address
+   * @param {string} nextNonce
+   *
+   * @returns {Promise<void>}
+   */
+  async unlock(address, nonce) {
+    if (typeof this.lastFail === 'function') {
+      this.lastFail()
+    }
+  }
   /**
    * lock for queue
    *
-   * @param {array} addresses
+   * @param {string} address
+   * @param {string} netNonce
    *
    * @returns {Promise<any>}
    */
-  async lock(addresses) {
-    const address = (addresses && Array.isArray(addresses) && addresses[0]) || addresses
-    let wallet = this.getWallet(address)
-
-    if (!wallet) {
-      await this.createWallet(address)
-      wallet = this.getWallet(address)
-    }
-    let release = await wallet.mutex.lock()
-    wallet.release = () => {
-      wallet.nonce++
-      release()
-    }
-    wallet.lastFail = netNonce => {
-      if (netNonce) {
-        wallet.nonce = netNonce
-      }
-      release()
+  async lock(address, netNonce) {
+    if (!this.nonce) {
+      this.nonce = netNonce
+    } else {
+      this.nonce++
     }
 
+    let release = await this.mutex.lock()
+    this.lastFail = () => {
+      this.nonce--
+      release()
+    }
     return {
-      address,
-      nonce: wallet.nonce,
-      release: wallet.release,
-      fail: wallet.lastFail
+      nonce: this.nonce,
+      release: release,
+      fail: this.lastFail
     }
-  }
-
-  /**
-   * Get lock status for address
-   *
-   * @param {string} address
-   *
-   * @returns {Boolean}
-   */
-  async isLocked(address) {
-    const wallet = this.getWallet(address)
-    if (wallet) {
-      return wallet.mutex.isLocked()
-    }
-    return false
   }
 }

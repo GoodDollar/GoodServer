@@ -1,7 +1,4 @@
 import AdminWallet from '../AdminWallet'
-import Wallet from 'ethereumjs-wallet'
-
-const generateWalletAddress = () => Wallet.generate().getAddressString()
 
 jest.setTimeout(100000)
 beforeAll(async () => {
@@ -33,23 +30,21 @@ test('adminWallet get balance correctly', async () => {
 })
 
 test(`adminWallet top wallet shouldn't throws an error when user is not whitelisted/verified`, async () => {
-  const unverifiedAddress = generateWalletAddress()
+  const unverifiedAddress = '0x5d1b321087c9273c7efb0815c43c019df180fa56'
   await AdminWallet.blacklistUser(unverifiedAddress)
   await expect(AdminWallet.topWallet(unverifiedAddress, null)).toBeTruthy()
 })
 
 test('adminWallet receive queue nonce', async () => {
-  // const unverifiedAddress = '0xC8282816Bbbb5A417762feE6e736479D4809D129'
+  const unverifiedAddress = '0xC8282816Bbbb5A417762feE6e736479D4809D129'
   for (let i = 0; i < 5; i++) {
-    const unverifiedAddress = generateWalletAddress()
-    // console.log('unverifiedAddress', unverifiedAddress)
     let tx = await AdminWallet.topWallet(unverifiedAddress, null, true)
     expect(tx).toBeTruthy()
   }
 })
 
 test('adminWallet bad transaction in queue', async () => {
-  const unverifiedAddress = generateWalletAddress()
+  const unverifiedAddress = '0xC8282816Bbbb5A417762feE6e736479D4809D129'
   const from = AdminWallet.address
   const testValue = 10
   const badGas = 10

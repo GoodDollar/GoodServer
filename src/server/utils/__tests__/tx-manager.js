@@ -19,10 +19,11 @@ describe('tx manager only for mongo', () => {
     })
 
     test('txManagerMongo - queue nonce release', async () => {
+      let netNonce = 0
       const testAddress = `${prefixTestAddress} - ${Date.now()}`
 
       for (let i = 0; i < 5; i++) {
-        const { nonce, release } = await txManagerMongo.lock([testAddress])
+        const { nonce, release } = await txManagerMongo.lock(testAddress, netNonce)
 
         release()
 
@@ -31,10 +32,11 @@ describe('tx manager only for mongo', () => {
     })
 
     test('txManagerMongo - queue nonce fail', async () => {
+      let netNonce = 0
       const testAddress = `${prefixTestAddress} - ${Date.now()}`
 
       for (let i = 0; i < 5; i++) {
-        const { nonce, fail } = await txManagerMongo.lock([testAddress])
+        const { nonce, fail } = await txManagerMongo.lock(testAddress, netNonce)
 
         fail()
 
@@ -43,11 +45,12 @@ describe('tx manager only for mongo', () => {
     })
 
     test('txManagerMongo - queue nonce fail/release', async () => {
+      let netNonce = 0
       const testAddress = `${prefixTestAddress} - ${Date.now()}`
-      let nowNetNonce = 0
+      let nowNetNonce = netNonce
 
       for (let i = 0; i < 10; i++) {
-        const { nonce, release, fail } = await txManagerMongo.lock([testAddress])
+        const { nonce, release, fail } = await txManagerMongo.lock(testAddress, netNonce)
 
         if (i % 2 === 0) {
           release()
