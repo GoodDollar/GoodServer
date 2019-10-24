@@ -1,7 +1,8 @@
 import networks from './networks'
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
 
-require('dotenv').config()
+const envFile = process.env.NODE_ENV === 'test' ? `.env.test` : '.env'
+require('dotenv').config({ path: envFile })
 const convict = require('convict')
 
 // Define a schema
@@ -15,7 +16,7 @@ const conf = convict({
   },
   logLevel: {
     doc: 'Log level',
-    format: ['debug', 'error', 'warn', 'info', 'off', 'trace'],
+    format: ['debug', 'error', 'warn', 'info', 'off', 'trace', 'silent'],
     default: 'debug',
     env: 'LOG_LEVEL'
   },
