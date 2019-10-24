@@ -6,7 +6,7 @@ const log = logger.child({ from: 'queueMongo' })
 const MAX_LOCK_TIME = 30 // seconds
 export default class queueMongo {
   constructor() {
-    this.networkId = conf.ethereum.network_id
+    this.networkId = String(conf.ethereum.network_id)
     this.model = WalletNonce
     this.queue = []
     this.nonce = null
@@ -39,12 +39,12 @@ export default class queueMongo {
       let wallet = await this.model.findOneAndUpdate(
         {
           address,
+          networkId: this.networkId,
           $or: [
             { isLock: false },
             {
               lockedAt: { $lte: +new Date() - MAX_LOCK_TIME * 1000 },
-              isLock: true,
-              networkId: this.networkId
+              isLock: true
             }
           ]
         },
@@ -74,7 +74,7 @@ export default class queueMongo {
    */
   async createIfNotExist(address, netNonce) {
     try {
-      let wallet = await this.model.findOne({ address })
+      let wallet = await this.model.findOne({ address, networkId: this.networkId })
 
       if (!wallet) {
         await this.model.create({
@@ -197,7 +197,7 @@ export default class queueMongo {
    * @returns {Boolean}
    */
   async isLocked(address) {
-    const wallet = await this.model.findOne({ address })
+    const wallet = await this.model.findOne({ address, networkId: this.networkId })
 
     return Boolean(wallet && wallet.isLock)
   }
