@@ -462,6 +462,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { user: currentUser } = req
       const isUserWhitelisted = await AdminWallet.isVerified(currentUser.gdAddress)
 
+      log.info('currentUser', currentUser)
+      log.info('isUserWhitelisted', isUserWhitelisted)
+
       if (!isUserWhitelisted) {
         return res.status(200).json({
           ok: 0,
@@ -471,8 +474,13 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       let wallet_token = currentUser.w3Token
 
+      log.info('wallet token from user rec', wallet_token)
+
       if (!wallet_token) {
         const w3Data = await W3Helper.getLoginOrWalletToken(currentUser)
+
+        log.info('wallet token response data from w3 site', w3Data)
+        log.info('wallet token from w3 site', w3Data && w3Data.wallet_token)
 
         if (w3Data && w3Data.wallet_token) {
           wallet_token = w3Data.wallet_token
@@ -489,6 +497,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       const isQueueLocked = await txManager.isLocked(currentUser.gdAddress)
+
+      log.info('Is Queue Locked', isQueueLocked)
 
       if (isQueueLocked) {
         return res.status(200).json({
