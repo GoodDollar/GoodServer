@@ -197,7 +197,7 @@ const conf = convict({
     doc: 'id of email template',
     format: '*',
     env: 'MAUTIC_MAGICLINK_ID',
-    default: '9'
+    default: '30'
   },
   mauticVerifyEmailId: {
     doc: 'id of email template',
@@ -309,6 +309,12 @@ const conf = convict({
     doc: 'Web3 site url',
     format: '*',
     env: 'WEB3_SITE_URL',
+    default: undefined
+  },
+  dappUrl: {
+    doc: 'Dapp site url',
+    format: '*',
+    env: 'DAPP_URL',
     default: undefined
   }
 })

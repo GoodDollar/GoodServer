@@ -43,8 +43,16 @@ export const Mautic = {
     if (!(code && user.fullName && user.mauticId && Config.mauticVerifyEmailId))
       throw new Error('missing input for sending verification email')
 
+    const codeWithSpaces = code
+      .split('')
+      .filter(c => c)
+      .join('     ')
+    const codeBackgroundImgUrl = `${Config.dappUrl}/MagicLinkBackgroundForEmail.png`
+
+    console.log('codeBackgroundImgUrl', codeBackgroundImgUrl)
+
     return this.baseQuery(`/emails/${Config.mauticVerifyEmailId}/contact/${user.mauticId}/send`, this.baseHeaders, {
-      tokens: { code, firstName: user.fullName }
+      tokens: { code: codeWithSpaces, firstName: user.fullName, codeBackgroundImgUrl }
     })
   },
   sendRecoveryEmail(user: UserRecord, mnemonic: string) {
@@ -68,8 +76,12 @@ export const Mautic = {
     if (!(magicLink && user.fullName && user.mauticId && Config.mauticmagicLinkEmailId))
       throw new Error('missing input for sending magicLink email')
 
+    const codeBackgroundImgUrl = `${Config.dappUrl}/MagicLinkBackgroundForEmail.png`
+
+    console.log('codeBackgroundImgUrl2', codeBackgroundImgUrl)
+
     return this.baseQuery(`/emails/${Config.mauticmagicLinkEmailId}/contact/${user.mauticId}/send`, this.baseHeaders, {
-      tokens: { seed: magicLink, firstName: user.fullName }
+      tokens: { link: magicLink, firstName: user.fullName, codeBackgroundImgUrl }
     })
   }
 }

@@ -98,7 +98,7 @@ const setup = (app: Router) => {
   app.post(
     '/send/magiclink',
     passport.authenticate('jwt', { session: false }),
-    onlyInEnv('production', 'staging', 'test'),
+    onlyInEnv('development', 'production', 'staging', 'test'),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'sendAPI - /send/magiclink' })
       const { user } = req
