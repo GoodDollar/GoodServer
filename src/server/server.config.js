@@ -15,7 +15,7 @@ const conf = convict({
   },
   logLevel: {
     doc: 'Log level',
-    format: ['debug', 'error', 'warn', 'info', 'off', 'trace'],
+    format: ['debug', 'error', 'warn', 'info', 'off', 'trace', 'silent'],
     default: 'debug',
     env: 'LOG_LEVEL'
   },
