@@ -92,7 +92,8 @@ const conf = convict({
       'fuse',
       'production',
       'develop',
-      'staging'
+      'staging',
+      'etoro'
     ],
     default: 'develop',
     env: 'NETWORK'
