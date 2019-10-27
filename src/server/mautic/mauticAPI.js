@@ -23,6 +23,7 @@ export const Mautic = {
 
     return Promise.race([Timeout(timeout), fetch(fullUrl, { method, body: JSON.stringify(body), headers })])
       .then(async res => {
+        log.debug(res)
         if (res.status >= 300) throw new Error(await res.text())
         return res.json()
       })
