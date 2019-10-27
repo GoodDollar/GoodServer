@@ -18,7 +18,7 @@ export const Mautic = {
     Authorization: `Bearer ${Config.mauticToken}`,
     'Content-Type': 'application/json'
   },
-  baseQuery(url, headers, body, method = 'post', timeout = 5000) {
+  baseQuery(url, headers, body, method = 'post', timeout = 15000) {
     const fullUrl = `${this.baseUrl}${url}`
 
     return Promise.race([Timeout(timeout), fetch(fullUrl, { method, body: JSON.stringify(body), headers })])
