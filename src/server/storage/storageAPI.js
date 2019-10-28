@@ -5,6 +5,7 @@ import get from 'lodash/get'
 import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync } from '../utils/helpers'
 import { defaults } from 'lodash'
+import jwt from 'jsonwebtoken'
 import fetch from 'cross-fetch'
 import md5 from 'md5'
 import { Mautic } from '../mautic/mauticAPI'
@@ -12,6 +13,17 @@ import conf from '../server.config'
 import AdminWallet from '../blockchain/AdminWallet'
 import { recoverPublickey } from '../utils/eth'
 import zoomHelper from '../verification/faceRecognition/faceRecognitionHelper'
+import crypto from 'crypto'
+
+export const generateMarketToken = (user: UserRecord) => {
+  const token = jwt.sign({ email: user.email, name: user.fullName }, conf.marketPassword)
+  const algorithm = 'aes-256-cbc'
+
+  const cipher = crypto.createCipher('aes-256-cbc', conf.marketPassword)
+  let encrypted = cipher.update(token, 'utf8', 'hex')
+  encrypted += cipher.final('hex')
+  return encrypted
+}
 
 const setup = (app: Router, storage: StorageAPI) => {
   /**
@@ -100,6 +112,11 @@ const setup = (app: Router, storage: StorageAPI) => {
         updateUserObj.loginToken = w3RecordData.login_token
       }
 
+      const marketToken = generateMarketToken(userRecord)
+      if (marketToken) {
+        updateUserObj.marketToken = marketToken
+      }
+
       storage.updateUser(updateUserObj)
 
       //topwallet of user after registration
@@ -113,7 +130,8 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       res.json({
         ...ok,
-        loginToken: w3RecordData && w3RecordData.login_token
+        loginToken: w3RecordData && w3RecordData.login_token,
+        marketToken
       })
     })
   )
