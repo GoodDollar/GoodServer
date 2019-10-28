@@ -43,11 +43,6 @@ export const Mautic = {
     if (!(code && user.fullName && user.mauticId && Config.mauticVerifyEmailId))
       throw new Error('missing input for sending verification email')
 
-    const codeWithSpaces = code
-      .split('')
-      .filter(c => c)
-      .join('     ')
-
     return this.baseQuery(`/emails/${Config.mauticVerifyEmailId}/contact/${user.mauticId}/send`, this.baseHeaders, {
       tokens: { code, firstName: user.fullName }
     })
