@@ -77,10 +77,11 @@ const setup = (app: Router) => {
       const log = req.log.child({ from: 'sendAPI - /send/recoveryinstructions' })
       const { user } = req
       const { mnemonic } = req.body
+      const recoverPageUrl = `${conf.walletUrl}/Auth/Recover`
 
       log.info('sending recovery email', user)
       //at this stage user record should contain all his details
-      await Mautic.sendRecoveryEmail(user, mnemonic)
+      await Mautic.sendRecoveryEmail(user, mnemonic, recoverPageUrl)
       res.json({ ok: 1 })
     })
   )
@@ -98,7 +99,7 @@ const setup = (app: Router) => {
   app.post(
     '/send/magiclink',
     passport.authenticate('jwt', { session: false }),
-    onlyInEnv('development', 'production', 'staging', 'test'),
+    onlyInEnv('production', 'staging', 'test'),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'sendAPI - /send/magiclink' })
       const { user } = req

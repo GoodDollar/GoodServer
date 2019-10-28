@@ -47,15 +47,12 @@ export const Mautic = {
       .split('')
       .filter(c => c)
       .join('     ')
-    const codeBackgroundImgUrl = `${Config.dappUrl}/MagicLinkBackgroundForEmail.png`
-
-    console.log('codeBackgroundImgUrl', codeBackgroundImgUrl)
 
     return this.baseQuery(`/emails/${Config.mauticVerifyEmailId}/contact/${user.mauticId}/send`, this.baseHeaders, {
-      tokens: { code: codeWithSpaces, firstName: user.fullName, codeBackgroundImgUrl }
+      tokens: { code, firstName: user.fullName }
     })
   },
-  sendRecoveryEmail(user: UserRecord, mnemonic: string) {
+  sendRecoveryEmail(user: UserRecord, mnemonic: string, recoverPageUrl: string) {
     if (!(mnemonic && user.fullName && user.mauticId && Config.mauticRecoveryEmailId))
       throw new Error('missing input for sending recovery email')
 
@@ -69,19 +66,15 @@ export const Mautic = {
       .join(' ')
 
     return this.baseQuery(`/emails/${Config.mauticRecoveryEmailId}/contact/${user.mauticId}/send`, this.baseHeaders, {
-      tokens: { firstName: user.fullName, seedFirst: mnemonicFirstPart, seedSecond: mnemonicSecondPart }
+      tokens: { firstName: user.fullName, seedFirst: mnemonicFirstPart, seedSecond: mnemonicSecondPart, recoverPageUrl }
     })
   },
   sendMagicLinkEmail(user: UserRecord, magicLink: string) {
     if (!(magicLink && user.fullName && user.mauticId && Config.mauticmagicLinkEmailId))
       throw new Error('missing input for sending magicLink email')
 
-    const codeBackgroundImgUrl = `${Config.dappUrl}/MagicLinkBackgroundForEmail.png`
-
-    console.log('codeBackgroundImgUrl2', codeBackgroundImgUrl)
-
     return this.baseQuery(`/emails/${Config.mauticmagicLinkEmailId}/contact/${user.mauticId}/send`, this.baseHeaders, {
-      tokens: { link: magicLink, firstName: user.fullName, codeBackgroundImgUrl }
+      tokens: { link: magicLink, firstName: user.fullName }
     })
   }
 }

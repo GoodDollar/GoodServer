@@ -203,7 +203,7 @@ const conf = convict({
     doc: 'id of email template',
     format: '*',
     env: 'MAUTIC_VERIFY_ID',
-    default: '4'
+    default: '31'
   },
   zoomURL: {
     doc: 'Zoom Client URL',
@@ -309,12 +309,6 @@ const conf = convict({
     doc: 'Web3 site url',
     format: '*',
     env: 'WEB3_SITE_URL',
-    default: undefined
-  },
-  dappUrl: {
-    doc: 'Dapp site url',
-    format: '*',
-    env: 'DAPP_URL',
     default: undefined
   }
 })
