@@ -269,7 +269,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
     '/verify/sendemail',
     passport.authenticate('jwt', { session: false }),
-    onlyInEnv('development', 'production', 'staging', 'test'),
+    onlyInEnv('production', 'staging', 'test'),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/sendemail' })
 
