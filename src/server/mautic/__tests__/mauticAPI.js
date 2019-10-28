@@ -47,7 +47,7 @@ describe('Send', () => {
         fullName: 'h r',
         mauticId
       },
-      'https://gooddapp.com/?magicline=testmagiclink'
+      'https://gooddapp.com/?magiclink=testmagiclink'
     )
     expect(res).toEqual({ success: true })
   })

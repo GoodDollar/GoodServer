@@ -108,7 +108,7 @@ describe('sendAPÏ', () => {
     await request(server)
       .post('/send/magiclink')
       .send({
-        magiclink: 'unit test magicLine'
+        magiclink: 'unit test magicLink'
       })
       .set('Authorization', `Bearer ${token}`)
       .expect(200, { ok: 1 })
