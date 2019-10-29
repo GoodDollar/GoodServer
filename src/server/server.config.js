@@ -15,7 +15,7 @@ const conf = convict({
   },
   logLevel: {
     doc: 'Log level',
-    format: ['debug', 'error', 'warn', 'info', 'off', 'trace'],
+    format: ['debug', 'error', 'warn', 'info', 'off', 'trace', 'silent'],
     default: 'debug',
     env: 'LOG_LEVEL'
   },
@@ -203,13 +203,13 @@ const conf = convict({
     doc: 'id of email template',
     format: '*',
     env: 'MAUTIC_MAGICLINK_ID',
-    default: '9'
+    default: '30'
   },
   mauticVerifyEmailId: {
     doc: 'id of email template',
     format: '*',
     env: 'MAUTIC_VERIFY_ID',
-    default: '4'
+    default: '31'
   },
   zoomURL: {
     doc: 'Zoom Client URL',
