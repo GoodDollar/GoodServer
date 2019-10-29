@@ -3,6 +3,7 @@
  */
 
 import { Mautic } from '../mauticAPI'
+import conf from '../../server.config'
 
 describe('Send', () => {
   var mauticId = ''
@@ -25,18 +26,20 @@ describe('Send', () => {
         fullName: 'hadar r',
         mauticId
       },
-      'https://gooddapp.com/?verification=2345'
+      '745231'
     )
     expect(res).toEqual({ success: true })
   })
 
   it('should send recovery email', async () => {
+    const recoverPageUrl = `${conf.walletUrl}/Auth/Recover`
     const res = await Mautic.sendRecoveryEmail(
       {
         fullName: 'h r',
         mauticId
       },
-      'test seed phrase'
+      'red brave onion car photo label loop lazy massive fart test rank',
+      recoverPageUrl
     )
     expect(res).toEqual({ success: true })
   })

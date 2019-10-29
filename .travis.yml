@@ -10,7 +10,6 @@ env:
     - MNEMONIC="choice congress hobby buddy dutch busy army eager empty solution start grunt"
     - PRIVATE_KEY=0x4a82fd2f72fe7a1f4258a3f091ecc06d4d523efc20fd4d0ce21c8bed799088c1
     - NETWORK=develop
-    - LOG_LEVEL=trace
 
 before_install:
   - npm install -g ganache-cli truffle webpack
@@ -25,6 +24,6 @@ before_script:
 
 script:
   - npm link @gooddollar/goodcontracts
-  - npm run coverage
+  - npm run coverage -- --silent
   - npm run coveralls
   - npm run build

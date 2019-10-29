@@ -54,7 +54,7 @@ describe('sendAPÏ', () => {
     const user = await UserDBPrivate.updateUser({
       identifier: '0x7ac080f6607405705aed79675789701a48c76f55',
       fullName: 'full name',
-      mauticId: 3461
+      mauticId: 5151
     })
 
     expect(user).toBeDefined()
@@ -100,7 +100,7 @@ describe('sendAPÏ', () => {
     const user = await UserDBPrivate.updateUser({
       identifier: '0x7ac080f6607405705aed79675789701a48c76f55',
       fullName: 'full name',
-      mauticId: 3461
+      mauticId: 5151
     })
 
     expect(user).toBeDefined()

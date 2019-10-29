@@ -45,7 +45,9 @@ const setup = (app: Router, storage: StorageAPI) => {
       })
 
       if (conf.disableFaceVerification) {
-        AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey)
+        AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey).catch(e =>
+          log.error('failed whitelisting', userRecord)
+        )
       }
 
       let mauticRecordPromise = Promise.resolve({})

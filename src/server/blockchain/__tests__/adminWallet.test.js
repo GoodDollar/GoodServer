@@ -4,6 +4,14 @@ jest.setTimeout(10000)
 beforeAll(async () => {
   await AdminWallet.ready
 })
+
+test(`adminWallet top wallet shouldn't throws an error when user is not whitelisted/verified`, async () => {
+  const unverifiedAddress = '0xC8282816Bbbb5A417762feE6e736479D4809D129'
+  const blacklist = await AdminWallet.blacklistUser(unverifiedAddress)
+  const tx = await AdminWallet.topWallet(unverifiedAddress, null).catch(e => false)
+  expect(tx).toBeTruthy()
+})
+
 test('adminWallet constructor works', async () => {
   expect(AdminWallet.address).not.toBeNull()
 })
