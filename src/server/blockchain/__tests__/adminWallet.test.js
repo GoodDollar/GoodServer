@@ -47,7 +47,6 @@ test(`adminWallet top wallet shouldn't throws an error when user is not whitelis
 })
 
 test('adminWallet receive queue nonce', async () => {
-  const unverifiedAddress = generateWalletAddress()
   for (let i = 0; i < 5; i++) {
     const unverifiedAddress = generateWalletAddress()
     // console.log('unverifiedAddress', unverifiedAddress)
