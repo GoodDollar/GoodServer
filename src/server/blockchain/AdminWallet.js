@@ -116,14 +116,6 @@ export class Wallet {
         let addrNode = root.derive(path)
         let account = this.web3.eth.accounts.privateKeyToAccount('0x' + addrNode._privateKey.toString('hex'))
         this.addWallet(account)
-
-        // let path = "m/44'/60'/0'/0/" + i
-        // let addrNode = root.derive(path)
-        // let privateKeyBuffer = Buffer.from(addrNode._privateKey, 'hex')
-        // let wallet = Wallet.fromPrivateKey(privateKeyBuffer)
-        // let address = wallet.getAddressString()
-        // this.addresses.push(address)
-        // this.wallets[address] = wallet
       }
       log.debug('Initialized by mnemonic:', this.addresses)
     }
