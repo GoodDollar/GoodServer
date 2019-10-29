@@ -1,9 +1,17 @@
 import AdminWallet from '../AdminWallet'
 
-jest.setTimeout(100000)
+jest.setTimeout(10000)
 beforeAll(async () => {
   await AdminWallet.ready
 })
+
+test(`adminWallet top wallet shouldn't throws an error when user is not whitelisted/verified`, async () => {
+  const unverifiedAddress = '0xC8282816Bbbb5A417762feE6e736479D4809D129'
+  const blacklist = await AdminWallet.blacklistUser(unverifiedAddress)
+  const tx = await AdminWallet.topWallet(unverifiedAddress, null).catch(e => false)
+  expect(tx).toBeTruthy()
+})
+
 test('adminWallet constructor works', async () => {
   expect(AdminWallet.address).not.toBeNull()
 })
@@ -27,12 +35,6 @@ test('adminWallet throws exception', async () => {
 test('adminWallet get balance correctly', async () => {
   const balance = await AdminWallet.getBalance()
   expect(balance > 0).toBeTruthy()
-})
-
-test(`adminWallet top wallet shouldn't throws an error when user is not whitelisted/verified`, async () => {
-  const unverifiedAddress = '0x5d1b321087c9273c7efb0815c43c019df180fa56'
-  await AdminWallet.blacklistUser(unverifiedAddress)
-  await expect(AdminWallet.topWallet(unverifiedAddress, null)).toBeTruthy()
 })
 
 test('adminWallet receive queue nonce', async () => {
