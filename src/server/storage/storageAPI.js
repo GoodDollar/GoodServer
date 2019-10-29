@@ -39,11 +39,13 @@ const setup = (app: Router, storage: StorageAPI) => {
       )
         throw new Error('User email or mobile not verified!')
 
-      const bodyUser = body.user
+      const { email, mobile, ...bodyUser } = body.user
 
       const user: UserRecord = defaults(bodyUser, {
         identifier: userRecord.loggedInAs,
-        createdDate: new Date().toString()
+        createdDate: new Date().toString(),
+        email: userRecord.otp.email,
+        mobile: userRecord.otp.mobile
       })
 
       if (conf.disableFaceVerification) {
