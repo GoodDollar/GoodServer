@@ -188,7 +188,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
         if (verified === false) return
 
-        await storage.updateUser({ identifier: user.loggedInAs, smsValidated: true, mobile: savedMobile })
+        await storage.updateUser({ identifier: user.loggedInAs, smsValidated: true })
       }
 
       const signedMobile = await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: savedMobile })
@@ -342,7 +342,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         await verifier.verifyEmail({ identifier: user.loggedInAs }, verificationData)
 
         // if verification succeeds, then set the flag `isEmailConfirmed` to true in the user's record
-        await storage.updateUser({ identifier: user.loggedInAs, isEmailConfirmed: true, email: savedEmail })
+        await storage.updateUser({ identifier: user.loggedInAs, isEmailConfirmed: true })
       }
       const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: savedEmail })
 
