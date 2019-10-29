@@ -44,8 +44,8 @@ const setup = (app: Router, storage: StorageAPI) => {
       const user: UserRecord = defaults(bodyUser, {
         identifier: userRecord.loggedInAs,
         createdDate: new Date().toString(),
-        email: userRecord.otp.email,
-        mobile: userRecord.otp.mobile
+        email: get('userRecord', 'otp.email', email), //for development/test use email from body
+        mobile: get('userRecord', 'otp.mobile', email) //for development/test use moveil from body
       })
 
       if (conf.disableFaceVerification) {
