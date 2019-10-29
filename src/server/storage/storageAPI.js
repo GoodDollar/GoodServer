@@ -39,7 +39,8 @@ const setup = (app: Router, storage: StorageAPI) => {
       )
         throw new Error('User email or mobile not verified!')
 
-      const { email, mobile, ...bodyUser } = body.user
+      const bodyUser = body.user
+
       const user: UserRecord = defaults(bodyUser, {
         identifier: userRecord.loggedInAs,
         createdDate: new Date().toString()
