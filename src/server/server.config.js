@@ -316,7 +316,7 @@ const conf = convict({
     doc: 'password for market jwt',
     format: String,
     env: 'MARKET_PASSWORD',
-    default: undefined
+    default: null
   }
 })
 
