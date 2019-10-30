@@ -235,7 +235,7 @@ export class Wallet {
       let userBalance = await this.web3.eth.getBalance(address)
       let toTop = parseInt(web3Utils.toWei('1000000', 'gwei')) - userBalance
       log.debug('TopWallet:', { userBalance, toTop })
-      if (force || toTop / 1000000 >= 0.75) {
+      if (toTop > 0 && (force || toTop / 1000000 >= 0.75)) {
         let res = await this.sendNative({
           from: this.address,
           to: address,
@@ -246,7 +246,8 @@ export class Wallet {
         log.debug('Topwallet result:', res)
         return res
       }
-      throw new Error("User doesn't need topping")
+      log.debug("User doesn't need topping")
+      return { status: 1 }
     } catch (e) {
       log.error('Error topWallet', { e }, e.message)
       throw e

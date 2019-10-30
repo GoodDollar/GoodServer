@@ -52,13 +52,18 @@ const setup = (app: Router, storage: StorageAPI) => {
         throw new Error('User email or mobile not verified!')
 
       const { email, mobile, ...bodyUser } = body.user
+
       const user: UserRecord = defaults(bodyUser, {
         identifier: userRecord.loggedInAs,
-        createdDate: new Date().toString()
+        createdDate: new Date().toString(),
+        email: get('userRecord', 'otp.email', email), //for development/test use email from body
+        mobile: get('userRecord', 'otp.mobile', email) //for development/test use moveil from body
       })
 
       if (conf.disableFaceVerification) {
-        AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey)
+        AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey).catch(e =>
+          log.error('failed whitelisting', userRecord)
+        )
       }
 
       let mauticRecordPromise = Promise.resolve({})
