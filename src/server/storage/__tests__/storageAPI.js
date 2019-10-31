@@ -32,24 +32,51 @@ describe('storageAPI', () => {
     expect(res).toMatchObject({ status: 200, body: { ok: 1 } })
   })
 
-  test('/user/add creds dont update mauticId', async () => {
+  test('/user/add with duplicated creds - should fail with error', async () => {
     const token = await getToken(server)
-    const mauticId = '111'
-    await UserDBPrivate.updateUser({ identifier: '0x7ac080f6607405705aed79675789701a48c76f55', mauticId: mauticId })
     const user: UserRecord = {
       identifier: '0x7ac080f6607405705aed79675789701a48c76f55',
       email: 'useraddtest@gooddollar.org' // required for mautic create contact
     }
+
     let res = await request(server)
       .post('/user/add')
       .set('Authorization', `Bearer ${token}`)
       .send({ user })
+
+    expect(res).toMatchObject({
+      status: 400,
+      body: { message: 'You cannot create more than 1 account with the same credentials' }
+    })
+  })
+
+  test('/user/add creds dont update mauticId', async () => {
+    const token = await getToken(server)
+    const mauticId = '111'
+
+    await UserDBPrivate.updateUser({
+      identifier: '0x7ac080f6607405705aed79675789701a48c76f55',
+      mauticId: mauticId,
+      createdDate: null
+    })
+
+    const user: UserRecord = {
+      identifier: '0x7ac080f6607405705aed79675789701a48c76f55',
+      email: 'useraddtest@gooddollar.org' // required for mautic create contact
+    }
+
+    let res = await request(server)
+      .post('/user/add')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ user })
+
     expect(res).toMatchObject({ status: 200, body: { ok: 1 } })
 
     const mauticIdAfterAddUser = await UserDBPrivate.getUserField(
       '0x7ac080f6607405705aed79675789701a48c76f55',
       'mauticId'
     )
+
     expect(mauticIdAfterAddUser === mauticId).toBeTruthy()
   })
 
