@@ -39,20 +39,19 @@ const setup = (app: Router, storage: StorageAPI) => {
       )
         throw new Error('User email or mobile not verified!')
 
-      const { email } = body.user
-      const isDuplicatedEmail = await storage.isDupUserData({ email })
+      const { email, mobile, ...bodyUser } = body.user
 
-      if (!conf.allowDuplicateUserData && isDuplicatedEmail) {
-        throw new Error('This email is already in use')
-      }
-
-      const user: UserRecord = defaults(body.user, {
+      const user: UserRecord = defaults(bodyUser, {
         identifier: userRecord.loggedInAs,
-        createdDate: new Date().toString()
+        createdDate: new Date().toString(),
+        email: get('userRecord', 'otp.email', email), //for development/test use email from body
+        mobile: get('userRecord', 'otp.mobile', mobile) //for development/test use mobile from body
       })
 
       if (conf.disableFaceVerification) {
-        AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey)
+        AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey).catch(e =>
+          log.error('failed whitelisting', userRecord)
+        )
       }
 
       let mauticRecordPromise = Promise.resolve({})
