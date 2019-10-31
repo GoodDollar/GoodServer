@@ -17,12 +17,13 @@ import crypto from 'crypto'
 
 export const generateMarketToken = (user: UserRecord) => {
   const token = jwt.sign({ email: user.email, name: user.fullName }, conf.marketPassword)
-  const algorithm = 'aes-256-cbc'
-
   const cipher = crypto.createCipher('aes-256-cbc', conf.marketPassword)
-  let encrypted = cipher.update(token, 'utf8', 'hex')
-  encrypted += cipher.final('hex')
+  let encrypted = cipher.update(token, 'utf8', 'base64')
+  encrypted += cipher.final('base64')
   return encrypted
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '')
 }
 
 const setup = (app: Router, storage: StorageAPI) => {
