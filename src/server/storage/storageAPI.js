@@ -51,13 +51,17 @@ const setup = (app: Router, storage: StorageAPI) => {
       )
         throw new Error('User email or mobile not verified!')
 
+      if (!conf.allowDuplicateUserData && userRecord.createdDate) {
+        throw new Error('You cannot create more than 1 account with the same credentials')
+      }
+
       const { email, mobile, ...bodyUser } = body.user
 
       const user: UserRecord = defaults(bodyUser, {
         identifier: userRecord.loggedInAs,
         createdDate: new Date().toString(),
-        email: get('userRecord', 'otp.email', email), //for development/test use email from body
-        mobile: get('userRecord', 'otp.mobile', email) //for development/test use moveil from body
+        email: get(userRecord, 'otp.email', email), //for development/test use email from body
+        mobile: get(userRecord, 'otp.mobile', mobile) //for development/test use mobile from body
       })
 
       if (conf.disableFaceVerification) {

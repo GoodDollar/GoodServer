@@ -317,6 +317,18 @@ const conf = convict({
     format: String,
     env: 'MARKET_PASSWORD',
     default: null
+  },
+  rateLimitMinutes: {
+    doc: 'Amount of minutes used for request rate limiter',
+    format: '*',
+    env: 'REQUEST_RATE_LIMIT_MINUTES',
+    default: 1
+  },
+  rateLimitRequestsCount: {
+    doc: 'Max number of requests count per rateLimitMinutes',
+    format: '*',
+    env: 'REQUEST_RATE_LIMIT_COUNT',
+    default: 3
   }
 })
 
