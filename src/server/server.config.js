@@ -312,6 +312,18 @@ const conf = convict({
     format: 'url',
     env: 'WEB3_SITE_URL',
     default: 'https://w3.gooddollar.org'
+  },
+  rateLimitMinutes: {
+    doc: 'Amount of minutes used for request rate limiter',
+    format: '*',
+    env: 'REQUEST_RATE_LIMIT_MINUTES',
+    default: 1
+  },
+  rateLimitRequestsCount: {
+    doc: 'Max number of requests count per rateLimitMinutes',
+    format: '*',
+    env: 'REQUEST_RATE_LIMIT_COUNT',
+    default: 3
   }
 })
 

@@ -64,6 +64,20 @@ describe('verificationAPI', () => {
       .expect(200, { ok: 1, onlyInEnv: { current: 'test', onlyIn: ['production', 'staging'] } })
   })
 
+  test('/verify/sendotp should fail with 429 status - too many requests (rate limiter)', async () => {
+    let isFailsWithRateLimit = false
+
+    while (!isFailsWithRateLimit) {
+      const res = await request(server).post('/verify/sendotp')
+
+      if (res.status === 429) {
+        isFailsWithRateLimit = true
+      }
+    }
+
+    expect(isFailsWithRateLimit).toBeTruthy()
+  })
+
   test('/verify/sendemail with creds', async () => {
     const token = await getToken(server)
 
@@ -92,6 +106,37 @@ describe('verificationAPI', () => {
     const dbUser = await UserDBPrivate.getUser('0x7ac080f6607405705aed79675789701a48c76f55')
 
     expect(dbUser.emailVerificationCode).toBeTruthy()
+  })
+
+  test('/verify/sendemail should fail with 429 status - too many requests (rate limiter)', async () => {
+    const token = await getToken(server)
+
+    await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
+
+    const user = await UserDBPrivate.updateUser({
+      identifier: '0x7ac080f6607405705aed79675789701a48c76f55',
+      fullName: 'test_user_sendemail'
+    })
+
+    expect(user).toBeTruthy()
+    let isFailsWithRateLimit = false
+
+    while (!isFailsWithRateLimit) {
+      const res = await request(server)
+        .post('/verify/sendemail')
+        .send({
+          user: {
+            fullName: 'h r',
+            email: 'johndoe@gooddollar.org'
+          }
+        })
+
+      if (res.status === 429) {
+        isFailsWithRateLimit = true
+      }
+    }
+
+    expect(isFailsWithRateLimit).toBeTruthy()
   })
 
   test('/verify/w3/email without auth creds -> 401', () => {

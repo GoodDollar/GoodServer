@@ -43,6 +43,9 @@ export const UserPrivateSchema = new mongoose.Schema({
   },
   emailVerificationCode: {
     type: String
+  },
+  createdDate: {
+    type: Date
   }
 })
 

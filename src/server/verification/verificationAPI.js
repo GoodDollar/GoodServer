@@ -6,6 +6,7 @@ import multer from 'multer'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
+import requestRateLimiter from '../utils/requestRateLimiter'
 import fuseapi from '../utils/fuseapi'
 import { sendOTP, generateOTP } from '../../imports/otp'
 import conf from '../server.config'
@@ -116,6 +117,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    */
   app.post(
     '/verify/sendotp',
+    requestRateLimiter(),
     passport.authenticate('jwt', { session: false }),
     onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res, next) => {
@@ -269,6 +271,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    */
   app.post(
     '/verify/sendemail',
+    requestRateLimiter(),
     passport.authenticate('jwt', { session: false }),
     onlyInEnv('production', 'staging', 'test'),
     wrapAsync(async (req, res, next) => {
