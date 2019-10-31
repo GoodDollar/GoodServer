@@ -67,6 +67,18 @@ const conf = convict({
     env: 'NUMBER_OF_ADMIN_WALLET_ACCOUNTS',
     default: 10
   },
+  topWalletMinBalance: {
+    doc: 'Top wallet min balance in GWEIs',
+    format: Number,
+    env: 'TOP_WALLET_MIN_BALANCE',
+    default: 100000
+  },
+  mongoQueueMaxLockTime: {
+    doc: 'Max lock time for one each in mongo queue in seconds',
+    format: Number,
+    env: 'MONGO_QUEUE_MAX_LOCK_TIME',
+    default: 30
+  },
   privateKey: {
     doc: 'Wallet private key',
     format: '*',

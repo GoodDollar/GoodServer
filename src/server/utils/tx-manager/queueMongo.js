@@ -3,7 +3,6 @@ import logger from '../../../imports/pino-logger'
 import conf from '../../server.config'
 
 const log = logger.child({ from: 'queueMongo' })
-const MAX_LOCK_TIME = 30 // seconds
 export default class queueMongo {
   constructor() {
     this.networkId = String(conf.ethereum.network_id)
@@ -46,7 +45,7 @@ export default class queueMongo {
         $or: [
           { isLock: false },
           {
-            lockedAt: { $lte: +new Date() - MAX_LOCK_TIME * 1000 },
+            lockedAt: { $lte: +new Date() - conf.mongoQueueMaxLockTime * 1000 },
             isLock: true
           }
         ]
@@ -58,7 +57,7 @@ export default class queueMongo {
       }
       this.reRunQueue = setTimeout(() => {
         this.run()
-      }, MAX_LOCK_TIME * 1000)
+      }, conf.mongoQueueMaxLockTime * 1000)
       return wallet
     } catch (e) {
       log.error('TX queueMongo (getWalletNonce)', e)
