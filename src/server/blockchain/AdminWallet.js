@@ -24,7 +24,6 @@ const log = logger.child({ from: 'AdminWallet' })
 const defaultGas = 100000
 const defaultGasPrice = web3Utils.toWei('1', 'gwei')
 const minBalance = web3Utils.toWei(String(conf.topWalletMinBalance), 'gwei')
-
 /**
  * Exported as AdminWallet
  * Interface with blockchain contracts via web3 using HDWalletProvider
@@ -185,7 +184,6 @@ export class Wallet {
         moment().subtract(1, 'day'),
         true
       )
-
       log.info('wallet tests:', { whitelist: whitelistTest.status, topwallet: topwalletTest.status })
     } catch (e) {
       log.error('Error initializing wallet', { e }, e.message)
@@ -258,9 +256,9 @@ export class Wallet {
     if (conf.env !== 'development' && daysAgo < 1) throw new Error('Daily limit reached')
     try {
       let userBalance = await this.web3.eth.getBalance(address)
-      let toTop = parseInt(minBalance) - userBalance
+      let toTop = parseInt(web3Utils.toWei('1000000', 'gwei')) - userBalance
       log.debug('TopWallet:', { userBalance, toTop })
-      if (toTop > 0 && (force || toTop / conf.topWalletMinBalance >= 0.75)) {
+      if (toTop > 0 && (force || toTop / 1000000 >= 0.75)) {
         let res = await this.sendNative({
           from: this.address,
           to: address,
