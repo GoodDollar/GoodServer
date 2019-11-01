@@ -313,6 +313,12 @@ const conf = convict({
     env: 'WEB3_SITE_URL',
     default: 'https://w3.gooddollar.org'
   },
+  marketPassword: {
+    doc: 'password for market jwt',
+    format: String,
+    env: 'MARKET_PASSWORD',
+    default: null
+  },
   rateLimitMinutes: {
     doc: 'Amount of minutes used for request rate limiter',
     format: '*',

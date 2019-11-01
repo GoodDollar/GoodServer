@@ -157,7 +157,8 @@ export class Wallet {
         gdbalance,
         nativebalance,
         network: this.networkId,
-        nonce: this.nonce
+        nonce: this.nonce,
+        ContractsAddress
       })
       await this.removeWhitelisted('0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63').catch(_ => _)
       const whitelistTest = await this.whitelistUser('0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63', 'x')

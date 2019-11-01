@@ -4,7 +4,7 @@ import makeServer from '../../server-test'
 import { getToken } from '../../__util__/'
 import type { UserRecord } from '../../../imports/types'
 import UserDBPrivate from '../../db/mongo/user-privat-provider'
-
+import { generateMarketToken } from '../storageAPI'
 jest.setTimeout(30000)
 describe('storageAPI', () => {
   let server
@@ -69,8 +69,7 @@ describe('storageAPI', () => {
       .post('/user/add')
       .set('Authorization', `Bearer ${token}`)
       .send({ user })
-
-    expect(res).toMatchObject({ status: 200, body: { ok: 1 } })
+    expect(res).toMatchObject({ status: 200, body: { ok: 1, marketToken: expect.any(String) } })
 
     const mauticIdAfterAddUser = await UserDBPrivate.getUserField(
       '0x7ac080f6607405705aed79675789701a48c76f55',
