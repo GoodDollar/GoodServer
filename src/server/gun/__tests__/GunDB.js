@@ -1,14 +1,14 @@
 /**
  * @jest-environment node
  */
-import { GunDB, GunDBPublic } from '../gun-middleware'
+import { GunDB } from '../gun-middleware'
 import SEA from 'gun/sea'
 
 const storage = new GunDB()
 describe('GunDB', () => {
   beforeAll(async () => {
-    await storage.init(null, 'test', 'testdb')
-    await GunDBPublic.ready
+    storage.init(null, 'test', 'testdb')
+    await storage.ready
   })
 
   it('Should init correctly without s3', async () => {

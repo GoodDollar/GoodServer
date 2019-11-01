@@ -91,7 +91,7 @@ const setup = (app: Router) => {
    * @apiName Recovery Instructions
    * @apiGroup Send
    *
-   * @apiParam {String} magicLine
+   * @apiParam {url} magiclink
    *
    * @apiSuccess {Number} ok
    * @ignore

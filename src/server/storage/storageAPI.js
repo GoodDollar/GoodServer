@@ -5,13 +5,12 @@ import get from 'lodash/get'
 import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync } from '../utils/helpers'
 import { defaults } from 'lodash'
-import fetch from 'cross-fetch'
-import md5 from 'md5'
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import AdminWallet from '../blockchain/AdminWallet'
 import { recoverPublickey } from '../utils/eth'
 import zoomHelper from '../verification/faceRecognition/faceRecognitionHelper'
+import * as W3Helper from '../utils/W3Helper'
 
 const setup = (app: Router, storage: StorageAPI) => {
   /**
@@ -69,28 +68,9 @@ const setup = (app: Router, storage: StorageAPI) => {
               })
       }
 
-      const secureHash = md5(user.email + conf.secure_key)
+      const w3RecordPromise = W3Helper.registerUser(user)
 
-      log.debug('secureHash', secureHash)
-
-      const web3RecordPromise = fetch(`${conf.web3SiteUrl}/api/wl/user`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          secure_hash: secureHash.toLowerCase(),
-          email: user.email,
-          full_name: user.fullName,
-          wallet_address: user.gdAddress
-        })
-      })
-        .then(res => res.json())
-        .catch(e => {
-          log.error('Get Web3 Login Response Failed', e)
-        })
-
-      const [mauticRecord, web3Record] = await Promise.all([mauticRecordPromise, web3RecordPromise])
+      const [mauticRecord, web3Record] = await Promise.all([mauticRecordPromise, w3RecordPromise])
 
       log.debug('Web3 user record', web3Record)
 
@@ -103,10 +83,12 @@ const setup = (app: Router, storage: StorageAPI) => {
         mauticId
       }
 
-      const w3RecordData = web3Record && web3Record.data
+      if (web3Record && web3Record.login_token) {
+        updateUserObj.loginToken = web3Record.login_token
+      }
 
-      if (w3RecordData && w3RecordData.login_token) {
-        updateUserObj.loginToken = w3RecordData.login_token
+      if (web3Record && web3Record.wallet_token) {
+        updateUserObj.w3Token = web3Record.wallet_token
       }
 
       storage.updateUser(updateUserObj)
@@ -122,7 +104,8 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       res.json({
         ...ok,
-        loginToken: w3RecordData && w3RecordData.login_token
+        loginToken: web3Record && web3Record.login_token,
+        w3Token: web3Record && web3Record.wallet_token
       })
     })
   )

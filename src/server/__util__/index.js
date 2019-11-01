@@ -11,7 +11,8 @@ export const getCreds = () => {
     profilePublickey: 'lK-f6i-QPHwyxxUOKc4uaubfpTC1TW8oLLCRmv9z9tU.CjtOQSI2XqitheQZLdVlHc09gkm_d2IRz4LRAL6GmFU',
     profileSignature:
       'SEA{"m":"Login to GoodDAPP","s":"tNknsunS9psSLQDr/nFeobeHWdROtu3kEHgjHFSkreLFkgmHJPy/E3fm6llN1QOsNtfE12WTs4k1mOEE/H1AWw=="}',
-    nonce: ''
+    nonce: '',
+    networkId: 4447
   }
   return creds
 }

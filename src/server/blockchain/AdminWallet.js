@@ -5,6 +5,7 @@ import bip39 from 'bip39-light'
 import type { HttpProvider, WebSocketProvider } from 'web3-providers'
 import IdentityABI from '@gooddollar/goodcontracts/build/contracts/Identity.json'
 import GoodDollarABI from '@gooddollar/goodcontracts/build/contracts/GoodDollar.json'
+import SignUpBonusABI from '@gooddollar/goodcontracts/build/contracts/SignUpBonus.json'
 import UBIABI from '@gooddollar/goodcontracts/build/contracts/FixedUBI.json'
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
 import conf from '../server.config'
@@ -36,6 +37,8 @@ export class Wallet {
   identityContract: Web3.eth.Contract
 
   UBIContract: Web3.eth.Contract
+
+  signUpBonusContract: Web3.eth.Contract
 
   address: string
 
@@ -113,11 +116,29 @@ export class Wallet {
         gasPrice: web3Utils.toWei('1', 'gwei')
       }
     )
+
+    this.signUpBonusContract = new this.web3.eth.Contract(
+      SignUpBonusABI.abi,
+      get(ContractsAddress, `${this.network}.SignupBonus`),
+      {
+        from: this.address,
+        gas: 500000,
+        gasPrice: web3Utils.toWei('1', 'gwei')
+      }
+    )
+
+    this.UBIContract = new this.web3.eth.Contract(UBIABI.abi, get(ContractsAddress, `${this.network}.UBI`), {
+      from: this.address,
+      gas: 500000,
+      gasPrice: web3Utils.toWei('1', 'gwei')
+    })
+
     this.UBIContract = new this.web3.eth.Contract(UBIABI.abi, get(ContractsAddress, `${this.network}.FixedUBI`), {
       from: this.address,
       gas: 500000,
       gasPrice: web3Utils.toWei('1', 'gwei')
     })
+
     this.tokenContract = new this.web3.eth.Contract(
       GoodDollarABI.abi,
       get(ContractsAddress, `${this.network}.GoodDollar`),
@@ -138,7 +159,7 @@ export class Wallet {
         network: this.networkId,
         nonce: this.nonce
       })
-      const removeTest = await this.removeWhitelisted('0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63').catch(_ => _)
+      await this.removeWhitelisted('0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63').catch(_ => _)
       const whitelistTest = await this.whitelistUser('0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63', 'x')
       const topwalletTest = await this.topWallet(
         '0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63',
@@ -154,12 +175,31 @@ export class Wallet {
   }
 
   /**
+   * charge bonuses for user via `bonus` contract
+   * @param {string} address
+   * @param {string} amountInWei
+   * @param {object} event callbacks
+   * @returns {Promise<String>}
+   */
+  async redeemBonuses(address: string, amountInWei: string, { onReceipt, onTransactionHash, onError }): Promise<any> {
+    this.sendTransaction(this.signUpBonusContract.methods.awardUser(address, amountInWei), {
+      onTransactionHash,
+      onReceipt,
+      onError
+    })
+  }
+
+  /**
    * whitelist an user in the `Identity` contract
    * @param {string} address
    * @param {string} did
    * @returns {Promise<TransactionReceipt>}
    */
-  async whitelistUser(address: string, did: string): Promise<TransactionReceipt> {
+  async whitelistUser(address: string, did: string): Promise<TransactionReceipt | boolean> {
+    const isVerified = await this.isVerified(address)
+    if (isVerified) {
+      return true
+    }
     const tx: TransactionReceipt = await this.sendTransaction(
       this.identityContract.methods.addWhitelistedWithDID(address, did)
     ).catch(e => {
@@ -292,7 +332,7 @@ export class Wallet {
   ) {
     try {
       const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
-      gas = gas || (await tx.estimateGas())
+      gas = gas || (await tx.estimateGas().catch(e => log.error('Failed to estimate gas for tx', e.message, e)))
       gasPrice = gasPrice || this.gasPrice
       let netNonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
       const { nonce, release, fail } = await txManager.lock(this.address, netNonce)
@@ -354,7 +394,6 @@ export class Wallet {
       gasPrice = gasPrice || this.gasPrice
 
       let netNonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
-
       const { nonce, release, fail } = await txManager.lock(this.address, netNonce)
 
       return new Promise((res, rej) => {
@@ -372,7 +411,9 @@ export class Wallet {
             onConfirmation && onConfirmation(c)
           })
           .on('error', async e => {
+            log.error('sendNative failed', e.message, e)
             if (isNonceError(e)) {
+              log.debug('sendNative retrying after nonce error', params)
               netNonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
               await txManager.unlock(this.address, netNonce)
               try {

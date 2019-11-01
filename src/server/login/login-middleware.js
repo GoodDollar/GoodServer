@@ -83,7 +83,12 @@ const setup = (app: Router) => {
       const profileSignature = req.body.profileSignature
       const nonce = req.body.nonce
       const method = req.body.method
+      const networkId = req.body.networkId
 
+      if (networkId !== Config.ethereum.network_id) {
+        log.error('/auth/eth', 'Networkd id mismatch', { client: networkId, server: Config.ethereum.network_id })
+        throw new Error('Network ID mismatch')
+      }
       log.debug('/auth/eth', { signature, method })
 
       const msg = 'Login to GoodDAPP'

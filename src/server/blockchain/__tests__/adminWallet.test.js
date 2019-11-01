@@ -17,24 +17,30 @@ test('adminWallet constructor works', async () => {
 })
 
 test('adminWallet can whitelist user', async () => {
+  await AdminWallet.removeWhitelisted('0x888185b656fe770677a91412f9f09B23A787242A').catch(_ => _)
   const tx = await AdminWallet.whitelistUser('0x888185b656fe770677a91412f9f09B23A787242A', 'did:gd')
   const isVerified = await AdminWallet.isVerified('0x888185b656fe770677a91412f9f09B23A787242A')
   expect(isVerified).toBeTruthy()
 })
 
 test('adminWallet can blacklist user', async () => {
-  const tx = await AdminWallet.blacklistUser('0x888185b656fe770677a91412f9f09B23A787242A')
+  const tx = await AdminWallet.removeWhitelisted('0x888185b656fe770677a91412f9f09B23A787242A')
   const isVerified = await AdminWallet.isVerified('0x888185b656fe770677a91412f9f09B23A787242A')
   expect(isVerified).not.toBeTruthy()
 })
 
 test('adminWallet throws exception', async () => {
-  await expect(AdminWallet.blacklistUser('0x888')).rejects.toThrow()
+  await expect(AdminWallet.removeWhitelisted('0x888')).rejects.toThrow()
 })
 
 test('adminWallet get balance correctly', async () => {
   const balance = await AdminWallet.getBalance()
   expect(balance > 0).toBeTruthy()
+})
+
+test(`adminWallet top wallet shouldn't throws an error when user is not whitelisted/verified`, async () => {
+  const unverifiedAddress = '0x5d1b321087c9273c7efb0815c43c019df180fa56'
+  await expect(AdminWallet.topWallet(unverifiedAddress, null)).toBeTruthy()
 })
 
 test('adminWallet receive queue nonce', async () => {

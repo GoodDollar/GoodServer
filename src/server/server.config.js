@@ -1,7 +1,8 @@
 import networks from './networks'
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
 
-require('dotenv').config()
+const envFile = process.env.NODE_ENV === 'test' ? `.env.test` : '.env'
+require('dotenv').config({ path: envFile })
 const convict = require('convict')
 
 // Define a schema
@@ -91,7 +92,8 @@ const conf = convict({
       'fuse',
       'production',
       'develop',
-      'staging'
+      'staging',
+      'etoro'
     ],
     default: 'develop',
     env: 'NETWORK'
@@ -295,21 +297,21 @@ const conf = convict({
   },
   secure_key: {
     doc: 'Secure key word used to create secure hash by which server can communicate with web3',
-    format: '*',
+    format: String,
     env: 'SECURE_KEY',
-    default: undefined
+    default: null
   },
   fuse: {
     doc: 'Main url for fuse api',
-    format: String,
+    format: 'url',
     env: 'FUSE_API',
-    default: null
+    default: 'https://explorer.fusenet.io'
   },
   web3SiteUrl: {
     doc: 'Web3 site url',
-    format: '*',
+    format: 'url',
     env: 'WEB3_SITE_URL',
-    default: undefined
+    default: 'https://w3.gooddollar.org'
   },
   rateLimitMinutes: {
     doc: 'Amount of minutes used for request rate limiter',
