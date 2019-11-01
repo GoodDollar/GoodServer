@@ -178,6 +178,25 @@ const setup = (app: Router, storage: StorageAPI) => {
     })
   )
 
+  /**
+   * @api {post} /user/market generate user market login token
+   * @apiName Market Token
+   * @apiGroup Storage
+   *   *
+   * @apiSuccess {Number} ok
+   * @apiSuccess {String} jwt
+   * @ignore
+   */
+  app.post(
+    '/user/market',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res, next) => {
+      const { user, log, body } = req
+      const jwt = generateMarketToken(user)
+      res.json({ ok: 1, jwt })
+    })
+  )
+
   app.post(
     '/admin/user/get',
     wrapAsync(async (req, res, next) => {
