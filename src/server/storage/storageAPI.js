@@ -187,7 +187,7 @@ const setup = (app: Router, storage: StorageAPI) => {
    * @apiSuccess {String} jwt
    * @ignore
    */
-  app.post(
+  app.get(
     '/user/market',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {

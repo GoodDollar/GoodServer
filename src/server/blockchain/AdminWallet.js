@@ -177,7 +177,7 @@ export class Wallet {
       log.info('wallet tests:', { whitelist: whitelistTest.status, topwallet: topwalletTest.status })
     } catch (e) {
       log.error('Error initializing wallet', { e }, e.message)
-      process.exit(-1)
+      if (process.env !== 'test') process.exit(-1)
     }
     return true
   }

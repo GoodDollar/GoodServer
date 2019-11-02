@@ -371,5 +371,4 @@ if (publicS3) {
 // Perform validation
 conf.validate({ allowed: 'strict' })
 // eslint-disable-next-line
-console.log({ conf })
 export default conf.getProperties()
