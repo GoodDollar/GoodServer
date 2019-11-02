@@ -1,7 +1,8 @@
 import AdminWallet from '../AdminWallet'
-import Wallet from 'ethereumjs-wallet'
+import Web3 from 'web3'
 
-const generateWalletAddress = () => Wallet.generate().getAddressString()
+const web3 = new Web3()
+const generateWalletAddress = () => web3.eth.accounts.create().address
 
 jest.setTimeout(10000)
 beforeAll(async () => {
