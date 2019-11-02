@@ -109,7 +109,8 @@ adminMinBalance: {
       'fuse',
       'production',
       'develop',
-      'staging'
+      'staging',
+      'etoro'
     ],
     default: 'develop',
     env: 'NETWORK'
@@ -328,6 +329,12 @@ adminMinBalance: {
     format: '*',
     env: 'WEB3_SITE_URL',
     default: undefined
+  },
+  marketPassword: {
+    doc: 'password for market jwt',
+    format: String,
+    env: 'MARKET_PASSWORD',
+    default: null
   },
   rateLimitMinutes: {
     doc: 'Amount of minutes used for request rate limiter',
