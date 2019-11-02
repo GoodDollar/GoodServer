@@ -61,6 +61,24 @@ const conf = convict({
     env: 'MNEMONIC',
     default: ''
   },
+  numberOfAdminWalletAccounts: {
+    doc: 'Number of admin wallet accounts',
+    format: Number,
+    env: 'NUMBER_OF_ADMIN_WALLET_ACCOUNTS',
+    default: 10
+  },
+adminMinBalance: {
+    doc: 'min balance in GWEIs for valid admin addresses',
+    format: Number,
+    env: 'ADMIN_MIN_BALANCE',
+    default: 100000
+  },
+  mongoQueueMaxLockTime: {
+    doc: 'Max lock time for one each in mongo queue in seconds',
+    format: Number,
+    env: 'MONGO_QUEUE_MAX_LOCK_TIME',
+    default: 30
+  },
   privateKey: {
     doc: 'Wallet private key',
     format: '*',
