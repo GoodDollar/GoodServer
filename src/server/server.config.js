@@ -67,10 +67,10 @@ const conf = convict({
     env: 'NUMBER_OF_ADMIN_WALLET_ACCOUNTS',
     default: 10
   },
-  topWalletMinBalance: {
-    doc: 'Top wallet min balance in GWEIs',
+adminMinBalance: {
+    doc: 'min balance in GWEIs for valid admin addresses',
     format: Number,
-    env: 'TOP_WALLET_MIN_BALANCE',
+    env: 'ADMIN_MIN_BALANCE',
     default: 100000
   },
   mongoQueueMaxLockTime: {

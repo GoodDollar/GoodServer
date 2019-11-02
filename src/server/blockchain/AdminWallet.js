@@ -23,7 +23,7 @@ const log = logger.child({ from: 'AdminWallet' })
 
 const defaultGas = 100000
 const defaultGasPrice = web3Utils.toWei('1', 'gwei')
-const minBalance = web3Utils.toWei(String(conf.topWalletMinBalance), 'gwei')
+const adminMinBalance = web3Utils.toWei(String(conf.adminMinBalance), 'gwei')
 /**
  * Exported as AdminWallet
  * Interface with blockchain contracts via web3 using HDWalletProvider
@@ -128,7 +128,7 @@ export class Wallet {
     for (let addr of this.addresses) {
       const balance = await this.web3.eth.getBalance(addr)
       log.info(`admin wallet ${addr} balance ${balance}`)
-      if (balance > minBalance) {
+      if (balance > adminMinBalance) {
         this.filledAddresses.push(addr)
       }
       this.address = this.filledAddresses[0]
