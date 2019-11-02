@@ -58,9 +58,27 @@ const conf = convict({
   },
   mnemonic: {
     doc: 'Wallet mnemonic',
-    format: '*',
+    format: String,
     env: 'MNEMONIC',
-    default: ''
+    default: null
+  },
+  numberOfAdminWalletAccounts: {
+    doc: 'Number of admin wallet accounts',
+    format: Number,
+    env: 'NUMBER_OF_ADMIN_WALLET_ACCOUNTS',
+    default: 10
+  },
+  adminMinBalance: {
+    doc: 'min balance in GWEIs for valid admin addresses',
+    format: Number,
+    env: 'ADMIN_MIN_BALANCE',
+    default: 100000
+  },
+  mongoQueueMaxLockTime: {
+    doc: 'Max lock time for one each in mongo queue in seconds',
+    format: Number,
+    env: 'MONGO_QUEUE_MAX_LOCK_TIME',
+    default: 30
   },
   privateKey: {
     doc: 'Wallet private key',
@@ -334,7 +352,6 @@ const conf = convict({
 })
 
 // Load environment dependent configuration
-const env = conf.get('env')
 const network = conf.get('network')
 const networkId = ContractsAddress[network].networkId
 conf.set('ethereum', networks[networkId])
@@ -354,5 +371,5 @@ if (publicS3) {
 // Perform validation
 conf.validate({ allowed: 'strict' })
 // eslint-disable-next-line
-
+console.log({ conf })
 export default conf.getProperties()

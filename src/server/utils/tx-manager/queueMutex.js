@@ -2,72 +2,94 @@ import Mutex from 'await-mutex'
 
 export default class queueMutex {
   constructor() {
-    this.queue = []
+    this.wallets = {}
+    this.getTransactionCount = () => 0
   }
 
   /**
-   * Unlock for queue
+   * Create object of wallets by addresses
    *
-   * @param {string} address
-   * @param {string} nextNonce
-   *
-   * @returns {Promise<void>}
-   */
-  async errorUnlock(address, nonce) {
-    return this.unlock()
-  }
-
-  /**
-   * Unlock for queue
-   *
-   * @param {string} address
-   * @param {string} nextNonce
+   * @param {array} addresses
    *
    * @returns {Promise<void>}
    */
-  async unlock(address, nonce) {
-    const obj = this.queue.find(i => i.address === address) || {}
-
-    if (typeof obj.lastFail === 'function') {
-      obj.lastFail()
+  async createListIfNotExists(addresses) {
+    for (let address of addresses) {
+      if (!this.getWallet(address)) {
+        await this.createWallet(address)
+      }
     }
   }
+
   /**
-   * lock for queue
+   * Create object of wallet by address
+   * @param address
+   */
+  async createWallet(address) {
+    this.wallets[address] = {
+      address,
+      nonce: await this.getTransactionCount(address),
+      mutex: new Mutex()
+    }
+  }
+
+  /**
+   * Get wallet by address
+   * @param address
+   * @returns {T}
+   */
+  getWallet(address) {
+    return this.wallets[address]
+  }
+
+  /**
+   * Unlock for queue
    *
    * @param {string} address
    * @param {string} netNonce
    *
+   * @returns {Promise<void>}
+   */
+  async unlock(address, netNonce) {
+    const wallet = this.getWallet(address)
+
+    if (wallet && typeof wallet.lastFail === 'function') {
+      wallet.lastFail(netNonce)
+    }
+  }
+
+  /**
+   * lock for queue
+   *
+   * @param {array} addresses
+   *
    * @returns {Promise<any>}
    */
-  async lock(address, netNonce) {
-    const index = this.queue.findIndex(i => i.address === address)
-    let obj
+  async lock(addresses) {
+    const address = (addresses && Array.isArray(addresses) && addresses[0]) || addresses
+    let wallet = this.getWallet(address)
 
-    if (~index) {
-      obj = this.queue[index]
-
-      obj.nonce++
-    } else {
-      this.queue.push({
-        address,
-        nonce: netNonce,
-        mutex: new Mutex()
-      })
-
-      obj = this.queue[this.queue.length - 1]
+    if (!wallet) {
+      await this.createWallet(address)
+      wallet = this.getWallet(address)
     }
-
-    let release = await obj.mutex.lock()
-
-    obj.lastFail = () => {
+    let release = await wallet.mutex.lock()
+    wallet.release = () => {
+      wallet.nonce++
+      release()
+    }
+    wallet.lastFail = netNonce => {
+      if (netNonce) {
+        wallet.nonce = netNonce
+      }
       release()
     }
 
     return {
-      nonce: obj.nonce,
-      release,
-      fail: obj.lastFail
+      address,
+      nonce: wallet.nonce,
+      release: wallet.release,
+      fail: wallet.lastFail
     }
   }
 
@@ -79,16 +101,10 @@ export default class queueMutex {
    * @returns {Boolean}
    */
   async isLocked(address) {
-    const index = this.queue.findIndex(i => i.address === address)
-    let result = false
-
-    if (~index) {
-      const obj = this.queue[index]
-      const mutex = obj.mutex
-
-      result = mutex.isLocked()
+    const wallet = this.getWallet(address)
+    if (wallet) {
+      return wallet.mutex.isLocked()
     }
-
-    return result
+    return false
   }
 }
