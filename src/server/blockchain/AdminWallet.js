@@ -133,7 +133,7 @@ export class Wallet {
     }
     if (this.filledAddresses.length === 0) {
       log.fatal('no admin wallet with funds')
-      process.exit(-1)
+      if (process.env !== 'test') process.exit(-1)
     }
     this.address = this.filledAddresses[0]
 
