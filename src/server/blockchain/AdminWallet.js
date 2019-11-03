@@ -21,7 +21,7 @@ import * as web3Utils from 'web3-utils'
 const log = logger.child({ from: 'AdminWallet' })
 
 const defaultGas = 100000
-const defaultGasPrice = web3Utils.toWei('2', 'gwei')
+const defaultGasPrice = web3Utils.toWei('1', 'gwei')
 const adminMinBalance = web3Utils.toWei(String(conf.adminMinBalance), 'gwei')
 /**
  * Exported as AdminWallet
@@ -342,7 +342,7 @@ export class Wallet {
     try {
       const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
       gas = gas || (await tx.estimateGas().catch(e => log.error('Failed to estimate gas for tx', e.message, e)))
-      gasPrice = gasPrice || this.gasPrice
+      gasPrice = gasPrice || defaultGasPrice
 
       const { nonce, release, fail, address } = await txManager.lock(this.filledAddresses)
       currentAddress = address
@@ -409,8 +409,8 @@ export class Wallet {
     let currentAddress
     try {
       const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
-      gas = gas || 100000
-      gasPrice = gasPrice || this.gasPrice
+      gas = gas || defaultGas
+      gasPrice = gasPrice || defaultGasPrice
 
       const { nonce, release, fail, address } = await txManager.lock(this.filledAddresses)
       log.debug('sendNative', { nonce, gas, gasPrice })
