@@ -21,7 +21,7 @@ import * as web3Utils from 'web3-utils'
 const log = logger.child({ from: 'AdminWallet' })
 
 const defaultGas = 100000
-const defaultGasPrice = web3Utils.toWei('1', 'gwei')
+const defaultGasPrice = web3Utils.toWei('2', 'gwei')
 const adminMinBalance = web3Utils.toWei(String(conf.adminMinBalance), 'gwei')
 /**
  * Exported as AdminWallet
@@ -96,8 +96,8 @@ export class Wallet {
 
     this.web3 = new Web3(this.getWeb3TransportProvider(), null, {
       defaultBlock: 'latest',
-      defaultGas: 200000,
-      defaultGasPrice: 1000000,
+      defaultGas,
+      defaultGasPrice,
       transactionBlockTimeout: 5,
       transactionConfirmationBlocks: 1,
       transactionPollingTimeout: 30
@@ -109,7 +109,7 @@ export class Wallet {
       this.address = account.address
       this.addWallet(account)
       log.info('Initialized by private key:', account.address)
-    } else if (conf.mnemonic) {
+    } else if (this.mnemonic) {
       let root = HDKey.fromMasterSeed(bip39.mnemonicToSeed(this.mnemonic))
       for (let i = 0; i < this.numberOfAdminWalletAccounts; i++) {
         const path = "m/44'/60'/0'/0/" + i
@@ -206,7 +206,7 @@ export class Wallet {
   async whitelistUser(address: string, did: string): Promise<TransactionReceipt | boolean> {
     const isVerified = await this.isVerified(address)
     if (isVerified) {
-      return true
+      return { status: true }
     }
     const tx: TransactionReceipt = await this.sendTransaction(
       this.identityContract.methods.addWhitelistedWithDID(address, did)
@@ -289,7 +289,7 @@ export class Wallet {
           from: this.address,
           to: address,
           value: toTop,
-          gas: 100000,
+          gas: defaultGas,
           gasPrice: defaultGasPrice
         })
         log.debug('Topwallet result:', res)
@@ -346,7 +346,7 @@ export class Wallet {
 
       const { nonce, release, fail, address } = await txManager.lock(this.filledAddresses)
       currentAddress = address
-      log.debug(`sending tx from: ${address} | nonce: ${nonce}`)
+      log.debug(`sending tx from: ${address} | nonce: ${nonce}`, { gas, gasPrice })
       return new Promise((res, rej) => {
         tx.send({ gas, gasPrice, chainId: this.networkId, nonce, from: address })
           .on('transactionHash', h => {
@@ -361,6 +361,13 @@ export class Wallet {
           .on('error', async e => {
             if (isNonceError(e)) {
               let netNonce = parseInt(await this.web3.eth.getTransactionCount(address))
+              log.error('sendTransaciton nonce failure retry', e.message, {
+                nonce,
+                gas,
+                gasPrice,
+                address,
+                newNonce: netNonce
+              })
               await txManager.unlock(address, netNonce)
               try {
                 res(await this.sendTransaction(tx, txCallbacks, { gas, gasPrice }))
@@ -406,6 +413,7 @@ export class Wallet {
       gasPrice = gasPrice || this.gasPrice
 
       const { nonce, release, fail, address } = await txManager.lock(this.filledAddresses)
+      log.debug('sendNative', { nonce, gas, gasPrice })
       currentAddress = address
 
       return new Promise((res, rej) => {
@@ -425,8 +433,15 @@ export class Wallet {
           .on('error', async e => {
             log.error('sendNative failed', e.message, e)
             if (isNonceError(e)) {
-              log.debug('sendNative retrying after nonce error', params)
               let netNonce = parseInt(await this.web3.eth.getTransactionCount(address))
+              log.error('sendNative nonce failure retry', e.message, {
+                params,
+                nonce,
+                gas,
+                gasPrice,
+                address,
+                newNonce: netNonce
+              })
               await txManager.unlock(address, netNonce)
               try {
                 res(await this.sendNative(params, txCallbacks, { gas, gasPrice }))

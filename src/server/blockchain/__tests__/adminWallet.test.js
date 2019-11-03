@@ -17,7 +17,7 @@ describe('adminwallet', () => {
   })
 
   test('adminWallet constructor works', async () => {
-    expect(AdminWallet.address).not.toBeNull()
+    expect(await AdminWallet.ready.catch(_ => false)).toBeTruthy()
   })
 
   test('adminWallet can whitelist user', async () => {
