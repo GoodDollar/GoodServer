@@ -547,22 +547,20 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       // initiate smart contract to send bonus to user
       AdminWallet.redeemBonuses(currentUser.gdAddress, toRedeemInWei, {
         onTransactionHash: hash => {
-          log.info('Bonus redeem - hash created', { hash })
-
-          res.status(200).json({
-            bonusAmount: toRedeem,
-            hash: hash
-          })
+          log.info('Bonus redeem - hash created', { currentUser, hash })
         },
         onReceipt: async r => {
           log.info('Bonus redeem - receipt received', r)
 
           await W3Helper.informW3ThatBonusCharged(toRedeem, wallet_token)
-
           release()
+          return res.status(200).json({
+            bonusAmount: toRedeem,
+            hash: r.transactionHash
+          })
         },
         onError: e => {
-          log.error('Bonuses charge failed', e.message, e)
+          log.error('Bonuses charge failed', e.message, e, currentUser)
 
           fail()
 
