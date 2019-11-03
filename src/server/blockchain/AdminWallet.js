@@ -133,7 +133,7 @@ export class Wallet {
     }
     if (this.filledAddresses.length === 0) {
       log.fatal('no admin wallet with funds')
-      if (process.env !== 'test') process.exit(-1)
+      if (conf.env !== 'test') process.exit(-1)
     }
     this.address = this.filledAddresses[0]
 
@@ -177,7 +177,7 @@ export class Wallet {
       log.info('wallet tests:', { whitelist: whitelistTest.status, topwallet: topwalletTest.status })
     } catch (e) {
       log.error('Error initializing wallet', { e }, e.message)
-      if (process.env !== 'test') process.exit(-1)
+      if (conf.env !== 'test') process.exit(-1)
     }
     return true
   }
