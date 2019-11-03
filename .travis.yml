@@ -8,7 +8,6 @@ env:
     - GUNDB_PASS=test
     - JWT_PASS=test
     - MNEMONIC="myth like bonus scare over problem client lizard pioneer submit female collect"
-    - PRIVATE_KEY=0x4a82fd2f72fe7a1f4258a3f091ecc06d4d523efc20fd4d0ce21c8bed799088c1
     - NETWORK=develop
     - CI=false
     - MARKET_PASSWORD=markettokenmarkettokenmarkettoke
