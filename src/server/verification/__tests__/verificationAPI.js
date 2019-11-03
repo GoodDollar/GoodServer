@@ -235,7 +235,7 @@ describe('verificationAPI', () => {
     })
   })
 
-  test('/verify/w3/bonuses should fail with missing token for whitelisted ', async () => {
+  test('/verify/w3/bonuses should fail with missing token for whitelisted', async () => {
     const creds = await getCreds(true)
     const token = await getToken(server, creds)
     await AdminWallet.ready

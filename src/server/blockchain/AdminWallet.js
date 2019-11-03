@@ -20,7 +20,7 @@ import * as web3Utils from 'web3-utils'
 
 const log = logger.child({ from: 'AdminWallet' })
 
-const defaultGas = 100000
+const defaultGas = 200000
 const defaultGasPrice = web3Utils.toWei('1', 'gwei')
 const adminMinBalance = web3Utils.toWei(String(conf.adminMinBalance), 'gwei')
 /**
@@ -96,7 +96,6 @@ export class Wallet {
 
     this.web3 = new Web3(this.getWeb3TransportProvider(), null, {
       defaultBlock: 'latest',
-      defaultGas,
       defaultGasPrice,
       transactionBlockTimeout: 5,
       transactionConfirmationBlocks: 1,
@@ -140,19 +139,19 @@ export class Wallet {
     this.identityContract = new this.web3.eth.Contract(
       IdentityABI.abi,
       get(ContractsAddress, `${this.network}.Identity`),
-      {}
+      { from: this.address }
     )
 
     this.signUpBonusContract = new this.web3.eth.Contract(
       SignUpBonusABI.abi,
       get(ContractsAddress, `${this.network}.SignupBonus`),
-      {}
+      { from: this.address }
     )
 
     this.tokenContract = new this.web3.eth.Contract(
       GoodDollarABI.abi,
       get(ContractsAddress, `${this.network}.GoodDollar`),
-      {}
+      { from: this.address }
     )
 
     try {
@@ -211,7 +210,7 @@ export class Wallet {
     const tx: TransactionReceipt = await this.sendTransaction(
       this.identityContract.methods.addWhitelistedWithDID(address, did)
     ).catch(e => {
-      log.error('Error whitelistUser', { e }, e.message)
+      log.error('Error whitelistUser', { e }, e.message, { address, did })
       throw e
     })
     log.info('Whitelisted user', { address, did, tx })
@@ -227,7 +226,7 @@ export class Wallet {
     const tx: TransactionReceipt = await this.sendTransaction(
       this.identityContract.methods.addBlacklisted(address)
     ).catch(e => {
-      log.error('Error blackListUser', { e }, e.message)
+      log.error('Error blackListUser', { e }, e.message, { address })
       throw e
     })
 
@@ -243,7 +242,7 @@ export class Wallet {
     const tx: TransactionReceipt = await this.sendTransaction(
       this.identityContract.methods.removeWhitelisted(address)
     ).catch(e => {
-      log.error('Error removeWhitelisted', { e }, e.message)
+      log.error('Error removeWhitelisted', { e }, e.message, { address })
       throw e
     })
 
@@ -298,7 +297,7 @@ export class Wallet {
       log.debug("User doesn't need topping")
       return { status: 1 }
     } catch (e) {
-      log.error('Error topWallet', { e }, e.message)
+      log.error('Error topWallet', { e }, e.message, { address, lastTopping, force })
       throw e
     }
   }
@@ -341,7 +340,10 @@ export class Wallet {
     let currentAddress
     try {
       const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
-      gas = gas || (await tx.estimateGas().catch(e => log.error('Failed to estimate gas for tx', e.message, e)))
+      gas =
+        gas ||
+        (await tx.estimateGas().catch(e => log.error('Failed to estimate gas for tx', e.message, e))) ||
+        defaultGas
       gasPrice = gasPrice || defaultGasPrice
 
       const { nonce, release, fail, address } = await txManager.lock(this.filledAddresses)
