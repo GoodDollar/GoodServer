@@ -93,11 +93,7 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       const w3RecordPromise = W3Helper.registerUser(user)
 
-      const [mauticRecord, web3Record] = await Promise.all([
-        mauticRecordPromise,
-        w3RecordPromise,
-        Timeout(10000, 'mautic and web3')
-      ])
+      const [mauticRecord, web3Record] = await Promise.all([mauticRecordPromise, w3RecordPromise])
 
       log.debug('got web3/mautic user records', web3Record, mauticRecord)
 
