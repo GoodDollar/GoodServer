@@ -16,6 +16,12 @@ import zoomHelper from '../verification/faceRecognition/faceRecognitionHelper'
 import * as W3Helper from '../utils/W3Helper'
 import crypto from 'crypto'
 
+const Timeout = (timeout: msec, msg: string) => {
+  return new Promise((res, rej) => {
+    setTimeout(rej, timeout, new Error(`Request Timeout: ${msg}`))
+  })
+}
+
 export const generateMarketToken = (user: UserRecord) => {
   const iv = crypto.randomBytes(16)
   const token = jwt.sign({ email: user.email, name: user.fullName }, conf.marketPassword)
@@ -87,9 +93,13 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       const w3RecordPromise = W3Helper.registerUser(user)
 
-      const [mauticRecord, web3Record] = await Promise.all([mauticRecordPromise, w3RecordPromise])
+      const [mauticRecord, web3Record] = await Promise.all([
+        mauticRecordPromise,
+        w3RecordPromise,
+        Timeout(10000, 'mautic and web3')
+      ])
 
-      log.debug('Web3 user record', web3Record)
+      log.debug('got web3/mautic user records', web3Record, mauticRecord)
 
       //mautic contact should already exists since it is first created during the email verification we update it here
       const mauticId = !userRecord.mauticId ? get(mauticRecord, 'contact.fields.all.id', -1) : userRecord.mauticId
@@ -113,10 +123,14 @@ const setup = (app: Router, storage: StorageAPI) => {
         updateUserObj.marketToken = marketToken
       }
 
+      logger.debug('generated market token, updating privatedb', marketToken)
       storage.updateUser(updateUserObj)
 
       //topwallet of user after registration
-      let ok = await AdminWallet.topWallet(userRecord.gdAddress, null, true)
+      let ok = await Promise.race([
+        AdminWallet.topWallet(userRecord.gdAddress, null, true),
+        Timeout(15000, 'topWallet')
+      ])
         .then(r => ({ ok: 1 }))
         .catch(e => {
           logger.error('New user topping failed', e.message)
