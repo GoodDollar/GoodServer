@@ -66,13 +66,12 @@ export default class queueMutex {
    * @returns {Promise<any>}
    */
   async lock(addresses) {
-    const address = (addresses && Array.isArray(addresses) && addresses[0]) || addresses
+    addresses = Array.isArray(addresses) ? addresses : [addresses]
+    await this.createListIfNotExists(addresses)
+
+    const address = await this.getFirstFreeAddress(addresses)
     let wallet = this.getWallet(address)
 
-    if (!wallet) {
-      await this.createWallet(address)
-      wallet = this.getWallet(address)
-    }
     let release = await wallet.mutex.lock()
     wallet.release = () => {
       wallet.nonce++
@@ -106,5 +105,18 @@ export default class queueMutex {
       return wallet.mutex.isLocked()
     }
     return false
+  }
+
+  async getFirstFreeAddress(addresses) {
+    return new Promise(resolve => {
+      const interval = setInterval(() => {
+        for (let address of addresses) {
+          if (!this.isLocked(address)) {
+            clearInterval(interval)
+            return resolve(address)
+          }
+        }
+      }, 100)
+    })
   }
 }

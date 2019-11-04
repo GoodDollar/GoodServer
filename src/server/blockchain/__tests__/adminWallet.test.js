@@ -1,4 +1,5 @@
 import AdminWallet from '../AdminWallet'
+import txManager from '../../utils/tx-manager'
 import Web3 from 'web3'
 
 const web3 = new Web3()
@@ -79,5 +80,17 @@ describe('adminwallet', () => {
     //good tx
     tx = await AdminWallet.topWallet(unverifiedAddress, null, true)
     expect(tx).toBeTruthy()
+  })
+
+  test('queue Manager lock with one address', async () => {
+    const unverifiedAddress = generateWalletAddress()
+    const { release } = await txManager.lock(unverifiedAddress)
+    await release()
+  })
+
+  test('queue Manager lock with array of addresses', async () => {
+    const unverifiedAddresses = [generateWalletAddress(), generateWalletAddress()]
+    const { release } = await txManager.lock(unverifiedAddresses)
+    await release()
   })
 })
