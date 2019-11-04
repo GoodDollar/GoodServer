@@ -36,6 +36,14 @@ export const sendLinkBySMS = (to: string, link: string) => {
   return client.messages.create(plivoPhoneNumber, to, text)
 }
 
+export const sendMagicCodeBySMS = (to: string, code: string) => {
+  const { plivoAuthID, plivoAuthToken, plivoPhoneNumber } = conf
+  const client = new plivo.Client(plivoAuthID, plivoAuthToken)
+  const text = `Open the GoodDollar app you just installed and paste this code: ${code}`
+
+  return client.messages.create(plivoPhoneNumber, to, text)
+}
+
 /**
  * Sends an email with recovery instructions to the user's registered email through SendGrid.
  * Send it by an API using a Transactional Template
