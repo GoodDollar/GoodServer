@@ -511,7 +511,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       //start lock before checking bonus status to prevent race condition
-      const { release, fail } = await txManager.lock([currentUser.gdAddress], 0)
+      const { release, fail } = await txManager.lock(currentUser.gdAddress, 0)
 
       const w3User = await W3Helper.getUser(wallet_token)
 

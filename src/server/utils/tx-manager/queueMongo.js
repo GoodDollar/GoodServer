@@ -160,6 +160,7 @@ export default class queueMongo {
    * @returns {Promise<void>}
    */
   async addToQueue(addresses, cb) {
+    addresses = Array.isArray(addresses) ? addresses : [addresses]
     await this.createListIfNotExists(addresses)
 
     this.queue.push({ cb, addresses })
