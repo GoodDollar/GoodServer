@@ -3,6 +3,7 @@ import { Router } from 'express'
 import passport from 'passport'
 import { wrapAsync, onlyInEnv } from '../utils/helpers'
 import { sendLinkByEmail, sendLinkBySMS } from './send.sendgrid'
+import { sendMagicCodeBySMS } from '../../imports/otp'
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 
@@ -50,11 +51,37 @@ const setup = (app: Router) => {
     onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'sendAPI - /send/linksms' })
-      const { user } = req
       const { to, sendLink } = req.body
 
       log.info('sending sms', { to, sendLink })
       await sendLinkBySMS(to, sendLink)
+      res.json({ ok: 1 })
+    })
+  )
+
+  /**
+   * @api {post} /send/magiccode Send link sms
+   * @apiName Link SMS
+   * @apiGroup Send
+   *
+   * @apiParam {String} to
+   * @apiParam {String} sendLink
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
+  app.post(
+    '/send/magiccode',
+    passport.authenticate('jwt', { session: false }),
+    onlyInEnv('production', 'staging'),
+    wrapAsync(async (req, res, next) => {
+      const log = req.log.child({ from: 'sendAPI - /send/magiccode' })
+      const { to, magicCode } = req.body
+
+      log.info('sending sms with magic code', { to, magicCode })
+
+      await sendMagicCodeBySMS(to, magicCode)
+
       res.json({ ok: 1 })
     })
   )
