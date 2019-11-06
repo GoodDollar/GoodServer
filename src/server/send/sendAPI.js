@@ -2,7 +2,8 @@
 import { Router } from 'express'
 import passport from 'passport'
 import { wrapAsync, onlyInEnv } from '../utils/helpers'
-import { sendLinkByEmail, sendLinkBySMS, sendMagicCodeBySMS } from './send.sendgrid'
+import { sendLinkByEmail, sendLinkBySMS } from './send.sendgrid'
+import { sendMagicCodeBySMS } from '../../imports/otp'
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 
