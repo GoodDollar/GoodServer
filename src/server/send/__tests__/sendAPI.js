@@ -48,6 +48,20 @@ describe('sendAPÏ', () => {
       .expect(200, { ok: 1, onlyInEnv: { current: 'test', onlyIn: ['production', 'staging'] } })
   })
 
+  test('/send/magiccode without creds -> 401', async () => {
+    await request(server)
+      .post('/send/magiccode')
+      .expect(401)
+  })
+
+  test('/send/magiccode with creds', async () => {
+    const token = await getToken(server)
+    await request(server)
+      .post('/send/magiccode')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200, { ok: 1, onlyInEnv: { current: 'test', onlyIn: ['production', 'staging'] } })
+  })
+
   test('/verify/sendemail with creds', async () => {
     const token = await getToken(server)
     //make sure fullname is set for user which is required for sending the recovery email
