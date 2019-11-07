@@ -114,7 +114,8 @@ const setup = (app: Router, storage: StorageAPI) => {
         updateUserObj.w3Token = web3Record.wallet_token
       }
 
-      const marketToken = generateMarketToken(userRecord)
+      const marketToken = generateMarketToken(user)
+      log.debug('generate new user market token:', { marketToken, user })
       if (marketToken) {
         updateUserObj.marketToken = marketToken
       }
@@ -203,6 +204,7 @@ const setup = (app: Router, storage: StorageAPI) => {
     wrapAsync(async (req, res, next) => {
       const { user, log, body } = req
       const jwt = generateMarketToken(user)
+      log.debug('new market token request:', { jwt, user })
       res.json({ ok: 1, jwt })
     })
   )
