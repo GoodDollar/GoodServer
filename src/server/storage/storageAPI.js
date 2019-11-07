@@ -124,7 +124,8 @@ const setup = (app: Router, storage: StorageAPI) => {
         updateUserObj.loginToken = w3RecordData.login_token
       }
 
-      const marketToken = generateMarketToken(userRecord)
+      const marketToken = generateMarketToken(user)
+      log.debug('generate new user market token:', { marketToken, user })
       if (marketToken) {
         updateUserObj.marketToken = marketToken
       }
@@ -190,6 +191,26 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       log.info('delete user results', { results })
       res.json({ ok: 1, results })
+    })
+  )
+
+  /**
+   * @api {post} /user/market generate user market login token
+   * @apiName Market Token
+   * @apiGroup Storage
+   *   *
+   * @apiSuccess {Number} ok
+   * @apiSuccess {String} jwt
+   * @ignore
+   */
+  app.get(
+    '/user/market',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res, next) => {
+      const { user, log, body } = req
+      const jwt = generateMarketToken(user)
+      log.debug('new market token request:', { jwt, user })
+      res.json({ ok: 1, jwt })
     })
   )
 
