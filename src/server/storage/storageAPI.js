@@ -52,7 +52,7 @@ const setup = (app: Router, storage: StorageAPI) => {
     wrapAsync(async (req, res, next) => {
       const { body, user: userRecord, log } = req
       const logger = req.log.child({ from: 'storageAPI - /user/add' })
-      log.debug('new user request:', { data: body.user, userRecord })
+      logger.debug('new user request:', { data: body.user, userRecord })
       //check that user passed all min requirements
       if (
         ['production', 'staging'].includes(conf.env) &&
@@ -76,7 +76,7 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       if (conf.disableFaceVerification) {
         AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey).catch(e =>
-          log.error('failed whitelisting', userRecord)
+          logger.error('failed whitelisting', userRecord)
         )
       }
 
@@ -87,7 +87,7 @@ const setup = (app: Router, storage: StorageAPI) => {
           process.env.NODE_ENV === 'development'
             ? Promise.resolve({})
             : Mautic.createContact(user).catch(e => {
-                log.error('Create Mautic Record Failed', e)
+                logger.error('Create Mautic Record Failed', e)
               })
       }
 
@@ -95,7 +95,7 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       const [mauticRecord, web3Record] = await Promise.all([mauticRecordPromise, w3RecordPromise])
 
-      log.debug('got web3/mautic user records', web3Record, mauticRecord)
+      logger.debug('got web3/mautic user records', web3Record, mauticRecord)
 
       //mautic contact should already exists since it is first created during the email verification we update it here
       const mauticId = !userRecord.mauticId ? get(mauticRecord, 'contact.fields.all.id', -1) : userRecord.mauticId
@@ -115,7 +115,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       }
 
       const marketToken = generateMarketToken(user)
-      log.debug('generate new user market token:', { marketToken, user })
+      logger.debug('generate new user market token:', { marketToken, user })
       if (marketToken) {
         updateUserObj.marketToken = marketToken
       }
@@ -133,7 +133,7 @@ const setup = (app: Router, storage: StorageAPI) => {
           logger.error('New user topping failed', e.message)
           return { ok: 0, error: 'New user topping failed' }
         })
-      log.debug('added new user:', { user, ok })
+      logger.debug('added new user:', { user, ok })
 
       res.json({
         ...ok,
@@ -203,8 +203,10 @@ const setup = (app: Router, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const { user, log, body } = req
+      log.debug('new market token request:', { user })
       const jwt = generateMarketToken(user)
-      log.debug('new market token request:', { jwt, user })
+      log.debug('new market token result:', { jwt })
+
       res.json({ ok: 1, jwt })
     })
   )
