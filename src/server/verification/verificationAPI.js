@@ -230,7 +230,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       if (isUserSendEtherOutOfSystem) {
-        log.error('User send ether out of system')
+        log.warn('User send ether out of system')
 
         return res.json({
           ok: 0,
@@ -375,7 +375,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const token: string = body.token
 
       if (!email || !token) {
-        log.error('email and w3Token is required', { email, token })
+        log.warn('email and w3Token is required', { email, token })
 
         return res.status(422).json({
           ok: -1,
