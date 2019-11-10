@@ -10,6 +10,8 @@ import UserDBPrivate from '../db/mongo/user-privat-provider'
 import SEA from 'gun/sea'
 import Config from '../server.config.js'
 import { recoverPublickey } from '../utils/eth'
+import requestRateLimiter from '../utils/requestRateLimiter'
+
 // const ExtractJwt = passportJWT.ExtractJwt
 // const JwtStrategy = passportJWT.Strategy
 
@@ -47,7 +49,7 @@ const setup = (app: Router) => {
       log.trace(`${req.baseUrl} auth:`, { user, body })
 
       if (user.loggedInAs !== identifier) {
-        log.error(`Trying to update other user data! ${user.loggedInAs}!==${identifier}`)
+        log.warn(`Trying to update other user data! ${user.loggedInAs}!==${identifier}`)
         throw new Error(`Trying to update other user data! ${user.loggedInAs}!==${identifier}`)
       } else next()
     })
@@ -114,9 +116,18 @@ const setup = (app: Router) => {
         res.json({ token })
         res.end()
       } else {
-        log.error('/auth/eth', 'SigUtil unable to recover the message signer')
+        log.warn('/auth/eth', 'SigUtil unable to recover the message signer')
         throw new Error('Unable to verify credentials')
       }
+    })
+  )
+
+  app.post(
+    '/auth/ping',
+    requestRateLimiter(10),
+    wrapAsync(async (req, res) => {
+      res.json({ ping: new Date() })
+      res.end()
     })
   )
 
