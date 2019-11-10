@@ -67,7 +67,7 @@ const conf = convict({
     env: 'NUMBER_OF_ADMIN_WALLET_ACCOUNTS',
     default: 10
   },
-adminMinBalance: {
+  adminMinBalance: {
     doc: 'min balance in GWEIs for valid admin addresses',
     format: Number,
     env: 'ADMIN_MIN_BALANCE',
@@ -322,7 +322,7 @@ adminMinBalance: {
     doc: 'Main url for fuse api',
     format: String,
     env: 'FUSE_API',
-    default: null
+    default: 'https://explorer.fusenet.io'
   },
   web3SiteUrl: {
     doc: 'Web3 site url',
