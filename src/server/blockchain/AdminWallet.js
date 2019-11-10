@@ -46,6 +46,8 @@ export class Wallet {
 
   networkId: number
 
+  network: string
+
   mnemonic: string
 
   nonce: number
@@ -162,9 +164,10 @@ export class Wallet {
         account: this.address,
         gdbalance,
         nativebalance,
-        network: this.networkId,
+        networkId: this.networkId,
+        network: this.network,
         nonce: this.nonce,
-        ContractsAddress
+        ContractsAddress: ContractsAddress[this.network]
       })
       await this.removeWhitelisted('0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63').catch(_ => _)
       const whitelistTest = await this.whitelistUser('0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63', 'x')

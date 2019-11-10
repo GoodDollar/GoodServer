@@ -9,7 +9,7 @@ const networks = {
     network_id: 4447,
     web3Transport: 'HttpProvider',
     httpWeb3Provider: 'http://localhost:9545/',
-    websocketWeb3Provider: 'ws://localhost:9545/ws'
+    websocketWeb3Provider: 'ws://localhost:9545/'
   },
   121: {
     network_id: 121,
