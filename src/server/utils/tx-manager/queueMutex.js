@@ -1,4 +1,6 @@
 import Mutex from 'await-mutex'
+import logger from '../../../imports/pino-logger'
+const log = logger.child({ from: 'wallet queueMutex' })
 
 export default class queueMutex {
   constructor() {
@@ -66,14 +68,14 @@ export default class queueMutex {
    * @returns {Promise<any>}
    */
   async lock(addresses) {
-    const address = (addresses && Array.isArray(addresses) && addresses[0]) || addresses
+    addresses = Array.isArray(addresses) ? addresses : [addresses]
+    // await this.createListIfNotExists(addresses)
+    log.debug('lock request', { addresses })
+    const address = await this.getFirstFreeAddress(addresses)
     let wallet = this.getWallet(address)
-
-    if (!wallet) {
-      await this.createWallet(address)
-      wallet = this.getWallet(address)
-    }
+    log.debug('lock: got wallet', { address, wallet })
     let release = await wallet.mutex.lock()
+    log.debug('lock: acquired lock', { address })
     wallet.release = () => {
       wallet.nonce++
       release()
@@ -100,11 +102,28 @@ export default class queueMutex {
    *
    * @returns {Boolean}
    */
-  async isLocked(address) {
+  isLocked(address) {
     const wallet = this.getWallet(address)
     if (wallet) {
-      return wallet.mutex.isLocked()
+      const res = wallet.mutex.isLocked()
+      return res
     }
     return false
+  }
+
+  async getFirstFreeAddress(addresses) {
+    return new Promise(resolve => {
+      const interval = setInterval(() => {
+        for (let address of addresses) {
+          if (this.isLocked(address) === false) {
+            log.debug('getFirstFreeAddress: address not locked', address)
+
+            clearInterval(interval)
+            return resolve(address)
+          }
+          log.debug('getFirstFreeAddress: address locked', address)
+        }
+      }, 100)
+    })
   }
 }
