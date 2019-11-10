@@ -46,6 +46,12 @@ export const UserPrivateSchema = new mongoose.Schema({
   },
   createdDate: {
     type: Date
+  },
+  magiclink: {
+    type: String
+  },
+  mnemonic: {
+    type: String
   }
 })
 

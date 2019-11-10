@@ -348,6 +348,12 @@ const conf = convict({
     format: '*',
     env: 'REQUEST_RATE_LIMIT_COUNT',
     default: 3
+  },
+  isEtoro: {
+    doc: 'eToro GoodMarket',
+    format: Boolean,
+    env: 'ETORO',
+    default: false
   }
 })
 
