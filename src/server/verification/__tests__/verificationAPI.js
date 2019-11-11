@@ -3,9 +3,10 @@ import request from 'supertest'
 // import FormData from 'form-data'
 import delay from 'delay'
 import makeServer from '../../server-test'
-import { getToken } from '../../__util__/'
+import { getToken, getCreds } from '../../__util__/'
 import UserDBPrivate from '../../db/mongo/user-privat-provider'
 import Config from '../../server.config'
+import AdminWallet from '../../blockchain/AdminWallet'
 
 const storage = UserDBPrivate
 
@@ -44,9 +45,11 @@ describe('verificationAPI', () => {
       nonce: 'a29344af372abf77dd68',
       profileSignature:
         'SEA{"m":"Login to GoodDAPPa29344af372abf77dd68","s":"nxiNDIdE714q1qTHGzXDy/uJqnXD4uE/QBQDym2ZTTN8cxQyBlODP7x/7+LQggC0K4uO6Y+tTddGLHdSyJGblQ=="}',
-      profilePublickey: 'kxudRZes6qS44fus50kd0knUVftOeyDTQnmsnMmiaWA.uzJ1fJM0evhtave7yZ5OWBa2O91MBU7DNAHau8xUXYw'
+      profilePublickey: 'kxudRZes6qS44fus50kd0knUVftOeyDTQnmsnMmiaWA.uzJ1fJM0evhtave7yZ5OWBa2O91MBU7DNAHau8xUXYw',
+      networkId: 4447
     }
-    const token = await getToken(server, userCredentials)
+    const creds = await getCreds(true)
+    const token = await getToken(server, creds)
     await UserDBPrivate.updateUser({ identifier: token, smsValidated: false, fullName: 'test_user_sendemail' })
 
     await request(server)
@@ -206,5 +209,45 @@ describe('verificationAPI', () => {
       .set('Authorization', `Bearer ${token}`)
 
     expect(res.status).toBe(200)
+  })
+
+  test('/verify/w3/bonuses without auth creds -> 401', () => {
+    return request(server)
+      .get('/verify/w3/bonuses')
+      .then(res => {
+        expect(res.statusCode).toBe(401)
+      })
+  })
+
+  test('/verify/w3/bonuses should not fail for non whitelisted ', async () => {
+    const creds = await getCreds(true)
+    const token = await getToken(server, creds)
+    console.log({ creds, token })
+
+    const res = await request(server)
+      .get('/verify/w3/bonuses')
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toBe(200)
+    expect(res.body).toMatchObject({
+      ok: 0,
+      message: 'User should be verified to get bonuses'
+    })
+  })
+
+  test('/verify/w3/bonuses should fail with missing token for whitelisted', async () => {
+    const creds = await getCreds(true)
+    const token = await getToken(server, creds)
+    await AdminWallet.ready
+    await AdminWallet.whitelistUser(creds.address, 'x')
+    const res = await request(server)
+      .get('/verify/w3/bonuses')
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toBe(400)
+    expect(res.body).toMatchObject({
+      ok: -1,
+      message: 'Missed W3 token'
+    })
   })
 })

@@ -60,7 +60,7 @@ export default class queueMongo {
       }, conf.mongoQueueMaxLockTime * 1000)
       return wallet
     } catch (e) {
-      log.error('TX queueMongo (getWalletNonce)', e)
+      log.error('TX queueMongo (getWalletNonce)', addresses, e.message, e)
       return false
     }
   }
@@ -98,7 +98,7 @@ export default class queueMongo {
         networkId: this.networkId
       })
     } catch (e) {
-      log.error('TX queueMongo (create)', e)
+      log.error('TX queueMongo (create)', address, e.message, e)
     }
   }
 
@@ -127,7 +127,7 @@ export default class queueMongo {
         { returnNewDocument: true }
       )
     } catch (e) {
-      log.error('errorunlock', address, e)
+      log.error('errorunlock', address, e.message, e)
     }
   }
 
@@ -160,6 +160,7 @@ export default class queueMongo {
    * @returns {Promise<void>}
    */
   async addToQueue(addresses, cb) {
+    addresses = Array.isArray(addresses) ? addresses : [addresses]
     await this.createListIfNotExists(addresses)
 
     this.queue.push({ cb, addresses })
@@ -173,10 +174,11 @@ export default class queueMongo {
    * @returns {Promise<void>}
    */
   async run() {
+    let nextTr, walletNonce
     try {
       if (this.queue.length > 0) {
-        const nextTr = this.queue.shift()
-        const walletNonce = await this.getWalletNonce(nextTr.addresses)
+        nextTr = this.queue.shift()
+        walletNonce = await this.getWalletNonce(nextTr.addresses)
         if (walletNonce) {
           nextTr.cb({ nonce: walletNonce.nonce, address: walletNonce.address })
         } else {
@@ -184,7 +186,20 @@ export default class queueMongo {
         }
       }
     } catch (e) {
-      log.error('TX queueMongo (run)', e)
+      log.error('TX queueMongo (run)', { nextTr, walletNonce }, e.message, e)
     }
+  }
+
+  /**
+   * Get lock status for address
+   *
+   * @param {string} address
+   *
+   * @returns {Boolean}
+   */
+  async isLocked(address) {
+    const wallet = await this.model.findOne({ address, networkId: this.networkId })
+
+    return Boolean(wallet && wallet.isLock)
   }
 }

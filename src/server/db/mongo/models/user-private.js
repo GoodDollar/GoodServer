@@ -22,6 +22,12 @@ export const UserPrivateSchema = new mongoose.Schema({
   jwt: {
     type: String
   },
+  loginToken: {
+    type: String
+  },
+  w3Token: {
+    type: String
+  },
   smsValidated: {
     type: Boolean
   },
@@ -40,6 +46,12 @@ export const UserPrivateSchema = new mongoose.Schema({
   },
   createdDate: {
     type: Date
+  },
+  magiclink: {
+    type: String
+  },
+  mnemonic: {
+    type: String
   }
 })
 

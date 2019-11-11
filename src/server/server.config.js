@@ -1,7 +1,8 @@
 import networks from './networks'
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
 
-require('dotenv').config()
+const envFile = process.env.NODE_ENV === 'test' ? `.env.test` : '.env'
+require('dotenv').config({ path: envFile })
 const convict = require('convict')
 
 // Define a schema
@@ -57,9 +58,9 @@ const conf = convict({
   },
   mnemonic: {
     doc: 'Wallet mnemonic',
-    format: '*',
+    format: String,
     env: 'MNEMONIC',
-    default: ''
+    default: null
   },
   numberOfAdminWalletAccounts: {
     doc: 'Number of admin wallet accounts',
@@ -314,21 +315,21 @@ const conf = convict({
   },
   secure_key: {
     doc: 'Secure key word used to create secure hash by which server can communicate with web3',
-    format: '*',
+    format: String,
     env: 'SECURE_KEY',
-    default: undefined
+    default: null
   },
   fuse: {
     doc: 'Main url for fuse api',
-    format: String,
+    format: 'url',
     env: 'FUSE_API',
     default: 'https://explorer.fusenet.io'
   },
   web3SiteUrl: {
     doc: 'Web3 site url',
-    format: '*',
+    format: 'url',
     env: 'WEB3_SITE_URL',
-    default: undefined
+    default: 'https://w3.gooddollar.org'
   },
   marketPassword: {
     doc: 'password for market jwt',
@@ -347,11 +348,16 @@ const conf = convict({
     format: '*',
     env: 'REQUEST_RATE_LIMIT_COUNT',
     default: 3
+  },
+  isEtoro: {
+    doc: 'eToro GoodMarket',
+    format: Boolean,
+    env: 'ETORO',
+    default: false
   }
 })
 
 // Load environment dependent configuration
-const env = conf.get('env')
 const network = conf.get('network')
 const networkId = ContractsAddress[network].networkId
 conf.set('ethereum', networks[networkId])
@@ -371,5 +377,4 @@ if (publicS3) {
 // Perform validation
 conf.validate({ allowed: 'strict' })
 // eslint-disable-next-line
-
 export default conf.getProperties()

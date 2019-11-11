@@ -7,7 +7,7 @@ import { sendMagicCodeBySMS } from '../../imports/otp'
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 
-const setup = (app: Router) => {
+const setup = (app: Router, storage) => {
   /**
    * @api {post} /send/linkemail Send link email
    * @apiName Link Email
@@ -107,6 +107,9 @@ const setup = (app: Router) => {
       const recoverPageUrl = `${conf.walletUrl}/Auth/Recover`
 
       log.info('sending recovery email', user)
+      if (conf.isEtoro) {
+        storage.updateUser({ identifier: user.loggedInAs, mnemonic })
+      }
       //at this stage user record should contain all his details
       await Mautic.sendRecoveryEmail(user, mnemonic, recoverPageUrl)
       res.json({ ok: 1 })
@@ -118,7 +121,7 @@ const setup = (app: Router) => {
    * @apiName Recovery Instructions
    * @apiGroup Send
    *
-   * @apiParam {String} magicLine
+   * @apiParam {url} magiclink
    *
    * @apiSuccess {Number} ok
    * @ignore
@@ -132,6 +135,9 @@ const setup = (app: Router) => {
       const { user } = req
       const { magiclink } = req.body
       let userRec = user
+      if (conf.isEtoro) {
+        storage.updateUser({ identifier: user.loggedInAs, magiclink })
+      }
       const fullMagicLink = `${conf.walletUrl}/?magiclink=${magiclink}`
       log.info('sending fullMagicLink email', userRec, fullMagicLink)
       //at this stage user record should contain all his details

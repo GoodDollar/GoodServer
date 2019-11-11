@@ -32,6 +32,15 @@ describe('storageAPI', () => {
     expect(res).toMatchObject({ status: 200, body: { ok: 1 } })
   })
 
+  test('/user/market should generate token', async () => {
+    const token = await getToken(server)
+    let res = await request(server)
+      .get('/user/market')
+      .set('Authorization', `Bearer ${token}`)
+      .send()
+    expect(res).toMatchObject({ status: 200, body: { ok: 1, jwt: expect.any(String) } })
+  })
+
   test('/user/add with duplicated creds - should fail with error', async () => {
     const token = await getToken(server)
     const user: UserRecord = {

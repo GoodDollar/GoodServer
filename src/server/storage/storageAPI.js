@@ -13,7 +13,14 @@ import conf from '../server.config'
 import AdminWallet from '../blockchain/AdminWallet'
 import { recoverPublickey } from '../utils/eth'
 import zoomHelper from '../verification/faceRecognition/faceRecognitionHelper'
+import * as W3Helper from '../utils/W3Helper'
 import crypto from 'crypto'
+
+const Timeout = (timeout: msec, msg: string) => {
+  return new Promise((res, rej) => {
+    setTimeout(rej, timeout, new Error(`Request Timeout: ${msg}`))
+  })
+}
 
 export const generateMarketToken = (user: UserRecord) => {
   const iv = crypto.randomBytes(16)
@@ -45,7 +52,7 @@ const setup = (app: Router, storage: StorageAPI) => {
     wrapAsync(async (req, res, next) => {
       const { body, user: userRecord, log } = req
       const logger = req.log.child({ from: 'storageAPI - /user/add' })
-      log.debug('new user request:', { data: body.user, userRecord })
+      logger.debug('new user request:', { data: body.user, userRecord })
       //check that user passed all min requirements
       if (
         ['production', 'staging'].includes(conf.env) &&
@@ -69,7 +76,7 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       if (conf.disableFaceVerification) {
         AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey).catch(e =>
-          log.error('failed whitelisting', userRecord)
+          logger.error('failed whitelisting', userRecord)
         )
       }
 
@@ -80,34 +87,15 @@ const setup = (app: Router, storage: StorageAPI) => {
           process.env.NODE_ENV === 'development'
             ? Promise.resolve({})
             : Mautic.createContact(user).catch(e => {
-                log.error('Create Mautic Record Failed', e)
+                logger.error('Create Mautic Record Failed', e)
               })
       }
 
-      const secureHash = md5(user.email + conf.secure_key)
+      const w3RecordPromise = W3Helper.registerUser(user)
 
-      log.debug('secureHash', secureHash)
+      const [mauticRecord, web3Record] = await Promise.all([mauticRecordPromise, w3RecordPromise])
 
-      const web3RecordPromise = fetch(`${conf.web3SiteUrl}/api/wl/user`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          secure_hash: secureHash.toLowerCase(),
-          email: user.email,
-          full_name: user.fullName,
-          wallet_address: user.gdAddress
-        })
-      })
-        .then(res => res.json())
-        .catch(e => {
-          log.error('Get Web3 Login Response Failed', e)
-        })
-
-      const [mauticRecord, web3Record] = await Promise.all([mauticRecordPromise, web3RecordPromise])
-
-      log.debug('Web3 user record', web3Record)
+      logger.debug('got web3/mautic user records', web3Record, mauticRecord)
 
       //mautic contact should already exists since it is first created during the email verification we update it here
       const mauticId = !userRecord.mauticId ? get(mauticRecord, 'contact.fields.all.id', -1) : userRecord.mauticId
@@ -118,32 +106,39 @@ const setup = (app: Router, storage: StorageAPI) => {
         mauticId
       }
 
-      const w3RecordData = web3Record && web3Record.data
+      if (web3Record && web3Record.login_token) {
+        updateUserObj.loginToken = web3Record.login_token
+      }
 
-      if (w3RecordData && w3RecordData.login_token) {
-        updateUserObj.loginToken = w3RecordData.login_token
+      if (web3Record && web3Record.wallet_token) {
+        updateUserObj.w3Token = web3Record.wallet_token
       }
 
       const marketToken = generateMarketToken(user)
-      log.debug('generate new user market token:', { marketToken, user })
+      logger.debug('generate new user market token:', { marketToken, user })
       if (marketToken) {
         updateUserObj.marketToken = marketToken
       }
 
+      logger.debug('generated market token, updating privatedb', marketToken)
       storage.updateUser(updateUserObj)
 
       //topwallet of user after registration
-      let ok = await AdminWallet.topWallet(userRecord.gdAddress, null, true)
+      let ok = await Promise.race([
+        AdminWallet.topWallet(userRecord.gdAddress, null, true),
+        Timeout(15000, 'topWallet')
+      ])
         .then(r => ({ ok: 1 }))
         .catch(e => {
           logger.error('New user topping failed', e.message)
           return { ok: 0, error: 'New user topping failed' }
         })
-      log.debug('added new user:', { user, ok })
+      logger.debug('added new user:', { user, ok })
 
       res.json({
         ...ok,
-        loginToken: w3RecordData && w3RecordData.login_token,
+        loginToken: web3Record && web3Record.login_token,
+        w3Token: web3Record && web3Record.wallet_token,
         marketToken
       })
     })
@@ -208,8 +203,10 @@ const setup = (app: Router, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const { user, log, body } = req
+      log.debug('new market token request:', { user })
       const jwt = generateMarketToken(user)
-      log.debug('new market token request:', { jwt, user })
+      log.debug('new market token result:', { jwt })
+
       res.json({ ok: 1, jwt })
     })
   )
