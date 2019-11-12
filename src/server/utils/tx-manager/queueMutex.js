@@ -19,6 +19,7 @@ export default class queueMutex {
     for (let address of addresses) {
       if (!this.getWallet(address)) {
         await this.createWallet(address)
+        log.info('created mutex for address:', { address })
       }
     }
   }
@@ -28,11 +29,11 @@ export default class queueMutex {
    * @param address
    */
   async createWallet(address) {
-    this.wallets[address] = {
+    return (this.wallets[address] = {
       address,
       nonce: await this.getTransactionCount(address),
       mutex: new Mutex()
-    }
+    })
   }
 
   /**
@@ -73,6 +74,9 @@ export default class queueMutex {
     log.debug('lock request', { addresses })
     const address = await this.getFirstFreeAddress(addresses)
     let wallet = this.getWallet(address)
+    if (wallet === undefined) {
+      wallet = await this.createWallet(address)
+    }
     log.debug('lock: got wallet', { address, wallet })
     let release = await wallet.mutex.lock()
     log.debug('lock: acquired lock', { address })

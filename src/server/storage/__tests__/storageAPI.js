@@ -9,6 +9,7 @@ jest.setTimeout(30000)
 describe('storageAPI', () => {
   let server
   beforeAll(done => {
+    UserDBPrivate.model.deleteMany({})
     server = makeServer(done)
   })
 
