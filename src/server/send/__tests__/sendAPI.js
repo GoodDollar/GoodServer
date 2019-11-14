@@ -122,7 +122,8 @@ describe('sendAPÏ', () => {
     await request(server)
       .post('/send/magiclink')
       .send({
-        magiclink: 'unit test magicLink'
+        magiclink: 'unit test magicLink',
+        fullName: 'full name'
       })
       .set('Authorization', `Bearer ${token}`)
       .expect(200, { ok: 1 })
@@ -144,7 +145,8 @@ describe('sendAPÏ', () => {
     const res = await request(server)
       .post('/send/magiclink')
       .send({
-        magiclink: 'unit test magicLine'
+        magiclink: 'unit test magicLine',
+        fullName: 'full name'
       })
       .set('Authorization', `Bearer ${token}`)
       .expect(400)

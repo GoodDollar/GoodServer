@@ -133,8 +133,8 @@ const setup = (app: Router, storage) => {
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'sendAPI - /send/magiclink' })
       const { user } = req
-      const { magiclink } = req.body
-      let userRec = user
+      const { magiclink, fullName } = req.body
+      let userRec = { fullName, ...user }
       if (conf.isEtoro) {
         storage.updateUser({ identifier: user.loggedInAs, magiclink })
       }
