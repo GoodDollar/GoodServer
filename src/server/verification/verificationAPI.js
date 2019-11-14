@@ -554,11 +554,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           log.info('Bonus redeem - receipt received', r)
 
           await W3Helper.informW3ThatBonusCharged(toRedeem, wallet_token)
+
           release()
-          return res.status(200).json({
-            bonusAmount: toRedeem,
-            hash: r.transactionHash
-          })
         },
         onError: e => {
           log.error('Bonuses charge failed', e.message, e, currentUser)
@@ -570,6 +567,10 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
             message: 'Failed to redeem bonuses for user'
           })
         }
+      })
+
+      return res.status(200).json({
+        ok: 1
       })
     })
   )
