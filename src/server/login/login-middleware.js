@@ -122,7 +122,7 @@ const setup = (app: Router) => {
     })
   )
 
-  app.post(
+  app.get(
     '/auth/ping',
     requestRateLimiter(10),
     wrapAsync(async (req, res) => {
