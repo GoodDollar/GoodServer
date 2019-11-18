@@ -140,7 +140,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       if (!userRec.smsValidated || mobile !== savedMobile) {
         const [, code] = await sendOTP({ mobile })
         const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
-        log.debug('otp sent:', user.loggedInAs)
+        log.debug('otp sent:', user.loggedInAs, code)
         await storage.updateUser({
           identifier: user.loggedInAs,
           otp: {
