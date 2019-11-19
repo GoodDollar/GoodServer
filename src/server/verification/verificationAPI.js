@@ -399,7 +399,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       if (w3User && w3User.email === email) {
-        await storage.updateUser({ identifier: currentUser.loggedInAs, isEmailConfirmed: true })
+        await storage.updateUser({
+          identifier: currentUser.loggedInAs,
+          otp: { ...currentUser.otp, email },
+          isEmailConfirmed: true
+        })
 
         responsePayload.ok = 1
         delete responsePayload.message
