@@ -126,7 +126,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       log.info('otp request:', user, body)
 
-      const { mobile } = body.user
+      const { mobile } = body.user.mobile || user.otp.mobile
 
       let userRec: UserRecord = _.defaults(body.user, user, { identifier: user.loggedInAs })
       const savedMobile = userRec.mobile
