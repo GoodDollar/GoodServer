@@ -20,8 +20,8 @@ const networks = {
   122: {
     network_id: 122,
     web3Transport: 'HttpProvider',
-    httpWeb3Provider: 'https://rpc.fusenet.io/',
-    websocketWeb3Provider: 'wss://explorer-node.fusenet.io/ws'
+    httpWeb3Provider: 'https://rpc.fuse.io/',
+    websocketWeb3Provider: 'wss://explorer-node.fuse.io/ws'
   }
 }
 
