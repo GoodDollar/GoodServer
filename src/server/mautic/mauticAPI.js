@@ -37,8 +37,11 @@ export const Mautic = {
   deleteContact(user: UserRecord) {
     return this.baseQuery(`/contacts/${user.mauticId}/delete`, this.baseHeaders, {}, 'delete')
   },
+
   createContact(user: UserRecord) {
-    return this.baseQuery('/contacts/new', this.baseHeaders, { ...user, tags: ['dappuser'] })
+    const tags = ['dappuser']
+    if (Config.isEtoro) tags.push('etorobeta')
+    return this.baseQuery('/contacts/new', this.baseHeaders, { ...user, tags })
   },
   sendVerificationEmail(user: UserRecord, code: string) {
     if (!(code && user.fullName && user.mauticId && Config.mauticVerifyEmailId))
