@@ -99,6 +99,21 @@ class UserPrivate {
   }
 
   /**
+   * complete Step by identifier and step name
+   *
+   * @param {int} identifier
+   * @param {string} stepName
+   *
+   * @returns {object || null}
+   */
+  async completeStep(identifier, stepName) {
+    let user = await this.model.findOne({ identifier }).lean()
+    user.isCompleted[stepName] = true
+    await this.updateUser(user)
+    return true
+  }
+
+  /**
    * Delete user by identifier
    *
    * @param {UserRecord} user

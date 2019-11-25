@@ -8,6 +8,7 @@ export type UserRecord = {
   smsValidated?: boolean,
   isEmailConfirmed?: boolean,
   otp?: { code: number, expirationDate: number },
+  isCompleted: { whiteList: boolean, w3Record: boolean, marketToken: boolean, topWallet: boolean },
   emailVerificationCode?: string
 }
 
@@ -23,6 +24,7 @@ export type LoggedUser = JWTRecord & UserRecord
 export interface StorageAPI {
   getUser(identifier: string): Promise<UserRecord | void>;
   getUserField(identifier: string, field: string): Promise<any>;
+  completeStep(identifier: string, stepName: string): Promise<any>;
   addUser(user: UserRecord): Promise<boolean>;
   updateUser(user: UserRecord): Promise<boolean>;
   deleteUser(user: UserRecord): Promise<boolean>;
