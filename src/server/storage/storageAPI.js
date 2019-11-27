@@ -9,15 +9,9 @@ import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import { recoverPublickey } from '../utils/eth'
 import zoomHelper from '../verification/faceRecognition/faceRecognitionHelper'
-import {
-  addUserToWhiteList,
-  updateMauticRecord,
-  updateW3Record,
-  updateMarketToken,
-  addUserToTopWallet,
-  generateMarketToken
-} from './storage'
+import addUserSteps from './addUserSteps'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
+import { generateMarketToken } from '../utils/market'
 
 const setup = (app: Router, storage: StorageAPI) => {
   /**
@@ -67,16 +61,16 @@ const setup = (app: Router, storage: StorageAPI) => {
       await UserDBPrivate.updateUser(user)
 
       if (conf.disableFaceVerification) {
-        addUserToWhiteList(userRecord)
+        addUserSteps.addUserToWhiteList(userRecord)
       }
 
       if (!userRecord.mauticId && process.env.NODE_ENV !== 'development') {
-        await updateMauticRecord(userRecord)
+        await addUserSteps.updateMauticRecord(userRecord)
       }
 
-      const web3Record = await updateW3Record(user)
-      const marketToken = await updateMarketToken(user)
-      let ok = await addUserToTopWallet(userRecord)
+      const web3Record = await addUserSteps.updateW3Record(user)
+      const marketToken = await addUserSteps.updateMarketToken(user)
+      let ok = await addUserSteps.topUserWallet(userRecord)
 
       logger.debug('added new user:', { user, ok })
 

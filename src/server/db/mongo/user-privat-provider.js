@@ -1,3 +1,4 @@
+// @flow
 import UserPrivateModel from './models/user-private.js'
 import logger from '../../../imports/pino-logger'
 import { type UserRecord } from '../../../imports/types'
@@ -107,9 +108,10 @@ class UserPrivate {
    * @returns {object || null}
    */
   async completeStep(identifier, stepName) {
-    let user = await this.model.findOne({ identifier }).lean()
-    user.isCompleted[stepName] = true
-    await this.updateUser(user)
+    const field = `isCompleted.${stepName}`
+
+    await this.model.updateOne({ identifier }, { $set: { [field]: true } })
+
     return true
   }
 

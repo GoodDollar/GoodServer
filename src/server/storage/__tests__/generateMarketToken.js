@@ -1,5 +1,5 @@
 // @flow
-import { generateMarketToken } from '../storage'
+import { generateMarketToken } from '../../utils/market'
 import crypto from 'crypto'
 import jwt from 'jsonwebtoken'
 import conf from '../../server.config'

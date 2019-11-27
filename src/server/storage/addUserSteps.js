@@ -7,8 +7,7 @@ import { type UserRecord } from '../../imports/types'
 import { Mautic } from '../mautic/mauticAPI'
 import get from 'lodash/get'
 import * as W3Helper from '../utils/W3Helper'
-import crypto from 'crypto'
-import jwt from 'jsonwebtoken'
+import { generateMarketToken } from '../utils/market'
 
 const Timeout = (timeout: msec, msg: string) => {
   return new Promise((res, rej) => {
@@ -16,9 +15,10 @@ const Timeout = (timeout: msec, msg: string) => {
   })
 }
 
-export const addUserToWhiteList = async (userRecord: UserRecord) => {
+const addUserToWhiteList = async (userRecord: UserRecord) => {
   let user = await UserDBPrivate.getUser(userRecord.identifier)
-  if (conf.disableFaceVerification && (!user.isCompleted || !user.isCompleted.whiteList)) {
+  const whiteList = get(user, 'isCompleted.whiteList', false)
+  if (conf.disableFaceVerification && !whiteList) {
     await AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey)
       .then(async r => {
         await UserDBPrivate.completeStep(user.identifier, 'whiteList')
@@ -30,7 +30,7 @@ export const addUserToWhiteList = async (userRecord: UserRecord) => {
   return true
 }
 
-export const updateMauticRecord = async (userRecord: UserRecord) => {
+const updateMauticRecord = async (userRecord: UserRecord) => {
   if (!userRecord.mauticId) {
     const mauticRecord = await Mautic.createContact(userRecord).catch(e => {
       logger.error('Create Mautic Record Failed', e)
@@ -43,17 +43,18 @@ export const updateMauticRecord = async (userRecord: UserRecord) => {
   return true
 }
 
-export const updateW3Record = async (user: any) => {
+const updateW3Record = async (user: any) => {
   let userDB = await UserDBPrivate.getUser(user.identifier)
-  if (!userDB.isCompleted || !userDB.isCompleted.w3Record) {
+  const w3Record = get(userDB, 'isCompleted.w3Record', false)
+  if (!w3Record) {
     const web3Record = await W3Helper.registerUser(user)
     if (web3Record && web3Record.login_token && web3Record.wallet_token) {
       await UserDBPrivate.updateUser({
         identifier: user.identifier,
         loginToken: web3Record.login_token,
-        w3Token: web3Record.wallet_token
+        w3Token: web3Record.wallet_token,
+        'isCompleted.w3Record': true
       })
-      await UserDBPrivate.completeStep(user.identifier, 'w3Record')
       logger.debug('got web3 user records', web3Record)
     }
     return web3Record
@@ -61,27 +62,27 @@ export const updateW3Record = async (user: any) => {
   return null
 }
 
-export const updateMarketToken = async (user: any) => {
+const updateMarketToken = async (user: any) => {
   let userDB = await UserDBPrivate.getUser(user.identifier)
-
-  if (!userDB.isCompleted || !userDB.isCompleted.marketToken) {
+  const marketToken = get(userDB, 'isCompleted.marketToken', false)
+  if (!marketToken) {
     const marketToken = await generateMarketToken(user)
     logger.debug('generate new user market token:', { marketToken, user })
     if (marketToken) {
-      await UserDBPrivate.updateUser({ identifier: user.identifier, marketToken })
-      await UserDBPrivate.completeStep(user.identifier, 'marketToken')
+      await UserDBPrivate.updateUser({ identifier: user.identifier, marketToken, 'isCompleted.marketToken': true })
     }
     return marketToken
   }
   return null
 }
 
-export const addUserToTopWallet = async (userRecord: UserRecord) => {
+const topUserWallet = async (userRecord: UserRecord) => {
   let user = await UserDBPrivate.getUser(userRecord.identifier)
-  if (!user.isCompleted || !user.isCompleted.topWallet) {
+  const topWallet = get(user, 'isCompleted.topWallet', false)
+  if (!topWallet) {
     return Promise.race([AdminWallet.topWallet(userRecord.gdAddress, null, true), Timeout(15000, 'topWallet')])
-      .then(async r => {
-        await UserDBPrivate.completeStep(user.identifier, 'topWallet')
+      .then(r => {
+        UserDBPrivate.completeStep(userRecord.identifier, 'topWallet')
         return { ok: 1 }
       })
       .catch(e => {
@@ -91,15 +92,10 @@ export const addUserToTopWallet = async (userRecord: UserRecord) => {
   }
 }
 
-export const generateMarketToken = (user: UserRecord) => {
-  const iv = crypto.randomBytes(16)
-  const token = jwt.sign({ email: user.email, name: user.fullName }, conf.marketPassword)
-  const cipher = crypto.createCipheriv('aes-256-cbc', conf.marketPassword, iv)
-  let encrypted = cipher.update(token, 'utf8', 'base64')
-  encrypted += cipher.final('base64')
-  const ivstring = iv.toString('base64')
-  return `${encrypted}:${ivstring}`
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+/g, '')
+export default {
+  topUserWallet,
+  updateMarketToken,
+  updateW3Record,
+  updateMauticRecord,
+  addUserToWhiteList
 }
