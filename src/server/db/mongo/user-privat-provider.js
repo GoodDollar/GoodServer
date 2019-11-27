@@ -1,4 +1,4 @@
-// @flow
+//@flow
 import UserPrivateModel from './models/user-private.js'
 import logger from '../../../imports/pino-logger'
 import { type UserRecord } from '../../../imports/types'
@@ -160,7 +160,8 @@ class UserPrivate {
    * @returns {Promise<*>}
    */
   async listUsers(): Promise<UserRecord> {
-    return await this.model.find().lean()
+    const res = this.model.find({}, { email: 1, identifier: 1 }).lean()
+    return res
   }
 
   /**

@@ -126,7 +126,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       log.info('otp request:', user, body)
 
-      const { mobile } = body.user
+      const mobile = body.user.mobile || user.otp.mobile
 
       let userRec: UserRecord = _.defaults(body.user, user, { identifier: user.loggedInAs })
       const savedMobile = userRec.mobile
@@ -399,7 +399,16 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       if (w3User && w3User.email === email) {
-        await storage.updateUser({ identifier: currentUser.loggedInAs, isEmailConfirmed: true })
+        currentUser.email = w3User.email
+        const mauticContact = await Mautic.createContact(currentUser)
+        const mauticId = mauticContact.contact.fields.all.id
+        await storage.updateUser({
+          identifier: currentUser.loggedInAs,
+          mauticId,
+          email,
+          otp: { ...currentUser.otp, email },
+          isEmailConfirmed: true
+        })
 
         responsePayload.ok = 1
         delete responsePayload.message

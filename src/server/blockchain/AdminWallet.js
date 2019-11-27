@@ -284,9 +284,10 @@ export class Wallet {
     if (conf.env !== 'development' && daysAgo < 1) throw new Error('Daily limit reached')
     try {
       let userBalance = await this.web3.eth.getBalance(address)
-      let toTop = parseInt(web3Utils.toWei('1000000', 'gwei')) - userBalance
+      let maxTopWei = parseInt(web3Utils.toWei('1000000', 'gwei'))
+      let toTop = maxTopWei - userBalance
       log.debug('TopWallet:', { userBalance, toTop })
-      if (toTop > 0 && (force || toTop / 1000000 >= 0.75)) {
+      if (toTop > 0 && (force || toTop / maxTopWei >= 0.75)) {
         let res = await this.sendNative({
           from: this.address,
           to: address,

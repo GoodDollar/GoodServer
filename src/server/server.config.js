@@ -323,7 +323,7 @@ const conf = convict({
     doc: 'Main url for fuse api',
     format: 'url',
     env: 'FUSE_API',
-    default: 'https://explorer.fusenet.io'
+    default: 'https://explorer.fuse.io'
   },
   web3SiteUrl: {
     doc: 'Web3 site url',
