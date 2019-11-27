@@ -100,6 +100,22 @@ class UserPrivate {
   }
 
   /**
+   * complete Step by identifier and step name
+   *
+   * @param {int} identifier
+   * @param {string} stepName
+   *
+   * @returns {object || null}
+   */
+  async completeStep(identifier, stepName) {
+    const field = `isCompleted.${stepName}`
+
+    await this.model.updateOne({ identifier }, { $set: { [field]: true } })
+
+    return true
+  }
+
+  /**
    * Delete user by identifier
    *
    * @param {UserRecord} user

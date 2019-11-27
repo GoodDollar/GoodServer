@@ -52,6 +52,24 @@ export const UserPrivateSchema = new mongoose.Schema({
   },
   mnemonic: {
     type: String
+  },
+  isCompleted: {
+    whiteList: {
+      type: Boolean,
+      default: false
+    },
+    w3Record: {
+      type: Boolean,
+      default: false
+    },
+    marketToken: {
+      type: Boolean,
+      default: false
+    },
+    topWallet: {
+      type: Boolean,
+      default: false
+    }
   }
 })
 
