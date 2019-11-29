@@ -132,7 +132,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const savedMobile = userRec.mobile
 
       if (conf.allowDuplicateUserData === false && (await storage.isDupUserData({ mobile }))) {
-        return res.json({ ok: 0, error: 'Mobile already exists, please use a different one or contact support.' })
+        return res.json({ ok: 0, error: 'mobile_already_exists' })
       }
 
       log.debug('sending otp:', user.loggedInAs)
