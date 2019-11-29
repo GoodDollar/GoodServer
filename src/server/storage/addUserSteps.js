@@ -6,7 +6,7 @@ import UserDBPrivate from '../db/mongo/user-privat-provider'
 import { type UserRecord } from '../../imports/types'
 import { Mautic } from '../mautic/mauticAPI'
 import get from 'lodash/get'
-import * as W3Helper from '../utils/W3Helper'
+import W3Helper from '../utils/W3Helper'
 import { generateMarketToken } from '../utils/market'
 
 const Timeout = (timeout: msec, msg: string) => {

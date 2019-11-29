@@ -5,98 +5,103 @@ import logger from '../../imports/pino-logger'
 
 const log = logger.child({ from: 'W3Helper' })
 
-const w3PUTUserReq = (user, _options) => {
-  const options = {
-    getResponse: false,
-    ..._options
-  }
-  const secureHash = md5(user.email + conf.secure_key)
+export default {
+  baseUrl: `${conf.web3SiteUrl}/api/wl/user`,
+  baseHeaders: {
+    'Content-Type': 'application/json'
+  },
 
-  return new Promise((resolve, reject) => {
-    fetch(`${conf.web3SiteUrl}/api/wl/user`, {
+  w3PUTUserReq(user, _options) {
+    const options = {
+      getResponse: false,
+      ..._options
+    }
+    const secureHash = md5(user.email + conf.secure_key)
+
+    return new Promise((resolve, reject) => {
+      fetch(this.baseUrl, {
+        method: 'PUT',
+        headers: this.baseHeaders,
+        body: JSON.stringify({
+          secure_hash: secureHash.toLowerCase(),
+          ...user
+        })
+      })
+        .then(r => r.json())
+        .then(response => {
+          let toReturn = response.data
+
+          if (options.getResponse) {
+            toReturn = response
+          }
+
+          resolve(toReturn)
+        })
+        .catch(e => {
+          log.error('Fetch W3 User Failed', e.message, e)
+
+          reject(e)
+        })
+    })
+  },
+
+  registerUser(user, options) {
+    return this.w3PUTUserReq(
+      {
+        email: user.email,
+        full_name: user.fullName,
+        wallet_address: user.gdAddress
+      },
+      options
+    )
+  },
+
+  etLoginOrWalletToken(user, options) {
+    return this.w3PUTUserReq({ email: user.email }, options)
+  },
+
+  informW3ThatBonusCharged(bonusAmount, walletToken) {
+    fetch(`${this.baseUrl}/redeem`, {
       method: 'PUT',
       headers: {
-        'Content-Type': 'application/json'
+        ...this.baseUrl,
+        Authorization: walletToken
       },
       body: JSON.stringify({
-        secure_hash: secureHash.toLowerCase(),
-        ...user
+        redeemed_bonus: bonusAmount
       })
+    }).catch(e => {
+      log.error('Failed to update W3 with redeemed bonus', e.message, e)
     })
-      .then(r => r.json())
-      .then(response => {
-        let toReturn = response.data
+  },
 
-        if (options.getResponse) {
-          toReturn = response
+  getUser(walletToken, options) {
+    options = options || {
+      getResponse: false
+    }
+
+    return new Promise((resolve, reject) => {
+      fetch(this.baseUrl, {
+        method: 'GET',
+        headers: {
+          Authorization: walletToken
         }
-
-        resolve(toReturn)
       })
-      .catch(e => {
-        log.error('Fetch W3 User Failed', e.message, e)
+        .then(res => res.json())
+        .then(response => {
+          let toReturn = response.data
 
-        reject(e)
-      })
-  })
-}
+          if (options.getResponse) {
+            toReturn = response
+          }
 
-export const registerUser = (user, options) => {
-  return w3PUTUserReq(
-    {
-      email: user.email,
-      full_name: user.fullName,
-      wallet_address: user.gdAddress
-    },
-    options
-  )
-}
+          resolve(toReturn)
+        })
+        .catch(e => {
+          log.error('Failed to fetch W3 user from W3 api', e.message, e)
 
-export const getLoginOrWalletToken = (user, options) => {
-  return w3PUTUserReq({ email: user.email }, options)
-}
-
-export const informW3ThatBonusCharged = (bonusAmount, walletToken) => {
-  fetch(`${conf.web3SiteUrl}/api/wl/user/redeem`, {
-    method: 'PUT',
-    headers: {
-      Authorization: walletToken,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      redeemed_bonus: bonusAmount
+          reject(e)
+        })
     })
-  }).catch(e => {
-    log.error('Failed to update W3 with redeemed bonus', e.message, e)
-  })
-}
-
-export const getUser = (walletToken, options) => {
-  options = options || {
-    getResponse: false
   }
-
-  return new Promise((resolve, reject) => {
-    fetch(`${conf.web3SiteUrl}/api/wl/user`, {
-      method: 'GET',
-      headers: {
-        Authorization: walletToken
-      }
-    })
-      .then(res => res.json())
-      .then(response => {
-        let toReturn = response.data
-
-        if (options.getResponse) {
-          toReturn = response
-        }
-
-        resolve(toReturn)
-      })
-      .catch(e => {
-        log.error('Failed to fetch W3 user from W3 api', e.message, e)
-
-        reject(e)
-      })
-  })
 }
