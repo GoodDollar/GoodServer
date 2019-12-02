@@ -4,11 +4,48 @@ import conf from '../server.config'
 import logger from '../../imports/pino-logger'
 
 const log = logger.child({ from: 'W3Helper' })
+const Timeout = timeout => {
+  return new Promise((res, rej) => {
+    setTimeout(rej, timeout, new Error('Request Timeout'))
+  })
+}
 
 export default {
   baseUrl: `${conf.web3SiteUrl}/api/wl/user`,
   baseHeaders: {
     'Content-Type': 'application/json'
+  },
+
+  baseQuery(url, headers, body, method = 'post', options = {}, timeout = 15000) {
+    const fullUrl = `${this.baseUrl}${url}`
+    const stringBody = method !== 'GET' ? JSON.stringify(body) : undefined
+
+    log.debug('req options', { url, headers, body, method, options, timeout })
+
+    return Promise.race([Timeout(timeout), fetch(fullUrl, { method, body: stringBody, headers })])
+      .then(async res => {
+        log.debug('request response', res)
+
+        if (res.status >= 300) {
+          throw new Error(await res.text())
+        }
+
+        return res.json()
+      })
+      .then(response => {
+        let toReturn = response.data
+
+        if (options.getResponse) {
+          toReturn = response
+        }
+
+        return toReturn
+      })
+      .catch(e => {
+        log.trace(e)
+
+        throw e
+      })
   },
 
   w3PUTUserReq(user, _options) {
@@ -20,33 +57,16 @@ export default {
 
     log.debug('secureHash', { user, secureHash })
 
-    return new Promise((resolve, reject) => {
-      fetch(this.baseUrl, {
-        method: 'PUT',
-        headers: this.baseHeaders,
-        body: JSON.stringify({
-          secure_hash: secureHash.toLowerCase(),
-          ...user
-        })
-      })
-        .then(r => r.json())
-        .then(response => {
-          let toReturn = response.data
-
-          log.debug('w3PUTUserReq response', response)
-
-          if (options.getResponse) {
-            toReturn = response
-          }
-
-          resolve(toReturn)
-        })
-        .catch(e => {
-          log.error('Fetch W3 User Failed', e.message, e)
-
-          reject(e)
-        })
-    })
+    return this.baseQuery(
+      '',
+      this.baseHeaders,
+      {
+        secure_hash: secureHash.toLowerCase(),
+        ...user
+      },
+      'PUT',
+      options
+    )
   },
 
   registerUser(user, options) {
@@ -65,49 +85,33 @@ export default {
   },
 
   informW3ThatBonusCharged(bonusAmount, walletToken) {
-    fetch(`${this.baseUrl}/redeem`, {
-      method: 'PUT',
-      headers: {
+    return this.baseQuery(
+      '/redeem',
+      {
         ...this.baseUrl,
         Authorization: walletToken
       },
-      body: JSON.stringify({
+      {
         redeemed_bonus: bonusAmount
-      })
-    }).catch(e => {
-      log.error('Failed to update W3 with redeemed bonus', e.message, e)
-    })
+      },
+      'PUT'
+    )
   },
 
-  getUser(walletToken, options) {
-    options = options || {
-      getResponse: false
+  getUser(walletToken, _options) {
+    const options = {
+      getResponse: false,
+      ..._options
     }
 
-    return new Promise((resolve, reject) => {
-      fetch(this.baseUrl, {
-        method: 'GET',
-        headers: {
-          Authorization: walletToken
-        }
-      })
-        .then(res => res.json())
-        .then(response => {
-          let toReturn = response.data
-
-          log.debug('getUser response', response)
-
-          if (options.getResponse) {
-            toReturn = response
-          }
-
-          resolve(toReturn)
-        })
-        .catch(e => {
-          log.error('Failed to fetch W3 user from W3 api', e.message, e)
-
-          reject(e)
-        })
-    })
+    return this.baseQuery(
+      '',
+      {
+        Authorization: walletToken
+      },
+      {},
+      'GET',
+      options
+    )
   }
 }
