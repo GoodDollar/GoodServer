@@ -56,7 +56,7 @@ export default {
     )
   },
 
-  etLoginOrWalletToken(user, options) {
+  getLoginOrWalletToken(user, options) {
     return this.w3PUTUserReq({ email: user.email }, options)
   },
 
