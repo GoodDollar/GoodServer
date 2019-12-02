@@ -18,6 +18,8 @@ export default {
     }
     const secureHash = md5(user.email + conf.secure_key)
 
+    log.debug('secureHash', { user, secureHash })
+
     return new Promise((resolve, reject) => {
       fetch(this.baseUrl, {
         method: 'PUT',
@@ -30,6 +32,8 @@ export default {
         .then(r => r.json())
         .then(response => {
           let toReturn = response.data
+
+          log.debug('w3PUTUserReq response', response)
 
           if (options.getResponse) {
             toReturn = response
@@ -90,6 +94,8 @@ export default {
         .then(res => res.json())
         .then(response => {
           let toReturn = response.data
+
+          log.debug('getUser response', response)
 
           if (options.getResponse) {
             toReturn = response
