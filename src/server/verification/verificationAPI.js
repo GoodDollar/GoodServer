@@ -129,7 +129,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const mobile = body.user.mobile || user.otp.mobile
 
       let userRec: UserRecord = _.defaults(body.user, user, { identifier: user.loggedInAs })
-      const savedMobile = userRec.mobile
+      const savedMobile = user.mobile
 
       if (conf.allowDuplicateUserData === false && (await storage.isDupUserData({ mobile }))) {
         return res.json({ ok: 0, error: 'Mobile already exists, please use a different one.' })
@@ -287,7 +287,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       if (conf.allowDuplicateUserData === false && (await storage.isDupUserData({ email }))) {
         return res.json({ ok: 0, error: 'Email already exists, please use a different one' })
       }
-      if (!user.mauticId || user.email !== body.email) {
+      if (!user.mauticId || savedEmail !== email) {
         //first time create contact for user in mautic
         const mauticContact = await Mautic.createContact(userRec)
         userRec.mauticId = mauticContact.contact.fields.all.id
