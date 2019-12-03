@@ -66,7 +66,7 @@ export default {
       },
       'PUT',
       options
-    )
+    ).catch(() => ({}))
   },
 
   registerUser(user, options) {
