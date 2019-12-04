@@ -42,7 +42,7 @@ export default {
         return toReturn
       })
       .catch(e => {
-        log.trace(e)
+        log.error(e)
 
         throw e
       })
