@@ -287,10 +287,20 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       if (conf.allowDuplicateUserData === false && (await storage.isDupUserData({ email }))) {
         return res.json({ ok: 0, error: 'Email already exists, please use a different one' })
       }
-      if (!user.mauticId || savedEmail !== email) {
-        //first time create contact for user in mautic
+
+      if (!user.mauticId) {
         const mauticContact = await Mautic.createContact(userRec)
+
         userRec.mauticId = mauticContact.contact.fields.all.id
+
+        log.debug('created new user mautic contact', userRec)
+      }
+
+      if (savedEmail !== email) {
+        const mauticContact = await Mautic.createContact(userRec)
+
+        userRec.otp.tempMauticId = mauticContact.contact.fields.all.id
+
         log.debug('created new user mautic contact', userRec)
       }
 
@@ -337,18 +347,23 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log.child({ from: 'verificationAPI - verify/email' })
       const { user, body } = req
       const verificationData: { code: string } = body.verificationData
-      const savedEmail = user.otp && user.otp.email
+      const tempSavedEmail = user.otp && user.otp.email
+      const tempSavedMauticContact = user.otp && user.otp.tempMauticId
       const currentEmail = user.email
 
       log.debug('email verified', { user, verificationData })
 
-      if (!user.isEmailConfirmed || currentEmail !== savedEmail) {
+      if (!user.isEmailConfirmed || currentEmail !== tempSavedEmail) {
         await verifier.verifyEmail({ identifier: user.loggedInAs }, verificationData)
 
         // if verification succeeds, then set the flag `isEmailConfirmed` to true in the user's record
-        await storage.updateUser({ identifier: user.loggedInAs, isEmailConfirmed: true })
+        await storage.updateUser({
+          identifier: user.loggedInAs,
+          isEmailConfirmed: true,
+          mauticId: tempSavedMauticContact
+        })
       }
-      const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: savedEmail })
+      const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: tempSavedEmail })
 
       res.json({ ok: 1, attestation: signedEmail })
     })
