@@ -297,9 +297,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       if (user.mauticId && savedEmail !== email) {
-        const mauticContact = await Mautic.createContact(userRec)
+        const tempMauticContact = await Mautic.createContact(userRec)
 
-        userRec.otp.tempMauticId = mauticContact.contact.fields.all.id
+        userRec.otp.tempMauticId = tempMauticContact.contact.fields.all.id
 
         log.debug('created new user mautic contact', userRec)
       }
@@ -307,7 +307,14 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       if (conf.skipEmailVerification === false) {
         const code = generateOTP(6)
         if (!user.isEmailConfirmed || email !== savedEmail) {
-          Mautic.sendVerificationEmail(userRec, code)
+          Mautic.sendVerificationEmail(
+            {
+              ...userRec,
+              mauticId: (userRec.otp && userRec.otp.tempMauticId) || userRec.mauticId
+            },
+            code
+          )
+
           log.debug('send new user email validation code', code)
         }
 
@@ -348,7 +355,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { user, body } = req
       const verificationData: { code: string } = body.verificationData
       const tempSavedEmail = user.otp && user.otp.email
-      const tempSavedMauticContact = user.otp && user.otp.tempMauticId
+      const tempSavedMauticId = user.otp && user.otp.tempMauticId
       const currentEmail = user.email
 
       log.debug('email verified', { user, verificationData })
@@ -356,13 +363,22 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       if (!user.isEmailConfirmed || currentEmail !== tempSavedEmail) {
         await verifier.verifyEmail({ identifier: user.loggedInAs }, verificationData)
 
-        // if verification succeeds, then set the flag `isEmailConfirmed` to true in the user's record
-        await storage.updateUser({
-          identifier: user.loggedInAs,
-          isEmailConfirmed: true,
-          mauticId: tempSavedMauticContact,
-          email: tempSavedEmail
-        })
+        await Promise.all([
+          // if verification succeeds, then set the flag `isEmailConfirmed` to true in the user's record
+          storage.updateUser({
+            identifier: user.loggedInAs,
+            isEmailConfirmed: true,
+            email: tempSavedEmail,
+            otp: {
+              ...user.otp,
+              tempMauticId: undefined
+            }
+          }),
+          tempSavedMauticId &&
+            Mautic.deleteContact({
+              mauticId: tempSavedMauticId
+            })
+        ])
       }
       const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: tempSavedEmail })
 
