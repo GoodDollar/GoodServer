@@ -88,7 +88,7 @@ export default {
     return this.baseQuery(
       '/redeem',
       {
-        ...this.baseUrl,
+        ...this.baseHeaders,
         Authorization: walletToken
       },
       {
