@@ -296,7 +296,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         log.debug('created new user mautic contact', userRec)
       }
 
-      if (savedEmail !== email) {
+      if (user.mauticId && savedEmail !== email) {
         const mauticContact = await Mautic.createContact(userRec)
 
         userRec.otp.tempMauticId = mauticContact.contact.fields.all.id
