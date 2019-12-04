@@ -175,12 +175,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log.child({ from: 'verificationAPI - verify/mobile' })
       const { user, body } = req
       const verificationData: { otp: string } = body.verificationData
-      const savedMobile = user.otp && user.otp.mobile
+      const tempSavedMobile = user.otp && user.otp.mobile
       const currentMobile = user.mobile
 
       log.debug('mobile verified', { user, verificationData })
 
-      if (!user.smsValidated || currentMobile !== savedMobile) {
+      if (!user.smsValidated || currentMobile !== tempSavedMobile) {
         let verified = await verifier.verifyMobile({ identifier: user.loggedInAs }, verificationData).catch(e => {
           log.warn('mobile verification failed:', e)
 
@@ -191,10 +191,10 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
         if (verified === false) return
 
-        await storage.updateUser({ identifier: user.loggedInAs, smsValidated: true })
+        await storage.updateUser({ identifier: user.loggedInAs, smsValidated: true, mobile: tempSavedMobile })
       }
 
-      const signedMobile = await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: savedMobile })
+      const signedMobile = await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: tempSavedMobile })
 
       res.json({ ok: 1, attestation: signedMobile })
     })
@@ -360,7 +360,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         await storage.updateUser({
           identifier: user.loggedInAs,
           isEmailConfirmed: true,
-          mauticId: tempSavedMauticContact
+          mauticId: tempSavedMauticContact,
+          email: tempSavedEmail
         })
       }
       const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: tempSavedEmail })
