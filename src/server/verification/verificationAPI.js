@@ -273,7 +273,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     '/verify/sendemail',
     requestRateLimiter(),
     passport.authenticate('jwt', { session: false }),
-    onlyInEnv('development', 'production', 'staging', 'test'),
+    onlyInEnv('production', 'staging', 'test'),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/sendemail' })
 
@@ -345,7 +345,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
     '/verify/email',
     passport.authenticate('jwt', { session: false }),
-    onlyInEnv('development', 'production', 'staging', 'test'),
+    onlyInEnv('production', 'staging', 'test'),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/email' })
       const { user, body } = req
