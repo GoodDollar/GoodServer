@@ -273,7 +273,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     '/verify/sendemail',
     requestRateLimiter(),
     passport.authenticate('jwt', { session: false }),
-    onlyInEnv('production', 'staging', 'test'),
+    onlyInEnv('development', 'production', 'staging', 'test'),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/sendemail' })
 
@@ -283,22 +283,17 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       //merge user details for use by mautic
       let userRec: UserRecord = _.defaults(body.user, user)
       const currentEmail = user.email
-      const tempSavedEmail = user.otp && user.otp.email
       const tempMauticId = user.otp && user.otp.tempMauticId
 
       if (conf.allowDuplicateUserData === false && (await storage.isDupUserData({ email }))) {
         return res.json({ ok: 0, error: 'Email already exists, please use a different one' })
       }
 
-      if (
-        (!user.mauticId && !tempMauticId) ||
-        (currentEmail && currentEmail !== email) ||
-        (tempSavedEmail && tempSavedEmail !== email)
-      ) {
+      if ((!user.mauticId && !tempMauticId) || (currentEmail && currentEmail !== email)) {
         const mauticContact = await Mautic.createContact(userRec)
 
         userRec.otp = {
-          ...user.otp,
+          ...userRec.otp,
           tempMauticId: mauticContact.contact.fields.all.id
         }
 
@@ -310,7 +305,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         if (!user.isEmailConfirmed || email !== currentEmail) {
           Mautic.sendVerificationEmail(
             {
-              ...userRec,
+              fullName: userRec.fullName,
               mauticId: (userRec.otp && userRec.otp.tempMauticId) || userRec.mauticId
             },
             code
@@ -350,7 +345,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
     '/verify/email',
     passport.authenticate('jwt', { session: false }),
-    onlyInEnv('production', 'staging', 'test'),
+    onlyInEnv('development', 'production', 'staging', 'test'),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/email' })
       const { user, body } = req
@@ -359,7 +354,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const tempSavedMauticId = user.otp && user.otp.tempMauticId
       const currentEmail = user.email
 
-      log.debug('email verified', { user, verificationData })
+      log.debug('email verified', { user, body, verificationData, tempSavedMauticId, tempSavedEmail, currentEmail })
 
       if (!user.isEmailConfirmed || currentEmail !== tempSavedEmail) {
         await verifier.verifyEmail({ identifier: user.loggedInAs }, verificationData)
@@ -370,8 +365,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           email: tempSavedEmail,
           otp: {
             ...user.otp,
-            tempMauticId: undefined,
-            email: undefined
+            tempMauticId: undefined
           }
         }
 
