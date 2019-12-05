@@ -18,6 +18,7 @@ export const Mautic = {
     Authorization: `Bearer ${Config.mauticToken}`,
     'Content-Type': 'application/json'
   },
+
   baseQuery(url, headers, body, method = 'post', timeout = 15000) {
     const fullUrl = `${this.baseUrl}${url}`
 
@@ -34,6 +35,11 @@ export const Mautic = {
         throw e
       })
   },
+
+  updateContact(mauticId, newEmail) {
+    return this.baseQuery(`/users/${mauticId}/edit`, this.baseHeaders, { email: newEmail }, 'patch')
+  },
+
   deleteContact(user: UserRecord) {
     return this.baseQuery(`/contacts/${user.mauticId}/delete`, this.baseHeaders, {}, 'delete')
   },
@@ -43,6 +49,7 @@ export const Mautic = {
     if (Config.isEtoro) tags.push('etorobeta')
     return this.baseQuery('/contacts/new', this.baseHeaders, { ...user, tags })
   },
+
   sendVerificationEmail(user: UserRecord, code: string) {
     if (!(code && user.fullName && user.mauticId && Config.mauticVerifyEmailId))
       throw new Error('missing input for sending verification email')
@@ -51,6 +58,7 @@ export const Mautic = {
       tokens: { code, firstName: user.fullName }
     })
   },
+
   sendRecoveryEmail(user: UserRecord, mnemonic: string, recoverPageUrl: string) {
     if (!(mnemonic && user.fullName && user.mauticId && Config.mauticRecoveryEmailId))
       throw new Error('missing input for sending recovery email')
@@ -68,6 +76,7 @@ export const Mautic = {
       tokens: { firstName: user.fullName, seedFirst: mnemonicFirstPart, seedSecond: mnemonicSecondPart, recoverPageUrl }
     })
   },
+
   sendMagicLinkEmail(user: UserRecord, magicLink: string) {
     if (!(magicLink && user.fullName && user.mauticId && Config.mauticmagicLinkEmailId))
       throw new Error('missing input for sending magicLink email')

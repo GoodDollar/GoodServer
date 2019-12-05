@@ -282,31 +282,32 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       //merge user details for use by mautic
       let userRec: UserRecord = _.defaults(body.user, user)
-      const savedEmail = user.email
+      const currentEmail = user.email
+      const tempSavedEmail = user.otp && user.otp.email
+      const tempMauticId = user.otp && user.otp.tempMauticId
 
       if (conf.allowDuplicateUserData === false && (await storage.isDupUserData({ email }))) {
         return res.json({ ok: 0, error: 'Email already exists, please use a different one' })
       }
 
-      if (!user.mauticId) {
+      if (
+        (!user.mauticId && !tempMauticId) ||
+        (currentEmail && currentEmail !== email) ||
+        (tempSavedEmail && tempSavedEmail !== email)
+      ) {
         const mauticContact = await Mautic.createContact(userRec)
 
-        userRec.mauticId = mauticContact.contact.fields.all.id
-
-        log.debug('created new user mautic contact', userRec)
-      }
-
-      if (user.mauticId && savedEmail !== email) {
-        const tempMauticContact = await Mautic.createContact(userRec)
-
-        userRec.otp.tempMauticId = tempMauticContact.contact.fields.all.id
+        userRec.otp = {
+          ...user.otp,
+          tempMauticId: mauticContact.contact.fields.all.id
+        }
 
         log.debug('created new user mautic contact', userRec)
       }
 
       if (conf.skipEmailVerification === false) {
         const code = generateOTP(6)
-        if (!user.isEmailConfirmed || email !== savedEmail) {
+        if (!user.isEmailConfirmed || email !== currentEmail) {
           Mautic.sendVerificationEmail(
             {
               ...userRec,
@@ -363,23 +364,31 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       if (!user.isEmailConfirmed || currentEmail !== tempSavedEmail) {
         await verifier.verifyEmail({ identifier: user.loggedInAs }, verificationData)
 
-        await Promise.all([
-          // if verification succeeds, then set the flag `isEmailConfirmed` to true in the user's record
-          storage.updateUser({
-            identifier: user.loggedInAs,
-            isEmailConfirmed: true,
-            email: tempSavedEmail,
-            otp: {
-              ...user.otp,
-              tempMauticId: undefined
-            }
-          }),
-          tempSavedMauticId &&
+        const updateUserUbj = {
+          identifier: user.loggedInAs,
+          isEmailConfirmed: true,
+          email: tempSavedEmail,
+          otp: {
+            ...user.otp,
+            tempMauticId: undefined,
+            email: undefined
+          }
+        }
+
+        if (user.mauticId) {
+          await Promise.all([
             Mautic.deleteContact({
               mauticId: tempSavedMauticId
-            })
-        ])
+            }),
+            Mautic.updateContact(user.mauticId, tempSavedEmail)
+          ])
+        } else {
+          updateUserUbj.mauticId = tempSavedMauticId
+        }
+
+        await storage.updateUser(updateUserUbj)
       }
+
       const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: tempSavedEmail })
 
       res.json({ ok: 1, attestation: signedEmail })
