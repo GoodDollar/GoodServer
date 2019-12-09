@@ -36,8 +36,8 @@ export const Mautic = {
       })
   },
 
-  updateContact(mauticId, newEmail) {
-    return this.baseQuery(`/contacts/${mauticId}/edit`, this.baseHeaders, { email: newEmail }, 'patch')
+  updateContact(mauticId, newFields) {
+    return this.baseQuery(`/contacts/${mauticId}/edit`, this.baseHeaders, newFields, 'patch')
   },
 
   deleteContact(user: UserRecord) {

@@ -374,7 +374,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
             Mautic.deleteContact({
               mauticId: tempSavedMauticId
             }),
-            Mautic.updateContact(user.mauticId, tempSavedEmail)
+            Mautic.updateContact(user.mauticId, { email: tempSavedEmail })
           ])
         } else {
           updateUserUbj.mauticId = tempSavedMauticId
