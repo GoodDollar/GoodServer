@@ -292,6 +292,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       if ((!user.mauticId && !tempMauticId) || (currentEmail && currentEmail !== email)) {
         const mauticContact = await Mautic.createContact(userRec)
 
+        //otp might be undefined so we use spread operator instead of userRec.otp.tempId=
         userRec.otp = {
           ...userRec.otp,
           tempMauticId: mauticContact.contact.fields.all.id
