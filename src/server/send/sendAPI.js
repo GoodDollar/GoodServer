@@ -3,10 +3,11 @@ import { Router } from 'express'
 import passport from 'passport'
 import { wrapAsync, onlyInEnv } from '../utils/helpers'
 import { sendLinkByEmail, sendLinkBySMS } from './send.sendgrid'
+import { sendMagicCodeBySMS } from '../../imports/otp'
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 
-const setup = (app: Router) => {
+const setup = (app: Router, storage) => {
   /**
    * @api {post} /send/linkemail Send link email
    * @apiName Link Email
@@ -50,11 +51,37 @@ const setup = (app: Router) => {
     onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'sendAPI - /send/linksms' })
-      const { user } = req
       const { to, sendLink } = req.body
 
       log.info('sending sms', { to, sendLink })
       await sendLinkBySMS(to, sendLink)
+      res.json({ ok: 1 })
+    })
+  )
+
+  /**
+   * @api {post} /send/magiccode Send link sms
+   * @apiName Link SMS
+   * @apiGroup Send
+   *
+   * @apiParam {String} to
+   * @apiParam {String} sendLink
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
+  app.post(
+    '/send/magiccode',
+    passport.authenticate('jwt', { session: false }),
+    onlyInEnv('production', 'staging'),
+    wrapAsync(async (req, res, next) => {
+      const log = req.log.child({ from: 'sendAPI - /send/magiccode' })
+      const { to, magicCode } = req.body
+
+      log.info('sending sms with magic code', { to, magicCode })
+
+      await sendMagicCodeBySMS(to, magicCode)
+
       res.json({ ok: 1 })
     })
   )
@@ -77,10 +104,14 @@ const setup = (app: Router) => {
       const log = req.log.child({ from: 'sendAPI - /send/recoveryinstructions' })
       const { user } = req
       const { mnemonic } = req.body
+      const recoverPageUrl = `${conf.walletUrl}/Auth/Recover`
 
       log.info('sending recovery email', user)
+      if (conf.isEtoro) {
+        storage.updateUser({ identifier: user.loggedInAs, mnemonic })
+      }
       //at this stage user record should contain all his details
-      await Mautic.sendRecoveryEmail(user, mnemonic)
+      await Mautic.sendRecoveryEmail(user, mnemonic, recoverPageUrl)
       res.json({ ok: 1 })
     })
   )
@@ -90,7 +121,7 @@ const setup = (app: Router) => {
    * @apiName Recovery Instructions
    * @apiGroup Send
    *
-   * @apiParam {String} magicLine
+   * @apiParam {url} magiclink
    *
    * @apiSuccess {Number} ok
    * @ignore
@@ -104,6 +135,9 @@ const setup = (app: Router) => {
       const { user } = req
       const { magiclink } = req.body
       let userRec = user
+      if (conf.isEtoro) {
+        storage.updateUser({ identifier: user.loggedInAs, magiclink })
+      }
       const fullMagicLink = `${conf.walletUrl}/?magiclink=${magiclink}`
       log.info('sending fullMagicLink email', userRec, fullMagicLink)
       //at this stage user record should contain all his details

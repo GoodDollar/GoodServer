@@ -7,27 +7,26 @@ env:
   global:
     - GUNDB_PASS=test
     - JWT_PASS=test
-    - MNEMONIC="choice congress hobby buddy dutch busy army eager empty solution start grunt"
-    - PRIVATE_KEY=0x4a82fd2f72fe7a1f4258a3f091ecc06d4d523efc20fd4d0ce21c8bed799088c1
-    - NETWORK=develop
-    - LOG_LEVEL=trace
+    - MNEMONIC="myth like bonus scare over problem client lizard pioneer submit female collect"
+    - ADMIN_MNEMONIC="myth like bonus scare over problem client lizard pioneer submit female collect"
 
-before_install:
-  - npm install -g ganache-cli truffle webpack
+    - NETWORK=develop
+    - CI=false
+    - MARKET_PASSWORD=markettokenmarkettokenmarkettoke
+
+# before_install:
+# - npm install -g ganache-cli truffle webpack
 
 before_script:
-  - export CONTRACTSTAG=${CONTRACTSTAG:-`node -pe "require('./package.json').dependencies['@gooddollar/goodcontracts']"`}
-  - node -pe "require('./package.json').dependencies['@gooddollar/goodcontracts']"
-  - git clone https://github.com/GoodDollar/GoodContracts --branch=v$CONTRACTSTAG
-  - ganache-cli -m "$MNEMONIC" --port 9545 --networkId 4447 -g 10000000000 &
-  - cd GoodContracts || true
-  - npm i
-  - truffle migrate --reset --network develop
-  - npm link
-  - cd ..
+  - pushd node_modules/@gooddollar/goodcontracts
+  - npm ci
+  - npm run ganache &
+  - npm run wait
+  - npm run deploy
+  - popd
 
 script:
   - npm link @gooddollar/goodcontracts
-  - npm run coverage
+  - npm run coverage -- --silent
   - npm run coveralls
   - npm run build

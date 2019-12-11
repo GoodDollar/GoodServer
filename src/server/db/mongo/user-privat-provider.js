@@ -1,3 +1,4 @@
+//@flow
 import UserPrivateModel from './models/user-private.js'
 import logger from '../../../imports/pino-logger'
 import { type UserRecord } from '../../../imports/types'
@@ -95,7 +96,23 @@ class UserPrivate {
    * @returns {object || null}
    */
   async getByIdentifier(identifier) {
-    return await this.model.findOne({ identifier })
+    return await this.model.findOne({ identifier }).lean()
+  }
+
+  /**
+   * complete Step by identifier and step name
+   *
+   * @param {int} identifier
+   * @param {string} stepName
+   *
+   * @returns {object || null}
+   */
+  async completeStep(identifier, stepName) {
+    const field = `isCompleted.${stepName}`
+
+    await this.model.updateOne({ identifier }, { $set: { [field]: true } })
+
+    return true
   }
 
   /**
@@ -123,7 +140,7 @@ class UserPrivate {
    * @returns {Promise<*>}
    */
   async getUserByEmail(email: string): Promise<UserRecord> {
-    return await this.model.findOne({ email })
+    return await this.model.findOne({ email }).lean()
   }
 
   /**
@@ -134,7 +151,7 @@ class UserPrivate {
    * @returns {Promise<*>}
    */
   async getUserByMobile(mobile: string): Promise<UserRecord> {
-    return await this.model.findOne({ mobile })
+    return await this.model.findOne({ mobile }).lean()
   }
 
   /**
@@ -143,7 +160,8 @@ class UserPrivate {
    * @returns {Promise<*>}
    */
   async listUsers(): Promise<UserRecord> {
-    return await this.model.find()
+    const res = this.model.find({}, { email: 1, identifier: 1 }).lean()
+    return res
   }
 
   /**

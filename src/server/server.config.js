@@ -1,7 +1,8 @@
 import networks from './networks'
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
 
-require('dotenv').config()
+const envFile = process.env.NODE_ENV === 'test' ? `.env.test` : '.env'
+require('dotenv').config({ path: envFile })
 const convict = require('convict')
 
 // Define a schema
@@ -15,7 +16,7 @@ const conf = convict({
   },
   logLevel: {
     doc: 'Log level',
-    format: ['debug', 'error', 'warn', 'info', 'off', 'trace'],
+    format: ['debug', 'error', 'warn', 'info', 'off', 'trace', 'silent'],
     default: 'debug',
     env: 'LOG_LEVEL'
   },
@@ -57,9 +58,27 @@ const conf = convict({
   },
   mnemonic: {
     doc: 'Wallet mnemonic',
-    format: '*',
+    format: String,
     env: 'MNEMONIC',
-    default: ''
+    default: null
+  },
+  numberOfAdminWalletAccounts: {
+    doc: 'Number of admin wallet accounts',
+    format: Number,
+    env: 'NUMBER_OF_ADMIN_WALLET_ACCOUNTS',
+    default: 10
+  },
+  adminMinBalance: {
+    doc: 'min balance in GWEIs for valid admin addresses',
+    format: Number,
+    env: 'ADMIN_MIN_BALANCE',
+    default: 100000
+  },
+  mongoQueueMaxLockTime: {
+    doc: 'Max lock time for one each in mongo queue in seconds',
+    format: Number,
+    env: 'MONGO_QUEUE_MAX_LOCK_TIME',
+    default: 30
   },
   privateKey: {
     doc: 'Wallet private key',
@@ -91,29 +110,31 @@ const conf = convict({
       'fuse',
       'production',
       'develop',
-      'staging'
+      'staging',
+      'etoro'
     ],
     default: 'develop',
     env: 'NETWORK'
   },
-  plivoAuthID: {
-    doc: "Plivo's authorization ID",
+  twilioAuthID: {
+    doc: "Twilio's authorization ID",
     format: '*',
-    env: 'PLIVO_AUTH_ID',
+    env: 'TWILIO_AUTH_ID',
     default: ''
   },
-  plivoAuthToken: {
-    doc: "Plivo's authorization Token",
+  twilioAuthToken: {
+    doc: "Twilio's authorization Token",
     format: '*',
-    env: 'PLIVO_AUTH_TOKEN',
+    env: 'TWILIO_AUTH_TOKEN',
     default: ''
   },
-  plivoPhoneNumber: {
+  twilioPhoneNumber: {
     doc: "Plivo's Phone Number",
     format: '*',
-    env: 'PLIVO_PHONE_NUMBER',
+    env: 'TWILIO_PHONE_NUMBER',
     default: ''
   },
+
   otpDigits: {
     doc: 'Amount of digits for the OTP',
     format: '*',
@@ -196,13 +217,13 @@ const conf = convict({
     doc: 'id of email template',
     format: '*',
     env: 'MAUTIC_MAGICLINK_ID',
-    default: '9'
+    default: '30'
   },
   mauticVerifyEmailId: {
     doc: 'id of email template',
     format: '*',
     env: 'MAUTIC_VERIFY_ID',
-    default: '4'
+    default: '31'
   },
   zoomURL: {
     doc: 'Zoom Client URL',
@@ -256,12 +277,6 @@ const conf = convict({
     env: 'ALLOW_DUPLICATE_USER_DATA',
     default: false
   },
-  webConcurrency: {
-    doc: 'Amount of concurrency nodes',
-    format: Number,
-    env: 'WEB_CONCURRENCY',
-    default: 1
-  },
   skipEmailVerification: {
     doc: 'Allow to register with unverified email',
     format: Boolean,
@@ -300,28 +315,50 @@ const conf = convict({
   },
   secure_key: {
     doc: 'Secure key word used to create secure hash by which server can communicate with web3',
-    format: '*',
+    format: String,
     env: 'SECURE_KEY',
-    default: undefined
+    default: null
   },
   fuse: {
     doc: 'Main url for fuse api',
-    format: String,
+    format: 'url',
     env: 'FUSE_API',
-    default: null
+    default: 'https://explorer.fuse.io'
   },
   web3SiteUrl: {
     doc: 'Web3 site url',
-    format: '*',
+    format: 'url',
     env: 'WEB3_SITE_URL',
-    default: undefined
+    default: 'https://w3.gooddollar.org'
+  },
+  marketPassword: {
+    doc: 'password for market jwt',
+    format: String,
+    env: 'MARKET_PASSWORD',
+    default: null
+  },
+  rateLimitMinutes: {
+    doc: 'Amount of minutes used for request rate limiter',
+    format: '*',
+    env: 'REQUEST_RATE_LIMIT_MINUTES',
+    default: 1
+  },
+  rateLimitRequestsCount: {
+    doc: 'Max number of requests count per rateLimitMinutes',
+    format: '*',
+    env: 'REQUEST_RATE_LIMIT_COUNT',
+    default: 3
+  },
+  isEtoro: {
+    doc: 'eToro GoodMarket',
+    format: Boolean,
+    env: 'ETORO',
+    default: false
   }
 })
 
 // Load environment dependent configuration
-const env = conf.get('env')
 const network = conf.get('network')
-
 const networkId = ContractsAddress[network].networkId
 conf.set('ethereum', networks[networkId])
 //parse S3 details for gundb in format of key,secret,bucket
@@ -340,5 +377,4 @@ if (publicS3) {
 // Perform validation
 conf.validate({ allowed: 'strict' })
 // eslint-disable-next-line
-
 export default conf.getProperties()

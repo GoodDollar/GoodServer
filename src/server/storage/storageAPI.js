@@ -5,13 +5,13 @@ import get from 'lodash/get'
 import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync } from '../utils/helpers'
 import { defaults } from 'lodash'
-import fetch from 'cross-fetch'
-import md5 from 'md5'
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
-import AdminWallet from '../blockchain/AdminWallet'
 import { recoverPublickey } from '../utils/eth'
 import zoomHelper from '../verification/faceRecognition/faceRecognitionHelper'
+import addUserSteps from './addUserSteps'
+import UserDBPrivate from '../db/mongo/user-privat-provider'
+import { generateMarketToken } from '../utils/market'
 
 const setup = (app: Router, storage: StorageAPI) => {
   /**
@@ -27,10 +27,10 @@ const setup = (app: Router, storage: StorageAPI) => {
   app.post(
     '/user/add',
     passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res, next) => {
-      const { body, user: userRecord, log } = req
+    wrapAsync(async (req, res) => {
+      const { body, user: userRecord } = req
       const logger = req.log.child({ from: 'storageAPI - /user/add' })
-      log.debug('new user request:', { data: body.user, userRecord })
+      logger.debug('new user request:', { data: body.user, userRecord })
       //check that user passed all min requirements
       if (
         ['production', 'staging'].includes(conf.env) &&
@@ -39,76 +39,46 @@ const setup = (app: Router, storage: StorageAPI) => {
       )
         throw new Error('User email or mobile not verified!')
 
-      const user: UserRecord = defaults(body.user, {
+      if (!conf.allowDuplicateUserData && userRecord.createdDate) {
+        throw new Error('You cannot create more than 1 account with the same credentials')
+      }
+
+      const { email, mobile, ...bodyUser } = body.user
+
+      const user: UserRecord = defaults(bodyUser, {
         identifier: userRecord.loggedInAs,
-        createdDate: new Date().toString()
+        createdDate: new Date().toString(),
+        email: get(userRecord, 'otp.email', email), //for development/test use email from body
+        mobile: get(userRecord, 'otp.mobile', mobile), //for development/test use mobile from body
+        isCompleted: {
+          whiteList: false,
+          w3Record: false,
+          marketToken: false,
+          topWallet: false
+        }
       })
+
+      await UserDBPrivate.updateUser(user)
 
       if (conf.disableFaceVerification) {
-        AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey)
+        addUserSteps.addUserToWhiteList(userRecord)
       }
 
-      const mauticRecordPromise =
-        process.env.NODE_ENV === 'development'
-          ? Promise.resolve({})
-          : Mautic.createContact(user).catch(e => {
-              log.error('Create Mautic Record Failed', e)
-            })
-
-      const secureHash = md5(user.email + conf.secure_key)
-
-      log.debug('secureHash', secureHash)
-
-      const web3RecordPromise = fetch(`${conf.web3SiteUrl}/api/wl/user`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          secure_hash: secureHash.toLowerCase(),
-          email: user.email,
-          full_name: user.fullName,
-          wallet_address: user.gdAddress
-        })
-      })
-        .then(res => res.json())
-        .catch(e => {
-          log.error('Get Web3 Login Response Failed', e)
-        })
-
-      const [mauticRecord, web3Record] = await Promise.all([mauticRecordPromise, web3RecordPromise])
-
-      log.debug('Web3 user record', web3Record)
-
-      //mautic contact should already exists since it is first created during the email verification we update it here
-      const mauticId = get(mauticRecord, 'contact.fields.all.id', -1)
-      logger.debug('User mautic record', { mauticId, mauticRecord })
-
-      const updateUserObj = {
-        ...user,
-        mauticId
+      if (!userRecord.mauticId && process.env.NODE_ENV !== 'development') {
+        await addUserSteps.updateMauticRecord(userRecord)
       }
 
-      const w3RecordData = web3Record && web3Record.data
+      const web3Record = await addUserSteps.updateW3Record(user)
+      const marketToken = await addUserSteps.updateMarketToken(user)
+      let ok = await addUserSteps.topUserWallet(userRecord)
 
-      if (w3RecordData && w3RecordData.login_token) {
-        updateUserObj.loginToken = w3RecordData.login_token
-      }
-
-      storage.updateUser(updateUserObj)
-
-      //topwallet of user after registration
-      let ok = await AdminWallet.topWallet(userRecord.gdAddress, null, true)
-        .then(r => ({ ok: 1 }))
-        .catch(e => {
-          logger.error('New user topping failed', e.message)
-          return { ok: 0, error: 'New user topping failed' }
-        })
-      log.debug('added new user:', { user, ok })
+      logger.debug('added new user:', { user, ok })
 
       res.json({
         ...ok,
-        loginToken: w3RecordData && w3RecordData.login_token
+        loginToken: web3Record && web3Record.login_token,
+        w3Token: web3Record && web3Record.wallet_token,
+        marketToken
       })
     })
   )
@@ -129,23 +99,21 @@ const setup = (app: Router, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const { user, log, body } = req
-      const {zoomSignature, zoomId} = body
+      const { zoomSignature, zoomId } = body
       log.info('delete user', { user })
-      
+
       if (zoomId && zoomSignature) {
-        
         const recovered = recoverPublickey(zoomSignature, zoomId, '').replace('0x', '')
-        
+
         if (recovered === body.zoomId.toLowerCase()) {
           await zoomHelper.delete(zoomId)
           log.info('zoom delete', { zoomId })
         } else {
-          log.error('/user/delete', 'SigUtil unable to recover the message signer')
+          log.warn('/user/delete', 'SigUtil unable to recover the message signer')
           throw new Error('Unable to verify credentials')
         }
-        
       }
-      
+
       const results = await Promise.all([
         (user.identifier ? storage.deleteUser(user) : Promise.reject())
           .then(r => ({ mongodb: 'ok' }))
@@ -154,9 +122,31 @@ const setup = (app: Router, storage: StorageAPI) => {
           .then(r => ({ mautic: 'ok' }))
           .catch(e => ({ mautic: 'failed' }))
       ])
-      
+
       log.info('delete user results', { results })
       res.json({ ok: 1, results })
+    })
+  )
+
+  /**
+   * @api {post} /user/market generate user market login token
+   * @apiName Market Token
+   * @apiGroup Storage
+   *   *
+   * @apiSuccess {Number} ok
+   * @apiSuccess {String} jwt
+   * @ignore
+   */
+  app.get(
+    '/user/market',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res, next) => {
+      const { user, log, body } = req
+      log.debug('new market token request:', { user })
+      const jwt = generateMarketToken(user)
+      log.debug('new market token result:', { jwt })
+
+      res.json({ ok: 1, jwt })
     })
   )
 

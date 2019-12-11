@@ -3,14 +3,15 @@ import jwt from 'jsonwebtoken'
 import passport from 'passport'
 import { ExtractJwt, Strategy } from 'passport-jwt'
 import { Router } from 'express'
-import * as ethUtil from 'ethereumjs-util'
 import { get, defaults } from 'lodash'
 import logger from '../../imports/pino-logger'
 import { wrapAsync, lightLogs } from '../utils/helpers'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
 import SEA from 'gun/sea'
 import Config from '../server.config.js'
-import { recoverPublickey } from "../utils/eth";
+import { recoverPublickey } from '../utils/eth'
+import requestRateLimiter from '../utils/requestRateLimiter'
+
 // const ExtractJwt = passportJWT.ExtractJwt
 // const JwtStrategy = passportJWT.Strategy
 
@@ -48,7 +49,7 @@ const setup = (app: Router) => {
       log.trace(`${req.baseUrl} auth:`, { user, body })
 
       if (user.loggedInAs !== identifier) {
-        log.error(`Trying to update other user data! ${user.loggedInAs}!==${identifier}`)
+        log.warn(`Trying to update other user data! ${user.loggedInAs}!==${identifier}`)
         throw new Error(`Trying to update other user data! ${user.loggedInAs}!==${identifier}`)
       } else next()
     })
@@ -83,7 +84,12 @@ const setup = (app: Router) => {
       const profileSignature = req.body.profileSignature
       const nonce = req.body.nonce
       const method = req.body.method
+      const networkId = req.body.networkId
 
+      if (networkId !== Config.ethereum.network_id) {
+        log.warn('/auth/eth', 'Networkd id mismatch', { client: networkId, server: Config.ethereum.network_id })
+        throw new Error('Network ID mismatch')
+      }
       log.debug('/auth/eth', { signature, method })
 
       const msg = 'Login to GoodDAPP'
@@ -110,9 +116,18 @@ const setup = (app: Router) => {
         res.json({ token })
         res.end()
       } else {
-        log.error('/auth/eth', 'SigUtil unable to recover the message signer')
+        log.warn('/auth/eth', 'SigUtil unable to recover the message signer')
         throw new Error('Unable to verify credentials')
       }
+    })
+  )
+
+  app.get(
+    '/auth/ping',
+    requestRateLimiter(10),
+    wrapAsync(async (req, res) => {
+      res.json({ ping: new Date() })
+      res.end()
     })
   )
 

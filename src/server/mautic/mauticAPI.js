@@ -18,11 +18,13 @@ export const Mautic = {
     Authorization: `Bearer ${Config.mauticToken}`,
     'Content-Type': 'application/json'
   },
-  baseQuery(url, headers, body, method = 'post', timeout = 5000) {
+
+  baseQuery(url, headers, body, method = 'post', timeout = 15000) {
     const fullUrl = `${this.baseUrl}${url}`
 
     return Promise.race([Timeout(timeout), fetch(fullUrl, { method, body: JSON.stringify(body), headers })])
       .then(async res => {
+        log.debug(res)
         if (res.status >= 300) throw new Error(await res.text())
         return res.json()
       })
@@ -33,12 +35,21 @@ export const Mautic = {
         throw e
       })
   },
+
+  updateContact(mauticId, newFields) {
+    return this.baseQuery(`/contacts/${mauticId}/edit`, this.baseHeaders, newFields, 'patch')
+  },
+
   deleteContact(user: UserRecord) {
     return this.baseQuery(`/contacts/${user.mauticId}/delete`, this.baseHeaders, {}, 'delete')
   },
+
   createContact(user: UserRecord) {
-    return this.baseQuery('/contacts/new', this.baseHeaders, { ...user, tags: ['dappuser'] })
+    const tags = ['dappuser']
+    if (Config.isEtoro) tags.push('etorobeta')
+    return this.baseQuery('/contacts/new', this.baseHeaders, { ...user, tags })
   },
+
   sendVerificationEmail(user: UserRecord, code: string) {
     if (!(code && user.fullName && user.mauticId && Config.mauticVerifyEmailId))
       throw new Error('missing input for sending verification email')
@@ -47,20 +58,31 @@ export const Mautic = {
       tokens: { code, firstName: user.fullName }
     })
   },
-  sendRecoveryEmail(user: UserRecord, mnemonic: string) {
+
+  sendRecoveryEmail(user: UserRecord, mnemonic: string, recoverPageUrl: string) {
     if (!(mnemonic && user.fullName && user.mauticId && Config.mauticRecoveryEmailId))
       throw new Error('missing input for sending recovery email')
 
+    const mnemonicFirstPart = mnemonic
+      .split(' ')
+      .slice(0, 6)
+      .join(' ')
+    const mnemonicSecondPart = mnemonic
+      .split(' ')
+      .slice(6)
+      .join(' ')
+
     return this.baseQuery(`/emails/${Config.mauticRecoveryEmailId}/contact/${user.mauticId}/send`, this.baseHeaders, {
-      tokens: { seed: mnemonic, firstName: user.fullName }
+      tokens: { firstName: user.fullName, seedFirst: mnemonicFirstPart, seedSecond: mnemonicSecondPart, recoverPageUrl }
     })
   },
+
   sendMagicLinkEmail(user: UserRecord, magicLink: string) {
     if (!(magicLink && user.fullName && user.mauticId && Config.mauticmagicLinkEmailId))
       throw new Error('missing input for sending magicLink email')
 
     return this.baseQuery(`/emails/${Config.mauticmagicLinkEmailId}/contact/${user.mauticId}/send`, this.baseHeaders, {
-      tokens: { seed: magicLink, firstName: user.fullName }
+      tokens: { link: magicLink, firstName: user.fullName }
     })
   }
 }

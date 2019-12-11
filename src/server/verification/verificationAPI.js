@@ -3,17 +3,19 @@ import { Router } from 'express'
 import passport from 'passport'
 import _ from 'lodash'
 import multer from 'multer'
-import fetch from 'cross-fetch'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
+import requestRateLimiter from '../utils/requestRateLimiter'
 import fuseapi from '../utils/fuseapi'
 import { sendOTP, generateOTP } from '../../imports/otp'
 import conf from '../server.config'
 import { GunDBPublic } from '../gun/gun-middleware'
 import { Mautic } from '../mautic/mauticAPI'
 import fs from 'fs'
-import md5 from 'md5'
+import W3Helper from '../utils/W3Helper'
+import gdToWei from '../utils/gdToWei'
+import txManager from '../utils/tx-manager'
 
 const fsPromises = fs.promises
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
@@ -115,23 +117,41 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    */
   app.post(
     '/verify/sendotp',
+    requestRateLimiter(),
     passport.authenticate('jwt', { session: false }),
     onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res, next) => {
       const { user, body } = req
       const log = req.log.child({ from: 'otp' })
+
       log.info('otp request:', user, body)
+
+      const mobile = body.user.mobile || user.otp.mobile
+
       let userRec: UserRecord = _.defaults(body.user, user, { identifier: user.loggedInAs })
-      if (conf.allowDuplicateUserData === false && (await storage.isDupUserData(userRec))) {
-        return res.json({ ok: 0, error: 'Mobile already exists, please use a different one.' })
+      const savedMobile = user.mobile
+
+      if (conf.allowDuplicateUserData === false && (await storage.isDupUserData({ mobile }))) {
+        return res.json({ ok: 0, error: 'mobile_already_exists' })
       }
+
       log.debug('sending otp:', user.loggedInAs)
-      if (!userRec.smsValidated) {
-        const [, code] = await sendOTP(body.user)
+
+      if (!userRec.smsValidated || mobile !== savedMobile) {
+        const [, code] = await sendOTP({ mobile })
         const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
-        log.debug('otp sent:', user.loggedInAs)
-        await storage.updateUser({ identifier: user.loggedInAs, otp: { code, expirationDate } })
+        log.debug('otp sent:', user.loggedInAs, code)
+        await storage.updateUser({
+          identifier: user.loggedInAs,
+          otp: {
+            ...userRec.otp,
+            code,
+            expirationDate,
+            mobile
+          }
+        })
       }
+
       res.json({ ok: 1 })
     })
   )
@@ -155,18 +175,27 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log.child({ from: 'verificationAPI - verify/mobile' })
       const { user, body } = req
       const verificationData: { otp: string } = body.verificationData
+      const tempSavedMobile = user.otp && user.otp.mobile
+      const currentMobile = user.mobile
 
       log.debug('mobile verified', { user, verificationData })
-      if (!user.smsValidated) {
+
+      if (!user.smsValidated || currentMobile !== tempSavedMobile) {
         let verified = await verifier.verifyMobile({ identifier: user.loggedInAs }, verificationData).catch(e => {
           log.warn('mobile verification failed:', e)
+
           res.json(400, { ok: 0, error: 'OTP FAILED', message: e.message })
+
           return false
         })
+
         if (verified === false) return
-        await storage.updateUser({ identifier: user.loggedInAs, smsValidated: true })
+
+        await storage.updateUser({ identifier: user.loggedInAs, smsValidated: true, mobile: tempSavedMobile })
       }
-      const signedMobile = await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: user.mobile })
+
+      const signedMobile = await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: tempSavedMobile })
+
       res.json({ ok: 1, attestation: signedMobile })
     })
   )
@@ -202,7 +231,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       if (isUserSendEtherOutOfSystem) {
-        log.error('User send ether out of system')
+        log.warn('User send ether out of system')
 
         return res.json({
           ok: 0,
@@ -242,34 +271,59 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    */
   app.post(
     '/verify/sendemail',
+    requestRateLimiter(),
     passport.authenticate('jwt', { session: false }),
     onlyInEnv('production', 'staging', 'test'),
     wrapAsync(async (req, res, next) => {
       const log = req.log.child({ from: 'verificationAPI - verify/sendemail' })
+
       const { user, body } = req
-      // log.info({ user, body })
+      const { email } = body.user
+
       //merge user details for use by mautic
       let userRec: UserRecord = _.defaults(body.user, user)
-      if (conf.allowDuplicateUserData === false && (await storage.isDupUserData(userRec))) {
+      const currentEmail = user.email
+      const tempMauticId = user.otp && user.otp.tempMauticId
+
+      if (conf.allowDuplicateUserData === false && (await storage.isDupUserData({ email }))) {
         return res.json({ ok: 0, error: 'Email already exists, please use a different one' })
       }
-      if (!user.mauticId) {
-        //first time create contact for user in mautic
+
+      if ((!user.mauticId && !tempMauticId) || (currentEmail && currentEmail !== email)) {
         const mauticContact = await Mautic.createContact(userRec)
-        userRec.mauticId = mauticContact.contact.fields.all.id
+
+        //otp might be undefined so we use spread operator instead of userRec.otp.tempId=
+        userRec.otp = {
+          ...userRec.otp,
+          tempMauticId: mauticContact.contact.fields.all.id
+        }
+
         log.debug('created new user mautic contact', userRec)
       }
+
       if (conf.skipEmailVerification === false) {
         const code = generateOTP(6)
-        if (!user.isEmailConfirmed) {
-          Mautic.sendVerificationEmail(userRec, code)
+        if (!user.isEmailConfirmed || email !== currentEmail) {
+          Mautic.sendVerificationEmail(
+            {
+              fullName: userRec.fullName,
+              mauticId: (userRec.otp && userRec.otp.tempMauticId) || userRec.mauticId
+            },
+            code
+          )
+
           log.debug('send new user email validation code', code)
         }
+
         // updates/adds user with the emailVerificationCode to be used for verification later and with mauticId
-        storage.updateUser({
-          identifier: user.loggedInAs,
+        await storage.updateUser({
+          identifier: user.identifier,
           mauticId: userRec.mauticId,
-          emailVerificationCode: code
+          emailVerificationCode: code,
+          otp: {
+            ...userRec.otp,
+            email
+          }
         })
       }
 
@@ -297,15 +351,40 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log.child({ from: 'verificationAPI - verify/email' })
       const { user, body } = req
       const verificationData: { code: string } = body.verificationData
+      const tempSavedEmail = user.otp && user.otp.email
+      const tempSavedMauticId = user.otp && user.otp.tempMauticId
+      const currentEmail = user.email
 
-      log.debug('email verified', { user, verificationData })
-      if (!user.isEmailConfirmed) {
+      log.debug('email verified', { user, body, verificationData, tempSavedMauticId, tempSavedEmail, currentEmail })
+
+      if (!user.isEmailConfirmed || currentEmail !== tempSavedEmail) {
         await verifier.verifyEmail({ identifier: user.loggedInAs }, verificationData)
 
-        // if verification succeeds, then set the flag `isEmailConfirmed` to true in the user's record
-        await storage.updateUser({ identifier: user.loggedInAs, isEmailConfirmed: true })
+        const updateUserUbj = {
+          identifier: user.loggedInAs,
+          isEmailConfirmed: true,
+          email: tempSavedEmail,
+          otp: {
+            ...user.otp,
+            tempMauticId: undefined
+          }
+        }
+
+        if (user.mauticId) {
+          await Promise.all([
+            Mautic.deleteContact({
+              mauticId: tempSavedMauticId
+            }),
+            Mautic.updateContact(user.mauticId, { email: tempSavedEmail })
+          ])
+        } else {
+          updateUserUbj.mauticId = tempSavedMauticId
+        }
+
+        await storage.updateUser(updateUserUbj)
       }
-      const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: user.email })
+
+      const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: tempSavedEmail })
 
       res.json({ ok: 1, attestation: signedEmail })
     })
@@ -333,7 +412,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const token: string = body.token
 
       if (!email || !token) {
-        log.error('email and w3Token is required', { email, token })
+        log.warn('email and w3Token is required', { email, token })
 
         return res.status(422).json({
           ok: -1,
@@ -344,15 +423,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       let w3User
 
       try {
-        const _w3User = await fetch(`${conf.web3SiteUrl}/api/wl/user`, {
-          method: 'GET',
-          headers: {
-            Authorization: token
-          }
-        }).then(res => res.json())
-
-        const w3userData = _w3User.data
-        w3User = w3userData.email && w3userData
+        w3User = await W3Helper.getUser(token)
       } catch (e) {
         log.error('Fetch web3 user error', e.message, e)
       }
@@ -364,7 +435,16 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       if (w3User && w3User.email === email) {
-        await storage.updateUser({ identifier: currentUser.loggedInAs, isEmailConfirmed: true })
+        currentUser.email = w3User.email
+        const mauticContact = await Mautic.createContact(currentUser)
+        const mauticId = mauticContact.contact.fields.all.id
+        await storage.updateUser({
+          identifier: currentUser.loggedInAs,
+          mauticId,
+          email,
+          otp: { ...currentUser.otp, email },
+          isEmailConfirmed: true
+        })
 
         responsePayload.ok = 1
         delete responsePayload.message
@@ -395,32 +475,147 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       let loginToken = user.loginToken
 
       if (!loginToken) {
-        const secureHash = md5(user.email + conf.secure_key)
-        const web3Response = await fetch(`${conf.web3SiteUrl}/api/wl/user`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            secure_hash: secureHash.toLowerCase(),
-            email: user.email
-          })
-        })
-          .then(res => res.json())
-          .catch(e => {
-            logger.error('Get Web3 Login Response Failed', e)
-          })
+        const w3Data = await W3Helper.getLoginOrWalletToken(user)
 
-        const web3ResponseData = web3Response && web3Response.data
+        if (w3Data && w3Data.login_token) {
+          loginToken = w3Data.login_token
 
-        if (web3ResponseData && web3ResponseData.login_token) {
-          loginToken = web3ResponseData.login_token
+          storage.updateUser({ ...user, loginToken })
         }
       }
+
+      logger.info('loginToken', loginToken)
 
       res.json({
         ok: +Boolean(loginToken),
         loginToken
+      })
+    })
+  )
+
+  /**
+   * @api {get} /verify/bonuses check if there is available bonuses to charge on user's wallet and do it
+   * @apiName Web3 Charge Bonuses
+   * @apiGroup Verification
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
+  app.get(
+    '/verify/w3/bonuses',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res, next) => {
+      const log = req.log.child({ from: 'verificationAPI - verify/bonuses' })
+
+      const { user: currentUser } = req
+      const isUserWhitelisted = await AdminWallet.isVerified(currentUser.gdAddress)
+
+      log.info('currentUser', currentUser)
+      log.info('isUserWhitelisted', isUserWhitelisted)
+
+      if (!isUserWhitelisted) {
+        return res.status(200).json({
+          ok: 0,
+          message: 'User should be verified to get bonuses'
+        })
+      }
+
+      let wallet_token = currentUser.w3Token
+
+      log.info('wallet token from user rec', wallet_token)
+
+      if (!wallet_token) {
+        const w3Data = await W3Helper.getLoginOrWalletToken(currentUser)
+
+        log.info('wallet token response data from w3 site', w3Data)
+        log.info('wallet token from w3 site', w3Data && w3Data.wallet_token)
+
+        if (w3Data && w3Data.wallet_token) {
+          wallet_token = w3Data.wallet_token
+
+          storage.updateUser({ identifier: currentUser.loggedInAs, w3Token: w3Data.wallet_token })
+        }
+      }
+
+      if (!wallet_token) {
+        return res.status(400).json({
+          ok: -1,
+          message: 'Missed W3 token'
+        })
+      }
+
+      const isQueueLocked = await txManager.isLocked(currentUser.gdAddress)
+
+      log.info('Is Queue Locked', isQueueLocked)
+
+      if (isQueueLocked) {
+        return res.status(200).json({
+          ok: 1,
+          message: 'The bonuses are in minting process'
+        })
+      }
+
+      //start lock before checking bonus status to prevent race condition
+      const { release, fail } = await txManager.lock(currentUser.gdAddress, 0)
+
+      const w3User = await W3Helper.getUser(wallet_token)
+
+      if (!w3User) {
+        release()
+
+        return res.status(400).json({
+          ok: -1,
+          message: 'Missed bonuses data'
+        })
+      }
+
+      const bonus = w3User.bonus
+      const redeemedBonus = w3User.redeemed_bonus
+      const toRedeem = +bonus - +redeemedBonus
+
+      if (toRedeem <= 0) {
+        release()
+
+        return res.status(200).json({
+          ok: 1,
+          message: 'There is no bonuses yet'
+        })
+      }
+
+      const toRedeemInWei = gdToWei(toRedeem)
+
+      log.debug('user address and bonus', {
+        address: currentUser.gdAddress,
+        bonus: toRedeem,
+        bonusInWei: toRedeemInWei
+      })
+
+      // initiate smart contract to send bonus to user
+      AdminWallet.redeemBonuses(currentUser.gdAddress, toRedeemInWei, {
+        onTransactionHash: hash => {
+          log.info('Bonus redeem - hash created', { currentUser, hash })
+        },
+        onReceipt: async r => {
+          log.info('Bonus redeem - receipt received', r)
+
+          await W3Helper.informW3ThatBonusCharged(toRedeem, wallet_token)
+
+          release()
+        },
+        onError: e => {
+          log.error('Bonuses charge failed', e.message, e, currentUser)
+
+          fail()
+
+          return res.status(400).json({
+            ok: -1,
+            message: 'Failed to redeem bonuses for user'
+          })
+        }
+      })
+
+      return res.status(200).json({
+        ok: 1
       })
     })
   )

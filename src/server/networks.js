@@ -9,19 +9,19 @@ const networks = {
     network_id: 4447,
     web3Transport: 'HttpProvider',
     httpWeb3Provider: 'http://localhost:9545/',
-    websocketWeb3Provider: 'ws://localhost:9545/ws'
+    websocketWeb3Provider: 'ws://localhost:9545/'
   },
   121: {
     network_id: 121,
     web3Transport: 'HttpProvider',
     httpWeb3Provider: 'https://rpc.fuse.io/',
-    websocketWeb3Provider: 'wss://explorer-node.fuse.io/ws'
+    websocketWeb3Provider: 'wss://rpc.fuse.io/ws'
   },
   122: {
     network_id: 122,
     web3Transport: 'HttpProvider',
-    httpWeb3Provider: 'https://rpc.fusenet.io/',
-    websocketWeb3Provider: 'wss://explorer-node.fusenet.io/ws'
+    httpWeb3Provider: 'https://rpc.fuse.io/',
+    websocketWeb3Provider: 'wss://rpc.fuse.io/ws'
   }
 }
 

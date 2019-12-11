@@ -1,63 +1,133 @@
 import Mutex from 'await-mutex'
+import logger from '../../../imports/pino-logger'
+const log = logger.child({ from: 'wallet queueMutex' })
 
 export default class queueMutex {
   constructor() {
-    this.nonce = null
-    this.mutex = new Mutex()
-    this.lastFail = null
+    this.wallets = {}
+    this.getTransactionCount = () => 0
   }
 
   /**
-   * Unlock for queue
+   * Create object of wallets by addresses
    *
-   * @param {string} address
-   * @param {string} nextNonce
+   * @param {array} addresses
    *
    * @returns {Promise<void>}
    */
-  async errorUnlock(address, nonce) {
-    if (typeof this.lastFail === 'function') {
-      this.lastFail()
+  async createListIfNotExists(addresses) {
+    for (let address of addresses) {
+      if (!this.getWallet(address)) {
+        await this.createWallet(address)
+        log.info('created mutex for address:', { address })
+      }
     }
   }
 
   /**
-   * Unlock for queue
-   *
-   * @param {string} address
-   * @param {string} nextNonce
-   *
-   * @returns {Promise<void>}
+   * Create object of wallet by address
+   * @param address
    */
-  async unlock(address, nonce) {
-    if (typeof this.lastFail === 'function') {
-      this.lastFail()
-    }
+  async createWallet(address) {
+    return (this.wallets[address] = {
+      address,
+      nonce: await this.getTransactionCount(address),
+      mutex: new Mutex()
+    })
   }
+
   /**
-   * lock for queue
+   * Get wallet by address
+   * @param address
+   * @returns {T}
+   */
+  getWallet(address) {
+    return this.wallets[address]
+  }
+
+  /**
+   * Unlock for queue
    *
    * @param {string} address
    * @param {string} netNonce
    *
+   * @returns {Promise<void>}
+   */
+  async unlock(address, netNonce) {
+    const wallet = this.getWallet(address)
+
+    if (wallet && typeof wallet.lastFail === 'function') {
+      wallet.lastFail(netNonce)
+    }
+  }
+
+  /**
+   * lock for queue
+   *
+   * @param {array} addresses
+   *
    * @returns {Promise<any>}
    */
-  async lock(address, netNonce) {
-    if (!this.nonce) {
-      this.nonce = netNonce
-    } else {
-      this.nonce++
+  async lock(addresses) {
+    addresses = Array.isArray(addresses) ? addresses : [addresses]
+    // await this.createListIfNotExists(addresses)
+    log.debug('lock request', { addresses })
+    const address = await this.getFirstFreeAddress(addresses)
+    let wallet = this.getWallet(address)
+    if (wallet === undefined) {
+      wallet = await this.createWallet(address)
     }
-
-    let release = await this.mutex.lock()
-    this.lastFail = () => {
-      this.nonce--
+    log.debug('lock: got wallet', { address, wallet })
+    let release = await wallet.mutex.lock()
+    log.debug('lock: acquired lock', { address })
+    wallet.release = () => {
+      wallet.nonce++
       release()
     }
-    return {
-      nonce: this.nonce,
-      release: release,
-      fail: this.lastFail
+    wallet.lastFail = netNonce => {
+      if (netNonce) {
+        wallet.nonce = netNonce
+      }
+      release()
     }
+
+    return {
+      address,
+      nonce: wallet.nonce,
+      release: wallet.release,
+      fail: wallet.lastFail
+    }
+  }
+
+  /**
+   * Get lock status for address
+   *
+   * @param {string} address
+   *
+   * @returns {Boolean}
+   */
+  isLocked(address) {
+    const wallet = this.getWallet(address)
+    if (wallet) {
+      const res = wallet.mutex.isLocked()
+      return res
+    }
+    return false
+  }
+
+  async getFirstFreeAddress(addresses) {
+    return new Promise(resolve => {
+      const interval = setInterval(() => {
+        for (let address of addresses) {
+          if (this.isLocked(address) === false) {
+            log.debug('getFirstFreeAddress: address not locked', address)
+
+            clearInterval(interval)
+            return resolve(address)
+          }
+          log.debug('getFirstFreeAddress: address locked', address)
+        }
+      }, 100)
+    })
   }
 }

@@ -1,11 +1,11 @@
 /* eslint-disable import/no-extraneous-dependencies */
-import throng from 'throng'
 import 'newrelic'
 import webpack from 'webpack'
 import webpackHotMiddleware from 'webpack-hot-middleware'
 import config from '../../webpack.dev.config'
 import conf from './server.config'
 import { GunDBPublic } from './gun/gun-middleware'
+import throng from 'throng'
 
 function start(workerId) {
   const app = require('./app').default

@@ -1,6 +1,6 @@
 {
   "name": "@gooddollar/goodserver",
-  "version": "0.9.2",
+  "version": "0.11.0-1",
   "description": "GoodDollar Server",
   "main": "src/server/index.js",
   "engines": {
@@ -18,7 +18,8 @@
     "dev:local": "npm link @gooddollar/goodcontracts && npm run dev",
     "prod": "npm start -- --inspect --optimize_for_size --max_old_space_size=460 | pino-pretty -c -f -s \"msg!='request completed'\"",
     "flow": "flow",
-    "docs": "node scripts/docs.js"
+    "docs": "node scripts/docs.js",
+    "version": "auto-changelog -p && git add CHANGELOG.md"
   },
   "repository": {
     "type": "git",
@@ -42,10 +43,11 @@
   "homepage": "https://gooddollar.org",
   "dependencies": {
     "@babel/polyfill": "^7.4.4",
-    "@gooddollar/goodcontracts": "0.0.19",
+    "@gooddollar/goodcontracts": "^1.0.0-beta.17",
     "@sendgrid/mail": "^6.4.0",
     "apidoc": "^0.17.7",
     "apidoc-markdown": "^0.2.1",
+    "auto-changelog": "^1.16.2",
     "await-mutex": "^1.0.2",
     "aws-sdk": "^2.466.0",
     "axios": "^0.19.0",
@@ -59,15 +61,17 @@
     "ethereumjs-util": "^6.1.0",
     "express": "^4.17.1",
     "express-pino-logger": "^4.0.0",
+    "express-rate-limit": "^5.0.0",
     "flow": "^0.2.3",
     "gun": "^0.2019.915",
     "hdkey": "^1.1.1",
+    "heapdump": "^0.3.15",
     "jsonwebtoken": "^8.5.1",
     "lodash": "^4.17.11",
     "math-random": "^1.0.4",
     "md5": "^2.2.1",
     "moment": "^2.24.0",
-    "mongoose": "^5.6.11",
+    "mongoose": "^5.7.5",
     "multer": "^1.4.1",
     "newrelic": "^5.9.1",
     "passport": "^0.4.0",
@@ -77,9 +81,10 @@
     "qs": "^6.8.0",
     "rollbar": "^2.7.1",
     "throng": "^4.0.0",
+    "twilio": "^3.35.0",
     "web3": "^2.0.0-alpha.1",
     "web3-provider-engine": "^15.0.3",
-    "web3-utils": "^1.0.0-beta.55",
+    "web3-utils": "^2.0.0-alpha.1",
     "winston": "^3.2.1"
   },
   "devDependencies": {
@@ -141,8 +146,7 @@
     "webpack-dev-middleware": "^3.7.0",
     "webpack-dev-server": "^3.4.1",
     "webpack-hot-middleware": "^2.25.0",
-    "webpack-node-externals": "^1.7.2",
-    "websocket": "^1.0.28"
+    "webpack-node-externals": "^1.7.2"
   },
   "husky": {
     "hooks": {

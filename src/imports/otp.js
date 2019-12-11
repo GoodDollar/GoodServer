@@ -1,6 +1,7 @@
 // @flow
 import random from 'math-random'
-import * as plivo from 'plivo'
+// import * as plivo from 'plivo'
+import Twilio from 'twilio'
 import conf from '../server/server.config'
 import type { UserRecord } from './types'
 
@@ -9,7 +10,7 @@ import type { UserRecord } from './types'
  * @param {number} length - length of OTP code
  * @returns {string}
  */
-const generateOTP = (length: number = 0): string => {
+export const generateOTP = (length: number = 0): string => {
   const exponent = length - 1
   const base = Number(`1e${exponent}`)
   const multiplier = Number(`9e${exponent}`)
@@ -22,13 +23,28 @@ const generateOTP = (length: number = 0): string => {
  * @param {UserRecord} user - object with user's information
  * @returns {Promise<$TupleMap<*[], typeof $await>>}
  */
-const sendOTP = (user: UserRecord): Promise<any> => {
-  const { plivoAuthID, plivoAuthToken, plivoPhoneNumber } = conf
+export const sendOTP = (user: UserRecord): Promise<any> => {
+  const { twilioAuthID, twilioAuthToken, twilioPhoneNumber } = conf
   const { mobile } = user
-  const client = new plivo.Client(plivoAuthID, plivoAuthToken)
+
+  const client = Twilio(twilioAuthID, twilioAuthToken)
+
   const otp = generateOTP(conf.otpDigits)
   const msg = 'Your GoodDollar Verification Code Is: ' + otp
-  return Promise.all([client.messages.create(plivoPhoneNumber, mobile, msg), otp])
+  return Promise.all([client.messages.create({ to: mobile, from: twilioPhoneNumber, body: msg }), otp])
 }
 
-export { generateOTP, sendOTP }
+/**
+ * Sends an magic code to the user's mobile number
+ * @param {String} to - users's mobile number
+ * @param {String} code - magic code to be send to user
+ * @returns {Promise<any>}
+ */
+export const sendMagicCodeBySMS = async (to, code) => {
+  const { twilioAuthID, twilioAuthToken, twilioPhoneNumber } = conf
+  const client = Twilio(twilioAuthID, twilioAuthToken)
+  const msg = 'Open the GoodDollar app you just installed and paste this code:'
+
+  await client.messages.create({ to, from: twilioPhoneNumber, body: msg })
+  await client.messages.create({ to, from: twilioPhoneNumber, body: code })
+}

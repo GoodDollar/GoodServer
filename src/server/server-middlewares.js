@@ -1,5 +1,5 @@
 // @flow
-// import heapdump from 'heapdump'
+import heapdump from 'heapdump'
 import { Router } from 'express'
 import type { $Request, $Response, NextFunction } from 'express'
 import bodyParser from 'body-parser'
@@ -36,9 +36,9 @@ export default (app: Router, env: any) => {
   addGunMiddlewares(app)
   addStorageMiddlewares(app, UserDBPrivate)
   addVerificationMiddlewares(app, VerificationAPI, UserDBPrivate)
-  addSendMiddlewares(app)
+  addSendMiddlewares(app, UserDBPrivate)
   addLoadTestMiddlewares(app)
-  
+
   if (rollbar) app.use(rollbar.errorHandler())
 
   app.use((error, req, res, next: NextFunction) => {

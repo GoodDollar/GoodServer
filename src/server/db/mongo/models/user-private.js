@@ -22,6 +22,12 @@ export const UserPrivateSchema = new mongoose.Schema({
   jwt: {
     type: String
   },
+  loginToken: {
+    type: String
+  },
+  w3Token: {
+    type: String
+  },
   smsValidated: {
     type: Boolean
   },
@@ -37,6 +43,33 @@ export const UserPrivateSchema = new mongoose.Schema({
   },
   emailVerificationCode: {
     type: String
+  },
+  createdDate: {
+    type: Date
+  },
+  magiclink: {
+    type: String
+  },
+  mnemonic: {
+    type: String
+  },
+  isCompleted: {
+    whiteList: {
+      type: Boolean,
+      default: false
+    },
+    w3Record: {
+      type: Boolean,
+      default: false
+    },
+    marketToken: {
+      type: Boolean,
+      default: false
+    },
+    topWallet: {
+      type: Boolean,
+      default: false
+    }
   }
 })
 
