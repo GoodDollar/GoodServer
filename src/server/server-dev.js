@@ -5,8 +5,7 @@ import webpackHotMiddleware from 'webpack-hot-middleware'
 import config from '../../webpack.dev.config'
 import conf from './server.config'
 import { GunDBPublic } from './gun/gun-middleware'
-
-const app = require('./app').default
+import app from './app'
 
 process.on('uncaughtException', (err, origin) => {
   console.log(`Caught exception: ${err}\n` + `Exception origin: ${origin}`)
