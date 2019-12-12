@@ -1,13 +1,13 @@
-import 'newrelic'
-import path from 'path'
-import express from 'express'
-import conf from './server.config'
-import { GunDBPublic } from './gun/gun-middleware'
-import throng from 'throng'
-
+const throng = require('throng')
 function start(workerId) {
-  console.log(`start workerId ${workerId}`)
+  require('newrelic')
+  const path = require('path')
+  const express = require('express')
+  const conf = require('./server.config')
+  const { GunDBPublic } = require('./gun/gun-middleware')
+  console.log(`start workerId = ${workerId}`)
   const app = require('./app').default
+
   process.on('uncaughtException', (err, origin) => {
     console.log(`Caught exception: ${err}\n` + `Exception origin: ${origin}`)
     process.exit(-1)
@@ -35,8 +35,4 @@ function start(workerId) {
 
   GunDBPublic.init(server, conf.gundbPassword, `publicdb${workerId}`, conf.gunPublicS3)
 }
-console.log('webConcurrency from env', process.env.WEB_CONCURRENCY)
-console.log('webConcurrency from config', conf.webConcurrency)
-
-const workers = process.env.WEB_CONCURRENCY || conf.webConcurrency
-throng({ workers, lifetime: Infinity }, start)
+throng({ workers: process.env.WEB_CONCURRENCY, lifetime: Infinity }, start)
