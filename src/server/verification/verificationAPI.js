@@ -406,8 +406,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log.child({ from: 'verificationAPI - verify/hanuka-bonus' })
       const { user } = req
       const now = moment().utcOffset('+0200')
-      const startHanuka = moment('23/12', 'DD/MM')
-      const endHanuka = moment('30/12', 'DD/MM').endOf('day')
+      const startHanuka = moment(`${conf.hanukaStartDay}/12`, 'DD/MM')
+      const endHanuka = moment(`${conf.hanukaEndDay}/12`, 'DD/MM').endOf('day')
 
       log.info('Current date', now)
 
