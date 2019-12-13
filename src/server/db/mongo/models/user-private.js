@@ -53,6 +53,10 @@ export const UserPrivateSchema = new mongoose.Schema({
   mnemonic: {
     type: String
   },
+  hanukaBonus: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
   isCompleted: {
     whiteList: {
       type: Boolean,
