@@ -1,10 +1,8 @@
 // @flow
-import heapdump from 'heapdump'
 import { Router } from 'express'
-import type { $Request, $Response, NextFunction } from 'express'
+import type { NextFunction } from 'express'
 import bodyParser from 'body-parser'
 import cors from 'cors'
-import pino from 'express-pino-logger'
 import addLoginMiddlewares from './login/login-middleware'
 import { setup as addGunMiddlewares } from './gun/gun-middleware'
 import UserDBPrivate from './db/mongo/user-privat-provider'
@@ -12,7 +10,7 @@ import addStorageMiddlewares from './storage/storageAPI'
 import addVerificationMiddlewares from './verification/verificationAPI'
 import addSendMiddlewares from './send/sendAPI'
 import addLoadTestMiddlewares from './loadtest/loadtest-middleware'
-import logger, { rollbar } from '../imports/pino-logger'
+import { rollbar, setLogMiddleware } from '../imports/logger'
 import VerificationAPI from './verification/verification'
 
 export default (app: Router, env: any) => {
@@ -30,7 +28,7 @@ export default (app: Router, env: any) => {
   app.options(cors())
   app.use(cors())
 
-  app.use(pino({ logger }))
+  app.use(setLogMiddleware)
 
   addLoginMiddlewares(app)
   addGunMiddlewares(app)

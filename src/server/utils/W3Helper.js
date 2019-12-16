@@ -1,7 +1,7 @@
 import fetch from 'cross-fetch'
 import md5 from 'md5'
 import conf from '../server.config'
-import logger from '../../imports/pino-logger'
+import logger from '../../imports/logger'
 
 const log = logger.child({ from: 'W3Helper' })
 const Timeout = timeout => {

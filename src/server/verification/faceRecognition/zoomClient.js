@@ -1,6 +1,6 @@
 // @flow
 import fetch from 'cross-fetch'
-import logger from '../../../imports/pino-logger'
+import logger from '../../../imports/logger'
 import Config from '../../server.config'
 const log = logger.child({ from: 'ZoomClient' })
 const Timeout = (timeout: msec) => {

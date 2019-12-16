@@ -8,7 +8,7 @@ import GoodDollarABI from '@gooddollar/goodcontracts/build/contracts/GoodDollar.
 import SignUpBonusABI from '@gooddollar/goodcontracts/build/contracts/SignUpBonus.json'
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
 import conf from '../server.config'
-import logger from '../../imports/pino-logger'
+import logger from '../../imports/logger'
 import { isNonceError } from '../utils/eth'
 import { type TransactionReceipt } from './blockchain-types'
 import moment from 'moment'
@@ -133,7 +133,7 @@ export class Wallet {
       }
     }
     if (this.filledAddresses.length === 0) {
-      log.fatal('no admin wallet with funds')
+      log.error('no admin wallet with funds')
       if (conf.env !== 'test') process.exit(-1)
     }
     this.address = this.filledAddresses[0]

@@ -1,6 +1,6 @@
 //@flow
 import UserPrivateModel from './models/user-private.js'
-import logger from '../../../imports/pino-logger'
+import logger from '../../../imports/logger'
 import { type UserRecord } from '../../../imports/types'
 
 class UserPrivate {

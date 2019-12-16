@@ -1,5 +1,5 @@
 import WalletNonce from '../../db/mongo/models/wallet-nonce'
-import logger from '../../../imports/pino-logger'
+import logger from '../../../imports/logger'
 import conf from '../../server.config'
 
 const log = logger.child({ from: 'queueMongo' })

@@ -1,6 +1,6 @@
 // @flow
 import type { $Request, $Response, NextFunction } from 'express'
-import logger from '../../imports/pino-logger'
+import logger from '../../imports/logger'
 import conf from '../server.config'
 
 /**

@@ -1,5 +1,5 @@
 import Mutex from 'await-mutex'
-import logger from '../../../imports/pino-logger'
+import logger from '../../../imports/logger'
 const log = logger.child({ from: 'wallet queueMutex' })
 
 export default class queueMutex {

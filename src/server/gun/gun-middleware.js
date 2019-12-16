@@ -7,7 +7,7 @@ import 'gun/lib/load'
 // import les from 'gun/lib/les'
 import { type StorageAPI, type UserRecord } from '../../imports/types'
 import conf from '../server.config'
-import logger from '../../imports/pino-logger'
+import logger from '../../imports/logger'
 
 const log = logger.child({ from: 'GunDB-Middleware' })
 

@@ -4,7 +4,7 @@ import passport from 'passport'
 import { ExtractJwt, Strategy } from 'passport-jwt'
 import { Router } from 'express'
 import { get, defaults } from 'lodash'
-import logger from '../../imports/pino-logger'
+import logger from '../../imports/logger'
 import { wrapAsync, lightLogs } from '../utils/helpers'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
 import SEA from 'gun/sea'
@@ -46,7 +46,7 @@ const setup = (app: Router) => {
       const { user, body, log } = req
       const identifier = get(body, 'user.identifier') || user.loggedInAs
 
-      log.trace(`${req.baseUrl} auth:`, { user, body })
+      log.debug(`${req.baseUrl} auth:`, { user, body })
 
       if (user.loggedInAs !== identifier) {
         log.warn(`Trying to update other user data! ${user.loggedInAs}!==${identifier}`)

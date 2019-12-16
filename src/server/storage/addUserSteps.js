@@ -1,6 +1,6 @@
 // @flow
 import conf from '../server.config'
-import logger from '../../imports/pino-logger'
+import logger from '../../imports/logger'
 import AdminWallet from '../blockchain/AdminWallet'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
 import { type UserRecord } from '../../imports/types'
