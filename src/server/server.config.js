@@ -355,17 +355,17 @@ const conf = convict({
     env: 'ETORO',
     default: false
   },
-  hanukaStartDay: {
+  hanukaStartDate: {
     doc: 'Hanuka Start Day',
     format: '*',
-    env: 'HANUKA_START_DAY',
-    default: 23
+    env: 'HANUKA_START_DATE',
+    default: undefined
   },
-  hanukaEndDay: {
+  hanukaEndDate: {
     doc: 'Hanuka End Day',
     format: '*',
-    env: 'HANUKA_END_DAY',
-    default: 30
+    env: 'HANUKA_END_DATE',
+    default: undefined
   }
 })
 
