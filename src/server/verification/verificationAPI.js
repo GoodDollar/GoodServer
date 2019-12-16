@@ -417,9 +417,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         })
       }
 
-      const startsFromDay = 23
+      const startsFromDay = startHanuka.format('DD')
       const currentDay = now.format('DD')
-      const currentDayNumber = Number(currentDay - startsFromDay + 1)
+      const currentDayNumber = currentDay.diff(startsFromDay, 'days') + 1
       const dayField = `day${currentDayNumber}`
 
       if (user.hanukaBonus && user.hanukaBonus[dayField]) {
@@ -444,6 +444,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { release, fail } = await txManager.lock(user.gdAddress, 0)
 
       AdminWallet.redeemBonuses(user.gdAddress, bonusInWei, {
+        onTransactionHash: r => {
+          return res.status(200).json({
+            ok: 1
+          })
+        },
         onReceipt: async r => {
           log.info('Bonus redeem - receipt received', r)
 
@@ -456,20 +461,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           })
 
           release()
-
-          return res.status(200).json({
-            ok: 1
-          })
         },
         onError: e => {
           log.error('Bonuses charge failed', e.message, e, user)
 
           fail()
-
-          return res.status(400).json({
-            ok: -1,
-            message: 'Failed to send Hanuka bonuses for user'
-          })
         }
       })
     })
