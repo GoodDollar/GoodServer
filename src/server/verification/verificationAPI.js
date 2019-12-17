@@ -406,27 +406,29 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log.child({ from: 'verificationAPI - verify/hanuka-bonus' })
       const { user } = req
       const now = moment().utcOffset('+0200')
-      const startHanuka = moment(conf.hanukaStartDate, 'DD/MM/YYYY')
-      const endHanuka = moment(conf.hanukaEndDate, 'DD/MM/YYYY').endOf('day')
+      const startHanuka = moment(conf.hanukaStartDate, 'DD/MM/YYYY').utcOffset('+0200')
+      const endHanuka = moment(conf.hanukaEndDate, 'DD/MM/YYYY')
+        .endOf('day')
+        .utcOffset('+0200')
 
       if (startHanuka.isAfter(now) || now.isAfter(endHanuka)) {
         log.info('That is no the period of Hanuka bonus')
 
         return res.json({
-          ok: 1
+          ok: 0,
+          message: 'That is no the period of Hanuka bonus'
         })
       }
 
-      const startsFromDay = startHanuka.format('DD')
-      const currentDay = now.format('DD')
-      const currentDayNumber = currentDay.diff(startsFromDay, 'days') + 1
+      const currentDayNumber = startHanuka.diff(now, 'days') + 1
       const dayField = `day${currentDayNumber}`
 
       if (user.hanukaBonus && user.hanukaBonus[dayField]) {
         log.info('The user already get Hanuka bonus today', { date: now, dayNumber: dayField, user })
 
         return res.json({
-          ok: 1
+          ok: 0,
+          message: 'The user already get Hanuka bonus today'
         })
       }
 
@@ -434,7 +436,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       log.debug('Hanuka Dates/Data for calculations', {
         now,
-        currentDay,
         currentDayNumber,
         dayField,
         bonusInWei,
