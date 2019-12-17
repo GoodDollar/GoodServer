@@ -445,9 +445,10 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { release, fail } = await txManager.lock(user.gdAddress, 0)
 
       AdminWallet.redeemBonuses(user.gdAddress, bonusInWei, {
-        onTransactionHash: r => {
+        onTransactionHash: hash => {
           return res.status(200).json({
-            ok: 1
+            ok: 1,
+            hash
           })
         },
         onReceipt: async r => {
