@@ -32,7 +32,7 @@ const logger = winston.createLogger({
   format: combine(
     timestamp(),
     printf(({ level, timestamp, from, ...rest }) =>
-      colorizer.colorize(level, `${timestamp} - ${level} ${from && `(FROM ${from})`}:  ${JSON.stringify(rest)}`)
+      colorizer.colorize(level, `${timestamp} - ${level}${from ? ` (FROM ${from})` : ''}:  ${JSON.stringify(rest)}`)
     )
   ),
   transports: [
