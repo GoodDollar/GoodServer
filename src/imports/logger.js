@@ -36,7 +36,9 @@ const logger = winston.createLogger({
     )
   ),
   transports: [
-    new winston.transports.Console()
+    new winston.transports.Console({
+      silent: LOG_LEVEL === 'silent'
+    })
     // new winston.transports.File({ filename: 'somefile.log' })
   ]
 })
