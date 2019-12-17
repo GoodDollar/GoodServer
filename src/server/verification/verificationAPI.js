@@ -2,6 +2,7 @@
 import { Router } from 'express'
 import passport from 'passport'
 import _ from 'lodash'
+import moment from 'moment'
 import multer from 'multer'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
@@ -387,6 +388,86 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: tempSavedEmail })
 
       res.json({ ok: 1, attestation: signedEmail })
+    })
+  )
+
+  /**
+   * @api {post} /verify/hanuka-bonus Check hanuka bonus availability
+   * @apiName Hanuka Bonus
+   * @apiGroup Verification
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
+  app.get(
+    '/verify/hanuka-bonus',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res, next) => {
+      const log = req.log.child({ from: 'verificationAPI - verify/hanuka-bonus' })
+      const { user } = req
+      const now = moment().utcOffset('+0200')
+      const startHanuka = moment(conf.hanukaStartDate, 'DD/MM/YYYY')
+      const endHanuka = moment(conf.hanukaEndDate, 'DD/MM/YYYY').endOf('day')
+
+      if (startHanuka.isAfter(now) || now.isAfter(endHanuka)) {
+        log.info('That is no the period of Hanuka bonus')
+
+        return res.json({
+          ok: 1
+        })
+      }
+
+      const startsFromDay = startHanuka.format('DD')
+      const currentDay = now.format('DD')
+      const currentDayNumber = currentDay.diff(startsFromDay, 'days') + 1
+      const dayField = `day${currentDayNumber}`
+
+      if (user.hanukaBonus && user.hanukaBonus[dayField]) {
+        log.info('The user already get Hanuka bonus today', { date: now, dayNumber: dayField, user })
+
+        return res.json({
+          ok: 1
+        })
+      }
+
+      const bonusInWei = gdToWei(currentDayNumber)
+
+      log.debug('Hanuka Dates/Data for calculations', {
+        now,
+        currentDay,
+        currentDayNumber,
+        dayField,
+        bonusInWei,
+        bonus: currentDayNumber
+      })
+
+      const { release, fail } = await txManager.lock(user.gdAddress, 0)
+
+      AdminWallet.redeemBonuses(user.gdAddress, bonusInWei, {
+        onTransactionHash: r => {
+          return res.status(200).json({
+            ok: 1
+          })
+        },
+        onReceipt: async r => {
+          log.info('Bonus redeem - receipt received', r)
+
+          await storage.updateUser({
+            identifier: user.loggedInAs,
+            hanukaBonus: {
+              ...user.hanukaBonus,
+              [dayField]: true
+            }
+          })
+
+          release()
+        },
+        onError: e => {
+          log.error('Bonuses charge failed', e.message, e, user)
+
+          fail()
+        }
+      })
     })
   )
 
