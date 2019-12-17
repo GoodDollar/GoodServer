@@ -47,7 +47,6 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       const user: UserRecord = defaults(bodyUser, {
         identifier: userRecord.loggedInAs,
-        createdDate: new Date().toString(),
         email: get(userRecord, 'otp.email', email), //for development/test use email from body
         mobile: get(userRecord, 'otp.mobile', mobile), //for development/test use mobile from body
         isCompleted: {
@@ -73,6 +72,11 @@ const setup = (app: Router, storage: StorageAPI) => {
       let ok = await addUserSteps.topUserWallet(userRecord)
 
       logger.debug('added new user:', { user, ok })
+
+      await UserDBPrivate.updateUser({
+        identifier: userRecord.loggedInAs,
+        createdDate: new Date().toString()
+      })
 
       res.json({
         ...ok,
