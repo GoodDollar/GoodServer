@@ -487,6 +487,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    * @apiParam {String} token
    *
    * @apiSuccess {Number} ok
+   * @apiSuccess {String} message
    * @ignore
    */
   app.post(
