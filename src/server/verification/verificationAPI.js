@@ -469,10 +469,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
           fail()
 
-          return res.status(400).json({
-            ok: -1,
-            message: 'The error occurred while trying to send your bonus'
-          })
+          if (!res.headersSent) {
+            res.status(400).json({
+              ok: -1,
+              message: 'The error occurred while trying to send your bonus'
+            })
+          }
         }
       })
     })
