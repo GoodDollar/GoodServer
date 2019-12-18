@@ -468,6 +468,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           log.error('Bonuses charge failed', e.message, e, user)
 
           fail()
+
+          return res.status(400).json({
+            ok: -1,
+            message: 'The error occurred while trying to send your bonus'
+          })
         }
       })
     })
