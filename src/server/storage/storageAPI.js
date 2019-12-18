@@ -73,7 +73,7 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       logger.debug('added new user:', { user, ok })
 
-      await UserDBPrivate.updateUser({
+      await storage.updateUser({
         identifier: userRecord.loggedInAs,
         createdDate: new Date().toString()
       })
