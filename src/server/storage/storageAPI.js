@@ -10,7 +10,6 @@ import conf from '../server.config'
 import { recoverPublickey } from '../utils/eth'
 import zoomHelper from '../verification/faceRecognition/faceRecognitionHelper'
 import addUserSteps from './addUserSteps'
-import UserDBPrivate from '../db/mongo/user-privat-provider'
 import { generateMarketToken } from '../utils/market'
 
 const setup = (app: Router, storage: StorageAPI) => {
@@ -58,7 +57,7 @@ const setup = (app: Router, storage: StorageAPI) => {
         }
       })
 
-      await UserDBPrivate.updateUser(user)
+      await storage.updateUser(user)
 
       if (conf.disableFaceVerification) {
         addUserSteps.addUserToWhiteList(userRecord)
