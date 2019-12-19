@@ -10,7 +10,6 @@ import conf from '../server.config'
 import { recoverPublickey } from '../utils/eth'
 import zoomHelper from '../verification/faceRecognition/faceRecognitionHelper'
 import addUserSteps from './addUserSteps'
-import UserDBPrivate from '../db/mongo/user-privat-provider'
 import { generateMarketToken } from '../utils/market'
 
 const setup = (app: Router, storage: StorageAPI) => {
@@ -47,7 +46,6 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       const user: UserRecord = defaults(bodyUser, {
         identifier: userRecord.loggedInAs,
-        createdDate: new Date().toString(),
         email: get(userRecord, 'otp.email', email), //for development/test use email from body
         mobile: get(userRecord, 'otp.mobile', mobile), //for development/test use mobile from body
         isCompleted: {
@@ -58,7 +56,7 @@ const setup = (app: Router, storage: StorageAPI) => {
         }
       })
 
-      await UserDBPrivate.updateUser(user)
+      await storage.updateUser(user)
 
       if (conf.disableFaceVerification) {
         addUserSteps.addUserToWhiteList(userRecord)
@@ -73,6 +71,11 @@ const setup = (app: Router, storage: StorageAPI) => {
       let ok = await addUserSteps.topUserWallet(userRecord)
 
       logger.debug('added new user:', { user, ok })
+
+      await storage.updateUser({
+        identifier: userRecord.loggedInAs,
+        createdDate: new Date().toString()
+      })
 
       res.json({
         ...ok,

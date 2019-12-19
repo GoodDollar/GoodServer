@@ -2,6 +2,7 @@
 import { Router } from 'express'
 import passport from 'passport'
 import _ from 'lodash'
+import moment from 'moment'
 import multer from 'multer'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
@@ -199,7 +200,21 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       res.json({ ok: 1, attestation: signedMobile })
     })
   )
-
+  /**
+   * @api {post} /verify/registration Verify user registration status
+   * @apiName Verify Registration Status
+   * @apiGroup Verification
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
+  app.post(
+    '/verify/registration',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res, next) => {
+      const user = req.user
+      res.json({ ok: user && user.createdDate ? 1 : 0 })
+    })
+  )
   /**
    * @api {post} /verify/topwallet Tops Users Wallet if needed
    * @apiName Top Wallet
@@ -391,6 +406,95 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   )
 
   /**
+   * @api {post} /verify/hanuka-bonus Check hanuka bonus availability
+   * @apiName Hanuka Bonus
+   * @apiGroup Verification
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
+  app.get(
+    '/verify/hanuka-bonus',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res, next) => {
+      const log = req.log.child({ from: 'verificationAPI - verify/hanuka-bonus' })
+      const { user } = req
+      const now = moment().utcOffset('+0200')
+      const startHanuka = moment(conf.hanukaStartDate, 'DD/MM/YYYY').utcOffset('+0200')
+      const endHanuka = moment(conf.hanukaEndDate, 'DD/MM/YYYY')
+        .endOf('day')
+        .utcOffset('+0200')
+
+      if (startHanuka.isAfter(now) || now.isAfter(endHanuka)) {
+        log.info('That is no the period of Hanuka bonus')
+
+        return res.json({
+          ok: 0,
+          message: 'That is no the period of Hanuka bonus'
+        })
+      }
+
+      const currentDayNumber = startHanuka.diff(now, 'days') + 1
+      const dayField = `day${currentDayNumber}`
+
+      if (user.hanukaBonus && user.hanukaBonus[dayField]) {
+        log.info('The user already get Hanuka bonus today', { date: now, dayNumber: dayField, user })
+
+        return res.json({
+          ok: 0,
+          message: 'The user already get Hanuka bonus today'
+        })
+      }
+
+      const bonusInWei = gdToWei(currentDayNumber)
+
+      log.debug('Hanuka Dates/Data for calculations', {
+        now,
+        currentDayNumber,
+        dayField,
+        bonusInWei,
+        bonus: currentDayNumber
+      })
+
+      const { release, fail } = await txManager.lock(user.gdAddress, 0)
+
+      AdminWallet.redeemBonuses(user.gdAddress, bonusInWei, {
+        onTransactionHash: hash => {
+          return res.status(200).json({
+            ok: 1,
+            hash
+          })
+        },
+        onReceipt: async r => {
+          log.info('Bonus redeem - receipt received', r)
+
+          await storage.updateUser({
+            identifier: user.loggedInAs,
+            hanukaBonus: {
+              ...user.hanukaBonus,
+              [dayField]: true
+            }
+          })
+
+          release()
+        },
+        onError: e => {
+          log.error('Bonuses charge failed', e.message, e, user)
+
+          fail()
+
+          if (!res.headersSent) {
+            res.status(400).json({
+              ok: -1,
+              message: 'The error occurred while trying to send your bonus'
+            })
+          }
+        }
+      })
+    })
+  )
+
+  /**
    * @api {get} /verify/w3/email Verify email to be equal with email provided by token from web3
    * @apiName Web3 Email Verify
    * @apiGroup Verification
@@ -399,6 +503,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    * @apiParam {String} token
    *
    * @apiSuccess {Number} ok
+   * @apiSuccess {String} message
    * @ignore
    */
   app.post(

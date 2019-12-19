@@ -12,7 +12,7 @@ const NodemonPlugin = require("nodemon-webpack-plugin")
 const webpack = require("webpack")
 module.exports = (env, argv) => {
   const SERVER_PATH = (argv.mode === "production")
-    ? "./src/server/server-prod.js"
+    ? "./src/server/index-prod.js"
     : "./src/server/server-dev.js"
 
   return ({

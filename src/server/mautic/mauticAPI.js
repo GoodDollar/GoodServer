@@ -47,6 +47,7 @@ export const Mautic = {
   createContact(user: UserRecord) {
     const tags = ['dappuser']
     if (Config.isEtoro) tags.push('etorobeta')
+    tags.push(Config.version)
     return this.baseQuery('/contacts/new', this.baseHeaders, { ...user, tags })
   },
 

@@ -159,8 +159,8 @@ class UserPrivate {
    *
    * @returns {Promise<*>}
    */
-  async listUsers(): Promise<UserRecord> {
-    const res = this.model.find({}, { email: 1, identifier: 1 }).lean()
+  async listUsers(fields: any = {}): Promise<UserRecord> {
+    const res = this.model.find({}, { email: 1, identifier: 1, ...fields }).lean()
     return res
   }
 

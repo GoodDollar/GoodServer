@@ -1,5 +1,6 @@
 import networks from './networks'
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
+import { version } from '../../package.json'
 
 const envFile = process.env.NODE_ENV === 'test' ? `.env.test` : '.env'
 require('dotenv').config({ path: envFile })
@@ -13,6 +14,12 @@ const conf = convict({
     default: 'development',
     arg: 'nodeEnv',
     env: 'NODE_ENV'
+  },
+  version: {
+    doc: 'The applicaton version from package.json.',
+    format: String,
+    default: version,
+    env: 'VERSION'
   },
   logLevel: {
     doc: 'Log level',
@@ -354,6 +361,18 @@ const conf = convict({
     format: Boolean,
     env: 'ETORO',
     default: false
+  },
+  hanukaStartDate: {
+    doc: 'Hanuka Start Day',
+    format: '*',
+    env: 'HANUKA_START_DATE',
+    default: undefined
+  },
+  hanukaEndDate: {
+    doc: 'Hanuka End Day',
+    format: '*',
+    env: 'HANUKA_END_DATE',
+    default: undefined
   }
 })
 

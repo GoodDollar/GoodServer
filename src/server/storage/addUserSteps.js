@@ -44,6 +44,9 @@ const updateMauticRecord = async (userRecord: UserRecord) => {
 }
 
 const updateW3Record = async (user: any) => {
+  if (conf.env !== 'test' && conf.isEtoro === false) {
+    return
+  }
   let userDB = await UserDBPrivate.getUser(user.identifier)
   const w3Record = get(userDB, 'isCompleted.w3Record', false)
   if (!w3Record) {
@@ -63,6 +66,10 @@ const updateW3Record = async (user: any) => {
 }
 
 const updateMarketToken = async (user: any) => {
+  if (conf.env !== 'test' && conf.isEtoro === false) {
+    return
+  }
+
   let userDB = await UserDBPrivate.getUser(user.identifier)
   const marketToken = get(userDB, 'isCompleted.marketToken', false)
   if (!marketToken) {
