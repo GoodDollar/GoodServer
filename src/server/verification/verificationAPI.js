@@ -200,7 +200,21 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       res.json({ ok: 1, attestation: signedMobile })
     })
   )
-
+  /**
+   * @api {post} /verify/registration Verify user registration status
+   * @apiName Verify Registration Status
+   * @apiGroup Verification
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
+  app.post(
+    '/verify/registration',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res, next) => {
+      const user = req.user
+      res.json({ ok: user && user.createdDate ? 1 : 0 })
+    })
+  )
   /**
    * @api {post} /verify/topwallet Tops Users Wallet if needed
    * @apiName Top Wallet
