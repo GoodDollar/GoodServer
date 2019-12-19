@@ -211,7 +211,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const user = req.user
-      res.json({ ok: user && user.email ? 1 : 0 })
+      res.json({ ok: user && user.createdDate ? 1 : 0 })
     })
   )
   /**
