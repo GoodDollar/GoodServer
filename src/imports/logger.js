@@ -17,17 +17,27 @@ if (conf.env != 'development' && conf.rollbarToken)
     }
   })
 
-const LOG_LEVEL = conf.logLevel || 'debug'
+const LOG_LEVEL = conf.logLevel
 
 console.log('Starting logger', { LOG_LEVEL, env: conf.env })
 
-const logger = winston.createLogger({
+const levelConfigs = {
   levels: {
     error: 0,
     warn: 1,
     info: 2,
     debug: 3
   },
+  colors: {
+    error: 'red',
+    warn: 'yellow',
+    info: 'blue',
+    debug: 'green'
+  }
+}
+
+const logger = winston.createLogger({
+  levels: levelConfigs.levels,
   level: LOG_LEVEL,
   format: combine(
     timestamp(),
@@ -43,12 +53,7 @@ const logger = winston.createLogger({
   ]
 })
 
-winston.addColors({
-  error: 'red',
-  warn: 'yellow',
-  info: 'blue',
-  debug: 'green'
-})
+winston.addColors(levelConfigs.colors)
 
 // patch error
 const error = logger.error
