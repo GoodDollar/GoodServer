@@ -434,7 +434,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         })
       }
 
-      const currentDayNumber = startHanuka.diff(now, 'days') + 1
+      const currentDayNumber = now.diff(startHanuka, 'days') + 1
       const dayField = `day${currentDayNumber}`
 
       if (user.hanukaBonus && user.hanukaBonus[dayField]) {
