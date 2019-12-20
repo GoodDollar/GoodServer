@@ -1,5 +1,10 @@
-import { MongoMemoryServer } from 'mongodb-memory-server'
+import { MongoMemoryReplSet } from 'mongodb-memory-server'
 
-const mongoServer = new MongoMemoryServer()
+const replSet = new MongoMemoryReplSet({
+  replSet: { storageEngine: 'wiredTiger' }
+})
 
-export const getMongoMemoryServerConnectionString = () => mongoServer.getConnectionString()
+export const getMongoMemoryServerConnectionString = async () => {
+  await replSet.waitUntilRunning()
+  return await replSet.getConnectionString()
+}
