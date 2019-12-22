@@ -217,7 +217,7 @@ export class Wallet {
     const dayBlock = await this.web3.eth.getBlock(startOfDayBlock)
     log.debug('getting ubi events', { startOfDayBlock, timestamp: dayBlock.timestamp })
     const ubiEvents = await this.UBIContract.getPastEvents('UBIClaimed', {
-      from: startOfDayBlock,
+      fromBlock: startOfDayBlock,
       filter: { claimer: user.gdAddress }
     })
 
