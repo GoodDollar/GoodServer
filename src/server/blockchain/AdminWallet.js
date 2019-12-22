@@ -197,7 +197,12 @@ export class Wallet {
       .endOf('day')
       .utcOffset('+0200')
 
-    if (startHanuka.isAfter(now) || now.isAfter(endHanuka)) {
+    if (
+      startHanuka.isValid() === false ||
+      endHanuka.isValid() === false ||
+      startHanuka.isAfter(now) ||
+      now.isAfter(endHanuka)
+    ) {
       return
     }
 
