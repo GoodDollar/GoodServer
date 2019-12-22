@@ -3,10 +3,12 @@ import Web3 from 'web3'
 import HDKey from 'hdkey'
 import bip39 from 'bip39-light'
 import type { HttpProvider, WebSocketProvider } from 'web3-providers'
-import IdentityABI from '@gooddollar/goodcontracts/build/contracts/Identity.json'
-import GoodDollarABI from '@gooddollar/goodcontracts/build/contracts/GoodDollar.json'
-import SignUpBonusABI from '@gooddollar/goodcontracts/build/contracts/SignUpBonus.json'
+import IdentityABI from '@gooddollar/goodcontracts/build/contracts/Identity.min.json'
+import GoodDollarABI from '@gooddollar/goodcontracts/build/contracts/GoodDollar.min.json'
+import SignUpBonusABI from '@gooddollar/goodcontracts/build/contracts/SignUpBonus.min.json'
+import UBIABI from '@gooddollar/goodcontracts/build/contracts/FixedUBI.min.json'
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
+
 import conf from '../server.config'
 import logger from '../../imports/pino-logger'
 import { isNonceError } from '../utils/eth'
@@ -15,6 +17,7 @@ import moment from 'moment'
 import get from 'lodash/get'
 
 import txManager from '../utils/tx-manager'
+import gdToWei from '../utils/gdToWei'
 
 import * as web3Utils from 'web3-utils'
 
@@ -155,6 +158,9 @@ export class Wallet {
       get(ContractsAddress, `${this.network}.GoodDollar`),
       { from: this.address }
     )
+    this.UBIContract = new this.web3.eth.Contract(UBIABI.abi, get(ContractsAddress, `${this.network}.UBI`), {
+      from: this.address
+    })
 
     try {
       let gdbalance = await this.tokenContract.methods.balanceOf(this.address).call()
@@ -184,6 +190,80 @@ export class Wallet {
     return true
   }
 
+  async checkHanukaBonus(user, storage) {
+    const now = moment().utcOffset('+0200')
+    const startHanuka = moment(conf.hanukaStartDate, 'DD/MM/YYYY').utcOffset('+0200')
+    const endHanuka = moment(conf.hanukaEndDate, 'DD/MM/YYYY')
+      .endOf('day')
+      .utcOffset('+0200')
+
+    if (startHanuka.isAfter(now) || now.isAfter(endHanuka)) {
+      return
+    }
+
+    const currentDayNumber = now.diff(startHanuka, 'days') + 1
+    if (currentDayNumber <= 0) return
+    const dayField = `day${currentDayNumber}`
+
+    if (user.hanukaBonus && user.hanukaBonus[dayField]) return
+
+    const blocksFromStartOfDay = parseInt((now.diff(moment().startOf('day'), 'seconds') / 5).toFixed())
+    const startOfDayBlock = (await this.web3.eth.getBlockNumber()) - blocksFromStartOfDay
+    const dayBlock = await this.web3.eth.getBlock(startOfDayBlock)
+    log.debug('getting ubi events', { startOfDayBlock, timestamp: dayBlock.timestamp })
+    const ubiEvents = await this.UBIContract.getPastEvents('UBIClaimed', {
+      from: startOfDayBlock,
+      filter: { claimer: user.gdAddress }
+    })
+
+    const bonusInWei = gdToWei(currentDayNumber)
+
+    log.debug('Hanuka Dates/Data for checkHanukaBonus', {
+      now,
+      startOfDayBlock,
+      currentDayNumber,
+      dayField,
+      bonusInWei,
+      claimEventFound: ubiEvents.length
+    })
+
+    const { release, fail } = await txManager.lock(user.gdAddress, 0)
+    const recheck = await storage.getUserField(user.identifier, 'hanukaBonus')
+    if (recheck && recheck[dayField]) {
+      release()
+      return
+    }
+    return AdminWallet.redeemBonuses(user.gdAddress, bonusInWei, {
+      onTransactionHash: hash => {
+        log.info('checkHanukaBonus redeem - txhash received', {
+          hash,
+          identifier: user.identifier,
+          gdAddress: user.gdAddress
+        })
+      },
+      onReceipt: async r => {
+        log.info('checkHanukaBonus redeem - receipt received', {
+          hash: r.transactionHash,
+          identifier: user.identifier,
+          gdAddress: user.gdAddress
+        })
+        await storage.updateUser({
+          identifier: user.loggedInAs,
+          hanukaBonus: {
+            ...user.hanukaBonus,
+            [dayField]: true
+          }
+        })
+        release()
+      },
+      onError: e => {
+        log.error('checkHanukaBonus redeem failed', e.message, e, user.identifier, user.gdAddress)
+
+        fail()
+      }
+    })
+  }
+
   /**
    * charge bonuses for user via `bonus` contract
    * @param {string} address
@@ -192,7 +272,7 @@ export class Wallet {
    * @returns {Promise<String>}
    */
   async redeemBonuses(address: string, amountInWei: string, { onReceipt, onTransactionHash, onError }): Promise<any> {
-    this.sendTransaction(this.signUpBonusContract.methods.awardUser(address, amountInWei), {
+    return this.sendTransaction(this.signUpBonusContract.methods.awardUser(address, amountInWei), {
       onTransactionHash,
       onReceipt,
       onError

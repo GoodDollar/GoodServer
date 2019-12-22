@@ -625,6 +625,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         })
       }
 
+      AdminWallet.checkHanukaBonus(currentUser, storage).catch(e => log.error('checkHnukaBonus failed', e.message, e))
+
       let wallet_token = currentUser.w3Token
 
       log.info('wallet token from user rec', wallet_token)
