@@ -231,7 +231,9 @@ export class Wallet {
       bonusInWei,
       claimEventFound: ubiEvents.length
     })
-
+    if (ubiEvents.length === 0) {
+      return
+    }
     const { release, fail } = await txManager.lock(user.gdAddress, 0)
     const recheck = await storage.getUserField(user.identifier, 'hanukaBonus')
     if (recheck && recheck[dayField]) {
