@@ -60,6 +60,21 @@ describe('UserPrivate', () => {
     expect(user).not.toBeTruthy()
   })
 
+  it('Should not duplicate bu email', async () => {
+    let isDupUser = await storage.isDupUserData({ email: testUser.email })
+    expect(isDupUser).not.toBeTruthy()
+  })
+
+  it('Should not duplicate bu email', async () => {
+    let isDupUser = await storage.isDupUserData({ mobile: testUser.mobile })
+    expect(isDupUser).not.toBeTruthy()
+  })
+
+  it('Should updateUser user add createdDate', async () => {
+    let res = await storage.updateUser({ identifier: testUser.identifier, createdDate: new Date().toString() })
+    expect(res).toBeTruthy()
+  })
+
   it('Should isDupUserData bu email', async () => {
     let isDupUser = await storage.isDupUserData({ email: testUser.email })
     expect(isDupUser).toBeTruthy()
