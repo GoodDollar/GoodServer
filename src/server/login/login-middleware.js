@@ -124,7 +124,7 @@ const setup = (app: Router) => {
 
   app.get(
     '/auth/ping',
-    requestRateLimiter(10),
+    requestRateLimiter(500),
     wrapAsync(async (req, res) => {
       res.json({ ping: new Date() })
       res.end()
