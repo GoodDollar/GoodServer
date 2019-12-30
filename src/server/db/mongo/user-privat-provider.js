@@ -21,7 +21,7 @@ class UserPrivate {
 
     if (email) {
       result = await this.model
-        .findOne({ email })
+        .findOne({ email, createdDate: { $exists: true } })
         .select('_id')
         .lean()
       if (result) {
@@ -31,7 +31,7 @@ class UserPrivate {
 
     if (mobile) {
       result = await this.model
-        .findOne({ mobile })
+        .findOne({ mobile, createdDate: { $exists: true } })
         .select('_id')
         .lean()
       if (result) {
