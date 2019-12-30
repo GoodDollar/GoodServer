@@ -10,7 +10,7 @@ import addStorageMiddlewares from './storage/storageAPI'
 import addVerificationMiddlewares from './verification/verificationAPI'
 import addSendMiddlewares from './send/sendAPI'
 import addLoadTestMiddlewares from './loadtest/loadtest-middleware'
-import { rollbar, setLogMiddleware } from '../imports/logger'
+import { rollbar, addRequestLogger } from '../imports/logger'
 import VerificationAPI from './verification/verification'
 
 export default (app: Router, env: any) => {
@@ -27,9 +27,7 @@ export default (app: Router, env: any) => {
 
   app.options(cors())
   app.use(cors())
-
-  app.use(setLogMiddleware)
-
+  app.use(addRequestLogger)
   addLoginMiddlewares(app)
   addGunMiddlewares(app)
   addStorageMiddlewares(app, UserDBPrivate)
@@ -40,7 +38,7 @@ export default (app: Router, env: any) => {
   if (rollbar) app.use(rollbar.errorHandler())
 
   app.use((error, req, res, next: NextFunction) => {
-    const log = req.log.child({ from: 'errorHandler' })
+    const log = req.log
     log.error(error)
     res.status(400).json({ message: error.message })
   })

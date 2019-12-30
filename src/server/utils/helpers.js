@@ -1,6 +1,5 @@
 // @flow
 import type { $Request, $Response, NextFunction } from 'express'
-import logger from '../../imports/logger'
 import conf from '../server.config'
 
 /**
@@ -11,9 +10,7 @@ import conf from '../server.config'
  */
 function wrapAsync(fn: Function) {
   return function(req: $Request & { log: any }, res: $Response, next: NextFunction) {
-    const log = req.log.child({ from: 'wrapAsync' })
-    fn({ ...req, log: logger }, res, next).catch(error => {
-      log.error('Error in request', req.route, error)
+    fn({ ...req }, res, next).catch(error => {
       next(error)
     })
   }
@@ -26,7 +23,7 @@ function wrapAsync(fn: Function) {
  */
 function lightLogs(fn: Function) {
   return function(req: $Request, res: $Response, next: NextFunction) {
-    fn({ ...req, log: logger }, res, next)
+    fn({ ...req }, res, next)
   }
 }
 

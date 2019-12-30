@@ -1,6 +1,7 @@
 import winston from 'winston'
 import conf from '../server/server.config'
 import Rollbar from 'rollbar'
+import Crypto from 'crypto'
 
 const { format } = winston
 const { combine, printf, timestamp } = format
@@ -26,13 +27,17 @@ const levelConfigs = {
     error: 0,
     warn: 1,
     info: 2,
-    debug: 3
+    http: 3,
+    debug: 4,
+    trace: 5
   },
   colors: {
     error: 'red',
     warn: 'yellow',
-    info: 'blue',
-    debug: 'green'
+    info: 'cyan',
+    debug: 'green',
+    trace: 'white',
+    http: 'bold green'
   }
 }
 
@@ -41,8 +46,12 @@ const logger = winston.createLogger({
   level: LOG_LEVEL,
   format: combine(
     timestamp(),
-    printf(({ level, timestamp, from, ...rest }) =>
-      colorizer.colorize(level, `${timestamp} - ${level}${from ? ` (FROM ${from})` : ''}:  ${JSON.stringify(rest)}`)
+    format.errors({ stack: true }),
+    printf(({ level, timestamp, from, userId, ...rest }) =>
+      colorizer.colorize(
+        level,
+        `${timestamp} - ${level}${from ? ` (FROM ${from} ${userId || ''})` : ''}:  ${JSON.stringify(rest)}`
+      )
     )
   ),
   transports: [
@@ -64,8 +73,25 @@ logger.error = function() {
 }
 
 // set log middleware
-const setLogMiddleware = (req, res, next) => {
-  req.log = logger
+const addRequestLogger = (req, res, next) => {
+  const startTime = Date.now()
+  let uuid = Math.random() + ' ' + startTime
+  uuid = Crypto.createHash('sha1')
+    .update(uuid)
+    .digest('base64')
+    .slice(0, 10)
+
+  req.log = logger.child({ uuid, from: req.url, userId: req.user && req.user.identifier })
+  res.on('finish', () => {
+    const responseTimeSeconds = (Date.now() - startTime) / 1000
+    req.log.log('http', 'Incoming Request', {
+      responseTimeSeconds,
+      method: req.method,
+      body: req.body,
+      query: req.query,
+      headers: req.headers
+    })
+  })
   next()
 }
 
@@ -80,4 +106,4 @@ const printMemory = () => {
 }
 if (conf.env !== 'test') setInterval(printMemory, 30000)
 
-export { rollbar, setLogMiddleware, logger as default }
+export { rollbar, addRequestLogger, logger as default }
