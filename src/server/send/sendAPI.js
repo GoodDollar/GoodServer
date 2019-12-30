@@ -24,7 +24,7 @@ const setup = (app: Router, storage) => {
     passport.authenticate('jwt', { session: false }),
     onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res, next) => {
-      const log = req.log.child({ from: 'sendAPI - /send/linkemail' })
+      const log = req.log
       const { user } = req
       const { to, sendLink } = req.body
 
@@ -50,7 +50,7 @@ const setup = (app: Router, storage) => {
     passport.authenticate('jwt', { session: false }),
     onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res, next) => {
-      const log = req.log.child({ from: 'sendAPI - /send/linksms' })
+      const log = req.log
       const { to, sendLink } = req.body
 
       log.info('sending sms', { to, sendLink })
@@ -75,7 +75,7 @@ const setup = (app: Router, storage) => {
     passport.authenticate('jwt', { session: false }),
     onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res, next) => {
-      const log = req.log.child({ from: 'sendAPI - /send/magiccode' })
+      const log = req.log
       const { to, magicCode } = req.body
 
       log.info('sending sms with magic code', { to, magicCode })
@@ -101,7 +101,7 @@ const setup = (app: Router, storage) => {
     passport.authenticate('jwt', { session: false }),
     onlyInEnv('production', 'staging', 'test'),
     wrapAsync(async (req, res, next) => {
-      const log = req.log.child({ from: 'sendAPI - /send/recoveryinstructions' })
+      const log = req.log
       const { user } = req
       const { mnemonic } = req.body
       const recoverPageUrl = `${conf.walletUrl}/Auth/Recover`
@@ -131,7 +131,7 @@ const setup = (app: Router, storage) => {
     passport.authenticate('jwt', { session: false }),
     onlyInEnv('production', 'staging', 'test'),
     wrapAsync(async (req, res, next) => {
-      const log = req.log.child({ from: 'sendAPI - /send/magiclink' })
+      const log = req.log
       const { user } = req
       const { magiclink } = req.body
       let userRec = user

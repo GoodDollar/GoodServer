@@ -73,10 +73,10 @@ const setup = (app: Router) => {
   app.post(
     '/auth/eth',
     wrapAsync(async (req, res) => {
-      const log = req.log.child({ from: 'login-middleware' })
+      const log = req.log
 
       log.debug('/auth/eth', 'authorizing')
-      log.debug('/auth/eth', 'body:', req.body)
+      log.debug('/auth/eth', { body: req.body })
 
       const signature = req.body.signature
       const gdSignature = req.body.gdSignature
@@ -135,7 +135,7 @@ const setup = (app: Router) => {
     '/auth/test',
     passport.authenticate('jwt', { session: false }),
     wrapAsync((req, res) => {
-      const log = req.log.child({ from: 'login-middleware' })
+      const log = req.log
 
       log.debug('/auth/test', req.user)
 

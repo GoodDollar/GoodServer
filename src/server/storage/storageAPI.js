@@ -28,7 +28,7 @@ const setup = (app: Router, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { body, user: userRecord } = req
-      const logger = req.log.child({ from: 'storageAPI - /user/add' })
+      const logger = req.log
       logger.debug('new user request:', { data: body.user, userRecord })
       //check that user passed all min requirements
       if (

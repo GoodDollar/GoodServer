@@ -41,7 +41,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     upload.any(),
     wrapAsync(async (req, res, next) => {
-      const log = req.log.child({ from: 'facerecognition' })
+      const log = req.log
       const { body, files, user } = req
       log.debug({ user })
       const sessionId = body.sessionId
@@ -123,7 +123,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res, next) => {
       const { user, body } = req
-      const log = req.log.child({ from: 'otp' })
+      const log = req.log
 
       log.info('otp request:', user, body)
 
@@ -173,7 +173,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res, next) => {
-      const log = req.log.child({ from: 'verificationAPI - verify/mobile' })
+      const log = req.log
       const { user, body } = req
       const verificationData: { otp: string } = body.verificationData
       const tempSavedMobile = user.otp && user.otp.mobile
@@ -229,7 +229,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     '/verify/topwallet',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
-      const log = req.log.child({ from: 'verificationAPI - verify/topwallet' })
+      const log = req.log
       const user: LoggedUser = req.user
       // check if user send ether out of the good dollar system
       let isUserSendEtherOutOfSystem = false
@@ -290,7 +290,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     onlyInEnv('production', 'staging', 'test'),
     wrapAsync(async (req, res, next) => {
-      const log = req.log.child({ from: 'verificationAPI - verify/sendemail' })
+      const log = req.log
 
       const { user, body } = req
       const { email } = body.user
@@ -363,7 +363,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     onlyInEnv('production', 'staging', 'test'),
     wrapAsync(async (req, res, next) => {
-      const log = req.log.child({ from: 'verificationAPI - verify/email' })
+      const log = req.log
       const { user, body } = req
       const verificationData: { code: string } = body.verificationData
       const tempSavedEmail = user.otp && user.otp.email
@@ -417,7 +417,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     '/verify/hanuka-bonus',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
-      const log = req.log.child({ from: 'verificationAPI - verify/hanuka-bonus' })
+      const log = req.log
       const { user } = req
       const now = moment().utcOffset('+0200')
       const startHanuka = moment(conf.hanukaStartDate, 'DD/MM/YYYY').utcOffset('+0200')
@@ -510,7 +510,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     '/verify/w3/email',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
-      const log = req.log.child({ from: 'verificationAPI - verify/w3/email' })
+      const log = req.log
 
       const { body, user: currentUser } = req
       const email: string = body.email
@@ -610,7 +610,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     '/verify/w3/bonuses',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
-      const log = req.log.child({ from: 'verificationAPI - verify/bonuses' })
+      const log = req.log
 
       const { user: currentUser } = req
       const isUserWhitelisted = await AdminWallet.isVerified(currentUser.gdAddress)
