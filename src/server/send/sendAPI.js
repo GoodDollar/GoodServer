@@ -139,7 +139,7 @@ const setup = (app: Router, storage) => {
         storage.updateUser({ identifier: user.loggedInAs, magiclink })
       }
       const fullMagicLink = `${conf.walletUrl}/?magiclink=${magiclink}`
-      log.info('sending fullMagicLink email', userRec, fullMagicLink)
+      log.info('sending fullMagicLink email', { userRec, fullMagicLink })
       //at this stage user record should contain all his details
       await Mautic.sendMagicLinkEmail(userRec, fullMagicLink)
       res.json({ ok: 1 })

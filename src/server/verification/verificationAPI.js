@@ -49,7 +49,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         .get(sessionId)
         .get('isStarted')
         .put(true) // publish initialized data to subscribers
-      log.debug('written FR status to gun', await GunDBPublic.gun.get(sessionId))
+      log.debug('written FR status to gun', { data: await GunDBPublic.gun.get(sessionId) })
 
       const verificationData = {
         facemapFile: _.get(_.find(files, { fieldname: 'facemap' }), 'path', ''),
@@ -62,7 +62,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         result = await verifier
           .verifyUser(user, verificationData)
           .catch(e => {
-            log.error('Facerecognition error:', e)
+            log.error('Facerecognition error:', { e })
             GunDBPublic.gun.get(sessionId).put({ isNotDuplicate: false, isLive: false, isError: e.message })
             return { ok: 1, error: e.message, isVerified: false }
           })
@@ -125,7 +125,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { user, body } = req
       const log = req.log
 
-      log.info('otp request:', user, body)
+      log.info('otp request:', { user, body })
 
       const mobile = body.user.mobile || user.otp.mobile
 
@@ -183,7 +183,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       if (!user.smsValidated || currentMobile !== tempSavedMobile) {
         let verified = await verifier.verifyMobile({ identifier: user.loggedInAs }, verificationData).catch(e => {
-          log.warn('mobile verification failed:', e)
+          log.warn('mobile verification failed:', { e })
 
           res.json(400, { ok: 0, error: 'OTP FAILED', message: e.message })
 
@@ -242,7 +242,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         })
         isUserSendEtherOutOfSystem = result.some(r => Number(r.value) > 0)
       } catch (e) {
-        log.error('Check user transactions error', e)
+        log.error('Check user transactions error', { e })
       }
 
       if (isUserSendEtherOutOfSystem) {
@@ -479,7 +479,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           release()
         },
         onError: e => {
-          log.error('Bonuses charge failed', e.message, e, user)
+          log.error('Bonuses charge failed', { errMessage: e.message, e, user })
 
           fail()
 
@@ -530,7 +530,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       try {
         w3User = await W3Helper.getUser(token)
       } catch (e) {
-        log.error('Fetch web3 user error', e.message, e)
+        log.error('Fetch web3 user error', { errMessage: e.message, e })
       }
 
       let status = 422
@@ -574,8 +574,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     '/verify/w3/logintoken',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
-      const { user, log } = req
-      const logger = log.child({ from: 'verificationAPI - login/token' })
+      const { user } = req
+      const logger = req.log
 
       let loginToken = user.loginToken
 
@@ -589,7 +589,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         }
       }
 
-      logger.info('loginToken', loginToken)
+      logger.info('loginToken', { loginToken })
 
       res.json({
         ok: +Boolean(loginToken),
@@ -615,8 +615,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { user: currentUser } = req
       const isUserWhitelisted = await AdminWallet.isVerified(currentUser.gdAddress)
 
-      log.info('currentUser', currentUser)
-      log.info('isUserWhitelisted', isUserWhitelisted)
+      log.info('currentUser', { currentUser })
+      log.info('isUserWhitelisted', { isUserWhitelisted })
 
       if (!isUserWhitelisted) {
         return res.status(200).json({
@@ -627,13 +627,13 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       let wallet_token = currentUser.w3Token
 
-      log.info('wallet token from user rec', wallet_token)
+      log.info('wallet token from user rec', { wallet_token })
 
       if (!wallet_token) {
         const w3Data = await W3Helper.getLoginOrWalletToken(currentUser)
 
-        log.info('wallet token response data from w3 site', w3Data)
-        log.info('wallet token from w3 site', w3Data && w3Data.wallet_token)
+        log.info('wallet token response data from w3 site', { w3Data })
+        log.info('wallet token from w3 site', { walletToken: w3Data && w3Data.wallet_token })
 
         if (w3Data && w3Data.wallet_token) {
           wallet_token = w3Data.wallet_token
@@ -651,7 +651,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       const isQueueLocked = await txManager.isLocked(currentUser.gdAddress)
 
-      log.info('Is Queue Locked', isQueueLocked)
+      log.info('Is Queue Locked', { isQueueLocked })
 
       if (isQueueLocked) {
         return res.status(200).json({
@@ -708,7 +708,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           release()
         },
         onError: e => {
-          log.error('Bonuses charge failed', e.message, e, currentUser)
+          log.error('Bonuses charge failed', { errMessage: e.message, e, currentUser })
 
           fail()
 

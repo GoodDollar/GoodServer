@@ -112,7 +112,7 @@ const setup = (app: Router, storage: StorageAPI) => {
           await zoomHelper.delete(zoomId)
           log.info('zoom delete', { zoomId })
         } else {
-          log.warn('/user/delete', 'SigUtil unable to recover the message signer')
+          log.warn('/user/delete', { message: 'SigUtil unable to recover the message signer' })
           throw new Error('Unable to verify credentials')
         }
       }

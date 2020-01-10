@@ -24,7 +24,7 @@ export default {
 
     return Promise.race([Timeout(timeout), fetch(fullUrl, { method, body: stringBody, headers })])
       .then(async res => {
-        log.debug('request response', res)
+        log.debug('request response', { res })
 
         if (res.status >= 300) {
           throw new Error(await res.text())
@@ -42,7 +42,7 @@ export default {
         return toReturn
       })
       .catch(e => {
-        log.error('Failed to execute the request to W3 API', e.message, e)
+        log.error('Failed to execute the request to W3 API', { errMessage: e.message, e })
 
         throw e
       })

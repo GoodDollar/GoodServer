@@ -132,7 +132,7 @@ class GunDB implements StorageAPI {
         log.info('Created gundb GoodDollar User', { name })
         this.user.auth('gooddollar', password, async authres => {
           if (authres.error) {
-            log.error('Failed authenticating gundb user:', name, authres.error)
+            log.error('Failed authenticating gundb user:', { name, error: authres.error })
             return reject(authres.error)
           }
           log.info('Authenticated GunDB user:', { name })

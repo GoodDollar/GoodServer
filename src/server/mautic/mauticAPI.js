@@ -30,7 +30,7 @@ export const Mautic = {
       })
       .catch(e => {
         delete body['mnemonic'] //hide confidential information
-        log.error('Mautic Error:', url, e.message, { body })
+        log.error('Mautic Error:', { url, errMessage: e.message, body })
 
         throw e
       })

@@ -75,7 +75,7 @@ const setup = (app: Router) => {
     wrapAsync(async (req, res) => {
       const log = req.log
 
-      log.debug('/auth/eth', 'authorizing')
+      log.debug('/auth/eth', { message: 'authorizing' })
       log.debug('/auth/eth', { body: req.body })
 
       const signature = req.body.signature
@@ -87,7 +87,11 @@ const setup = (app: Router) => {
       const networkId = req.body.networkId
 
       if (networkId !== Config.ethereum.network_id) {
-        log.warn('/auth/eth', 'Networkd id mismatch', { client: networkId, server: Config.ethereum.network_id })
+        log.warn('/auth/eth', {
+          message: 'Networkd id mismatch',
+          client: networkId,
+          server: Config.ethereum.network_id
+        })
         throw new Error('Network ID mismatch')
       }
       log.debug('/auth/eth', { signature, method })
@@ -96,7 +100,8 @@ const setup = (app: Router) => {
       const recovered = recoverPublickey(signature, msg, nonce)
       const gdPublicAddress = recoverPublickey(gdSignature, msg, nonce)
       const profileVerified = await SEA.verify(profileSignature, profileReqPublickey)
-      log.debug('/auth/eth', 'Recovered public key:', {
+      log.debug('/auth/eth', {
+        message: 'Recovered public key',
         recovered,
         gdPublicAddress,
         profileVerified,
@@ -111,12 +116,14 @@ const setup = (app: Router) => {
           Config.jwtPassword
         )
 
-        log.info('/auth/eth', `JWT token: ${token}`)
+        log.info('/auth/eth', {
+          message: `JWT token: ${token}`
+        })
 
         res.json({ token })
         res.end()
       } else {
-        log.warn('/auth/eth', 'SigUtil unable to recover the message signer')
+        log.warn('/auth/eth', { message: 'SigUtil unable to recover the message signer' })
         throw new Error('Unable to verify credentials')
       }
     })

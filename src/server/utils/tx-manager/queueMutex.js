@@ -120,12 +120,12 @@ export default class queueMutex {
       const interval = setInterval(() => {
         for (let address of addresses) {
           if (this.isLocked(address) === false) {
-            log.debug('getFirstFreeAddress: address not locked', address)
+            log.debug('getFirstFreeAddress: address not locked', { address })
 
             clearInterval(interval)
             return resolve(address)
           }
-          log.debug('getFirstFreeAddress: address locked', address)
+          log.debug('getFirstFreeAddress: address locked', { address })
         }
       }, 100)
     })
