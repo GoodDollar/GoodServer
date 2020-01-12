@@ -3,7 +3,7 @@ import type { UserRecord, VerificationAPI } from '../../imports/types'
 import { GunDBPublic } from '../gun/gun-middleware'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
 import Helper, { type EnrollResult } from './faceRecognition/faceRecognitionHelper'
-import logger from '../../imports/pino-logger'
+import logger from '../../imports/logger'
 
 /**
  * Verifications class implements `VerificationAPI`

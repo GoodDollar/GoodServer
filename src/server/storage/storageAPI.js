@@ -28,7 +28,7 @@ const setup = (app: Router, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { body, user: userRecord } = req
-      const logger = req.log.child({ from: 'storageAPI - /user/add' })
+      const logger = req.log
       logger.debug('new user request:', { data: body.user, userRecord })
       //check that user passed all min requirements
       if (
@@ -112,7 +112,7 @@ const setup = (app: Router, storage: StorageAPI) => {
           await zoomHelper.delete(zoomId)
           log.info('zoom delete', { zoomId })
         } else {
-          log.warn('/user/delete', 'SigUtil unable to recover the message signer')
+          log.warn('/user/delete', { message: 'SigUtil unable to recover the message signer' })
           throw new Error('Unable to verify credentials')
         }
       }

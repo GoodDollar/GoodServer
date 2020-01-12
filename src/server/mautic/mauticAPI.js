@@ -1,6 +1,6 @@
 // @flow
 import fetch from 'cross-fetch'
-import logger from '../../imports/pino-logger'
+import logger from '../../imports/logger'
 
 import { UserRecord } from '../../imports/types'
 import Config from '../server.config'
@@ -30,8 +30,8 @@ export const Mautic = {
       })
       .catch(e => {
         delete body['mnemonic'] //hide confidential information
-        log.error('Mautic Error:', url, e.message, { body })
-        log.trace(e)
+        log.error('Mautic Error:', { url, errMessage: e.message, body })
+
         throw e
       })
   },

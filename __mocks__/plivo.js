@@ -1,4 +1,4 @@
-import logger from '../src/imports/pino-logger'
+import logger from '../src/imports/logger'
 const log = logger.child({ from: 'Plivo Mock' })
 
 function Client(authId, authToken) {
