@@ -3,7 +3,7 @@ import fs from 'fs'
 import _ from 'lodash'
 import FormData from 'form-data'
 import Config from '../../server.config'
-import logger from '../../../imports/pino-logger'
+import logger from '../../../imports/logger'
 import { ZoomClient } from './zoomClient'
 const log = logger.child({ from: 'faceRecognitionHelper' })
 

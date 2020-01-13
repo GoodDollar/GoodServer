@@ -1,6 +1,6 @@
 // @flow
 import conf from '../server.config'
-import logger from '../../imports/pino-logger'
+import logger from '../../imports/logger'
 import AdminWallet from '../blockchain/AdminWallet'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
 import { type UserRecord } from '../../imports/types'
@@ -33,7 +33,7 @@ const addUserToWhiteList = async (userRecord: UserRecord) => {
 const updateMauticRecord = async (userRecord: UserRecord) => {
   if (!userRecord.mauticId) {
     const mauticRecord = await Mautic.createContact(userRecord).catch(e => {
-      logger.error('Create Mautic Record Failed', e)
+      logger.error('Create Mautic Record Failed', { e })
     })
     const mauticId = !userRecord.mauticId ? get(mauticRecord, 'contact.fields.all.id', -1) : userRecord.mauticId
     await UserDBPrivate.updateUser({ identifier: userRecord.identifier, mauticId })
@@ -58,7 +58,7 @@ const updateW3Record = async (user: any) => {
         w3Token: web3Record.wallet_token,
         'isCompleted.w3Record': true
       })
-      logger.debug('got web3 user records', web3Record)
+      logger.debug('got web3 user records', { web3Record })
     }
     return web3Record
   }
@@ -93,7 +93,7 @@ const topUserWallet = async (userRecord: UserRecord) => {
         return { ok: 1 }
       })
       .catch(e => {
-        logger.error('New user topping failed', e.message)
+        logger.error('New user topping failed', { errMessage: e.message })
         return { ok: 0, error: 'New user topping failed' }
       })
   }

@@ -11,7 +11,7 @@ import ProxyContractABI from '@gooddollar/goodcontracts/build/contracts/AdminWal
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
 
 import conf from '../server.config'
-import logger from '../../imports/pino-logger'
+import logger from '../../imports/logger'
 import { isNonceError } from '../utils/eth'
 import { type TransactionReceipt } from './blockchain-types'
 import moment from 'moment'
@@ -115,7 +115,7 @@ export class Wallet {
       this.web3.eth.defaultAccount = account.address
       this.address = account.address
       this.addWallet(account)
-      log.info('Initialized by private key:', account.address)
+      log.info('Initialized by private key:', { address: account.address })
     } else if (this.mnemonic) {
       let root = HDKey.fromMasterSeed(bip39.mnemonicToSeed(this.mnemonic))
       for (let i = 0; i < this.numberOfAdminWalletAccounts; i++) {
@@ -124,7 +124,7 @@ export class Wallet {
         let account = this.web3.eth.accounts.privateKeyToAccount('0x' + addrNode._privateKey.toString('hex'))
         this.addWallet(account)
       }
-      log.info('Initialized by mnemonic:', this.addresses)
+      log.info('Initialized by mnemonic:', { address: this.addresses })
     }
     this.network = conf.network
     this.networkId = conf.ethereum.network_id
@@ -139,7 +139,7 @@ export class Wallet {
       }
     }
     if (this.filledAddresses.length === 0) {
-      log.fatal('no admin wallet with funds')
+      log.error('no admin wallet with funds')
       if (conf.env !== 'test') process.exit(-1)
     }
     this.address = this.filledAddresses[0]
@@ -189,7 +189,7 @@ export class Wallet {
       const topwalletTest = await this.topWallet('0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63')
       log.info('wallet tests:', { whitelist: whitelistTest.status, topwallet: topwalletTest.status })
     } catch (e) {
-      log.error('Error initializing wallet', { e }, e.message)
+      log.error('Error initializing wallet', { e, errMessage: e.message })
       if (conf.env !== 'test') process.exit(-1)
     }
     return true
@@ -336,7 +336,7 @@ export class Wallet {
     const tx: TransactionReceipt = await this.sendTransaction(
       this.proxyContract.methods.removeWhitelist(address)
     ).catch(e => {
-      log.error('Error removeWhitelisted', { e }, e.message, { address })
+      log.error('Error removeWhitelisted', { e, errMessage: e.message, address })
       throw e
     })
 
@@ -353,7 +353,7 @@ export class Wallet {
       .isWhitelisted(address)
       .call()
       .catch(e => {
-        log.error('Error isVerified', { e }, e.message)
+        log.error('Error isVerified', { e, errMessage: e.message })
         throw e
       })
     return tx
@@ -386,7 +386,7 @@ export class Wallet {
     return this.getAddressBalance(this.address)
       .then(b => web3Utils.fromWei(b))
       .catch(e => {
-        log.error('Error getBalance', e)
+        log.error('Error getBalance', { e })
         throw e
       })
   }
@@ -414,7 +414,7 @@ export class Wallet {
       const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
       gas =
         gas ||
-        (await tx.estimateGas().catch(e => log.error('Failed to estimate gas for tx', e.message, e))) ||
+        (await tx.estimateGas().catch(e => log.error('Failed to estimate gas for tx', { errMessage: e.message, e }))) ||
         defaultGas
       gasPrice = gasPrice || defaultGasPrice
 
@@ -435,7 +435,8 @@ export class Wallet {
           .on('error', async e => {
             if (isNonceError(e)) {
               let netNonce = parseInt(await this.web3.eth.getTransactionCount(address))
-              log.error('sendTransaciton nonce failure retry', e.message, {
+              log.error('sendTransaciton nonce failure retry', {
+                errMessage: e.message,
                 nonce,
                 gas,
                 gasPrice,
@@ -505,10 +506,11 @@ export class Wallet {
             onConfirmation && onConfirmation(c)
           })
           .on('error', async e => {
-            log.error('sendNative failed', e.message, e)
+            log.error('sendNative failed', { errMessage: e.message, e })
             if (isNonceError(e)) {
               let netNonce = parseInt(await this.web3.eth.getTransactionCount(address))
-              log.error('sendNative nonce failure retry', e.message, {
+              log.error('sendNative nonce failure retry', {
+                errMessage: e.message,
                 params,
                 nonce,
                 gas,

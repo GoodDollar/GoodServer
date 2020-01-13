@@ -1,5 +1,5 @@
 import WalletNonce from '../../db/mongo/models/wallet-nonce'
-import logger from '../../../imports/pino-logger'
+import logger from '../../../imports/logger'
 import conf from '../../server.config'
 
 const log = logger.child({ from: 'queueMongo' })
@@ -60,7 +60,7 @@ export default class queueMongo {
       }, conf.mongoQueueMaxLockTime * 1000)
       return wallet
     } catch (e) {
-      log.error('TX queueMongo (getWalletNonce)', addresses, e.message, e)
+      log.error('TX queueMongo (getWalletNonce)', { addresses, errMessage: e.message, e })
       return false
     }
   }
@@ -98,7 +98,7 @@ export default class queueMongo {
         networkId: this.networkId
       })
     } catch (e) {
-      log.error('TX queueMongo (create)', address, e.message, e)
+      log.error('TX queueMongo (create)', { address, errMessage: e.message, e })
     }
   }
 
@@ -127,7 +127,7 @@ export default class queueMongo {
         { returnNewDocument: true }
       )
     } catch (e) {
-      log.error('errorunlock', address, e.message, e)
+      log.error('errorunlock', { address, errMessage: e.message, e })
     }
   }
 
@@ -186,7 +186,7 @@ export default class queueMongo {
         }
       }
     } catch (e) {
-      log.error('TX queueMongo (run)', { nextTr, walletNonce }, e.message, e)
+      log.error('TX queueMongo (run)', { nextTr, walletNonce, errMessage: e.message, e })
     }
   }
 

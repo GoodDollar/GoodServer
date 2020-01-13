@@ -7,7 +7,7 @@ import 'gun/lib/load'
 // import les from 'gun/lib/les'
 import { type StorageAPI, type UserRecord } from '../../imports/types'
 import conf from '../server.config'
-import logger from '../../imports/pino-logger'
+import logger from '../../imports/logger'
 
 const log = logger.child({ from: 'GunDB-Middleware' })
 
@@ -132,7 +132,7 @@ class GunDB implements StorageAPI {
         log.info('Created gundb GoodDollar User', { name })
         this.user.auth('gooddollar', password, async authres => {
           if (authres.error) {
-            log.error('Failed authenticating gundb user:', name, authres.error)
+            log.error('Failed authenticating gundb user:', { name, error: authres.error })
             return reject(authres.error)
           }
           log.info('Authenticated GunDB user:', { name })

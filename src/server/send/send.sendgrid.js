@@ -3,7 +3,7 @@ import sgMail from '@sendgrid/mail'
 import * as plivo from 'plivo'
 
 import conf from '../server.config'
-import logger from '../../imports/pino-logger'
+import logger from '../../imports/logger'
 
 import type { UserRecord } from '../../imports/types'
 import { generateOTP } from '../../imports/otp'
