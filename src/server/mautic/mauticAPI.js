@@ -44,6 +44,14 @@ export const Mautic = {
     return this.baseQuery(`/contacts/${user.mauticId}/delete`, this.baseHeaders, {}, 'delete')
   },
 
+  deleteContactFromDNC(user: UserRecord, group = 'email') {
+    return this.baseQuery(`/contacts/${user.mauticId}/dnc/${group}/remove`, this.baseHeaders, {}, 'post')
+  },
+
+  addContactToDNC(user: UserRecord, group = 'email') {
+    return this.baseQuery(`/contacts/${user.mauticId}/dnc/${group}/add`, this.baseHeaders, {}, 'post')
+  },
+
   createContact(user: UserRecord) {
     const tags = ['dappuser']
     if (Config.isEtoro) tags.push('etorobeta')

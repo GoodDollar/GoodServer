@@ -312,7 +312,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           ...userRec.otp,
           tempMauticId: mauticContact.contact.fields.all.id
         }
-
+        await Mautic.deleteContactFromDNC({ mauticId: mauticContact.contact.fields.all.id })
         log.debug('created new user mautic contact', userRec)
       }
 
@@ -543,6 +543,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         currentUser.email = w3User.email
         const mauticContact = await Mautic.createContact(currentUser)
         const mauticId = mauticContact.contact.fields.all.id
+        await Mautic.deleteContactFromDNC({ mauticId })
         await storage.updateUser({
           identifier: currentUser.loggedInAs,
           mauticId,

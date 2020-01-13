@@ -20,6 +20,16 @@ describe('Send', () => {
     )
   })
 
+  it('should add to dcn list ', async () => {
+    const res = await Mautic.addContactToDNC({ mauticId })
+    expect(res.contact.id).toBeTruthy()
+  })
+
+  it('should remove from dcn list ', async () => {
+    const res = await Mautic.deleteContactFromDNC({ mauticId })
+    expect(res.recordFound).toBeTruthy()
+  })
+
   it('should send verifiction email', async () => {
     const res = await Mautic.sendVerificationEmail(
       {

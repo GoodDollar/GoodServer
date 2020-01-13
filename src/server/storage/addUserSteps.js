@@ -36,6 +36,7 @@ const updateMauticRecord = async (userRecord: UserRecord) => {
       logger.error('Create Mautic Record Failed', { e })
     })
     const mauticId = !userRecord.mauticId ? get(mauticRecord, 'contact.fields.all.id', -1) : userRecord.mauticId
+    await Mautic.deleteContactFromDNC({ mauticId })
     await UserDBPrivate.updateUser({ identifier: userRecord.identifier, mauticId })
     logger.debug('User mautic record', { mauticId, mauticRecord })
   }
