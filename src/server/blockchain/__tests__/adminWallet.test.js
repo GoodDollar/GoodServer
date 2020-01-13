@@ -13,7 +13,7 @@ describe('adminwallet', () => {
 
   test(`adminWallet top wallet shouldn't throws an error when user is not whitelisted/verified`, async () => {
     const unverifiedAddress = generateWalletAddress()
-    const tx = await AdminWallet.topWallet(unverifiedAddress, null).catch(e => false)
+    const tx = await AdminWallet.topWallet(unverifiedAddress).catch(e => false)
     expect(tx).toBeTruthy()
   })
 
@@ -23,7 +23,7 @@ describe('adminwallet', () => {
 
   test('adminWallet can whitelist user', async () => {
     await AdminWallet.removeWhitelisted('0x888185b656fe770677a91412f9f09B23A787242A').catch(_ => _)
-    const tx = await AdminWallet.whitelistUser('0x888185b656fe770677a91412f9f09B23A787242A', 'did:gd')
+    const tx = await AdminWallet.whitelistUser('0x888185b656fe770677a91412f9f09B23A787242A')
     const isVerified = await AdminWallet.isVerified('0x888185b656fe770677a91412f9f09B23A787242A')
     expect(isVerified).toBeTruthy()
   })
@@ -63,7 +63,7 @@ describe('adminwallet', () => {
     let tx
 
     //good tx
-    tx = await AdminWallet.topWallet(unverifiedAddress, null, true)
+    tx = await AdminWallet.topWallet(unverifiedAddress)
     expect(tx).toBeTruthy()
 
     //bad tx
@@ -78,7 +78,7 @@ describe('adminwallet', () => {
     ).rejects.toThrow()
 
     //good tx
-    tx = await AdminWallet.topWallet(unverifiedAddress, null, true)
+    tx = await AdminWallet.topWallet(unverifiedAddress)
     expect(tx).toBeTruthy()
   })
 

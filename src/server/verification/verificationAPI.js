@@ -85,7 +85,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       if (result.isVerified) {
         log.debug('Whitelisting new user', user)
         await Promise.all([
-          AdminWallet.whitelistUser(user.gdAddress, user.profilePublickey),
+          AdminWallet.whitelistUser(user.gdAddress),
           storage
             .updateUser({ identifier: user.loggedInAs, isVerified: true })
             .then(updatedUser => log.debug('updatedUser:', updatedUser))
@@ -256,7 +256,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       //allow topping once a day
       await storage.updateUser({ identifier: user.loggedInAs, lastTopWallet: new Date().toISOString() })
-      let txRes = await AdminWallet.topWallet(user.gdAddress, user.lastTopWallet)
+      let txRes = await AdminWallet.topWallet(user.gdAddress)
         .then(tx => {
           log.debug('topping wallet tx', { walletaddress: user.gdAddress, tx })
           return { ok: 1 }
