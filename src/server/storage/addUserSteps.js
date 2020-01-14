@@ -60,9 +60,12 @@ const updateW3Record = async (user: any) => {
       })
       logger.debug('got web3 user records', { web3Record })
     }
-    return web3Record
+    return {
+      loginToken: web3Record.login_token,
+      w3Token: web3Record.wallet_token
+    }
   }
-  return null
+  return userDB
 }
 
 const updateMarketToken = async (user: any) => {
@@ -80,7 +83,7 @@ const updateMarketToken = async (user: any) => {
     }
     return marketToken
   }
-  return null
+  return userDB.marketToken
 }
 
 const topUserWallet = async (userRecord: UserRecord) => {
