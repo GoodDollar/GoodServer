@@ -49,7 +49,7 @@ describe('adminwallet', () => {
     for (let i = 0; i < 5; i++) {
       const unverifiedAddress = generateWalletAddress()
       // console.log('unverifiedAddress', unverifiedAddress)
-      promises.push(AdminWallet.topWallet(unverifiedAddress, null, true))
+      promises.push(AdminWallet.topWallet(unverifiedAddress))
     }
     const res = await Promise.all(promises).catch(_ => false)
     expect(res).toBeTruthy()
