@@ -19,7 +19,7 @@ const addUserToWhiteList = async (userRecord: UserRecord) => {
   let user = await UserDBPrivate.getUser(userRecord.identifier)
   const whiteList = get(user, 'isCompleted.whiteList', false)
   if (conf.disableFaceVerification && !whiteList) {
-    await AdminWallet.whitelistUser(userRecord.gdAddress)
+    await AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey)
       .then(async r => {
         await UserDBPrivate.completeStep(user.identifier, 'whiteList')
       })
@@ -87,7 +87,7 @@ const topUserWallet = async (userRecord: UserRecord) => {
   let user = await UserDBPrivate.getUser(userRecord.identifier)
   const topWallet = get(user, 'isCompleted.topWallet', false)
   if (!topWallet) {
-    return Promise.race([AdminWallet.topWallet(userRecord.gdAddress), Timeout(15000, 'topWallet')])
+    return Promise.race([AdminWallet.topWallet(userRecord.gdAddress, null, true), Timeout(15000, 'topWallet')])
       .then(r => {
         UserDBPrivate.completeStep(userRecord.identifier, 'topWallet')
         return { ok: 1 }

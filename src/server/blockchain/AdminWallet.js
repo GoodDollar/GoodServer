@@ -185,8 +185,12 @@ export class Wallet {
         ContractsAddress: ContractsAddress[this.network]
       })
       await this.removeWhitelisted('0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63').catch(_ => _)
-      const whitelistTest = await this.whitelistUser('0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63')
-      const topwalletTest = await this.topWallet('0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63')
+      const whitelistTest = await this.whitelistUser('0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63', 'x')
+      const topwalletTest = await this.topWallet(
+        '0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63',
+        moment().subtract(1, 'day'),
+        true
+      )
       log.info('wallet tests:', { whitelist: whitelistTest.status, topwallet: topwalletTest.status })
     } catch (e) {
       log.error('Error initializing wallet', { e, errMessage: e.message })
@@ -294,20 +298,21 @@ export class Wallet {
   /**
    * whitelist an user in the `Identity` contract
    * @param {string} address
+   * @param {string} did
    * @returns {Promise<TransactionReceipt>}
    */
-  async whitelistUser(address: string): Promise<TransactionReceipt | boolean> {
+  async whitelistUser(address: string, did: string): Promise<TransactionReceipt | boolean> {
     const isVerified = await this.isVerified(address)
     if (isVerified) {
       return { status: true }
     }
-    const tx: TransactionReceipt = await this.sendTransaction(this.proxyContract.methods.whitelist(address)).catch(
+    const tx: TransactionReceipt = await this.sendTransaction(this.proxyContract.methods.whitelist(address, did)).catch(
       e => {
-        log.error('Error whitelistUser', { e }, e.message, { address })
+        log.error('Error whitelistUser', { e, errMessage: e.message, address, did })
         throw e
       }
     )
-    log.info('Whitelisted user', { address, tx })
+    log.info('Whitelisted user', { address, did, tx })
     return tx
   }
 
@@ -320,7 +325,7 @@ export class Wallet {
     const tx: TransactionReceipt = await this.sendTransaction(
       this.identityContract.methods.addBlacklisted(address)
     ).catch(e => {
-      log.error('Error blackListUser', { e }, e.message, { address })
+      log.error('Error blackListUser', { e, errMessage: e.message, address })
       throw e
     })
 
@@ -362,16 +367,36 @@ export class Wallet {
   /**
    * top wallet if needed
    * @param {string} address
+   * @param {moment.Moment} lastTopping
+   * @param {boolean} force
    * @returns {PromiEvent<TransactionReceipt>}
    */
-  async topWallet(address: string): PromiEvent<TransactionReceipt> {
-    const tx: TransactionReceipt = await this.sendTransaction(this.proxyContract.methods.topWallet(address)).catch(
-      e => {
-        log.error('Error topWallet', { e }, e.message, { address })
-        throw e
+  async topWallet(
+    address: string,
+    lastTopping?: moment.Moment = moment().subtract(1, 'day'),
+    force: boolean = false
+  ): PromiEvent<TransactionReceipt> {
+    let daysAgo = moment().diff(moment(lastTopping), 'days')
+    if (conf.env !== 'development' && daysAgo < 1) throw new Error('Daily limit reached')
+    try {
+      let userBalance = await this.web3.eth.getBalance(address)
+      let maxTopWei = parseInt(web3Utils.toWei('1000000', 'gwei'))
+      let toTop = maxTopWei - userBalance
+      log.debug('TopWallet:', { userBalance, toTop })
+      if (toTop > 0 && (force || toTop / maxTopWei >= 0.75)) {
+        let res = await this.sendTransaction(this.proxyContract.methods.topWallet(address)).catch(e => {
+          log.error('Error topWallet', { e }, e.message, { address })
+          throw e
+        })
+        log.debug('Topwallet result:', { res })
+        return res
       }
-    )
-    return tx
+      log.debug("User doesn't need topping")
+      return { status: 1 }
+    } catch (e) {
+      log.error('Error topWallet', { errMessage: e.message, address, lastTopping, force })
+      throw e
+    }
   }
 
   async getAddressBalance(address: string): Promise<number> {

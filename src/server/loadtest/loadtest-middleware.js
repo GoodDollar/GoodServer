@@ -25,7 +25,7 @@ const setup = (app: Router) => {
       console.log('#############################################')
       console.log(gdPublicAddress)
       console.log('#############################################')
-      const hash = await AdminWallet.whitelistUser(gdPublicAddress)
+      const hash = await AdminWallet.whitelistUser(gdPublicAddress, body.profilePublickey)
       console.log('xxxxxxxx hash', { hash })
       res.json({ ok: 1 })
     })

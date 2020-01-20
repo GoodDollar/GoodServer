@@ -13,7 +13,7 @@ describe('adminwallet', () => {
 
   test(`adminWallet top wallet shouldn't throws an error when user is not whitelisted/verified`, async () => {
     const unverifiedAddress = generateWalletAddress()
-    const tx = await AdminWallet.topWallet(unverifiedAddress).catch(e => false)
+    const tx = await AdminWallet.topWallet(unverifiedAddress, null).catch(e => false)
     expect(tx).toBeTruthy()
   })
 
@@ -23,7 +23,7 @@ describe('adminwallet', () => {
 
   test('adminWallet can whitelist user', async () => {
     await AdminWallet.removeWhitelisted('0x888185b656fe770677a91412f9f09B23A787242A').catch(_ => _)
-    const tx = await AdminWallet.whitelistUser('0x888185b656fe770677a91412f9f09B23A787242A')
+    const tx = await AdminWallet.whitelistUser('0x888185b656fe770677a91412f9f09B23A787242A', 'did:gd')
     const isVerified = await AdminWallet.isVerified('0x888185b656fe770677a91412f9f09B23A787242A')
     expect(isVerified).toBeTruthy()
   })
@@ -48,8 +48,8 @@ describe('adminwallet', () => {
     const promises = []
     for (let i = 0; i < 5; i++) {
       const unverifiedAddress = generateWalletAddress()
-      const tx = await AdminWallet.whitelistUser(unverifiedAddress)
-      promises.push(AdminWallet.topWallet(unverifiedAddress))
+      const tx = await AdminWallet.whitelistUser(unverifiedAddress, 'did:gd')
+      promises.push(AdminWallet.topWallet(unverifiedAddress, null, true))
     }
     const res = await Promise.all(promises).catch(_ => false)
     expect(res).toBeTruthy()
@@ -64,8 +64,8 @@ describe('adminwallet', () => {
     let tx
 
     //good tx
-    await AdminWallet.whitelistUser(unverifiedAddress)
-    tx = await AdminWallet.topWallet(unverifiedAddress)
+    await AdminWallet.whitelistUser(unverifiedAddress, 'did:gd')
+    tx = await AdminWallet.topWallet(unverifiedAddress, null, true)
     expect(tx).toBeTruthy()
 
     //bad tx
@@ -80,8 +80,8 @@ describe('adminwallet', () => {
     ).rejects.toThrow()
 
     //good tx
-    await AdminWallet.whitelistUser(unverifiedAddress2)
-    tx = await AdminWallet.topWallet(unverifiedAddress2)
+    await AdminWallet.whitelistUser(unverifiedAddress2, 'did:gd')
+    tx = await AdminWallet.topWallet(unverifiedAddress2, null, true)
     expect(tx).toBeTruthy()
   })
 
