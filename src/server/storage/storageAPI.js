@@ -48,26 +48,51 @@ const setup = (app: Router, storage: StorageAPI) => {
         identifier: userRecord.loggedInAs,
         email: get(userRecord, 'otp.email', email), //for development/test use email from body
         mobile: get(userRecord, 'otp.mobile', mobile), //for development/test use mobile from body
-        isCompleted: {
-          whiteList: false,
-          w3Record: false,
-          marketToken: false,
-          topWallet: false
-        }
+        isCompleted: bodyUser.isCompleted
+          ? bodyUser.isCompleted
+          : {
+              whiteList: false,
+              w3Record: false,
+              marketToken: false,
+              topWallet: false
+            }
       })
 
       await storage.updateUser(user)
 
+      // delete this condition after testing
+      if (body.skipRegistrationStep === 1) {
+        throw new Error(
+          'skipRegistrationStep: you skip (addUserToWhiteList, updateMauticRecord, updateW3Record, updateMarketToken, topUserWallet)'
+        )
+      }
       if (conf.disableFaceVerification) {
         addUserSteps.addUserToWhiteList(userRecord)
       }
-
+      // delete this condition after testing
+      if (body.skipRegistrationStep === 2) {
+        throw new Error(
+          'skipRegistrationStep: you skip (updateMauticRecord, updateW3Record, updateMarketToken, topUserWallet)'
+        )
+      }
       if (!userRecord.mauticId && process.env.NODE_ENV !== 'development') {
         await addUserSteps.updateMauticRecord(userRecord)
       }
-
+      // delete this condition after testing
+      if (body.skipRegistrationStep === 3) {
+        throw new Error('skipRegistrationStep: you skip (updateW3Record, updateMarketToken, topUserWallet)')
+      }
       const web3Record = await addUserSteps.updateW3Record(user)
+      // delete this condition after testing
+      if (body.skipRegistrationStep === 4) {
+        throw new Error('skipRegistrationStep: you skip (updateMarketToken, topUserWallet)')
+      }
       const marketToken = await addUserSteps.updateMarketToken(user)
+      // delete this condition after testing
+      if (body.skipRegistrationStep === 5) {
+        throw new Error('skipRegistrationStep: you skip (topUserWallet)')
+      }
+
       let ok = await addUserSteps.topUserWallet(userRecord)
 
       logger.debug('added new user:', { user, ok })
@@ -79,8 +104,8 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       res.json({
         ...ok,
-        loginToken: web3Record && web3Record.login_token,
-        w3Token: web3Record && web3Record.wallet_token,
+        loginToken: web3Record && web3Record.loginToken,
+        w3Token: web3Record && web3Record.w3Token,
         marketToken
       })
     })
