@@ -312,7 +312,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           ...userRec.otp,
           tempMauticId: mauticContact.contact.fields.all.id
         }
-
         log.debug('created new user mautic contact', userRec)
       }
 
