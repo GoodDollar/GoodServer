@@ -42,7 +42,11 @@ export default {
         return toReturn
       })
       .catch(e => {
-        log.error('Failed to execute the request to W3 API', { errMessage: e.message, e })
+        log.error('Failed to execute the request to W3 API', {
+          errCode: e.message_code,
+          errMessage: e.message,
+          error: e
+        })
 
         throw e
       })
