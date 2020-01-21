@@ -42,11 +42,17 @@ export default {
         return toReturn
       })
       .catch(e => {
-        log.error('Failed to execute the request to W3 API', {
-          errCode: e.message_code,
-          errMessage: e.message,
-          error: e
-        })
+        if (e.message && e.message.indexOf('email_not_in_whitelist')) {
+          log.warn('email_not_in_whitelist error occurred during w3 API request', {
+            errMessage: e.message,
+            error: e
+          })
+        } else {
+          log.error('Failed to execute the request to W3 API', {
+            errMessage: e.message,
+            error: e
+          })
+        }
 
         throw e
       })
