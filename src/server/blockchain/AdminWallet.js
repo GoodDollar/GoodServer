@@ -384,10 +384,7 @@ export class Wallet {
       let toTop = maxTopWei - userBalance
       log.debug('TopWallet:', { userBalance, toTop })
       if (toTop > 0 && (force || toTop / maxTopWei >= 0.75)) {
-        let res = await this.sendTransaction(this.proxyContract.methods.topWallet(address)).catch(e => {
-          log.error('Error topWallet', { e }, e.message, { address })
-          throw e
-        })
+        let res = await this.sendTransaction(this.proxyContract.methods.topWallet(address))
         log.debug('Topwallet result:', { res })
         return res
       }
