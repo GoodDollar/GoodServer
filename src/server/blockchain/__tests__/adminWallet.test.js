@@ -48,7 +48,7 @@ describe('adminwallet', () => {
     const promises = []
     for (let i = 0; i < 5; i++) {
       const unverifiedAddress = generateWalletAddress()
-      const tx = await AdminWallet.whitelistUser(unverifiedAddress, 'did:gd')
+      // console.log('unverifiedAddress', unverifiedAddress)
       promises.push(AdminWallet.topWallet(unverifiedAddress, null, true))
     }
     const res = await Promise.all(promises).catch(_ => false)
@@ -57,14 +57,12 @@ describe('adminwallet', () => {
 
   test('adminWallet bad transaction in queue', async () => {
     const unverifiedAddress = generateWalletAddress()
-    const unverifiedAddress2 = generateWalletAddress()
     const from = AdminWallet.address
     const testValue = 10
     const badGas = 10
     let tx
 
     //good tx
-    await AdminWallet.whitelistUser(unverifiedAddress, 'did:gd')
     tx = await AdminWallet.topWallet(unverifiedAddress, null, true)
     expect(tx).toBeTruthy()
 
@@ -80,8 +78,7 @@ describe('adminwallet', () => {
     ).rejects.toThrow()
 
     //good tx
-    await AdminWallet.whitelistUser(unverifiedAddress2, 'did:gd')
-    tx = await AdminWallet.topWallet(unverifiedAddress2, null, true)
+    tx = await AdminWallet.topWallet(unverifiedAddress, null, true)
     expect(tx).toBeTruthy()
   })
 

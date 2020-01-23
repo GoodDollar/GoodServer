@@ -129,12 +129,17 @@ export class Wallet {
     this.network = conf.network
     this.networkId = conf.ethereum.network_id
 
+    this.proxyContract = new this.web3.eth.Contract(
+      ProxyContractABI.abi,
+      get(ContractsAddress, `${this.network}.AdminWallet`)
+    )
+
     txManager.getTransactionCount = this.web3.eth.getTransactionCount
     await txManager.createListIfNotExists(this.addresses)
     for (let addr of this.addresses) {
       const balance = await this.web3.eth.getBalance(addr)
-      log.info(`admin wallet ${addr} balance ${balance}`)
-      if (balance > adminMinBalance) {
+      if ((await this.isVerifiedAdmin(addr)) && balance > adminMinBalance) {
+        log.info(`admin wallet ${addr} balance ${balance}`)
         this.filledAddresses.push(addr)
       }
     }
@@ -147,12 +152,6 @@ export class Wallet {
     this.identityContract = new this.web3.eth.Contract(
       IdentityABI.abi,
       get(ContractsAddress, `${this.network}.Identity`),
-      { from: this.address }
-    )
-
-    this.proxyContract = new this.web3.eth.Contract(
-      ProxyContractABI.abi,
-      get(ContractsAddress, `${this.network}.AdminWallet`),
       { from: this.address }
     )
 
@@ -184,14 +183,6 @@ export class Wallet {
         nonce: this.nonce,
         ContractsAddress: ContractsAddress[this.network]
       })
-      await this.removeWhitelisted('0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63').catch(_ => _)
-      const whitelistTest = await this.whitelistUser('0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63', 'x')
-      const topwalletTest = await this.topWallet(
-        '0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63',
-        moment().subtract(1, 'day'),
-        true
-      )
-      log.info('wallet tests:', { whitelist: whitelistTest.status, topwallet: topwalletTest.status })
     } catch (e) {
       log.error('Error initializing wallet', { e, errMessage: e.message })
       if (conf.env !== 'test') process.exit(-1)
@@ -359,6 +350,22 @@ export class Wallet {
       .call()
       .catch(e => {
         log.error('Error isVerified', { e, errMessage: e.message })
+        throw e
+      })
+    return tx
+  }
+
+  /**
+   *
+   * @param {string} address
+   * @returns {Promise<boolean>}
+   */
+  async isVerifiedAdmin(address: string): Promise<boolean> {
+    const tx: boolean = await this.proxyContract.methods
+      .isAdmin(address)
+      .call()
+      .catch(e => {
+        log.error('Error isAdmin', { e, errMessage: e.message })
         throw e
       })
     return tx
