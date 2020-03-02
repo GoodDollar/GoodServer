@@ -118,6 +118,7 @@ const conf = convict({
       'production',
       'develop',
       'staging',
+      'test',
       'etoro'
     ],
     default: 'develop',
