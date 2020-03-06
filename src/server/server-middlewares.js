@@ -1,5 +1,5 @@
 // @flow
-import { Router } from 'express'
+import express, { Router } from 'express'
 import type { NextFunction } from 'express'
 import bodyParser from 'body-parser'
 import cors from 'cors'
@@ -16,11 +16,8 @@ import VerificationAPI from './verification/verification'
 export default (app: Router, env: any) => {
   // parse application/x-www-form-urlencoded
   // for easier testing with Postman or plain HTML forms
-  app.use(
-    bodyParser.urlencoded({
-      extended: true
-    })
-  )
+
+  app.use(express.json({ limit: '100mb', extended: true }))
 
   // parse application/json
   app.use(bodyParser.json())

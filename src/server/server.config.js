@@ -154,6 +154,20 @@ const conf = convict({
     env: 'OTP_TTL_MINUTES',
     default: '60'
   },
+  kairos: {
+    id: {
+      doc: 'kairos id accounts',
+      format: String,
+      env: 'KAIROS_ID',
+      default: ''
+    },
+    key: {
+      doc: 'kairos key accounts',
+      format: String,
+      env: 'KAIROS_KEY',
+      default: ''
+    }
+  },
   sendGrid: {
     apiKey: {
       doc: 'Sendgrid API KEY',

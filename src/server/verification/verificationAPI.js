@@ -4,6 +4,7 @@ import passport from 'passport'
 import _ from 'lodash'
 import moment from 'moment'
 import multer from 'multer'
+import { humanApi, kairosAPI } from 'express-kairos-faceverification'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
@@ -39,68 +40,87 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
     '/verify/facerecognition',
     passport.authenticate('jwt', { session: false }),
-    upload.any(),
     wrapAsync(async (req, res, next) => {
+      const { sessionId, images } = req.body
+      const { user } = req
+      const userId = user.identifier
       const log = req.log
-      const { body, files, user } = req
-      log.debug({ user })
-      const sessionId = body.sessionId
+
+      let result = { ok: 0 }
+
+      if (userId === undefined || sessionId === undefined || images === undefined) {
+        return res.status(400).send({ ok: 0, error: 'invalid input', isVerified: false })
+      }
+
       GunDBPublic.gun
         .get(sessionId)
         .get('isStarted')
         .put(true) // publish initialized data to subscribers
       log.debug('written FR status to gun', { data: await GunDBPublic.gun.get(sessionId) })
 
-      const verificationData = {
-        facemapFile: _.get(_.find(files, { fieldname: 'facemap' }), 'path', ''),
-        auditTrailImageFile: _.get(_.find(files, { fieldname: 'auditTrailImage' }), 'path', ''),
-        enrollmentIdentifier: body.enrollmentIdentifier,
-        sessionId: sessionId
-      }
-      let result = { ok: 0 }
-      if (!user.isVerified && !conf.skipFaceRecognition)
-        result = await verifier
-          .verifyUser(user, verificationData)
-          .catch(e => {
-            log.error('Facerecognition error:', { e })
-            GunDBPublic.gun.get(sessionId).put({ isNotDuplicate: false, isLive: false, isError: e.message })
-            return { ok: 1, error: e.message, isVerified: false }
+      if (!user.isVerified && !conf.skipFaceRecognition) {
+        try {
+          const enrollHandler = async (userId, sessionId, data) => {
+            log.debug('enrollHandler', data)
+            if (data.ok && data.result) {
+              log.debug('Whitelisting new user', user)
+              await Promise.all([
+                AdminWallet.whitelistUser(user.gdAddress, user.profilePublickey),
+                storage
+                  .updateUser({ identifier: user.loggedInAs, isVerified: true })
+                  .then(updatedUser => log.debug('updatedUser:', updatedUser))
+              ])
+                .then(
+                  _ =>
+                    GunDBPublic.gun
+                      .get(sessionId)
+                      .get('isWhitelisted')
+                      .put(true) // publish to subscribers
+                )
+                .catch(e => {
+                  log.error('Whitelisting failed', e)
+                  GunDBPublic.gun.get(sessionId).put({ isWhitelisted: false, isError: e.message })
+                })
+              result = {
+                ok: 1,
+                isVerified: true,
+                enrollResult: data.isEnroll
+              }
+            } else {
+              log.error('Facerecognition error:', data.error)
+              GunDBPublic.gun.get(sessionId).put({ isNotDuplicate: false, isLive: false, isError: data.error })
+              result = { ok: 1, error: data.error, isVerified: false }
+            }
+          }
+          const imagesBase64 = images.map(img => {
+            return img.base64
           })
-          .finally(() => {
-            //cleanup
-            log.info('cleaning up facerecognition files')
-            fsPromises.unlink(verificationData.facemapFile)
-            fsPromises.unlink(verificationData.auditTrailImageFile)
-          })
-      else {
+          const apiKairos = new kairosAPI({ app_id: conf.kairos.id, app_key: conf.kairos.key }, 'test', true)
+          const human = new humanApi(
+            apiKairos,
+            {
+              livenessThresh: 0.8,
+              uniqueThresh: 0.7,
+              minEnrollImages: 1,
+              maxHeadAngle: 10,
+              minPhashSimilarity: 0.95
+            },
+            true
+          )
+          await human.addIfUniqueAndAlive(userId, sessionId, imagesBase64, enrollHandler)
+        } catch (e) {
+          log.error('Facerecognition error:', { e })
+          GunDBPublic.gun.get(sessionId).put({ isNotDuplicate: false, isLive: false, isError: e.message })
+          result = { ok: 1, error: e.message, isVerified: false }
+        }
+      } else {
         GunDBPublic.gun.get(sessionId).put({ isNotDuplicate: true, isLive: true, isEnrolled: true }) // publish to subscribers
         // mocked result for verified user or development mode
         result = {
           ok: 1,
           isVerified: true,
-          enrollResult: { alreadyEnrolled: true, enrollmentIdentifier: verificationData.enrollmentIdentifier }
-        } // skip facereco only in dev mode
-      }
-      log.debug('Facerecogintion result:', result)
-      if (result.isVerified) {
-        log.debug('Whitelisting new user', user)
-        await Promise.all([
-          AdminWallet.whitelistUser(user.gdAddress, user.profilePublickey),
-          storage
-            .updateUser({ identifier: user.loggedInAs, isVerified: true })
-            .then(updatedUser => log.debug('updatedUser:', updatedUser))
-        ])
-          .then(
-            _ =>
-              GunDBPublic.gun
-                .get(sessionId)
-                .get('isWhitelisted')
-                .put(true) // publish to subscribers
-          )
-          .catch(e => {
-            log.error('Whitelisting failed', e)
-            GunDBPublic.gun.get(sessionId).put({ isWhitelisted: false, isError: e.message })
-          })
+          enrollResult: { alreadyEnrolled: true, enrollmentIdentifier: true }
+        }
       }
       res.json(result)
     })
