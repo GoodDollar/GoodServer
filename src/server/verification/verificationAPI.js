@@ -4,7 +4,6 @@ import passport from 'passport'
 import _ from 'lodash'
 import moment from 'moment'
 import multer from 'multer'
-import { humanApi, kairosAPI } from 'express-kairos-faceverification'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
@@ -18,6 +17,7 @@ import fs from 'fs'
 import W3Helper from '../utils/W3Helper'
 import gdToWei from '../utils/gdToWei'
 import txManager from '../utils/tx-manager'
+import humanAPI from './faceRecognition/human'
 
 const fsPromises = fs.promises
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
@@ -64,23 +64,22 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
             log.debug('enrollHandler', data)
             if (data.ok && data.result) {
               log.debug('Whitelisting new user', user)
-              await Promise.all([
-                AdminWallet.whitelistUser(user.gdAddress, user.profilePublickey),
-                storage
-                  .updateUser({ identifier: user.loggedInAs, isVerified: true })
-                  .then(updatedUser => log.debug('updatedUser:', updatedUser))
-              ])
-                .then(
-                  _ =>
-                    GunDBPublic.gun
-                      .get(sessionId)
-                      .get('isWhitelisted')
-                      .put(true) // publish to subscribers
-                )
-                .catch(e => {
-                  log.error('Whitelisting failed', e)
-                  GunDBPublic.gun.get(sessionId).put({ isWhitelisted: false, isError: e.message })
-                })
+              try {
+                await Promise.all([
+                  AdminWallet.whitelistUser(user.gdAddress, user.profilePublickey),
+                  storage
+                    .updateUser({ identifier: user.loggedInAs, isVerified: true })
+                    .then(updatedUser => log.debug('updatedUser:', updatedUser))
+                ])
+                await GunDBPublic.gun
+                  .get(sessionId)
+                  .get('isWhitelisted')
+                  .put(true) // publish to subscribers
+              } catch (e) {
+                log.error('Whitelisting failed', e)
+                GunDBPublic.gun.get(sessionId).put({ isWhitelisted: false, isError: e.message })
+              }
+
               result = {
                 ok: 1,
                 isVerified: true,
@@ -92,22 +91,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
               result = { ok: 1, error: data.error, isVerified: false }
             }
           }
+
           const imagesBase64 = images.map(img => {
             return img.base64
           })
-          const apiKairos = new kairosAPI({ app_id: conf.kairos.id, app_key: conf.kairos.key }, 'test', true)
-          const human = new humanApi(
-            apiKairos,
-            {
-              livenessThresh: 0.8,
-              uniqueThresh: 0.7,
-              minEnrollImages: 1,
-              maxHeadAngle: 10,
-              minPhashSimilarity: 0.95
-            },
-            true
-          )
-          await human.addIfUniqueAndAlive(userId, sessionId, imagesBase64, enrollHandler)
+
+          await humanAPI.addIfUniqueAndAlive(userId, sessionId, imagesBase64, enrollHandler)
         } catch (e) {
           log.error('Facerecognition error:', { e })
           GunDBPublic.gun.get(sessionId).put({ isNotDuplicate: false, isLive: false, isError: e.message })
