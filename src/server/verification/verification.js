@@ -1,9 +1,10 @@
 // @flow
-import type { UserRecord, VerificationAPI } from '../../imports/types'
+import type { StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import { GunDBPublic } from '../gun/gun-middleware'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
-import Helper, { type EnrollResult } from './faceRecognition/faceRecognitionHelper'
 import logger from '../../imports/logger'
+import humanAPI from './faceRecognition/human'
+import AdminWallet from '../blockchain/AdminWallet'
 
 /**
  * Verifications class implements `VerificationAPI`
@@ -19,49 +20,50 @@ class Verifications implements VerificationAPI {
   /**
    * Verifies user
    * @param {UserRecord} user user details of the user going through FR
-   * @param {*} verificationData data from zoomsdk
+   * @param sessionId
+   * @param imagesBase64
+   * @param storage
 
    */
-  async verifyUser(user: UserRecord, verificationData: any) {
+  async verifyUser(user: UserRecord, sessionId: string, imagesBase64: any, storage: StorageAPI) {
     this.log.debug('Verifying user:', { user })
-    const sessionId = verificationData.sessionId
-    this.log.debug('sessionId:', { sessionId })
-    const searchData = Helper.prepareSearchData(verificationData)
-    // log.info('searchData', { searchData })
-    const isDuplicate = await Helper.isDuplicatesExist(searchData, verificationData.enrollmentIdentifier)
-    GunDBPublic.gun
-      .get(sessionId)
-      .get('isNotDuplicate')
-      .put(!isDuplicate) // publish to subscribers
 
-    this.log.debug('isDuplicate result:', { user: user.identifier, isDuplicate })
-    if (isDuplicate) return { ok: 1, isDuplicate }
-    const enrollData = Helper.prepareEnrollmentData(verificationData)
-    // log.info('enrollData', { enrollData })
-    const enrollResult: EnrollResult = await Helper.enroll(enrollData)
-    GunDBPublic.gun
-      .get(sessionId)
-      .get('isEnrolled')
-      .put(enrollResult.alreadyEnrolled || (enrollResult.enrollmentIdentifier ? true : false)) // publish to subscribers
-    const livenessFailed = (enrollResult && enrollResult.ok === false) || enrollResult.livenessResult === 'undetermined'
-    this.log.debug('liveness result:', { user: user.identifier, livenessFailed })
+    const enrollHandler = async (userId, sessionId, data) => {
+      this.log.debug('Verifying user enrollHandler :', data)
+      const checkFields = ['isDuplicate', 'isLive', 'isEnrolled']
 
-    GunDBPublic.gun
-      .get(sessionId)
-      .get('isLive')
-      .put(!livenessFailed) // publish to subscribers
-    if (livenessFailed) return { ok: 1, livenessPassed: false }
+      for (let field in data) {
+        if (checkFields.indexOf(field) >= 0) {
+          let checkField = field === 'isDuplicate' ? 'isNotDuplicate' : field
+          let fieldValue = field === 'isDuplicate' ? !data[field] : data[field]
+          GunDBPublic.gun
+            .get(sessionId)
+            .get(checkField)
+            .put(fieldValue)
+        }
+      }
 
-    //this.log.debug('liveness result:', { user: user.identifier, livenessPassed }) // This is left to support future granularity for user better UX experience. Consider using authenticationFacemapIsLowQuality property https://dev.zoomlogin.com/zoomsdk/#/webservice-guide
-    //if (!livenessPassed) return { ok: 1, livenessPassed }
-
-    const isVerified =
-      !isDuplicate && (enrollResult.alreadyEnrolled || (enrollResult.enrollmentIdentifier ? true : false)) // enrollResult.enrollmentIdentifier should return true if there is value in it (and not the value itself) into isVerified.
-    return {
-      ok: 1,
-      isVerified,
-      enrollResult: { ...enrollResult, enrollmentIdentifier: verificationData.enrollmentIdentifier }
+      if (data.ok && data.result) {
+        this.log.debug('Whitelisting new user', user)
+        try {
+          await Promise.all([
+            AdminWallet.whitelistUser(user.gdAddress, user.profilePublickey),
+            storage
+              .updateUser({ identifier: user.loggedInAs, isVerified: true })
+              .then(updatedUser => this.log.debug('updatedUser:', updatedUser))
+          ])
+          await GunDBPublic.gun
+            .get(sessionId)
+            .get('isWhitelisted')
+            .put(true) // publish to subscribers
+        } catch (e) {
+          this.log.error('Whitelisting failed', e)
+          GunDBPublic.gun.get(sessionId).put({ isWhitelisted: false, isError: e.message })
+        }
+      }
     }
+
+    return await humanAPI.addIfUniqueAndAlive(user.identifier, sessionId, imagesBase64, enrollHandler)
   }
 
   /**
