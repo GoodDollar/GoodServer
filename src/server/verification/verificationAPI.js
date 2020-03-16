@@ -318,13 +318,16 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       if (conf.skipEmailVerification === false) {
         const code = generateOTP(6)
         if (!user.isEmailConfirmed || email !== currentEmail) {
-          Mautic.sendVerificationEmail(
+          await Mautic.sendVerificationEmail(
             {
               fullName: userRec.fullName,
               mauticId: (userRec.otp && userRec.otp.tempMauticId) || userRec.mauticId
             },
             code
-          )
+          ).catch(e => {
+            log.error('failed sending email verification to user:', e.message, { userRec })
+            throw e
+          })
 
           log.debug('send new user email validation code', code)
         }
