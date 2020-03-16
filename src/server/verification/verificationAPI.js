@@ -57,11 +57,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           result = await Verifications.verifyUser(user, sessionId, imagesBase64, storage)
         } catch (e) {
           log.error('Facerecognition error:', { e })
-          GunDBPublic.gun.get(sessionId).put({ isNotDuplicate: false, isLive: false, isError: e.message })
+          GunDBPublic.gun.get(sessionId).put({ isDuplicate: true, isLive: false, isError: e.message })
           result = { ok: 1, error: e.message, isVerified: false }
         }
       } else {
-        GunDBPublic.gun.get(sessionId).put({ isNotDuplicate: true, isLive: true, isEnrolled: true }) // publish to subscribers
+        GunDBPublic.gun.get(sessionId).put({ isDuplicate: false, isLive: true, isEnrolled: true }) // publish to subscribers
         // mocked result for verified user or development mode
         result = {
           ok: 1,

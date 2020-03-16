@@ -34,12 +34,10 @@ class Verifications implements VerificationAPI {
 
       for (let field in data) {
         if (checkFields.indexOf(field) >= 0) {
-          let checkField = field === 'isDuplicate' ? 'isNotDuplicate' : field
-          let fieldValue = field === 'isDuplicate' ? !data[field] : data[field]
           GunDBPublic.gun
             .get(sessionId)
-            .get(checkField)
-            .put(fieldValue)
+            .get(field)
+            .put(data[field])
         }
       }
 
