@@ -5,7 +5,8 @@ import UserDBPrivate from '../db/mongo/user-privat-provider'
 import logger from '../../imports/logger'
 import humanAPI from './faceRecognition/human'
 import AdminWallet from '../blockchain/AdminWallet'
-import pick from 'lodash/pick'
+import { pick } from 'lodash'
+
 /**
  * Verifications class implements `VerificationAPI`
  * Used to verify user, email and mobile phone.

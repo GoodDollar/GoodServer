@@ -5,7 +5,7 @@ const { id: app_id, key: app_key } = conf.kairos
 
 const apiKairos = new kairosAPI({ app_id, app_key }, 'test', true)
 
-const humanInstance = new humanApi(
+export default new humanApi(
   apiKairos,
   {
     livenessThresh: 0.8,
@@ -16,5 +16,3 @@ const humanInstance = new humanApi(
   },
   true
 )
-
-export default humanInstance
