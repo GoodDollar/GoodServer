@@ -44,11 +44,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       if (user.identifier === undefined || sessionId === undefined || images === undefined) {
         return res.status(400).send({ ok: 0, error: 'invalid input', isVerified: false })
       }
-      GunDBPublic.gun
-        .get(sessionId)
-        .get('isStarted')
-        .put(true)
-      log.debug('written FR status to gun', { data: await GunDBPublic.gun.get(sessionId) })
+      const sessionRef = GunDBPublic.session(sessionId)
+
+      sessionRef.put({ isStarted: true })
+
+      log.debug('written FR status to gun', { data: await sessionRef.get() })
 
       const imagesBase64 = images.map(img => img.base64)
 
@@ -57,11 +57,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           result = await Verifications.verifyUser(user, sessionId, imagesBase64, storage)
         } catch (e) {
           log.error('Facerecognition error:', { e })
-          GunDBPublic.gun.get(sessionId).put({ isDuplicate: true, isLive: false, isError: e.message })
+          sessionRef.put({ isDuplicate: true, isLive: false, isError: e.message })
           result = { ok: 1, error: e.message, isVerified: false }
         }
       } else {
-        GunDBPublic.gun.get(sessionId).put({ isDuplicate: false, isLive: true, isEnrolled: true }) // publish to subscribers
+        sessionRef.put({ isDuplicate: false, isLive: true, isEnrolled: true }) // publish to subscribers
         // mocked result for verified user or development mode
         result = {
           ok: 1,

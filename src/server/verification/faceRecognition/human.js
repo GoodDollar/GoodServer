@@ -1,8 +1,9 @@
 // @flow
 import { humanApi, kairosAPI } from 'express-kairos-faceverification'
 import conf from '../../server.config'
+const { id: app_id, key: app_key } = conf.kairos
 
-const apiKairos = new kairosAPI({ app_id: conf.kairos.id, app_key: conf.kairos.key }, 'test', true)
+const apiKairos = new kairosAPI({ app_id, app_key }, 'test', true)
 
 const humanInstance = new humanApi(
   apiKairos,

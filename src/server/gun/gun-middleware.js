@@ -3,7 +3,7 @@ import express, { Router } from 'express'
 import Gun from 'gun'
 import SEA from 'gun/sea'
 import 'gun/lib/load'
-
+import { memoize } from 'lodash'
 // import les from 'gun/lib/les'
 import { type StorageAPI, type UserRecord } from '../../imports/types'
 import conf from '../server.config'
@@ -85,6 +85,8 @@ class GunDB implements StorageAPI {
   serverName: string
 
   ready: Promise<boolean>
+
+  session = memoize(sid => this.gun.get(sid))
 
   /**
    *

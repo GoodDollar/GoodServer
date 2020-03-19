@@ -5,7 +5,7 @@ import UserDBPrivate from '../db/mongo/user-privat-provider'
 import logger from '../../imports/logger'
 import humanAPI from './faceRecognition/human'
 import AdminWallet from '../blockchain/AdminWallet'
-
+import pick from 'lodash/pick'
 /**
  * Verifications class implements `VerificationAPI`
  * Used to verify user, email and mobile phone.
@@ -25,21 +25,15 @@ class Verifications implements VerificationAPI {
    * @param storage
 
    */
-  async verifyUser(user: UserRecord, sessionId: string, imagesBase64: any, storage: StorageAPI) {
+  async verifyUser(user: UserRecord, sessionId: string, imagesBase64: string, storage: StorageAPI) {
     this.log.debug('Verifying user:', { user })
 
     const enrollHandler = async (userId, sessionId, data) => {
       this.log.debug('Verifying user enrollHandler :', data)
-      const checkFields = ['isDuplicate', 'isLive', 'isEnrolled']
+      const sessionRef = GunDBPublic.session(sessionId)
+      const enrollPayload = pick(data, 'isDuplicate', 'isLive', 'isEnrolled')
 
-      for (let field in data) {
-        if (checkFields.indexOf(field) >= 0) {
-          GunDBPublic.gun
-            .get(sessionId)
-            .get(field)
-            .put(data[field])
-        }
-      }
+      sessionRef.put(enrollPayload)
 
       if (data.ok && data.result) {
         this.log.debug('Whitelisting new user', user)
@@ -50,18 +44,17 @@ class Verifications implements VerificationAPI {
               .updateUser({ identifier: user.loggedInAs, isVerified: true })
               .then(updatedUser => this.log.debug('updatedUser:', updatedUser))
           ])
-          await GunDBPublic.gun
-            .get(sessionId)
-            .get('isWhitelisted')
-            .put(true) // publish to subscribers
+          await sessionRef.get({ isWhitelisted: true })
         } catch (e) {
           this.log.error('Whitelisting failed', e)
-          GunDBPublic.gun.get(sessionId).put({ isWhitelisted: false, isError: e.message })
+          sessionRef.put({ isWhitelisted: false, isError: e.message })
         }
+      } else if (!data.ok) {
+        sessionRef.put({ isDuplicate: true, isLive: false, isWhitelisted: false, isError: data.error })
       }
     }
 
-    return await humanAPI.addIfUniqueAndAlive(user.identifier, sessionId, imagesBase64, enrollHandler)
+    return humanAPI.addIfUniqueAndAlive(user.identifier, sessionId, imagesBase64, enrollHandler)
   }
 
   /**
