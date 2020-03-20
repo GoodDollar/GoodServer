@@ -58,15 +58,14 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         } catch (e) {
           log.error('Facerecognition error:', { e })
           sessionRef.put({ isDuplicate: true, isLive: false, isError: e.message })
-          result = { ok: 1, error: e.message, isVerified: false }
+          result = { ok: 0, error: e.message, isVerified: false }
         }
       } else {
         sessionRef.put({ isDuplicate: false, isLive: true, isEnrolled: true }) // publish to subscribers
         // mocked result for verified user or development mode
         result = {
           ok: 1,
-          isVerified: true,
-          enrollResult: { alreadyEnrolled: true, enrollmentIdentifier: true }
+          isVerified: true
         }
       }
 

@@ -45,7 +45,7 @@ class Verifications implements VerificationAPI {
               .updateUser({ identifier: user.loggedInAs, isVerified: true })
               .then(updatedUser => this.log.debug('updatedUser:', updatedUser))
           ])
-          await sessionRef.get({ isWhitelisted: true })
+          sessionRef.put({ isWhitelisted: true })
         } catch (e) {
           this.log.error('Whitelisting failed', e)
           sessionRef.put({ isWhitelisted: false, isError: e.message })

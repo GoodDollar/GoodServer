@@ -387,6 +387,18 @@ const conf = convict({
     format: '*',
     env: 'HANUKA_END_DATE',
     default: undefined
+  },
+  humanOptions: {
+    doc: 'Options for humanApi',
+    format: Object,
+    env: 'HUMAN_OPTIONS',
+    default: {
+      livenessThresh: 0.8,
+      uniqueThresh: 0.7,
+      minEnrollImages: 1,
+      maxHeadAngle: 10,
+      minPhashSimilarity: 0.95
+    }
   }
 })
 
