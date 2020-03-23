@@ -36,7 +36,7 @@ class Verifications implements VerificationAPI {
 
       sessionRef.put(enrollPayload)
 
-      if (data.ok && data.result) {
+      if (data.ok && data.isEnroll) {
         this.log.debug('Whitelisting new user', user)
         try {
           await Promise.all([

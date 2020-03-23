@@ -48,8 +48,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       sessionRef.put({ isStarted: true })
 
-      log.debug('written FR status to gun', { data: await sessionRef.get() })
-
       const imagesBase64 = images.map(img => img.base64)
 
       if (!user.isVerified && !conf.skipFaceRecognition) {
