@@ -4,6 +4,7 @@ import logger from '../../imports/logger'
 
 import { UserRecord } from '../../imports/types'
 import Config from '../server.config'
+import get from 'lodash/get'
 
 const log = logger.child({ from: 'Mautic' })
 const Timeout = (timeout: msec) => {
@@ -44,11 +45,24 @@ export const Mautic = {
     return this.baseQuery(`/contacts/${user.mauticId}/delete`, this.baseHeaders, {}, 'delete')
   },
 
-  createContact(user: UserRecord) {
+  deleteContactFromDNC(user: UserRecord, group = 'email') {
+    return this.baseQuery(`/contacts/${user.mauticId}/dnc/${group}/remove`, this.baseHeaders, {}, 'post')
+  },
+
+  addContactToDNC(user: UserRecord, group = 'email') {
+    return this.baseQuery(`/contacts/${user.mauticId}/dnc/${group}/add`, this.baseHeaders, {}, 'post')
+  },
+
+  async createContact(user: UserRecord) {
     const tags = ['dappuser']
     if (Config.isEtoro) tags.push('etorobeta')
     tags.push(Config.version)
-    return this.baseQuery('/contacts/new', this.baseHeaders, { ...user, tags })
+    const mauticRecord = await this.baseQuery('/contacts/new', this.baseHeaders, { ...user, tags })
+
+    const mauticId = get(mauticRecord, 'contact.fields.all.id', -1)
+    await Mautic.deleteContactFromDNC({ mauticId })
+
+    return mauticRecord
   },
 
   sendVerificationEmail(user: UserRecord, code: string) {
