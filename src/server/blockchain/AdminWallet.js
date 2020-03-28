@@ -389,7 +389,7 @@ export class Wallet {
       let userBalance = await this.web3.eth.getBalance(address)
       let maxTopWei = parseInt(web3Utils.toWei('1000000', 'gwei'))
       let toTop = maxTopWei - userBalance
-      log.debug('TopWallet:', { userBalance, toTop })
+      log.debug('TopWallet:', { address, userBalance, toTop })
       if (toTop > 0 && (force || toTop / maxTopWei >= 0.75)) {
         let res = await this.sendTransaction(this.proxyContract.methods.topWallet(address))
         log.debug('Topwallet result:', { res })
@@ -462,9 +462,10 @@ export class Wallet {
           })
           .on('confirmation', c => onConfirmation && onConfirmation(c))
           .on('error', async e => {
+            log.error('sendTransaction error:', e.message, e)
             if (isNonceError(e)) {
               let netNonce = parseInt(await this.web3.eth.getTransactionCount(address))
-              log.error('sendTransaciton nonce failure retry', {
+              log.warn('sendTransaciton nonce failure retry', {
                 errMessage: e.message,
                 nonce,
                 gas,

@@ -1,6 +1,7 @@
 import AdminWallet from '../AdminWallet'
 import txManager from '../../utils/tx-manager'
 import Web3 from 'web3'
+import delay from 'delay'
 
 const web3 = new Web3()
 const generateWalletAddress = () => web3.eth.accounts.create().address
@@ -14,6 +15,8 @@ describe('adminwallet', () => {
   test(`adminWallet top wallet shouldn't throws an error when user is not whitelisted/verified`, async () => {
     const unverifiedAddress = generateWalletAddress()
     const tx = await AdminWallet.topWallet(unverifiedAddress, null).catch(e => false)
+    const balance = await AdminWallet.web3.eth.getBalance(unverifiedAddress)
+    expect(balance).toEqual('1000000000000000')
     expect(tx).toBeTruthy()
   })
 
@@ -47,11 +50,18 @@ describe('adminwallet', () => {
   test('adminWallet receive queue nonce', async () => {
     const promises = []
     for (let i = 0; i < 5; i++) {
+      await delay(100) //hack otherwise txes fail, looks like a web3 issue, sending txes out of order
       const unverifiedAddress = generateWalletAddress()
-      // console.log('unverifiedAddress', unverifiedAddress)
-      promises.push(AdminWallet.topWallet(unverifiedAddress, null, true))
+      promises.push(
+        AdminWallet.topWallet(unverifiedAddress)
+          .then(tx => tx.blockNumber)
+          .catch(e => e)
+      )
     }
-    const res = await Promise.all(promises).catch(_ => false)
+    const res = await Promise.all(promises)
+    const uniqueBlocks = new Set(res)
+    res.forEach(n => expect(n).toEqual(expect.any(Number))) //check it was excuted on one or two block
+    expect(uniqueBlocks.size).toBeLessThanOrEqual(2)
     expect(res).toBeTruthy()
   })
 

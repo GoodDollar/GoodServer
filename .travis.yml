@@ -8,7 +8,7 @@ env:
     - GUNDB_PASS=test
     - JWT_PASS=test
     - MNEMONIC="myth like bonus scare over problem client lizard pioneer submit female collect"
-    - ADMIN_MNEMONIC="myth like bonus scare over problem client lizard pioneer submit female collect"
+    - ADMIN_MNEMONIC="they bus duty candy uncover assault bullet kitchen kit acid spin physical"
 
     - NETWORK=develop
     - CI=false
@@ -26,6 +26,7 @@ before_script:
   - popd
 
 script:
+  - export MNEMONIC=$ADMIN_MNEMONIC
   - npm link @gooddollar/goodcontracts
   - npm run coverage -- --silent
   - npm run coveralls
