@@ -20,7 +20,7 @@ export default (app: Router, env: any) => {
   app.use(express.json({ limit: '100mb', extended: true }))
 
   // parse application/json
-  app.use(bodyParser.json())
+  app.use(bodyParser.json({ limit: '100mb' }))
 
   app.options(cors())
   app.use(cors())

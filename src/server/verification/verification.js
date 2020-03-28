@@ -3,7 +3,7 @@ import type { StorageAPI, UserRecord, VerificationAPI } from '../../imports/type
 import { GunDBPublic } from '../gun/gun-middleware'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
 import logger from '../../imports/logger'
-import humanAPI from './faceRecognition/human'
+import humanAPI from './api/KairosAPI'
 import AdminWallet from '../blockchain/AdminWallet'
 import { pick } from 'lodash'
 
@@ -19,46 +19,6 @@ class Verifications implements VerificationAPI {
   }
 
   /**
-   * Verifies user
-   * @param {UserRecord} user user details of the user going through FR
-   * @param sessionId
-   * @param imagesBase64
-   * @param storage
-
-   */
-  async verifyUser(user: UserRecord, sessionId: string, imagesBase64: string, storage: StorageAPI) {
-    this.log.debug('Verifying user:', { user })
-
-    const enrollHandler = async (userId, sessionId, data) => {
-      this.log.debug('Verifying user enrollHandler :', data)
-      const sessionRef = GunDBPublic.session(sessionId)
-      const enrollPayload = pick(data, 'isDuplicate', 'isLive', 'isEnrolled')
-
-      sessionRef.put(enrollPayload)
-
-      if (data.ok && data.isEnroll) {
-        this.log.debug('Whitelisting new user', user)
-        try {
-          await Promise.all([
-            AdminWallet.whitelistUser(user.gdAddress, user.profilePublickey),
-            storage
-              .updateUser({ identifier: user.loggedInAs, isVerified: true })
-              .then(updatedUser => this.log.debug('updatedUser:', updatedUser))
-          ])
-          sessionRef.put({ isWhitelisted: true })
-        } catch (e) {
-          this.log.error('Whitelisting failed', e)
-          sessionRef.put({ isWhitelisted: false, isError: e.message })
-        }
-      } else if (!data.ok) {
-        sessionRef.put({ isDuplicate: true, isLive: false, isWhitelisted: false, isError: data.error })
-      }
-    }
-
-    return humanAPI.addIfUniqueAndAlive(user.identifier, sessionId, imagesBase64, enrollHandler)
-  }
-
-  /**
    * Verifies mobile phone
    * @param {UserRecord} user to verify
    * @param {object} verificationData
@@ -67,17 +27,22 @@ class Verifications implements VerificationAPI {
    */
   async verifyMobile(user: UserRecord, verificationData: { otp: string }): Promise<boolean | Error> {
     const otp = await UserDBPrivate.getUserField(user.identifier, 'otp')
+
     this.log.debug('verifyMobile:', { userId: user.identifier, otp })
-    if (otp) {
-      if (String(verificationData.otp) === String(otp.code)) {
-        if (otp.expirationDate < Date.now()) {
-          return Promise.reject(new Error('Code expired, retry'))
-        }
-        return Promise.resolve(true)
-      }
-      return Promise.reject(new Error("Oops, it's not right code"))
+
+    if (!otp) {
+      throw new Error('No code to validate, retry')
     }
-    return Promise.reject(new Error('No code to validate, retry'))
+
+    if (String(verificationData.otp) !== String(otp.code)) {
+      throw new Error("Oops, it's not right code")
+    }
+
+    if (otp.expirationDate >= Date.now()) {
+      throw new Error('Code expired, retry')
+    }
+
+    return true
   }
 
   /**
@@ -90,14 +55,17 @@ class Verifications implements VerificationAPI {
   async verifyEmail(user: UserRecord, verificationData: { code: string }): Promise<boolean | Error> {
     const code = await UserDBPrivate.getUserField(user.identifier, 'emailVerificationCode')
 
-    if (code) {
-      this.log.info({ verificationData, code })
-      if (String(verificationData.code) === String(code)) {
-        return Promise.resolve(true)
-      }
-      return Promise.reject(new Error("Oops, it's not right code"))
+    if (!code) {
+      throw new Error('No code to validate, retry')
     }
-    return Promise.reject(new Error('No code to validate, retry'))
+
+    this.log.info({ verificationData, code })
+
+    if (String(verificationData.code) !== String(code)) {
+      throw new Error("Oops, it's not right code")
+    }
+
+    return true
   }
 }
 

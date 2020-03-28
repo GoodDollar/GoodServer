@@ -247,22 +247,16 @@ const conf = convict({
     default: '31'
   },
   zoomURL: {
-    doc: 'Zoom Client URL',
+    doc: 'FaceTec Managed Testing API URL',
     format: '*',
-    env: 'ZOOM_API_URL',
-    default: 'https://api.zoomauth.com/api/v1/biometrics'
+    env: 'ZOOM_SERVER_BASEURL',
+    default: 'https://api.zoomauth.com/api/v2/biometrics'
   },
-  zoomToken: {
-    doc: 'Zoom APP Token',
+  zoomLicenseKey: {
+    doc: 'Zoom (Face Recognition / Liveness Test API) License key',
     format: '*',
-    env: 'ZOOM_TOKEN',
+    env: 'ZOOM_LICENSE_KEY',
     default: ''
-  },
-  zoomMinMatchLevel: {
-    doc: 'Zoom minimum match level in search',
-    format: '*',
-    env: 'ZOOM_MIN_MATCH_LEVEL',
-    default: 1
   },
   gunPrivateS3: {
     key: {

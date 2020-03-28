@@ -15,7 +15,7 @@ import { Mautic } from '../mautic/mauticAPI'
 import W3Helper from '../utils/W3Helper'
 import gdToWei from '../utils/gdToWei'
 import txManager from '../utils/tx-manager'
-import Verifications from './verification'
+import createEnrollmentProcessor from './processor/EnrollmentProcessor'
 
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   /**
@@ -33,41 +33,39 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    * @ignore
    */
   app.post(
-    '/verify/facerecognition',
+    '/verify/facerecognition/:provider',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
-      const { sessionId, images } = req.body
+      const payload = req.body
+      const { sessionId } = payload
+      const { provider } = req.params
       const { user } = req
       const log = req.log
-      let result = { ok: 0 }
+      const processor = createEnrollmentProcessor(user, storage)
+      let enrollmentResponse
 
-      if (user.identifier === undefined || sessionId === undefined || images === undefined) {
-        return res.status(400).send({ ok: 0, error: 'invalid input', isVerified: false })
-      }
-      const sessionRef = GunDBPublic.session(sessionId)
 
-      sessionRef.put({ isStarted: true })
+      try {
+        processor.validate(payload, provider)
 
-      const imagesBase64 = images.map(img => img.base64)
+        if (user.isVerified || conf.skipFaceRecognition) {
+          const sessionRef = GunDBPublic.session(sessionId)
 
-      if (!user.isVerified && !conf.skipFaceRecognition) {
-        try {
-          result = await Verifications.verifyUser(user, sessionId, imagesBase64, storage)
-        } catch (e) {
-          log.error('Facerecognition error:', { e })
-          sessionRef.put({ isDuplicate: true, isLive: false, isError: e.message })
-          result = { ok: 0, error: e.message, isVerified: false }
+          // publish to subscribers
+          sessionRef.put({ isDuplicate: false, isLive: true, isEnrolled: true })
+          enrollmentResponse = { ok: 1, isVerified: true }
+        } else {
+          enrollmentResponse = await processor.enroll(payload, provider)
         }
-      } else {
-        sessionRef.put({ isDuplicate: false, isLive: true, isEnrolled: true }) // publish to subscribers
-        // mocked result for verified user or development mode
-        result = {
-          ok: 1,
-          isVerified: true
-        }
+      } catch (exception) {
+        const { message } = exception
+
+        log.error('Face verification error:', message, exception)
+        res.status(400).json({ ok: 0, isVerified: false, error: message })
+        return
       }
 
-      res.json(result)
+      res.json(enrollmentResponse)
     })
   )
 
