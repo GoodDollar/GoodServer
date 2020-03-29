@@ -6,7 +6,7 @@ import delay from 'delay'
 const web3 = new Web3()
 const generateWalletAddress = () => web3.eth.accounts.create().address
 
-jest.setTimeout(10000)
+jest.setTimeout(20000)
 describe('adminwallet', () => {
   beforeAll(async () => {
     await AdminWallet.ready
@@ -25,15 +25,17 @@ describe('adminwallet', () => {
   })
 
   test('adminWallet can whitelist user', async () => {
-    await AdminWallet.removeWhitelisted('0x888185b656fe770677a91412f9f09B23A787242A').catch(_ => _)
-    const tx = await AdminWallet.whitelistUser('0x888185b656fe770677a91412f9f09B23A787242A', 'did:gd')
-    const isVerified = await AdminWallet.isVerified('0x888185b656fe770677a91412f9f09B23A787242A')
+    const unverifiedAddress = generateWalletAddress()
+    const tx = await AdminWallet.whitelistUser(unverifiedAddress, 'did:gd' + Math.random())
+    const isVerified = await AdminWallet.isVerified(unverifiedAddress)
     expect(isVerified).toBeTruthy()
   })
 
   test('adminWallet can blacklist user', async () => {
-    const tx = await AdminWallet.removeWhitelisted('0x888185b656fe770677a91412f9f09B23A787242A')
-    const isVerified = await AdminWallet.isVerified('0x888185b656fe770677a91412f9f09B23A787242A')
+    const unverifiedAddress = generateWalletAddress()
+    const tx = await AdminWallet.whitelistUser(unverifiedAddress, 'did:gd' + Math.random())
+    const tx2 = await AdminWallet.removeWhitelisted(unverifiedAddress)
+    const isVerified = await AdminWallet.isVerified(unverifiedAddress)
     expect(isVerified).not.toBeTruthy()
   })
 
@@ -50,7 +52,7 @@ describe('adminwallet', () => {
   test('adminWallet receive queue nonce', async () => {
     const promises = []
     for (let i = 0; i < 5; i++) {
-      await delay(100) //hack otherwise txes fail, looks like a web3 issue, sending txes out of order
+      // await delay(300) //hack otherwise txes fail, looks like a web3 issue, sending txes out of order
       const unverifiedAddress = generateWalletAddress()
       promises.push(
         AdminWallet.topWallet(unverifiedAddress)

@@ -462,7 +462,7 @@ export class Wallet {
           })
           .on('confirmation', c => onConfirmation && onConfirmation(c))
           .on('error', async e => {
-            log.error('sendTransaction error:', e.message, e)
+            log.error('sendTransaction error:', { error: e.message, e, from: address })
             if (isNonceError(e)) {
               let netNonce = parseInt(await this.web3.eth.getTransactionCount(address))
               log.warn('sendTransaciton nonce failure retry', {
