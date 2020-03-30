@@ -56,11 +56,8 @@ class ZoomProvider extends EnrollmentProvider {
       isLowQuality, livenessStatus,
     } = enrollmentResponse;
 
-    const isLive = !isLowQuality && !glasses && (
-      0 === livenessStatus
-    );
-
-    const isEnroll = isLive && isEnrolled;
+    const isEnroll = isEnrolled;
+    const isLive = 0 === livenessStatus;
     const isDuplicate = 'nameCollision' === subCode;
 
     return { isLive, isDuplicate, isEnroll }

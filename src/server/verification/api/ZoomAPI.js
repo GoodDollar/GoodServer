@@ -30,9 +30,7 @@ class ZoomAPI {
       livenessStatus, isLowQuality
     } = response;
 
-    if ((200 !== code) || isLowQuality || glasses ||
-      (0 !== livenessStatus) || !isEnrolled
-    ) {
+    if ((200 !== code) || !isEnrolled) {
       let errorMessage = "The FaceMap was not enrolled because ";
 
       if (isLowQuality) {

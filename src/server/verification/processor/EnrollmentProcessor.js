@@ -44,6 +44,8 @@ class EnrollmentProcessor {
     const sessionRef = GunDBPublic.session(sessionId)
     const providerInstance = this._createProvider(providerType)
 
+    this.sessionRef = sessionRef;
+
     try {
       const enrollmentResult = await providerInstance.enroll(
         payload, this.user.identifier

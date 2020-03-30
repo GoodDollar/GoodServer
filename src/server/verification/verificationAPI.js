@@ -35,15 +35,13 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
     '/verify/facerecognition/:provider',
     passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res, next) => {
-      const payload = req.body
+    wrapAsync(async (req, res => {
+      const { user, log, params, body: payload } = req;
       const { sessionId } = payload
-      const { provider } = req.params
-      const { user } = req
-      const log = req.log
-      const processor = createEnrollmentProcessor(user, storage)
-      let enrollmentResponse
+      const { provider } = params
 
+      let enrollmentResponse
+      const processor = createEnrollmentProcessor(user, storage)
 
       try {
         processor.validate(payload, provider)
@@ -66,7 +64,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       res.json(enrollmentResponse)
-    })
+    }))
   )
 
   /**
