@@ -5,7 +5,6 @@ import bip39 from 'bip39-light'
 import type { HttpProvider, WebSocketProvider } from 'web3-providers'
 import IdentityABI from '@gooddollar/goodcontracts/build/contracts/Identity.min.json'
 import GoodDollarABI from '@gooddollar/goodcontracts/build/contracts/GoodDollar.min.json'
-import SignUpBonusABI from '@gooddollar/goodcontracts/build/contracts/SignUpBonus.min.json'
 import UBIABI from '@gooddollar/goodcontracts/build/contracts/FixedUBI.min.json'
 import ProxyContractABI from '@gooddollar/goodcontracts/build/contracts/AdminWallet.min.json'
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
@@ -43,8 +42,6 @@ export class Wallet {
   identityContract: Web3.eth.Contract
 
   UBIContract: Web3.eth.Contract
-
-  signUpBonusContract: Web3.eth.Contract
 
   proxyContract: Web3.eth.Contract
 
@@ -155,12 +152,6 @@ export class Wallet {
       { from: this.address }
     )
 
-    this.signUpBonusContract = new this.web3.eth.Contract(
-      SignUpBonusABI.abi,
-      get(ContractsAddress, `${this.network}.SignupBonus`),
-      { from: this.address }
-    )
-
     this.tokenContract = new this.web3.eth.Contract(
       GoodDollarABI.abi,
       get(ContractsAddress, `${this.network}.GoodDollar`),
@@ -240,7 +231,7 @@ export class Wallet {
       release()
       return
     }
-    return AdminWallet.redeemBonuses(user.gdAddress, bonusInWei, {
+    return this.redeemBonuses(user.gdAddress, bonusInWei, {
       onTransactionHash: hash => {
         log.info('checkHanukaBonus redeem - txhash received', {
           hash,
@@ -279,7 +270,7 @@ export class Wallet {
    * @returns {Promise<String>}
    */
   async redeemBonuses(address: string, amountInWei: string, { onReceipt, onTransactionHash, onError }): Promise<any> {
-    return this.sendTransaction(this.signUpBonusContract.methods.awardUser(address, amountInWei), {
+    return this.sendTransaction(this.proxyContract.methods.awardUser(address, amountInWei), {
       onTransactionHash,
       onReceipt,
       onError

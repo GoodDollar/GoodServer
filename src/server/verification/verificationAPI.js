@@ -463,6 +463,10 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       AdminWallet.redeemBonuses(user.gdAddress, bonusInWei, {
         onTransactionHash: hash => {
+          if (res.headersSent) {
+            log.error('checkHanukaBonus got tx hash but headers already sent', { hash, user })
+            return
+          }
           return res.status(200).json({
             ok: 1,
             hash
