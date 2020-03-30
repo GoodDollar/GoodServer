@@ -14,19 +14,21 @@ class KairosProvider extends EnrollmentProvider {
   }
 
   isPayloadValid(payload: any): boolean {
-    const { images } = payload;
+    const { images } = payload
 
-    return Array.isArray(images) && (images.length > 0);
+    return Array.isArray(images) && images.length > 0
   }
 
   async enroll(payload: any, enrollmentIdentifier: string) {
     const { images, sessionId } = payload
     const imagesAsBase64 = map(images, 'base64')
 
-    this.emitStarted();
+    this.emitStarted()
 
     return this.api.addIfUniqueAndAlive(
-      enrollmentIdentifier, sessionId, imagesAsBase64,
+      enrollmentIdentifier,
+      sessionId,
+      imagesAsBase64,
       (_, __, { ok, isDuplicate, isLive, isEnroll }) => {
         const eventPayload = { isDuplicate, isLive, isEnroll }
 
@@ -41,4 +43,4 @@ class KairosProvider extends EnrollmentProvider {
   }
 }
 
-module.exports = () => new KairosProvider(KairosAPI)
+export default () => new KairosProvider(KairosAPI)

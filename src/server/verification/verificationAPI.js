@@ -15,7 +15,8 @@ import { Mautic } from '../mautic/mauticAPI'
 import W3Helper from '../utils/W3Helper'
 import gdToWei from '../utils/gdToWei'
 import txManager from '../utils/tx-manager'
-import createEnrollmentProcessor from './processor/EnrollmentProcessor'
+
+import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   /**
@@ -35,8 +36,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
     '/verify/facerecognition/:provider',
     passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res => {
-      const { user, log, params, body: payload } = req;
+    wrapAsync(async (req, res, next) => {
+      const { user, log, params, body: payload } = req
       const { sessionId } = payload
       const { provider } = params
 
@@ -64,7 +65,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       res.json(enrollmentResponse)
-    }))
+    })
   )
 
   /**

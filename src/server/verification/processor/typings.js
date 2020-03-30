@@ -3,12 +3,12 @@
 export const EnrollmentEvents = {
   Started: 'started',
   Processing: 'processing',
-  Completed: 'completed',
+  Completed: 'completed'
 }
 
 export const EnrollmentProviders = {
   Zoom: 'zoom',
-  Kairos: 'kairos',
+  Kairos: 'kairos'
 }
 
 export type EnrollmentProvider = $Values<EnrollmentProviders>

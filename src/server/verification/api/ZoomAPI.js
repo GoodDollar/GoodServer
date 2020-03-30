@@ -1,10 +1,7 @@
 import axios from 'axios'
 import Config from '../../server.config'
 
-const {
-  zoomLicenseKey,
-  zoomServerBaseUrl
-} = Config
+const { zoomLicenseKey, zoomServerBaseUrl } = Config
 
 class ZoomAPI {
   http = null
@@ -14,49 +11,46 @@ class ZoomAPI {
   }
 
   async submitEnrollment(payload) {
-    const { http, _getResponse } = this;
-    const { userAgent, ...requestPayload } = payload;
+    const { http, _getResponse } = this
+    const { userAgent, ...requestPayload } = payload
 
     const request = http.post('/enrollment', requestPayload, {
       headers: {
-        "X-User-Agent": userAgent
+        'X-User-Agent': userAgent
       }
-    });
+    })
 
-    const response = await _getResponse(request);
+    const response = await _getResponse(request)
 
-    const {
-      code, glasses, message, isEnrolled,
-      livenessStatus, isLowQuality
-    } = response;
+    const { code, glasses, message, isEnrolled, isLowQuality } = response
 
-    if ((200 !== code) || !isEnrolled) {
-      let errorMessage = "The FaceMap was not enrolled because ";
+    if (200 !== code || !isEnrolled) {
+      let errorMessage = 'The FaceMap was not enrolled because '
 
       if (isLowQuality) {
-        errorMessage += "the photoshoots evaluated to be of poor quality."
+        errorMessage += 'the photoshoots evaluated to be of poor quality.'
       } else if (glasses) {
-        errorMessage += "wearing glasses were detected."
+        errorMessage += 'wearing glasses were detected.'
       } else {
-        errorMessage = message;
+        errorMessage = message
       }
 
-      const exception = new Error(errorMessage);
+      const exception = new Error(errorMessage)
 
-      exception.response = response;
-      throw exception;
+      exception.response = response
+      throw exception
     }
 
-    return response;
+    return response
   }
 
   async _getResponse(httpRequest) {
-    let response;
+    let response
 
     try {
       response = await httpRequest
     } catch (exception) {
-      ({ response } = exception)
+      ;({ response } = exception)
 
       if (!response) {
         throw exception
@@ -69,13 +63,13 @@ class ZoomAPI {
   }
 }
 
-module.exports = new ZoomAPI(
+export default new ZoomAPI(
   axios.create({
     baseURL: zoomServerBaseUrl,
     headers: {
-      "X-Requested-With": "XMLHttpRequest",
-      "Content-Type": "application/json",
-      "X-Device-License-Key": zoomLicenseKey,
+      'X-Requested-With': 'XMLHttpRequest',
+      'Content-Type': 'application/json',
+      'X-Device-License-Key': zoomLicenseKey
     }
   })
 )

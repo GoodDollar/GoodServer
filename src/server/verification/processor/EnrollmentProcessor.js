@@ -3,11 +3,7 @@
 import { GunDBPublic } from '../../gun/gun-middleware'
 import AdminWallet from '../../blockchain/AdminWallet'
 
-import {
-  EnrollmentProviders,
-  type EnrollmentProvider,
-  type IEnrollmentEventPayload
-} from './typings';
+import { EnrollmentProviders, type EnrollmentProvider, type IEnrollmentEventPayload } from './typings'
 
 class EnrollmentProcessor {
   static providersFactories = {}
@@ -32,31 +28,27 @@ class EnrollmentProcessor {
     const { sessionId } = payload || {}
     const providerInstance = this._createProvider(providerType)
 
-    if (!user || !identifier || !payload || !sessionId
-      || !providerInstance.isPayloadValid(payload)
-    ) {
+    if (!user || !identifier || !payload || !sessionId || !providerInstance.isPayloadValid(payload)) {
       throw new Error('Invalid input')
     }
   }
 
   async enroll(payload: any, providerType: EnrollmentProvider = EnrollmentProviders.Kairos) {
-    const { sessionId } = payload;
+    const { sessionId } = payload
     const sessionRef = GunDBPublic.session(sessionId)
     const providerInstance = this._createProvider(providerType)
 
-    this.sessionRef = sessionRef;
+    this.sessionRef = sessionRef
 
     try {
-      const enrollmentResult = await providerInstance.enroll(
-        payload, this.user.identifier
-      );
+      const enrollmentResult = await providerInstance.enroll(payload, this.user.identifier)
 
-      return { ok: 1, isVerified: true, enrollmentResult };
+      return { ok: 1, isVerified: true, enrollmentResult }
     } catch ({ response, message }) {
-      const failedResponse = { ok: 0, isVerified: false, error: message };
+      const failedResponse = { ok: 0, isVerified: false, error: message }
 
       if (response) {
-        failedResponse.enrollmentResult = response;
+        failedResponse.enrollmentResult = response
       }
 
       sessionRef.put({
@@ -66,9 +58,8 @@ class EnrollmentProcessor {
         isError: message
       })
 
-      return failedResponse;
-    }
-    finally {
+      return failedResponse
+    } finally {
       this.sessionRef = null
     }
   }
@@ -85,16 +76,16 @@ class EnrollmentProcessor {
     sessionRef.put(processingPayload)
   }
 
-  onEnrollmentCompleted(completedPayload: IEnrollmentEventPayload) {
+  async onEnrollmentCompleted(completedPayload: IEnrollmentEventPayload) {
     const { sessionRef, user, storage, adminApi } = this
-    const { gdAddress,  profilePublickey, loggedInAs } = user
+    const { gdAddress, profilePublickey, loggedInAs } = user
 
     this.onEnrollmentProcessing(completedPayload)
 
     try {
       await Promise.all([
         adminApi.whitelistUser(gdAddress, profilePublickey),
-        storage.updateUser({ identifier: loggedInAs, isVerified: true }),
+        storage.updateUser({ identifier: loggedInAs, isVerified: true })
       ])
 
       sessionRef.put({ isWhitelisted: true })
@@ -104,24 +95,24 @@ class EnrollmentProcessor {
   }
 
   _createProvider(type: EnrollmentProvider) {
-    let providerInstance;
-    const { providersFactories } = this.constructor;
-    const providerFactory = providersFactories[type];
+    let providerInstance
+    const { providersFactories } = this.constructor
+    const providerFactory = providersFactories[type]
 
     if (!providerFactory) {
       throw new Error(`Provider '${type}' haven't registered.`)
     }
 
-    providerInstance = providerFactory();
-    providerInstance.subscribe(this);
+    providerInstance = providerFactory()
+    providerInstance.subscribe(this)
 
-    return providerInstance;
+    return providerInstance
   }
 }
 
 EnrollmentProcessor.registerProviers({
   [EnrollmentProviders.Zoom]: require('./provider/ZoomProvider'),
-  [EnrollmentProviders.Kairos]: require('./provider/KairosProvider'),
+  [EnrollmentProviders.Kairos]: require('./provider/KairosProvider')
 })
 
-module.exports = (user, storage) => new EnrollmentProcessor(user, storage, AdminWallet)
+export default (user, storage) => new EnrollmentProcessor(user, storage, AdminWallet)

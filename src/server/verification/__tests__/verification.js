@@ -1,3 +1,4 @@
+// eslint-disable-next-line dependencies/no-unresolved
 import Helper from '../faceRecognition/faceRecognitionHelper'
 import verification from '../verification'
 import { GunDBPublic, GunDB } from '../../gun/gun-middleware'
