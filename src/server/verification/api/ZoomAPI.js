@@ -50,7 +50,7 @@ class ZoomAPI {
     try {
       response = await httpRequest
     } catch (exception) {
-      ;({ response } = exception)
+      response = exception.response
 
       if (!response) {
         throw exception

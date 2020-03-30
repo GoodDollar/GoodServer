@@ -36,7 +36,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
     '/verify/facerecognition/:provider',
     passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res, next) => {
+    wrapAsync(async (req, res) => {
       const { user, log, params, body: payload } = req
       const { sessionId } = payload
       const { provider } = params
