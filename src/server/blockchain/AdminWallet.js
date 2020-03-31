@@ -141,10 +141,11 @@ export class Wallet {
     log.info('topped admins ok')
     for (let addr of this.addresses) {
       const balance = await this.web3.eth.getBalance(addr)
-      if ((await this.isVerifiedAdmin(addr)) && balance > adminMinBalance) {
+      const isAdminWallet = await this.isVerifiedAdmin(addr)
+      if (isAdminWallet && balance > adminMinBalance) {
         log.info(`admin wallet ${addr} balance ${balance}`)
         this.filledAddresses.push(addr)
-      }
+      } else log.warn('Failed adding admin wallet', { addr, balance, isAdminWallet })
     }
     if (this.filledAddresses.length === 0) {
       log.error('no admin wallet with funds')
