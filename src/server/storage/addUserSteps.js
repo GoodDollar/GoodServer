@@ -44,7 +44,7 @@ const updateMauticRecord = async (userRecord: UserRecord) => {
 }
 
 const updateW3Record = async (user: any) => {
-  if (conf.env !== 'test' && conf.isEtoro === false) {
+  if (conf.env !== 'test' && conf.enableInvites === false) {
     return
   }
   let userDB = await UserDBPrivate.getUser(user.identifier)

@@ -133,6 +133,8 @@ export class Wallet {
 
     txManager.getTransactionCount = this.web3.eth.getTransactionCount
     await txManager.createListIfNotExists(this.addresses)
+    await this.topAdmins
+    log.info('topped admins ok')
     for (let addr of this.addresses) {
       const balance = await this.web3.eth.getBalance(addr)
       if ((await this.isVerifiedAdmin(addr)) && balance > adminMinBalance) {
@@ -259,6 +261,19 @@ export class Wallet {
 
         fail()
       }
+    })
+  }
+
+  /**
+   * top admin wallet accounts
+   * @param {object} event callbacks
+   * @returns {Promise<String>}
+   */
+  async topAdmins({ onReceipt, onTransactionHash, onError }): Promise<any> {
+    return this.sendTransaction(this.proxyContract.methods.topAdmins(0), {
+      onTransactionHash,
+      onReceipt,
+      onError
     })
   }
 

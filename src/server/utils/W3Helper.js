@@ -84,7 +84,9 @@ export default {
       {
         email: user.email,
         full_name: user.fullName,
-        wallet_address: user.gdAddress
+        wallet_address: user.gdAddress,
+        invite_code: user.inviteCode,
+        approved: conf.autoApproveW3
       },
       options
     )

@@ -373,6 +373,18 @@ const conf = convict({
     format: '*',
     env: 'HANUKA_END_DATE',
     default: undefined
+  },
+  autoApproveW3: {
+    doc: 'should new user be automatically approved on w3',
+    format: '*',
+    env: 'AUTO_APPROVE_W3',
+    default: true
+  },
+  enableInvites: {
+    doc: 'enable w3',
+    format: '*',
+    env: 'ENABLE_INVITES',
+    default: true
   }
 })
 
