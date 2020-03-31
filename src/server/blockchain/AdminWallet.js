@@ -275,11 +275,15 @@ export class Wallet {
    * @returns {Promise<String>}
    */
   async topAdmins({ onReceipt, onTransactionHash, onError }): Promise<any> {
-    return this.sendTransaction(this.proxyContract.methods.topAdmins(0), {
-      onTransactionHash,
-      onReceipt,
-      onError
-    })
+    return this.sendTransaction(
+      this.proxyContract.methods.topAdmins(0),
+      {
+        onTransactionHash,
+        onReceipt,
+        onError
+      },
+      { gas: '200000' } // gas estimate for this is very high so we limit it to prevent failure
+    )
   }
 
   /**
