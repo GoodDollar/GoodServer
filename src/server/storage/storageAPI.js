@@ -60,42 +60,22 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       await storage.updateUser(user)
 
-      // delete this condition after testing
-      if (body.skipRegistrationStep === 1) {
-        throw new Error(
-          'skipRegistrationStep: you skip (addUserToWhiteList, updateMauticRecord, updateW3Record, updateMarketToken, topUserWallet)'
-        )
-      }
       if (conf.disableFaceVerification) {
-        addUserSteps.addUserToWhiteList(userRecord)
+        const isWhitelisted = await addUserSteps.addUserToWhiteList(userRecord)
+        if (isWhitelisted === false) throw new Error('Failed whitelisting user')
       }
-      // delete this condition after testing
-      if (body.skipRegistrationStep === 2) {
-        throw new Error(
-          'skipRegistrationStep: you skip (updateMauticRecord, updateW3Record, updateMarketToken, topUserWallet)'
-        )
-      }
+
       if (!userRecord.mauticId && process.env.NODE_ENV !== 'development') {
         await addUserSteps.updateMauticRecord(userRecord)
       }
-      // delete this condition after testing
-      if (body.skipRegistrationStep === 3) {
-        throw new Error('skipRegistrationStep: you skip (updateW3Record, updateMarketToken, topUserWallet)')
-      }
+
       const web3Record = await addUserSteps.updateW3Record(user)
-      // delete this condition after testing
-      if (body.skipRegistrationStep === 4) {
-        throw new Error('skipRegistrationStep: you skip (updateMarketToken, topUserWallet)')
-      }
+
       const marketToken = await addUserSteps.updateMarketToken(user)
-      // delete this condition after testing
-      if (body.skipRegistrationStep === 5) {
-        throw new Error('skipRegistrationStep: you skip (topUserWallet)')
-      }
 
-      let ok = await addUserSteps.topUserWallet(userRecord)
-
-      logger.debug('added new user:', { user, ok })
+      let isTopWallet = await addUserSteps.topUserWallet(userRecord)
+      if (isTopWallet === false) throw new Error('Failed to top wallet of user')
+      logger.debug('added new user:', { user, isTopWallet })
 
       await storage.updateUser({
         identifier: userRecord.loggedInAs,
@@ -103,7 +83,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       })
 
       res.json({
-        ...ok,
+        ok: 1,
         loginToken: web3Record && web3Record.loginToken,
         w3Token: web3Record && web3Record.w3Token,
         marketToken
@@ -169,7 +149,7 @@ const setup = (app: Router, storage: StorageAPI) => {
     '/user/market',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
-      const { user, log, body } = req
+      const { user, log } = req
       log.debug('new market token request:', { user })
       const jwt = generateMarketToken(user)
       log.debug('new market token result:', { jwt })
