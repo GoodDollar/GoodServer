@@ -126,11 +126,15 @@ export class Wallet {
     this.network = conf.network
     this.networkId = conf.ethereum.network_id
 
-    this.proxyContract = new this.web3.eth.Contract(
-      ProxyContractABI.abi,
-      get(ContractsAddress, `${this.network}.AdminWallet`)
-    )
+    const adminWalletAddress = get(ContractsAddress, `${this.network}.AdminWallet`)
+    this.proxyContract = new this.web3.eth.Contract(ProxyContractABI.abi, adminWalletAddress)
 
+    const adminWalletContractBalance = await this.web3.eth.getBalance(adminWalletAddress)
+    log.info(`AdminWallet contract balance`, { adminWalletContractBalance, adminWalletAddress })
+    if (adminWalletContractBalance < adminMinBalance * this.addresses.length) {
+      log.error('AdminWallet contract low funds')
+      if (conf.env !== 'test') process.exit(-1)
+    }
     txManager.getTransactionCount = this.web3.eth.getTransactionCount
     await txManager.createListIfNotExists(this.addresses)
     await this.topAdmins
