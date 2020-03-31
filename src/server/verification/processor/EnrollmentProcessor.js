@@ -5,6 +5,9 @@ import AdminWallet from '../../blockchain/AdminWallet'
 
 import { EnrollmentProviders, type EnrollmentProvider, type IEnrollmentEventPayload } from './typings'
 
+import ZoomProvidersFactory from './provider/ZoomProvider'
+import KairosProvidersFactory from './provider/KairosProvider'
+
 class EnrollmentProcessor {
   static providersFactories = {}
 
@@ -80,8 +83,6 @@ class EnrollmentProcessor {
     const { sessionRef, user, storage, adminApi } = this
     const { gdAddress, profilePublickey, loggedInAs } = user
 
-    this.onEnrollmentProcessing(completedPayload)
-
     try {
       await Promise.all([
         adminApi.whitelistUser(gdAddress, profilePublickey),
@@ -111,8 +112,8 @@ class EnrollmentProcessor {
 }
 
 EnrollmentProcessor.registerProviers({
-  [EnrollmentProviders.Zoom]: require('./provider/ZoomProvider'),
-  [EnrollmentProviders.Kairos]: require('./provider/KairosProvider')
+  [EnrollmentProviders.Zoom]: ZoomProvidersFactory,
+  [EnrollmentProviders.Kairos]: KairosProvidersFactory
 })
 
 export default (user, storage) => new EnrollmentProcessor(user, storage, AdminWallet)

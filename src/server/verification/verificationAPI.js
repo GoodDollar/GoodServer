@@ -51,7 +51,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           const sessionRef = GunDBPublic.session(sessionId)
 
           // publish to subscribers
-          sessionRef.put({ isDuplicate: false, isLive: true, isEnrolled: true })
+          sessionRef.put({ isDuplicate: false, isLive: true, isEnroll: true })
           enrollmentResponse = { ok: 1, isVerified: true }
         } else {
           enrollmentResponse = await processor.enroll(payload, provider)

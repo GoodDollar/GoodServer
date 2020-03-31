@@ -1,6 +1,5 @@
 // @flow
-import { map } from 'lodash'
-
+import { map, pick } from 'lodash'
 import EnrollmentProvider from '.'
 import KairosAPI from '../../api/KairosAPI'
 
@@ -9,7 +8,6 @@ class KairosProvider extends EnrollmentProvider {
 
   constructor(api) {
     super()
-
     this.api = api
   }
 
@@ -25,21 +23,32 @@ class KairosProvider extends EnrollmentProvider {
 
     this.emitStarted()
 
-    return this.api.addIfUniqueAndAlive(
+    const response = await this.api.addIfUniqueAndAlive(
       enrollmentIdentifier,
       sessionId,
       imagesAsBase64,
-      (_, __, { ok, isDuplicate, isLive, isEnroll }) => {
-        const eventPayload = { isDuplicate, isLive, isEnroll }
+      (_, __, payload) => {
+        const { ok, isEnroll } = payload
+        const eventPayload = pick(payload, 'isDuplicate', 'isLive', 'isEnroll')
+
+        this.emitProcessing(eventPayload)
 
         if (ok && isEnroll) {
           this.emitCompleted(eventPayload)
-          return
         }
-
-        this.emitProcessing(eventPayload)
       }
     )
+
+    const { ok, error } = response
+
+    if (!ok) {
+      const exception = new Error(error)
+
+      exception.response = response
+      throw exception
+    }
+
+    return response
   }
 }
 
