@@ -458,7 +458,10 @@ export class Wallet {
       const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
       gas =
         gas ||
-        (await tx.estimateGas().catch(e => log.error('Failed to estimate gas for tx', { errMessage: e.message, e }))) ||
+        (await tx
+          .estimateGas()
+          .then(gas => gas + 30000) //buffer for proxy contract, reimburseGas?
+          .catch(e => log.error('Failed to estimate gas for tx', { errMessage: e.message, e }))) ||
         defaultGas
       gasPrice = gasPrice || defaultGasPrice
 
