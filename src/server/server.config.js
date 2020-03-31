@@ -246,7 +246,7 @@ const conf = convict({
     env: 'MAUTIC_VERIFY_ID',
     default: '31'
   },
-  zoomURL: {
+  zoomServerBaseUrl: {
     doc: 'FaceTec Managed Testing API URL',
     format: '*',
     env: 'ZOOM_SERVER_BASEURL',
