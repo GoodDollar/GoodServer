@@ -24,7 +24,7 @@ const addUserToWhiteList = async (userRecord: UserRecord) => {
         await UserDBPrivate.completeStep(user.identifier, 'whiteList')
       })
       .catch(e => {
-        logger.error('failed whitelisting', userRecord)
+        logger.error('failed whitelisting', e.message, e, { userRecord })
       })
   }
   return true

@@ -5,8 +5,8 @@ import bip39 from 'bip39-light'
 import type { HttpProvider, WebSocketProvider } from 'web3-providers'
 import IdentityABI from '@gooddollar/goodcontracts/build/contracts/Identity.min.json'
 import GoodDollarABI from '@gooddollar/goodcontracts/build/contracts/GoodDollar.min.json'
-import SignUpBonusABI from '@gooddollar/goodcontracts/build/contracts/SignUpBonus.min.json'
 import UBIABI from '@gooddollar/goodcontracts/build/contracts/FixedUBI.min.json'
+import ProxyContractABI from '@gooddollar/goodcontracts/build/contracts/AdminWallet.min.json'
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
 
 import conf from '../server.config'
@@ -43,7 +43,7 @@ export class Wallet {
 
   UBIContract: Web3.eth.Contract
 
-  signUpBonusContract: Web3.eth.Contract
+  proxyContract: Web3.eth.Contract
 
   address: string
 
@@ -126,12 +126,17 @@ export class Wallet {
     this.network = conf.network
     this.networkId = conf.ethereum.network_id
 
+    this.proxyContract = new this.web3.eth.Contract(
+      ProxyContractABI.abi,
+      get(ContractsAddress, `${this.network}.AdminWallet`)
+    )
+
     txManager.getTransactionCount = this.web3.eth.getTransactionCount
     await txManager.createListIfNotExists(this.addresses)
     for (let addr of this.addresses) {
       const balance = await this.web3.eth.getBalance(addr)
-      log.info(`admin wallet ${addr} balance ${balance}`)
-      if (balance > adminMinBalance) {
+      if ((await this.isVerifiedAdmin(addr)) && balance > adminMinBalance) {
+        log.info(`admin wallet ${addr} balance ${balance}`)
         this.filledAddresses.push(addr)
       }
     }
@@ -144,12 +149,6 @@ export class Wallet {
     this.identityContract = new this.web3.eth.Contract(
       IdentityABI.abi,
       get(ContractsAddress, `${this.network}.Identity`),
-      { from: this.address }
-    )
-
-    this.signUpBonusContract = new this.web3.eth.Contract(
-      SignUpBonusABI.abi,
-      get(ContractsAddress, `${this.network}.SignupBonus`),
       { from: this.address }
     )
 
@@ -175,14 +174,6 @@ export class Wallet {
         nonce: this.nonce,
         ContractsAddress: ContractsAddress[this.network]
       })
-      await this.removeWhitelisted('0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63').catch(_ => _)
-      const whitelistTest = await this.whitelistUser('0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63', 'x')
-      const topwalletTest = await this.topWallet(
-        '0x6ddfF36dE47671BF9a2ad96438e518DD633A0e63',
-        moment().subtract(1, 'day'),
-        true
-      )
-      log.info('wallet tests:', { whitelist: whitelistTest.status, topwallet: topwalletTest.status })
     } catch (e) {
       log.error('Error initializing wallet', { e, errMessage: e.message })
       if (conf.env !== 'test') process.exit(-1)
@@ -240,7 +231,7 @@ export class Wallet {
       release()
       return
     }
-    return AdminWallet.redeemBonuses(user.gdAddress, bonusInWei, {
+    return this.redeemBonuses(user.gdAddress, bonusInWei, {
       onTransactionHash: hash => {
         log.info('checkHanukaBonus redeem - txhash received', {
           hash,
@@ -279,7 +270,7 @@ export class Wallet {
    * @returns {Promise<String>}
    */
   async redeemBonuses(address: string, amountInWei: string, { onReceipt, onTransactionHash, onError }): Promise<any> {
-    return this.sendTransaction(this.signUpBonusContract.methods.awardUser(address, amountInWei), {
+    return this.sendTransaction(this.proxyContract.methods.awardUser(address, amountInWei), {
       onTransactionHash,
       onReceipt,
       onError
@@ -297,12 +288,12 @@ export class Wallet {
     if (isVerified) {
       return { status: true }
     }
-    const tx: TransactionReceipt = await this.sendTransaction(
-      this.identityContract.methods.addWhitelistedWithDID(address, did)
-    ).catch(e => {
-      log.error('Error whitelistUser', { e, errMessage: e.message, address, did })
-      throw e
-    })
+    const tx: TransactionReceipt = await this.sendTransaction(this.proxyContract.methods.whitelist(address, did)).catch(
+      e => {
+        log.error('Error whitelistUser', { e, errMessage: e.message, address, did })
+        throw e
+      }
+    )
     log.info('Whitelisted user', { address, did, tx })
     return tx
   }
@@ -330,7 +321,7 @@ export class Wallet {
    */
   async removeWhitelisted(address: string): Promise<TransactionReceipt> {
     const tx: TransactionReceipt = await this.sendTransaction(
-      this.identityContract.methods.removeWhitelisted(address)
+      this.proxyContract.methods.removeWhitelist(address)
     ).catch(e => {
       log.error('Error removeWhitelisted', { e, errMessage: e.message, address })
       throw e
@@ -356,6 +347,22 @@ export class Wallet {
   }
 
   /**
+   *
+   * @param {string} address
+   * @returns {Promise<boolean>}
+   */
+  async isVerifiedAdmin(address: string): Promise<boolean> {
+    const tx: boolean = await this.proxyContract.methods
+      .isAdmin(address)
+      .call()
+      .catch(e => {
+        log.error('Error isAdmin', { e, errMessage: e.message })
+        throw e
+      })
+    return tx
+  }
+
+  /**
    * top wallet if needed
    * @param {string} address
    * @param {moment.Moment} lastTopping
@@ -373,15 +380,9 @@ export class Wallet {
       let userBalance = await this.web3.eth.getBalance(address)
       let maxTopWei = parseInt(web3Utils.toWei('1000000', 'gwei'))
       let toTop = maxTopWei - userBalance
-      log.debug('TopWallet:', { userBalance, toTop })
+      log.debug('TopWallet:', { address, userBalance, toTop })
       if (toTop > 0 && (force || toTop / maxTopWei >= 0.75)) {
-        let res = await this.sendNative({
-          from: this.address,
-          to: address,
-          value: toTop,
-          gas: defaultGas,
-          gasPrice: defaultGasPrice
-        })
+        let res = await this.sendTransaction(this.proxyContract.methods.topWallet(address))
         log.debug('Topwallet result:', { res })
         return res
       }
@@ -452,9 +453,10 @@ export class Wallet {
           })
           .on('confirmation', c => onConfirmation && onConfirmation(c))
           .on('error', async e => {
+            log.error('sendTransaction error:', { error: e.message, e, from: address })
             if (isNonceError(e)) {
               let netNonce = parseInt(await this.web3.eth.getTransactionCount(address))
-              log.error('sendTransaciton nonce failure retry', {
+              log.warn('sendTransaciton nonce failure retry', {
                 errMessage: e.message,
                 nonce,
                 gas,

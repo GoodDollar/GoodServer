@@ -234,7 +234,7 @@ describe('verificationAPI', () => {
     const creds = await getCreds(true)
     const token = await getToken(server, creds)
     await AdminWallet.ready
-    await AdminWallet.whitelistUser(creds.address, 'x')
+    await AdminWallet.whitelistUser(creds.address, 'x' + Math.random())
     const res = await request(server)
       .get('/verify/w3/bonuses')
       .set('Authorization', `Bearer ${token}`)
