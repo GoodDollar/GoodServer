@@ -16,20 +16,8 @@ const testUser = {
 }
 
 describe('verification', () => {
-  let user
-  let verificationData
-
   beforeAll(async done => {
     await GunDBPublic.init()
-
-    verificationData = {
-      sessionId: 'fake-session-id',
-      enrollmentIdentifier: '0x9d5499D5099DE6Fe5A8f39874617dDFc967cA6e5',
-      facemapFile: './facemap.zip',
-      auditTrailImageFile: './auditTrailImage.jpg'
-    }
-
-    user = { identifier: 1, fullName: 'hadar', email: 'hadarbe@gooddollar.org' }
     await UserDBPrivate.updateUser(testUser)
 
     done()

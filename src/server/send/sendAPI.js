@@ -25,7 +25,6 @@ const setup = (app: Router, storage) => {
     onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res, next) => {
       const log = req.log
-      const { user } = req
       const { to, sendLink } = req.body
 
       log.info('sending email', { to, sendLink })

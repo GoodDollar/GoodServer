@@ -93,7 +93,8 @@ describe('sendAPÏ', () => {
     })
     const user = await UserDBPrivate.getByIdentifier('0x7ac080f6607405705aed79675789701a48c76f55')
     expect(user).toBeDefined()
-    const res = await request(server)
+
+    await request(server)
       .post('/send/recoveryinstructions')
       .send({
         mnemonic: 'unit test send recovery instructions'
@@ -141,7 +142,7 @@ describe('sendAPÏ', () => {
 
     expect(user).toBeDefined()
 
-    const res = await request(server)
+    await request(server)
       .post('/send/magiclink')
       .send({
         magiclink: 'unit test magicLine'

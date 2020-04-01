@@ -9,7 +9,7 @@ export default function start(workerId) {
   console.log(`start workerId = ${workerId}`)
 
   process.on('uncaughtException', (err, origin) => {
-    console.log(`Uncaught exception: ${err}\n` + `Exception origin: ${origin}`)
+    console.log(`Uncaught exception: ${err}\nException origin: ${origin}`)
     process.exit(-1)
   })
 

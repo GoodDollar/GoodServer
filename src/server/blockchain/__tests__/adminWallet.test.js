@@ -23,14 +23,18 @@ describe('adminwallet', () => {
 
   test('adminWallet can whitelist user', async () => {
     await AdminWallet.removeWhitelisted('0x888185b656fe770677a91412f9f09B23A787242A').catch(_ => _)
-    const tx = await AdminWallet.whitelistUser('0x888185b656fe770677a91412f9f09B23A787242A', 'did:gd')
+    await AdminWallet.whitelistUser('0x888185b656fe770677a91412f9f09B23A787242A', 'did:gd')
+
     const isVerified = await AdminWallet.isVerified('0x888185b656fe770677a91412f9f09B23A787242A')
+
     expect(isVerified).toBeTruthy()
   })
 
   test('adminWallet can blacklist user', async () => {
-    const tx = await AdminWallet.removeWhitelisted('0x888185b656fe770677a91412f9f09B23A787242A')
+    await AdminWallet.removeWhitelisted('0x888185b656fe770677a91412f9f09B23A787242A')
+
     const isVerified = await AdminWallet.isVerified('0x888185b656fe770677a91412f9f09B23A787242A')
+
     expect(isVerified).not.toBeTruthy()
   })
 

@@ -5,19 +5,11 @@ import SEA from 'gun/sea'
 import 'gun/lib/load'
 import { memoize } from 'lodash'
 // import les from 'gun/lib/les'
-import { type StorageAPI, type UserRecord } from '../../imports/types'
+import { type StorageAPI } from '../../imports/types'
 import conf from '../server.config'
 import logger from '../../imports/logger'
 
 const log = logger.child({ from: 'GunDB-Middleware' })
-
-/**
- * @type
- */
-type ACK = {
-  ok: string,
-  err: string
-}
 
 /**
  * @type

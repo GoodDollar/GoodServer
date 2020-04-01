@@ -1,11 +1,7 @@
 // @flow
-import type { StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
-import { GunDBPublic } from '../gun/gun-middleware'
+import type { UserRecord, VerificationAPI } from '../../imports/types'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
 import logger from '../../imports/logger'
-import humanAPI from './api/KairosAPI'
-import AdminWallet from '../blockchain/AdminWallet'
-import { pick } from 'lodash'
 
 /**
  * Verifications class implements `VerificationAPI`

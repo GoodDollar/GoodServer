@@ -8,7 +8,7 @@ import { GunDBPublic } from './gun/gun-middleware'
 import app from './app'
 
 process.on('uncaughtException', (err, origin) => {
-  console.log(`Caught exception: ${err}\n` + `Exception origin: ${origin}`)
+  console.log(`Caught exception: ${err}\nException origin: ${origin}`)
   console.log(err.stack)
   process.exit(-1)
 })

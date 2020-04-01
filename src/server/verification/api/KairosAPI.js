@@ -1,5 +1,5 @@
 // @flow
-import { humanApi, kairosAPI } from 'express-kairos-faceverification'
+import { humanApi, kairosAPI } from 'express-kairos-faceverification' // eslint-disable-line
 import conf from '../../server.config'
 const { id: app_id, key: app_key } = conf.kairos
 

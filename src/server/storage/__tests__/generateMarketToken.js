@@ -6,7 +6,7 @@ import conf from '../../server.config'
 test('should generate marketToken', () => {
   const pass = conf.marketPassword
   const encrypted = generateMarketToken({ email: 'h@gd.org', fullName: 'h r' })
-  const base64 = encrypted.replace(/\-/g, '+').replace(/\_/g, '/')
+  const base64 = encrypted.replace(/-/g, '+').replace(/_/g, '/')
   const parts = base64.split(':')
   const cipher = crypto.createDecipheriv('aes-256-cbc', pass, Buffer.from(parts[1], 'base64'))
   let decrypted = cipher.update(parts[0], 'base64', 'utf8')

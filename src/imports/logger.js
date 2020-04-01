@@ -8,7 +8,7 @@ const { combine, printf, timestamp } = format
 const colorizer = format.colorize()
 
 let rollbar
-if (conf.env != 'development' && conf.rollbarToken)
+if (conf.env !== 'development' && conf.rollbarToken)
   rollbar = new Rollbar({
     accessToken: conf.rollbarToken,
     captureUncaught: true,

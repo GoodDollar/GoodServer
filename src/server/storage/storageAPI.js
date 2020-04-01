@@ -122,7 +122,7 @@ const setup = (app: Router, storage: StorageAPI) => {
     '/user/delete',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
-      const { user, log, body } = req
+      const { user, log } = req
       log.info('delete user', { user })
 
       const results = await Promise.all([
@@ -152,7 +152,7 @@ const setup = (app: Router, storage: StorageAPI) => {
     '/user/market',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
-      const { user, log, body } = req
+      const { user, log } = req
       log.debug('new market token request:', { user })
       const jwt = generateMarketToken(user)
       log.debug('new market token result:', { jwt })

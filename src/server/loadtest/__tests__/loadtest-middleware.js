@@ -1,6 +1,6 @@
 import request from 'supertest'
 import makeServer from '../../server-test'
-import { getToken, getCreds } from '../../__util__/'
+import { getToken } from '../../__util__/'
 
 const userCredentials = {
   signature:
