@@ -137,8 +137,7 @@ export class Wallet {
     }
     txManager.getTransactionCount = this.web3.eth.getTransactionCount
     await txManager.createListIfNotExists(this.addresses)
-    await this.topAdmins
-    log.info('topped admins ok')
+
     for (let addr of this.addresses) {
       const balance = await this.web3.eth.getBalance(addr)
       const isAdminWallet = await this.isVerifiedAdmin(addr)
@@ -460,7 +459,7 @@ export class Wallet {
         gas ||
         (await tx
           .estimateGas()
-          .then(gas => gas + 30000) //buffer for proxy contract, reimburseGas?
+          .then(gas => gas + 50000) //buffer for proxy contract, reimburseGas?
           .catch(e => log.error('Failed to estimate gas for tx', { errMessage: e.message, e }))) ||
         defaultGas
       gasPrice = gasPrice || defaultGasPrice
