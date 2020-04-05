@@ -1,6 +1,7 @@
 import WalletNonce from '../../db/mongo/models/wallet-nonce'
 import logger from '../../../imports/logger'
 import conf from '../../server.config'
+import moment from 'moment'
 
 const log = logger.child({ from: 'queueMongo' })
 export default class queueMongo {
@@ -39,13 +40,16 @@ export default class queueMongo {
    */
   async getWalletNonce(addresses) {
     try {
+      const expired = moment()
+        .subtract(conf.mongoQueueMaxLockTime, 'seconds')
+        .toDate()
       const filter = {
         address: { $in: addresses },
         networkId: this.networkId,
         $or: [
           { isLock: false },
           {
-            lockedAt: { $lte: +new Date() - conf.mongoQueueMaxLockTime * 1000 },
+            lockedAt: { $lte: expired },
             isLock: true
           }
         ]
