@@ -672,7 +672,10 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       //start lock before checking bonus status to prevent race condition
       const { release, fail } = await txManager.lock(currentUser.gdAddress, 0)
 
-      const w3User = await W3Helper.getUser(wallet_token)
+      const w3User = await W3Helper.getUser(wallet_token).catch(e => {
+        log.error('failed fetching w3 user', { errMessage: e.message, e, wallet_token, currentUser })
+        return false
+      })
 
       if (!w3User) {
         release()
