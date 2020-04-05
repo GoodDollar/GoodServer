@@ -203,7 +203,8 @@ export default class queueMongo {
    */
   async isLocked(address) {
     const wallet = await this.model.findOne({ address, networkId: this.networkId })
-
-    return Boolean(wallet && wallet.isLock)
+    const expired = moment().subtract(conf.mongoQueueMaxLockTime, 'seconds')
+    const lockExpired = expired.isAfter(wallet.lockedAt)
+    return Boolean(wallet && (wallet.isLock || lockExpired))
   }
 }
