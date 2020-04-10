@@ -30,8 +30,6 @@ class ZoomProvider implements IEnrollmentProvider {
     let enrollmentResponse
     const requestPayload = { ...payload, enrollmentIdentifier }
 
-    this.emitStarted()
-
     try {
       enrollmentResponse = await this.api.submitEnrollment(requestPayload)
       eventPayload = this._analyzeEnrollmentResponse(enrollmentResponse)
@@ -44,6 +42,36 @@ class ZoomProvider implements IEnrollmentProvider {
       if (response) {
         eventPayload = this._analyzeEnrollmentResponse(response)
         onEnrollmentProcessing(eventPayload)
+      }
+
+      throw exception
+    }
+  }
+
+  async enrollmentExists(enrollmentIdentifier: string): Promise<boolean> {
+    try {
+      await this.api.readEnrollment(enrollmentIdentifier)
+    } catch (exception) {
+      const { subCode } = exception.response || {}
+
+      if ('facemapNotFound' === subCode) {
+        return false
+      }
+
+      throw exception
+    }
+
+    return true
+  }
+
+  async dispose(enrollmentIdentifier: string): Promise<void> {
+    try {
+      await this.api.disposeEnrollment(enrollmentIdentifier)
+    } catch (exception) {
+      const { subCode } = exception.response || {}
+
+      if ('facemapNotFound' === subCode) {
+        return
       }
 
       throw exception

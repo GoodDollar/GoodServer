@@ -1,8 +1,5 @@
 // @flow
 import { bindAll } from 'lodash'
-
-import { GunDBPublic } from '../../gun/gun-middleware'
-
 import { type IEnrollmentEventPayload } from './typings'
 
 export default class EnrollmentSession {
@@ -11,7 +8,8 @@ export default class EnrollmentSession {
   storage = null
   adminApi = null
 
-  constructor(user, provider, storage, adminApi) {
+  constructor(user, provider, storage, adminApi, gun) {
+    this.gun = gun
     this.user = user
     this.provider = provider
     this.storage = storage
@@ -21,9 +19,9 @@ export default class EnrollmentSession {
   }
 
   async enroll(enrollmentIdentifier, payload: any): Promise<any> {
-    const { provider, user, onEnrollmentProcessing } = this
+    const { gun, provider, user, onEnrollmentProcessing } = this
     const { sessionId } = payload
-    const sessionRef = GunDBPublic.session(sessionId)
+    const sessionRef = gun.session(sessionId)
     let result = { success: true }
 
     this.sessionRef = sessionRef

@@ -20,17 +20,45 @@ import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   /**
-   * @api {post} /verify/facerecognition Verify users face
-   * @apiName Face Recognition
+   * @api {delete} /verify/facerecognition Enqueue users face for disposal since 24th
+   * @apiName Dispose Face
+   * @apiGroup Verification
+   *
+   * @apiParam {String} enrollmentIdentifier
+   * @apiParam {String} signature
+   *
+   * @ignore
+   */
+  app.delete(
+    '/verify/face/:enrollmentIdentifier',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res) => {
+      const { params, query } = req
+      const { enrollmentIdentifier } = params
+      const { signature } = query
+      const processor = createEnrollmentProcessor(storage)
+
+      try {
+        await processor.enqueueDisposal(enrollmentIdentifier, signature)
+      } catch (exception) {
+        const { message } = exception
+
+        res.status(400).json({ success: false, error: message })
+        return
+      }
+
+      res.json({ success: true })
+    })
+  )
+
+  /**
+   * @api {put} /verify/facerecognition Verify users face
+   * @apiName Face Verification
    * @apiGroup Verification
    *
    * @apiParam {String} enrollmentIdentifier
    * @apiParam {String} sessionId
    *
-   * @apiSuccess {Number} ok
-   * @apiSuccess {Boolean} isVerified
-   * @apiSuccess {Object} enrollResult: { alreadyEnrolled: true }
-   * @apiSuccess {Boolean} enrollResult.alreadyEnrolled
    * @ignore
    */
   app.put(
