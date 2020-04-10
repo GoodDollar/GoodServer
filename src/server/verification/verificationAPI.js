@@ -33,34 +33,34 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    * @apiSuccess {Boolean} enrollResult.alreadyEnrolled
    * @ignore
    */
-  app.post(
-    '/verify/facerecognition/:provider',
+  app.put(
+    '/verify/face/:enrollmentIdentifier',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { user, log, params, body: payload } = req
       const { sessionId } = payload
-      const { provider } = params
+      const { enrollmentIdentifier } = params
 
       let enrollmentResponse
-      const processor = createEnrollmentProcessor(user, storage)
+      const processor = createEnrollmentProcessor(storage)
 
       try {
-        processor.validate(payload, provider)
+        processor.validate(user, enrollmentIdentifier, payload)
 
         if (user.isVerified || conf.skipFaceRecognition) {
           const sessionRef = GunDBPublic.session(sessionId)
 
           // publish to subscribers
           sessionRef.put({ isDuplicate: false, isLive: true, isEnroll: true })
-          enrollmentResponse = { ok: 1, isVerified: true }
+          enrollmentResponse = { success: true }
         } else {
-          enrollmentResponse = await processor.enroll(payload, provider)
+          enrollmentResponse = await processor.enroll(user, enrollmentIdentifier, payload)
         }
       } catch (exception) {
         const { message } = exception
 
         log.error('Face verification error:', message, exception)
-        res.status(400).json({ ok: 0, isVerified: false, error: message })
+        res.status(400).json({ success: false, error: message })
         return
       }
 

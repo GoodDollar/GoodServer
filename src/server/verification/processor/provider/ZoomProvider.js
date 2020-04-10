@@ -1,10 +1,11 @@
 // @flow
 import { pick, findKey } from 'lodash'
 
-import EnrollmentProvider from '.'
+import { type IEnrollmentProvider } from '../typings'
+
 import ZoomAPI from '../../api/ZoomAPI.js'
 
-class ZoomProvider extends EnrollmentProvider {
+class ZoomProvider implements IEnrollmentProvider {
   api = null
 
   constructor(api) {
@@ -15,12 +16,16 @@ class ZoomProvider extends EnrollmentProvider {
 
   isPayloadValid(payload: any): boolean {
     return !findKey(
-      pick(payload, ['faceMap', 'lowQualityAuditTrailImage', 'auditTrailImage', 'userAgent']),
+      pick(payload, ['faceMap', 'lowQualityAuditTrailImage', 'auditTrailImage']),
       fieldValue => !fieldValue
     )
   }
 
-  async enroll(payload: any, enrollmentIdentifier: string) {
+  async enroll(
+    enrollmentIdentifier: string,
+    payload: any,
+    onEnrollmentProcessing: (payload: IEnrollmentEventPayload) => void | Promise<void>
+  ): Promise<any> {
     let eventPayload
     let enrollmentResponse
     const requestPayload = { ...payload, enrollmentIdentifier }
@@ -30,9 +35,7 @@ class ZoomProvider extends EnrollmentProvider {
     try {
       enrollmentResponse = await this.api.submitEnrollment(requestPayload)
       eventPayload = this._analyzeEnrollmentResponse(enrollmentResponse)
-
-      this.emitProcessing(eventPayload)
-      this.emitCompleted(eventPayload)
+      onEnrollmentProcessing(eventPayload)
 
       return enrollmentResponse
     } catch (exception) {
@@ -40,8 +43,7 @@ class ZoomProvider extends EnrollmentProvider {
 
       if (response) {
         eventPayload = this._analyzeEnrollmentResponse(response)
-
-        this.emitProcessing(eventPayload)
+        onEnrollmentProcessing(eventPayload)
       }
 
       throw exception
@@ -59,4 +61,4 @@ class ZoomProvider extends EnrollmentProvider {
   }
 }
 
-export default () => new ZoomProvider(ZoomAPI)
+export default new ZoomProvider(ZoomAPI)

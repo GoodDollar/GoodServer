@@ -1,119 +1,61 @@
 // @flow
-
-import { GunDBPublic } from '../../gun/gun-middleware'
 import AdminWallet from '../../blockchain/AdminWallet'
 
-import { EnrollmentProviders, type EnrollmentProvider, type IEnrollmentEventPayload } from './typings'
+import { type IEnrollmentProvider } from './typings'
 
-import ZoomProvidersFactory from './provider/ZoomProvider'
-import KairosProvidersFactory from './provider/KairosProvider'
+import EnrollmentSession from './EnrollmentSession'
+import ZoomProvider from './provider/ZoomProvider'
 
 class EnrollmentProcessor {
-  static providersFactories = {}
+  storage = null
+  adminApi = null
+  _provider = null
 
-  static registerProviers(factories: { [name: EnrollmentProvider]: Function }) {
-    this.providersFactories = factories
+  get provider() {
+    const { _provider } = this
+
+    if (!_provider) {
+      throw new Error(`Provider haven't registered.`)
+    }
+
+    return _provider
   }
 
-  user = null
-  storage = null
-  sessionRef = null
-
-  constructor(user, storage, adminApi) {
-    this.user = user
+  constructor(storage, adminApi) {
     this.storage = storage
     this.adminApi = adminApi
   }
 
-  validate(payload: any, providerType: EnrollmentProvider = EnrollmentProviders.Kairos) {
-    const { user } = this
-    const identifier = user || {}
-    const { sessionId } = payload || {}
-    const providerInstance = this._createProvider(providerType)
+  registerProvier(provider: IEnrollmentProvider): void {
+    this._provider = provider
+  }
 
-    if (!user || !identifier || !payload || !sessionId || !providerInstance.isPayloadValid(payload)) {
+  validate(user: any, enrollmentIdenfitier: string, payload: any) {
+    const { sessionId } = payload || {}
+    const { provider } = this
+
+    if (!user || !enrollmentIdenfitier || !payload || !sessionId || !provider.isPayloadValid(payload)) {
       throw new Error('Invalid input')
     }
   }
 
-  async enroll(payload: any, providerType: EnrollmentProvider = EnrollmentProviders.Kairos) {
-    const { sessionId } = payload
-    const sessionRef = GunDBPublic.session(sessionId)
-    const providerInstance = this._createProvider(providerType)
+  async enroll(user: any, enrollmentIdenfitier: string, payload: any): Promise<any> {
+    const { provider, storage, adminApi } = this
+    const session = new EnrollmentSession(user, provider, storage, adminApi)
 
-    this.sessionRef = sessionRef
-
-    try {
-      const enrollmentResult = await providerInstance.enroll(payload, this.user.identifier)
-
-      return { ok: 1, isVerified: true, enrollmentResult }
-    } catch ({ response, message }) {
-      const failedResponse = { ok: 0, isVerified: false, error: message }
-
-      if (response) {
-        failedResponse.enrollmentResult = response
-      }
-
-      sessionRef.put({
-        isLive: false,
-        isDuplicate: true,
-        isWhitelisted: false,
-        isError: message
-      })
-
-      return failedResponse
-    } finally {
-      this.sessionRef = null
-    }
-  }
-
-  onEnrollmentStarted() {
-    const { sessionRef } = this
-
-    sessionRef.put({ isStarted: true })
-  }
-
-  onEnrollmentProcessing(processingPayload: IEnrollmentEventPayload) {
-    const { sessionRef } = this
-
-    sessionRef.put(processingPayload)
-  }
-
-  async onEnrollmentCompleted(completedPayload: IEnrollmentEventPayload) {
-    const { sessionRef, user, storage, adminApi } = this
-    const { gdAddress, profilePublickey, loggedInAs } = user
-
-    try {
-      await Promise.all([
-        adminApi.whitelistUser(gdAddress, profilePublickey),
-        storage.updateUser({ identifier: loggedInAs, isVerified: true })
-      ])
-
-      sessionRef.put({ isWhitelisted: true })
-    } catch ({ message }) {
-      sessionRef.put({ isWhitelisted: false, isError: message })
-    }
-  }
-
-  _createProvider(type: EnrollmentProvider) {
-    let providerInstance
-    const { providersFactories } = this.constructor
-    const providerFactory = providersFactories[type]
-
-    if (!providerFactory) {
-      throw new Error(`Provider '${type}' haven't registered.`)
-    }
-
-    providerInstance = providerFactory()
-    providerInstance.subscribe(this)
-
-    return providerInstance
+    return session.enroll(enrollmentIdenfitier, payload)
   }
 }
 
-EnrollmentProcessor.registerProviers({
-  [EnrollmentProviders.Zoom]: ZoomProvidersFactory,
-  [EnrollmentProviders.Kairos]: KairosProvidersFactory
-})
+const enrollmentProcessors = new WeakMap()
 
-export default (user, storage) => new EnrollmentProcessor(user, storage, AdminWallet)
+export default storage => {
+  if (!enrollmentProcessors.has(storage)) {
+    const enrollmentProcessor = new enrollmentProcessor(storage, AdminWallet)
+
+    enrollmentProcessor.registerProvier(ZoomProvider)
+    enrollmentProcessors.set(storage, enrollmentProcessor)
+  }
+
+  enrollmentProcessors.get(storage)
+}
