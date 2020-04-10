@@ -246,6 +246,12 @@ const conf = convict({
     env: 'MAUTIC_VERIFY_ID',
     default: '31'
   },
+  zoomMinimalMatchLevel: {
+    doc: 'Minimal FaceTec Match Level threshold to mark enrollment as duplicate',
+    format: Number,
+    env: 'ZOOM_MINIMAL_MATCHLEVEL',
+    default: 1
+  },
   zoomServerBaseUrl: {
     doc: 'FaceTec Managed Testing API URL',
     format: '*',
