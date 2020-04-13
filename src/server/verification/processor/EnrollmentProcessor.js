@@ -86,5 +86,5 @@ export default storage => {
     enrollmentProcessors.set(storage, enrollmentProcessor)
   }
 
-  enrollmentProcessors.get(storage)
+  return enrollmentProcessors.get(storage)
 }
