@@ -154,20 +154,6 @@ const conf = convict({
     env: 'OTP_TTL_MINUTES',
     default: '60'
   },
-  kairos: {
-    id: {
-      doc: 'kairos id accounts',
-      format: String,
-      env: 'KAIROS_ID',
-      default: ''
-    },
-    key: {
-      doc: 'kairos key accounts',
-      format: String,
-      env: 'KAIROS_KEY',
-      default: ''
-    }
-  },
   sendGrid: {
     apiKey: {
       doc: 'Sendgrid API KEY',
@@ -209,12 +195,6 @@ const conf = convict({
     format: '*',
     env: 'WALLET_URL',
     default: 'WALLET_URL'
-  },
-  faceRecoServer: {
-    doc: 'Face Recognition Server URL',
-    format: '*',
-    env: 'FACE_RECO_SERVER',
-    default: 'FACE_RECO_SERVER'
   },
   mauticURL: {
     doc: 'mautic URL',
@@ -304,17 +284,17 @@ const conf = convict({
     env: 'SKIP_EMAIL_VERIFICATION',
     default: false
   },
-  skipFaceRecognition: {
+  skipFaceVerification: {
     doc: 'Returns FR passed with no Zoom API interaction',
     format: Boolean,
-    env: 'SKIP_FACE_RECO',
+    env: 'SKIP_FACE_VERIFICATION',
     default: false
   },
-  allowFaceRecognitionDuplicates: {
-    doc: 'Allows passing FR process even if duplicate exists',
-    format: Boolean,
-    env: 'ALLOW_FACE_RECO_DUPS',
-    default: false
+  keepFaceVerificationRecords: {
+    doc: 'Time interval (in hours) to store face verification records after user deletes his account',
+    format: Number,
+    env: 'KEEP_FACE_VERIFICATION_RECORDS',
+    default: 24
   },
   enableMongoLock: {
     doc: 'Enable or disable transaction locks for mongo',
@@ -387,18 +367,6 @@ const conf = convict({
     format: '*',
     env: 'HANUKA_END_DATE',
     default: undefined
-  },
-  humanOptions: {
-    doc: 'Options for humanApi',
-    format: Object,
-    env: 'HUMAN_OPTIONS',
-    default: {
-      livenessThresh: 0.8,
-      uniqueThresh: 0.7,
-      minEnrollImages: 1,
-      maxHeadAngle: 10,
-      minPhashSimilarity: 0.95
-    }
   }
 })
 

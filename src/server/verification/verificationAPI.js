@@ -20,7 +20,7 @@ import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   /**
-   * @api {delete} /verify/facerecognition Enqueue users face for disposal since 24th
+   * @api {delete} /verify/face/:enrollmentIdentifier Enqueue users face for disposal since 24th
    * @apiName Dispose Face
    * @apiGroup Verification
    *
@@ -52,7 +52,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   )
 
   /**
-   * @api {put} /verify/facerecognition Verify users face
+   * @api {put} /verify/:enrollmentIdentifier Verify users face
    * @apiName Face Verification
    * @apiGroup Verification
    *
@@ -75,7 +75,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       try {
         processor.validate(user, enrollmentIdentifier, payload)
 
-        if (user.isVerified || conf.skipFaceRecognition) {
+        if (user.isVerified || conf.skipFaceVerification) {
           const sessionRef = GunDBPublic.session(sessionId)
 
           // publish to subscribers

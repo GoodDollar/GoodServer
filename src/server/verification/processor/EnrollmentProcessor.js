@@ -1,6 +1,8 @@
 // @flow
-import AdminWallet from '../../blockchain/AdminWallet'
+import Config from '../../server.config'
 import { GunDBPublic } from '../../gun/gun-middleware'
+import AdminWallet from '../../blockchain/AdminWallet'
+
 import { recoverPublickey } from '../../utils/eth'
 
 import { type IEnrollmentProvider } from './typings'
@@ -12,6 +14,8 @@ class EnrollmentProcessor {
   gun = null
   storage = null
   adminApi = null
+  keepEnrollments = null
+
   _provider = null
 
   get provider() {
@@ -24,10 +28,13 @@ class EnrollmentProcessor {
     return _provider
   }
 
-  constructor(storage, adminApi, gun) {
+  constructor(storage, Config, adminApi, gun) {
+    const { keepFaceVerificationRecords } = Config
+
     this.gun = gun
     this.storage = storage
     this.adminApi = adminApi
+    this.keepEnrollments = keepFaceVerificationRecords
   }
 
   registerProvier(provider: IEnrollmentProvider): void {
@@ -65,14 +72,33 @@ class EnrollmentProcessor {
 
     if (enrollmentExists) {
       // TODO: enqueue enrollmentIdentifier to the corresponding mongo collection using storage
+      // add current timestamp to each collection item
     }
   }
 
-  async dispose(enrollmentIdentifier) {
+  async disposeEnqueuedEnrollments(onProcessed: (identifier: string, exception?: Error) => void): Promise<void> {
     const { provider, storage } = this // eslint-disable-line
 
-    await provider.dispose(enrollmentIdentifier)
-    // TODO: remove enrollmentIdentifier from the corresponding mongo collection using storage
+    // TODO
+
+    // 1. get all items from enqueued enrollment identifiers collection
+    //    which were added this.keepEnrollments hours ago or earlier
+
+    // 2. split onto chunks by 10-20 (could calculate chunk size
+    // as some percent of total amount but not out of 10 ... 50 range)
+
+    // 3. traverse chunks via for...in or await chunks.reduce (if lint rules disallows await in loop)
+
+    // 4. for each identifiers in chunk:
+    // - call await provider.dispose(identifier)
+    // - wrap to try catch
+    // - on error exclude item from chunk, call onProcessed for it and do not rethrow error
+    // - success just call onProcessed
+
+    // 5. aggregate async calls from pt 4. via Promise.all and await them
+
+    // 6. execute deleteMany for items have rest in the chunk
+    // (items sucessfully disposed on the Zoom)
   }
 }
 

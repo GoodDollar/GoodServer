@@ -6,12 +6,14 @@ import cors from 'cors'
 import addLoginMiddlewares from './login/login-middleware'
 import { setup as addGunMiddlewares } from './gun/gun-middleware'
 import UserDBPrivate from './db/mongo/user-privat-provider'
+import CronTasksRunner from './cron/TaskRunner'
 import addStorageMiddlewares from './storage/storageAPI'
 import addVerificationMiddlewares from './verification/verificationAPI'
 import addSendMiddlewares from './send/sendAPI'
 import addLoadTestMiddlewares from './loadtest/loadtest-middleware'
 import { rollbar, addRequestLogger } from '../imports/logger'
 import VerificationAPI from './verification/verification'
+import DisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
 
 export default (app: Router, env: any) => {
   // parse application/x-www-form-urlencoded
@@ -39,4 +41,8 @@ export default (app: Router, env: any) => {
     log.error(error)
     res.status(400).json({ message: error.message })
   })
+
+  // register & start cron tasks
+  CronTasksRunner.registerTask(DisposeEnrollmentsTask)
+  CronTasksRunner.startTasks()
 }
