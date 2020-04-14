@@ -16,5 +16,6 @@ export const WalletNonceSchema = new mongoose.Schema({
   },
   lockedAt: Date
 })
+WalletNonceSchema.index({ address: 1, networkId: 1 }, { unique: true }) // schema level
 
 export default mongoose.model(MODEL_WALLET_NONCE, WalletNonceSchema)
