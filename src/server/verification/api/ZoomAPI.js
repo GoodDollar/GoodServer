@@ -1,3 +1,5 @@
+// @flow
+
 import Axios from 'axios'
 import { merge, pick } from 'lodash'
 
@@ -7,9 +9,10 @@ const LIVENESS_PASSED = 0
 
 class ZoomAPI {
   http = null
+  defaultMinimalMatchLevel = null
 
   constructor(Config, httpFactory) {
-    const { zoomLicenseKey, zoomServerBaseUrl } = Config
+    const { zoomLicenseKey, zoomServerBaseUrl, zoomMinimalMatchLevel } = Config
 
     this.http = httpFactory({
       baseURL: zoomServerBaseUrl,
@@ -22,6 +25,7 @@ class ZoomAPI {
 
     this._configureRequests()
     this._configureResponses()
+    this.defaultMinimalMatchLevel = Number(zoomMinimalMatchLevel)
   }
 
   async detectLiveness(payload) {
@@ -67,8 +71,23 @@ class ZoomAPI {
     return response
   }
 
-  async faceSearch(payload) {
-    return this.http.post('/search', payload)
+  async faceSearch(payload, minimalMatchLevel: number = null) {
+    const { http, defaultMinimalMatchLevel } = this
+    const response = await http.post('/search', payload)
+    let minMatchLevel = minimalMatchLevel
+
+    if (null === minMatchLevel) {
+      minMatchLevel = defaultMinimalMatchLevel
+    }
+
+    if (minMatchLevel) {
+      const { results } = response
+      minMatchLevel = Number(minMatchLevel)
+
+      response.results = results.filter(({ matchLevel }) => Number(matchLevel) >= minMatchLevel)
+    }
+
+    return response
   }
 
   _checkLivenessStatus(response) {
