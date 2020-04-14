@@ -80,7 +80,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
           // publish to subscribers
           sessionRef.put({ isDuplicate: false, isLive: true, isEnrolled: true })
-          enrollmentResponse = { success: true, enrollmentResponse: { alreadyEnrolled: true } }
+          enrollmentResponse = { success: true, enrollmentResponse: { isVerified: true, alreadyEnrolled: true } }
         } else {
           enrollmentResponse = await processor.enroll(user, enrollmentIdentifier, payload)
         }
