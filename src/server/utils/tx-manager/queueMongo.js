@@ -77,11 +77,8 @@ export default class queueMongo {
    * @returns {Promise<void>}
    */
   async createListIfNotExists(addresses) {
-    const exists = await this.model.find({ address: { $in: addresses }, networkId: this.networkId }).lean()
     for (let address of addresses) {
-      if (!~exists.findIndex(e => e.address === address)) {
-        await this.createWallet(address)
-      }
+      await this.createWallet(address)
     }
   }
 
@@ -96,11 +93,17 @@ export default class queueMongo {
     try {
       const nonce = await this.getTransactionCount(address)
       log.debug(`init wallet ${address} with nonce ${nonce} in mongo`)
-      await this.model.create({
-        address,
-        nonce,
-        networkId: this.networkId
-      })
+      await this.model.findOneAndUpdate(
+        { address, networkId: this.networkId },
+        {
+          $setOnInsert: {
+            address,
+            nonce,
+            networkId: this.networkId
+          }
+        },
+        { upsert: true }
+      )
     } catch (e) {
       log.error('TX queueMongo (create)', { address, errMessage: e.message, e })
     }
