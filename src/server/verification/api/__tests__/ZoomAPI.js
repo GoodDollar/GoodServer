@@ -78,7 +78,7 @@ describe('ZoomAPI', () => {
       }
     })
 
-    expect(ZoomAPI.detectLiveness(payload)).resolves.toBeDefined()
+    await expect(ZoomAPI.detectLiveness(payload)).resolves.toBeDefined()
   })
 
   test('detectLiveness() throws if livenessStatus !== 0', async () => {
@@ -86,7 +86,7 @@ describe('ZoomAPI', () => {
       // unsuccessfull liveness response from zoom api docs here
     })
 
-    expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow('<error message from mocked response here>')
+    await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow('<error message from mocked response here>')
   })
 
   test('detectLiveness() handles low photo quality', async () => {
@@ -103,7 +103,7 @@ describe('ZoomAPI', () => {
     mockFaceSearch()
 
     // setting minimum match level = 0 to get all faces
-    expect(ZoomAPI.faceSearch(payload, 0)).resolves.toHaveProperty('results', [
+    await expect(ZoomAPI.faceSearch(payload, 0)).resolves.toHaveProperty('results', [
       {
         enrollmentIdentifier: 'fake-id-1',
         matchLevel: '0',
@@ -125,7 +125,7 @@ describe('ZoomAPI', () => {
   test('faceSearch() should filter by the minimum match level', async () => {
     mockFaceSearch()
 
-    expect(ZoomAPI.faceSearch(payload, 2)).resolves.toHaveProperty('results', [
+    await expect(ZoomAPI.faceSearch(payload, 2)).resolves.toHaveProperty('results', [
       // put here the faces having mtach level 2 or above
     ])
   })
@@ -154,9 +154,9 @@ describe('ZoomAPI', () => {
 
     const wrappedResponse = expect(ZoomAPI.submitEnrollment(enrollmentPayload)).resolves
 
-    wrappedResponse.toHaveProperty('isEnrolled', true)
-    wrappedResponse.toHaveProperty('livenessStatus', 0)
-    wrappedResponse.toHaveProperty('enrollmentIdentifier', enrollmentIdentifier)
+    await wrappedResponse.toHaveProperty('isEnrolled', true)
+    await wrappedResponse.toHaveProperty('livenessStatus', 0)
+    await wrappedResponse.toHaveProperty('enrollmentIdentifier', enrollmentIdentifier)
   })
 
   test("submitEnrollment() should throw when liveness couldn't be determined", async () => {
@@ -164,7 +164,9 @@ describe('ZoomAPI', () => {
       // "enrollment failed because Liveness could not be determined" response from zoom api docs
     })
 
-    expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow('<error message from mocked response here>')
+    await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow(
+      '<error message from mocked response here>'
+    )
   })
 
   test('submitEnrollment() should throw on service failures', async () => {
@@ -172,6 +174,8 @@ describe('ZoomAPI', () => {
       // any failure response from zoom api docs
     })
 
-    expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow('<error message from mocked response here>')
+    await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow(
+      '<error message from mocked response here>'
+    )
   })
 })

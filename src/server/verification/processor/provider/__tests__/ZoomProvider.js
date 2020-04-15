@@ -34,8 +34,8 @@ describe('ZoomProvider', () => {
     const onEnrollmentProcessing = jest.fn()
     const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).resolves
 
-    wrappedResponse.toHaveProperty('isVerified', true)
-    wrappedResponse.toHaveProperty('alreadyEnrolled', false)
+    await wrappedResponse.toHaveProperty('isVerified', true)
+    await wrappedResponse.toHaveProperty('alreadyEnrolled', false)
 
     expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: true })
     expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(2, { isDuplicate: false })
@@ -51,8 +51,8 @@ describe('ZoomProvider', () => {
     const onEnrollmentProcessing = jest.fn()
     const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).resolves
 
-    wrappedResponse.toHaveProperty('isVerified', true)
-    wrappedResponse.toHaveProperty('alreadyEnrolled', true)
+    await wrappedResponse.toHaveProperty('isVerified', true)
+    await wrappedResponse.toHaveProperty('alreadyEnrolled', true)
 
     expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: true })
     expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(2, { isDuplicate: false })
@@ -66,10 +66,10 @@ describe('ZoomProvider', () => {
     const onEnrollmentProcessing = jest.fn()
     const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
 
-    wrappedResponse.toThrow('<message from response mocked>')
-    wrappedResponse.toHaveProperty('response')
-    wrappedResponse.toHaveProperty('response.isLive', false)
-    wrappedResponse.toHaveProperty('response.isVerified', false)
+    await wrappedResponse.toThrow('<message from response mocked>')
+    await wrappedResponse.toHaveProperty('response')
+    await wrappedResponse.toHaveProperty('response.isLive', false)
+    await wrappedResponse.toHaveProperty('response.isVerified', false)
 
     expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: false })
   })
@@ -82,10 +82,10 @@ describe('ZoomProvider', () => {
     const onEnrollmentProcessing = jest.fn()
     const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
 
-    wrappedResponse.toThrow('Duplicate with identifier')
-    wrappedResponse.toHaveProperty('response')
-    wrappedResponse.toHaveProperty('response.isDuplicate', true)
-    wrappedResponse.toHaveProperty('response.isVerified', false)
+    await wrappedResponse.toThrow('Duplicate with identifier')
+    await wrappedResponse.toHaveProperty('response')
+    await wrappedResponse.toHaveProperty('response.isDuplicate', true)
+    await wrappedResponse.toHaveProperty('response.isVerified', false)
 
     expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: true })
     expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(2, { isDuplicate: true })
@@ -100,10 +100,10 @@ describe('ZoomProvider', () => {
     const onEnrollmentProcessing = jest.fn()
     const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
 
-    wrappedResponse.toThrow('<message from failed response mocked>')
-    wrappedResponse.toHaveProperty('response')
-    wrappedResponse.toHaveProperty('response.isEnrolled', false)
-    wrappedResponse.toHaveProperty('response.isVerified', false)
+    await wrappedResponse.toThrow('<message from failed response mocked>')
+    await wrappedResponse.toHaveProperty('response')
+    await wrappedResponse.toHaveProperty('response.isEnrolled', false)
+    await wrappedResponse.toHaveProperty('response.isVerified', false)
 
     expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: true })
     expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(2, { isDuplicate: false })
@@ -117,8 +117,8 @@ describe('ZoomProvider', () => {
     const onEnrollmentProcessing = jest.fn()
     const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
 
-    wrappedResponse.toThrow('<message from failed response mocked>')
-    wrappedResponse.not.toHaveProperty('response')
+    await wrappedResponse.toThrow('<message from failed response mocked>')
+    await wrappedResponse.not.toHaveProperty('response')
 
     expect(onEnrollmentProcessing).not.toHaveBeenCalled()
   })
