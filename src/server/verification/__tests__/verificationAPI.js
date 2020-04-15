@@ -165,24 +165,6 @@ describe('verificationAPI', () => {
     expect(res.body).toMatchObject({ ok: -1, message: 'Wrong web3 token or email' })
   })
 
-  /*test('/verify/facerecognition creates proper verification data from a valid request', async () => {
-    const token = await getToken(server)
-    let req = new FormData()
-
-    req.append('sessionId', 'fake-session-id')
-    const facemap = fs.createReadStream('./facemap.zip')
-    const auditTrailImage = fs.createReadStream('./auditTrailImage.jpg')
-    req.append('facemap', facemap, { contentType: 'application/zip' })
-    req.append('auditTrailImage', auditTrailImage, { contentType: 'image/jpeg' })
-    req.append('enrollmentIdentifier', '0x9d5499D5099DE6Fe5A8f39874617dDFc967cA6e5')
-    const res = await request(server)
-      .post('/verify/facerecognition')
-      .send(req)
-      .set('Authorization', `Bearer ${token}`)
-      .set('Accept', `multipart/form-data;`)
-    console.log({ res })
-  })*/
-
   test('/verify/w3/logintoken', async () => {
     const token = await getToken(server)
 
