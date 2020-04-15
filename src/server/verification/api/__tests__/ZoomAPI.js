@@ -137,9 +137,9 @@ describe('ZoomAPI', () => {
       payload,
       process.env.ZOOM_MINIMAL_MATCHLEVEL
     )
-    const { results: resultsByDefault } = await ZoomAPI.faceSearch(payload)
+    const { results: resultsByDefaultMinMatchLevel } = await ZoomAPI.faceSearch(payload)
 
-    // expect resultsByEnvMinMatchLevel to be deef equal to resultsByDefault
+    // expect resultsByEnvMinMatchLevel to be deep equal to resultsByDefaultMinMatchLevel
   })
 
   test('faceSearch() should throw on service failure', async () => {
@@ -148,7 +148,7 @@ describe('ZoomAPI', () => {
   })
 
   test('submitEnrollment() should enroll face and return enrollment status and identifier', async () => {
-    zoomServiceMock.onPost('/liveness').reply(200, {
+    zoomServiceMock.onPost('/enrollment').reply(200, {
       // "enrolled successfully" response from zoom api docs
     })
 
@@ -160,7 +160,7 @@ describe('ZoomAPI', () => {
   })
 
   test("submitEnrollment() should throw when liveness couldn't be determined", async () => {
-    zoomServiceMock.onPost('/liveness').reply(200, {
+    zoomServiceMock.onPost('/enrollment').reply(200, {
       // "enrollment failed because Liveness could not be determined" response from zoom api docs
     })
 
@@ -168,7 +168,7 @@ describe('ZoomAPI', () => {
   })
 
   test('submitEnrollment() should throw on service failures', async () => {
-    zoomServiceMock.onPost('/liveness').reply(400, {
+    zoomServiceMock.onPost('/enrollment').reply(400, {
       // any failure response from zoom api docs
     })
 
