@@ -99,6 +99,24 @@ describe('ZoomAPI', () => {
     // check that error message should be "Liveness could not be determined because wearing glasses were detected."
   })
 
+  test('detectLiveness() should throw on service failures', async () => {
+    zoomServiceMock
+      .onPost('/liveness')
+      .replyOnce(400, {
+        // any failure response from zoom api docs
+      })
+      .onPost('/liveness')
+      .replyOnce(500)
+      .onPost('/liveness')
+      .networkErrorOnce()
+
+    await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow('<error message from mocked response here>')
+
+    await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow('Error: Request failed with status code 500')
+
+    await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow('Error: Network Error')
+  })
+
   test('faceSearch() should return enrollments with match levels', async () => {
     mockFaceSearch()
 
@@ -143,8 +161,21 @@ describe('ZoomAPI', () => {
   })
 
   test('faceSearch() should throw on service failure', async () => {
-    // mock any failure response from zoom docs
-    // expect faceSearch to rejects with error message from the failed response
+    zoomServiceMock
+      .onPost('/liveness')
+      .replyOnce(400, {
+        // any failure response from zoom api docs
+      })
+      .onPost('/liveness')
+      .replyOnce(500)
+      .onPost('/liveness')
+      .networkErrorOnce()
+
+    await expect(ZoomAPI.faceSearch(payload)).rejects.toThrow('<error message from mocked response here>')
+
+    await expect(ZoomAPI.faceSearch(payload)).rejects.toThrow('Error: Request failed with status code 500')
+
+    await expect(ZoomAPI.faceSearch(payload)).rejects.toThrow('Error: Network Error')
   })
 
   test('submitEnrollment() should enroll face and return enrollment status and identifier', async () => {
@@ -170,12 +201,24 @@ describe('ZoomAPI', () => {
   })
 
   test('submitEnrollment() should throw on service failures', async () => {
-    zoomServiceMock.onPost('/enrollment').reply(400, {
-      // any failure response from zoom api docs
-    })
+    zoomServiceMock
+      .onPost('/enrollment')
+      .replyOnce(400, {
+        // any failure response from zoom api docs
+      })
+      .onPost('/enrollment')
+      .replyOnce(500)
+      .onPost('/enrollment')
+      .networkErrorOnce()
 
     await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow(
       '<error message from mocked response here>'
     )
+
+    await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow(
+      'Error: Request failed with status code 500'
+    )
+
+    await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow('Error: Network Error')
   })
 })

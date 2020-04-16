@@ -117,15 +117,20 @@ describe('ZoomProvider', () => {
   })
 
   test('enroll() throws on any Zoom service error and terminates without returning any response or calling callback', async () => {
-    // via zoomServiceMock mock:
-    // - any failure /liveness response from zoom docs
+    zoomServiceMock
+      .onPost('/liveness')
+      .replyOnce(500)
+      .onPost('/liveness')
+      .networkErrorOnce()
 
-    const onEnrollmentProcessing = jest.fn()
-    const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
+    for (const message of ['Error: Request failed with status code 500', 'Error: Network Error']) {
+      const onEnrollmentProcessing = jest.fn()
+      const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
 
-    await wrappedResponse.toThrow('<message from failed response mocked>')
-    await wrappedResponse.not.toHaveProperty('response')
+      await wrappedResponse.toThrow(message) // eslint-disable-line no-await-in-loop
+      await wrappedResponse.not.toHaveProperty('response') // eslint-disable-line no-await-in-loop
 
-    expect(onEnrollmentProcessing).not.toHaveBeenCalled()
+      expect(onEnrollmentProcessing).not.toHaveBeenCalled()
+    }
   })
 })

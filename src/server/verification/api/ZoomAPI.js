@@ -1,7 +1,7 @@
 // @flow
 
 import Axios from 'axios'
-import { merge, pick } from 'lodash'
+import { merge, pick, isUndefined } from 'lodash'
 
 import Config from '../../server.config'
 
@@ -140,11 +140,15 @@ class ZoomAPI {
     response.use(responseInterceptor, async exception => {
       const { response } = exception
 
-      if (!response) {
-        throw exception
+      if (response) {
+        if (!isUndefined(response.data)) {
+          return responseInterceptor(response)
+        }
+
+        delete exception.response
       }
 
-      return responseInterceptor(response)
+      throw exception
     })
   }
 }
