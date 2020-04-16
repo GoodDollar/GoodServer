@@ -10,7 +10,8 @@ const enrollmentIdentifier = 'fake-enrollment-identifier'
 const payload = {
   sessionId: 'fake-session-id',
   faceMap: Buffer.alloc(32),
-  auditTrailImage: 'data:image/png:FaKEimagE=='
+  auditTrailImage: 'data:image/png:FaKEimagE==',
+  lowQualityAuditTrailImage: 'data:image/png:FaKEimagE=='
 }
 
 describe('ZoomProvider', () => {
@@ -23,6 +24,11 @@ describe('ZoomProvider', () => {
   afterAll(() => {
     zoomServiceMock.restore()
     zoomServiceMock = null
+  })
+
+  test('isValid() validates payload if facemap and images are present', () => {
+    expect(ZoomProvider.isPayloadValid(payload)).toBeTruthy()
+    expect(ZoomProvider.isPayloadValid({})).toBeFalsy()
   })
 
   test('enroll() returns successfull response if liveness passed, no duplicates and enrollment successfull', async () => {

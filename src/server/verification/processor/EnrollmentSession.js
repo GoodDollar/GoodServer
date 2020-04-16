@@ -19,7 +19,7 @@ export default class EnrollmentSession {
   }
 
   async enroll(enrollmentIdentifier, payload: any): Promise<any> {
-    const { gun, provider, user, onEnrollmentProcessing } = this
+    const { gun, provider, onEnrollmentProcessing } = this
     const { sessionId } = payload
     const sessionRef = gun.session(sessionId)
     let result = { success: true }
