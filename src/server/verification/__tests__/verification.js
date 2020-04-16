@@ -4,15 +4,14 @@ import UserDBPrivate from '../../db/mongo/user-privat-provider'
 
 jest.genMockFromModule('../../gun/gun-middleware.js')
 
-const emailVerificationCode = {
-  code: 123456
-}
+const emailVerificationCode = 123456
+
 const testUser = {
   identifier: '01',
   fullName: 'mongo_test',
   email: 'test@test.test',
   mobile: '123456789',
-  emailVerificationCode: emailVerificationCode.code
+  emailVerificationCode
 }
 
 describe('verification', () => {
@@ -34,7 +33,8 @@ describe('verification', () => {
   })
 
   test('verifyUser email true', async () => {
-    const isVerified = await verification.verifyEmail(testUser, emailVerificationCode)
+    const code = emailVerificationCode
+    const isVerified = await verification.verifyEmail(testUser, { code })
 
     expect(isVerified).toBeTruthy()
   })
