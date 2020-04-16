@@ -29,7 +29,7 @@ class ZoomAPI {
   }
 
   async detectLiveness(payload) {
-    const response = await this.http.post('/enrollment', payload)
+    const response = await this.http.post('/liveness', payload)
 
     this._checkLivenessStatus(response)
     return response

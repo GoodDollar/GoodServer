@@ -28,7 +28,7 @@ export default class EnrollmentSession {
     this.onEnrollmentStarted()
 
     try {
-      const enrollmentResult = await provider.enroll(user, enrollmentIdentifier, payload, onEnrollmentProcessing)
+      const enrollmentResult = await provider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)
 
       await this.onEnrollmentCompleted()
       Object.assign(result, { enrollmentResult })

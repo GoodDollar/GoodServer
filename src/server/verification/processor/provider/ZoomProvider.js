@@ -9,8 +9,6 @@ class ZoomProvider implements IEnrollmentProvider {
   api = null
 
   constructor(api) {
-    super()
-
     this.api = api
   }
 

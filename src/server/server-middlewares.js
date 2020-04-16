@@ -13,8 +13,7 @@ import addSendMiddlewares from './send/sendAPI'
 import addLoadTestMiddlewares from './loadtest/loadtest-middleware'
 import { rollbar, addRequestLogger } from '../imports/logger'
 import VerificationAPI from './verification/verification'
-import DisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
-
+import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
 export default (app: Router, env: any) => {
   // parse application/x-www-form-urlencoded
   // for easier testing with Postman or plain HTML forms
@@ -42,7 +41,8 @@ export default (app: Router, env: any) => {
     res.status(400).json({ message: error.message })
   })
 
-  // register & start cron tasks
-  CronTasksRunner.registerTask(DisposeEnrollmentsTask)
+  const disposeEnrollmentsTask = createDisposeEnrollmentsTask(UserDBPrivate)
+
+  CronTasksRunner.registerTask(disposeEnrollmentsTask)
   CronTasksRunner.startTasks()
 }

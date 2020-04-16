@@ -106,7 +106,7 @@ const enrollmentProcessors = new WeakMap()
 
 export default storage => {
   if (!enrollmentProcessors.has(storage)) {
-    const enrollmentProcessor = new EnrollmentProcessor(storage, AdminWallet, GunDBPublic)
+    const enrollmentProcessor = new EnrollmentProcessor(storage, Config, AdminWallet, GunDBPublic)
 
     enrollmentProcessor.registerProvier(ZoomProvider)
     enrollmentProcessors.set(storage, enrollmentProcessor)
