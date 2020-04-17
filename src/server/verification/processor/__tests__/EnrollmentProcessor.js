@@ -44,7 +44,7 @@ describe('EnrollmentProcessor', () => {
   })
 
   afterEach(() => {
-    invokeMap([updateUserMock, updateSessionMock, getSessionRefMock, whitelistUserMock], 'mockClear')
+    invokeMap([updateUserMock, updateSessionMock, getSessionRefMock, whitelistUserMock], 'mockReset')
 
     zoomServiceMock.reset()
   })
