@@ -19,12 +19,14 @@ const addUserToWhiteList = async (userRecord: UserRecord) => {
   let user = await UserDBPrivate.getUser(userRecord.identifier)
   const whiteList = get(user, 'isCompleted.whiteList', false)
   if (conf.disableFaceVerification && !whiteList) {
-    await AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey)
+    return AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey)
       .then(async r => {
         await UserDBPrivate.completeStep(user.identifier, 'whiteList')
+        return true
       })
       .catch(e => {
-        logger.error('failed whitelisting', userRecord)
+        logger.error('failed whitelisting', e.message, e, { userRecord })
+        return false
       })
   }
   return true
@@ -34,6 +36,7 @@ const updateMauticRecord = async (userRecord: UserRecord) => {
   if (!userRecord.mauticId) {
     const mauticRecord = await Mautic.createContact(userRecord).catch(e => {
       logger.error('Create Mautic Record Failed', { e })
+      throw e
     })
     const mauticId = !userRecord.mauticId ? get(mauticRecord, 'contact.fields.all.id', -1) : userRecord.mauticId
     await UserDBPrivate.updateUser({ identifier: userRecord.identifier, mauticId })
@@ -44,7 +47,7 @@ const updateMauticRecord = async (userRecord: UserRecord) => {
 }
 
 const updateW3Record = async (user: any) => {
-  if (conf.env !== 'test' && conf.isEtoro === false) {
+  if (conf.env !== 'test' && conf.enableInvites === false) {
     return
   }
   let userDB = await UserDBPrivate.getUser(user.identifier)
@@ -93,13 +96,14 @@ const topUserWallet = async (userRecord: UserRecord) => {
     return Promise.race([AdminWallet.topWallet(userRecord.gdAddress, null, true), Timeout(15000, 'topWallet')])
       .then(r => {
         UserDBPrivate.completeStep(userRecord.identifier, 'topWallet')
-        return { ok: 1 }
+        return true
       })
       .catch(e => {
         logger.error('New user topping failed', { errMessage: e.message })
-        return { ok: 0, error: 'New user topping failed' }
+        return false
       })
   }
+  return true
 }
 
 export default {

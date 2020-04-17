@@ -1,11 +1,12 @@
 import AdminWallet from '../AdminWallet'
 import txManager from '../../utils/tx-manager'
 import Web3 from 'web3'
+import delay from 'delay'
 
 const web3 = new Web3()
 const generateWalletAddress = () => web3.eth.accounts.create().address
 
-jest.setTimeout(10000)
+jest.setTimeout(20000)
 describe('adminwallet', () => {
   beforeAll(async () => {
     await AdminWallet.ready
@@ -14,6 +15,8 @@ describe('adminwallet', () => {
   test(`adminWallet top wallet shouldn't throws an error when user is not whitelisted/verified`, async () => {
     const unverifiedAddress = generateWalletAddress()
     const tx = await AdminWallet.topWallet(unverifiedAddress, null).catch(e => false)
+    const balance = await AdminWallet.web3.eth.getBalance(unverifiedAddress)
+    expect(balance).toEqual('1000000000000000')
     expect(tx).toBeTruthy()
   })
 
@@ -22,19 +25,17 @@ describe('adminwallet', () => {
   })
 
   test('adminWallet can whitelist user', async () => {
-    await AdminWallet.removeWhitelisted('0x888185b656fe770677a91412f9f09B23A787242A').catch(_ => _)
-    await AdminWallet.whitelistUser('0x888185b656fe770677a91412f9f09B23A787242A', 'did:gd')
-
-    const isVerified = await AdminWallet.isVerified('0x888185b656fe770677a91412f9f09B23A787242A')
-
+    const unverifiedAddress = generateWalletAddress()
+    const tx = await AdminWallet.whitelistUser(unverifiedAddress, 'did:gd' + Math.random())
+    const isVerified = await AdminWallet.isVerified(unverifiedAddress)
     expect(isVerified).toBeTruthy()
   })
 
   test('adminWallet can blacklist user', async () => {
-    await AdminWallet.removeWhitelisted('0x888185b656fe770677a91412f9f09B23A787242A')
-
-    const isVerified = await AdminWallet.isVerified('0x888185b656fe770677a91412f9f09B23A787242A')
-
+    const unverifiedAddress = generateWalletAddress()
+    const tx = await AdminWallet.whitelistUser(unverifiedAddress, 'did:gd' + Math.random())
+    const tx2 = await AdminWallet.removeWhitelisted(unverifiedAddress)
+    const isVerified = await AdminWallet.isVerified(unverifiedAddress)
     expect(isVerified).not.toBeTruthy()
   })
 
@@ -51,11 +52,18 @@ describe('adminwallet', () => {
   test('adminWallet receive queue nonce', async () => {
     const promises = []
     for (let i = 0; i < 5; i++) {
+      // await delay(300) //hack otherwise txes fail, looks like a web3 issue, sending txes out of order
       const unverifiedAddress = generateWalletAddress()
-      // console.log('unverifiedAddress', unverifiedAddress)
-      promises.push(AdminWallet.topWallet(unverifiedAddress, null, true))
+      promises.push(
+        AdminWallet.topWallet(unverifiedAddress)
+          .then(tx => tx.blockNumber)
+          .catch(e => e)
+      )
     }
-    const res = await Promise.all(promises).catch(_ => false)
+    const res = await Promise.all(promises)
+    const uniqueBlocks = new Set(res)
+    res.forEach(n => expect(n).toEqual(expect.any(Number))) //check it was excuted on one or two block
+    expect(uniqueBlocks.size).toBeLessThanOrEqual(2)
     expect(res).toBeTruthy()
   })
 

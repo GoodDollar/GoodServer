@@ -1,6 +1,7 @@
 import WalletNonce from '../../db/mongo/models/wallet-nonce'
 import logger from '../../../imports/logger'
 import conf from '../../server.config'
+import moment from 'moment'
 
 const log = logger.child({ from: 'queueMongo' })
 export default class queueMongo {
@@ -39,13 +40,16 @@ export default class queueMongo {
    */
   async getWalletNonce(addresses) {
     try {
+      const expired = moment()
+        .subtract(conf.mongoQueueMaxLockTime, 'seconds')
+        .toDate()
       const filter = {
         address: { $in: addresses },
         networkId: this.networkId,
         $or: [
           { isLock: false },
           {
-            lockedAt: { $lte: +new Date() - conf.mongoQueueMaxLockTime * 1000 },
+            lockedAt: { $lte: expired },
             isLock: true
           }
         ]
@@ -73,11 +77,8 @@ export default class queueMongo {
    * @returns {Promise<void>}
    */
   async createListIfNotExists(addresses) {
-    const exists = await this.model.find({ address: { $in: addresses }, networkId: this.networkId }).lean()
     for (let address of addresses) {
-      if (!~exists.findIndex(e => e.address === address)) {
-        await this.createWallet(address)
-      }
+      await this.createWallet(address)
     }
   }
 
@@ -92,11 +93,17 @@ export default class queueMongo {
     try {
       const nonce = await this.getTransactionCount(address)
       log.debug(`init wallet ${address} with nonce ${nonce} in mongo`)
-      await this.model.create({
-        address,
-        nonce,
-        networkId: this.networkId
-      })
+      await this.model.findOneAndUpdate(
+        { address, networkId: this.networkId },
+        {
+          $setOnInsert: {
+            address,
+            nonce,
+            networkId: this.networkId
+          }
+        },
+        { upsert: true }
+      )
     } catch (e) {
       log.error('TX queueMongo (create)', { address, errMessage: e.message, e })
     }
@@ -199,7 +206,8 @@ export default class queueMongo {
    */
   async isLocked(address) {
     const wallet = await this.model.findOne({ address, networkId: this.networkId })
-
-    return Boolean(wallet && wallet.isLock)
+    const expired = moment().subtract(conf.mongoQueueMaxLockTime, 'seconds')
+    const lockNotExpired = wallet && wallet.lockedAt && expired.isBefore(wallet.lockedAt)
+    return Boolean(wallet && (wallet.isLock && lockNotExpired))
   }
 }

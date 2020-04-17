@@ -18,8 +18,8 @@ export default class queueMutex {
   async createListIfNotExists(addresses) {
     for (let address of addresses) {
       if (!this.getWallet(address)) {
-        await this.createWallet(address)
-        log.info('created mutex for address:', { address })
+        const data = await this.createWallet(address)
+        log.info('created mutex for address:', { address, nonce: data.nonce })
       }
     }
   }
@@ -118,15 +118,17 @@ export default class queueMutex {
   async getFirstFreeAddress(addresses) {
     return new Promise(resolve => {
       const interval = setInterval(() => {
-        for (let address of addresses) {
-          if (this.isLocked(address) === false) {
-            log.debug('getFirstFreeAddress: address not locked', { address })
+        //use random to simulate real conditions, otherwise same address will be taken on single host
+        const address = addresses[Math.floor(Math.random() * addresses.length)]
+        // for (let address of addresses) {
+        if (this.isLocked(address) === false) {
+          log.debug('getFirstFreeAddress: address not locked', { address })
 
-            clearInterval(interval)
-            return resolve(address)
-          }
-          log.debug('getFirstFreeAddress: address locked', { address })
+          clearInterval(interval)
+          return resolve(address)
         }
+        log.debug('getFirstFreeAddress: address locked', { address })
+        // }
       }, 100)
     })
   }

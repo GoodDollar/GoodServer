@@ -7,9 +7,10 @@ export type UserRecord = {
   jwt?: string,
   smsValidated?: boolean,
   isEmailConfirmed?: boolean,
-  otp?: { code: number, expirationDate: number },
-  isCompleted: { whiteList: boolean, w3Record: boolean, marketToken: boolean, topWallet: boolean },
-  emailVerificationCode?: string
+  otp?: { code: number, expirationDate: number, tempMauticId: string },
+  isCompleted?: { whiteList: boolean, w3Record: boolean, marketToken: boolean, topWallet: boolean },
+  emailVerificationCode?: string,
+  mauticId?: string
 }
 
 export type JWTRecord = {

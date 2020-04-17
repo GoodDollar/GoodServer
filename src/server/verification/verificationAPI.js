@@ -308,15 +308,19 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       if (conf.skipEmailVerification === false) {
         const code = generateOTP(6)
         if (!user.isEmailConfirmed || email !== currentEmail) {
-          Mautic.sendVerificationEmail(
-            {
-              fullName: userRec.fullName,
-              mauticId: (userRec.otp && userRec.otp.tempMauticId) || userRec.mauticId
-            },
-            code
-          )
-
-          log.debug('send new user email validation code', code)
+          try {
+            await Mautic.sendVerificationEmail(
+              {
+                ...userRec,
+                mauticId: (userRec.otp && userRec.otp.tempMauticId) || userRec.mauticId
+              },
+              code
+            )
+            log.debug('sent new user email validation code', code)
+          } catch (e) {
+            log.error('failed sending email verification to user:', e.message, { userRec, code })
+            throw e
+          }
         }
 
         // updates/adds user with the emailVerificationCode to be used for verification later and with mauticId
@@ -449,6 +453,10 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       AdminWallet.redeemBonuses(user.gdAddress, bonusInWei, {
         onTransactionHash: hash => {
+          if (res.headersSent) {
+            log.error('checkHanukaBonus got tx hash but headers already sent', { hash, user })
+            return
+          }
           return res.status(200).json({
             ok: 1,
             hash
@@ -654,7 +662,10 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       //start lock before checking bonus status to prevent race condition
       const { release, fail } = await txManager.lock(currentUser.gdAddress, 0)
 
-      const w3User = await W3Helper.getUser(wallet_token)
+      const w3User = await W3Helper.getUser(wallet_token).catch(e => {
+        log.error('failed fetching w3 user', { errMessage: e.message, e, wallet_token, currentUser })
+        return false
+      })
 
       if (!w3User) {
         release()

@@ -50,6 +50,7 @@ describe('storageAPI', () => {
   test('check addUserToWhiteList', async () => {
     const creds = await getCreds(true)
     let userRecord = { ...creds, ...user, gdAddress: creds.address }
+    userRecord.profilePublicKey = '' + Math.random()
     await addUserSteps.addUserToWhiteList(userRecord)
     const userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')
     expect(userIsCompleted.whiteList).toBeTruthy()
