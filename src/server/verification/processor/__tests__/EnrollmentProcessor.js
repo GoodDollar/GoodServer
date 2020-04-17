@@ -13,8 +13,10 @@ let enrollmentProcessor
 const updateUserMock = jest.fn()
 const updateSessionMock = jest.fn()
 const whitelistUserMock = jest.fn()
-const getSessionRefMock = jest.fn(() => ({ put: updateSessionMock }))
+const getSessionRefMock = jest.fn()
 const getSessionRefImplementation = GunDBPublic.session
+
+getSessionRefMock.mockReturnValue({ put: updateSessionMock })
 
 const enrollmentIdentifier = 'fake-enrollment-identifier'
 
