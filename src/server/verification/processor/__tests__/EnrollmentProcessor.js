@@ -14,6 +14,8 @@ let enrollmentProcessor
 
 const updateUserMock = jest.fn()
 const updateSessionMock = jest.fn()
+const whitelistUserMock = jest.fn()
+const getSessionRefMock = jest.fn(() => ({ put: updateSessionMock }))
 
 const enrollmentIdentifier = 'fake-enrollment-identifier'
 
@@ -35,14 +37,15 @@ describe('EnrollmentProcessor', () => {
   beforeAll(() => {
     modulesToMock.forEach(jest.mock)
 
-    GunDBPublic.session.mockImplementation(() => ({ put: updateSessionMock }))
+    GunDBPublic.mockImplementation(() => ({ session: getSessionRefMock }))
+    AdminWallet.mockImplementation(() => ({ whitelistUser: whitelistUserMock }))
 
     enrollmentProcessor = createEnrollmentProcessor({ updateUser: updateUserMock })
     zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
   })
 
   afterEach(() => {
-    invokeMap([updateUserMock, updateSessionMock, GunDBPublic.session, AdminWallet.whitelistUser], 'mockReset')
+    invokeMap([updateUserMock, updateSessionMock, getSessionRefMock, whitelistUserMock], 'mockReset')
 
     zoomServiceMock.reset()
   })
@@ -64,7 +67,6 @@ describe('EnrollmentProcessor', () => {
   })
 
   test("enroll() proxies provider's response, updates session and whitelists user on success", async () => {
-    // via zoomServiceMock mock:
     zoomServiceMock.onPost('/liveness').reply(200, {
       meta: {
         ok: true,
@@ -79,6 +81,7 @@ describe('EnrollmentProcessor', () => {
         livenessStatus: 0
       }
     })
+
     zoomServiceMock.onPost('/search').reply(200, {
       meta: {
         ok: true,
@@ -93,6 +96,7 @@ describe('EnrollmentProcessor', () => {
         }
       }
     })
+
     zoomServiceMock.onPost('/enrollment').reply(200, {
       meta: {
         ok: true,
@@ -104,7 +108,7 @@ describe('EnrollmentProcessor', () => {
         auditTrailVerificationMessage: '...',
         auditTrailVerificationStatus: 0,
         createdDate: '2019-09-16T17:30:40+00:00',
-        enrollmentIdentifier: enrollmentIdentifier,
+        enrollmentIdentifier,
         errorMessageFromZoomServer: null,
         errorStatusFromZoomServer: 0,
         faceMapType: 0,
@@ -123,7 +127,7 @@ describe('EnrollmentProcessor', () => {
     await wrappedResponse.toHaveProperty('success', true)
     await wrappedResponse.toHaveProperty('enrollmentResult.isVerified', true)
 
-    expect(GunDBPublic.session).toBeCalledWith(payload.sessionId)
+    expect(getSessionRefMock).toBeCalledWith(payload.sessionId)
     expect(updateSessionMock).toHaveBeenNthCalledWith(1, { isStarted: true })
     expect(updateSessionMock).toHaveBeenNthCalledWith(2, { isLive: true })
     expect(updateSessionMock).toHaveBeenNthCalledWith(3, { isDuplicate: false })
@@ -131,33 +135,35 @@ describe('EnrollmentProcessor', () => {
     expect(updateSessionMock).toHaveBeenNthCalledWith(5, { isWhitelisted: true })
 
     expect(updateUserMock).toHaveBeenLastCalledWith({ identifier: loggedInAs, isVerified: true })
-    expect(AdminWallet.whitelistUser).toHaveBeenLastCalledWith(gdAddress, profilePublickey)
+    expect(whitelistUserMock).toHaveBeenLastCalledWith(gdAddress, profilePublickey)
   })
 
   test("enroll() proxies provider's error and sets error + non-whitelisted state in the session", async () => {
-    // via zoomServiceMock mock:
+    const failedLivenessCheckMessage =
+      'Liveness was not processed. This occurs when processing ZoOm 2D FaceMaps because they do not have enough data to determine Liveness.'
+
     zoomServiceMock.onPost('/liveness').reply(200, {
       meta: {
         ok: true,
         code: 200,
         mode: 'dev',
-        message: 'The FaceTec 3D FaceMap evaluated and Liveness was proven.'
+        message: failedLivenessCheckMessage
       },
       data: {
         glasses: false,
         isLowQuality: false,
         isReplayFaceMap: true,
-        livenessStatus: 0
+        livenessStatus: 2
       }
     })
 
     const wrappedResponse = expect(enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)).rejects
 
-    await wrappedResponse.toThrow('<error from response mocked>')
+    await wrappedResponse.toThrow(failedLivenessCheckMessage)
     await wrappedResponse.toHaveProperty('response.success', false)
     await wrappedResponse.toHaveProperty('response.enrollmentResult.isVerified', false)
 
-    expect(GunDBPublic.session).toBeCalledWith(payload.sessionId)
+    expect(getSessionRefMock).toBeCalledWith(payload.sessionId)
     expect(updateSessionMock).toHaveBeenNthCalledWith(1, { isStarted: true })
     expect(updateSessionMock).toHaveBeenNthCalledWith(2, { isLive: false })
 
@@ -165,7 +171,7 @@ describe('EnrollmentProcessor', () => {
       isLive: false,
       isDuplicate: true,
       isWhitelisted: false,
-      isError: '<error from response mocked>'
+      isError: failedLivenessCheckMessage
     })
   })
 })
