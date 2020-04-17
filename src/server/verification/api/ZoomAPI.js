@@ -1,7 +1,7 @@
 // @flow
 
 import Axios from 'axios'
-import { merge, pick, isUndefined } from 'lodash'
+import { merge, pick, isPlainObject } from 'lodash'
 
 import Config from '../../server.config'
 
@@ -138,13 +138,15 @@ class ZoomAPI {
     const responseInterceptor = ({ data }) => merge(...Object.values(pick(data, 'meta', 'data')))
 
     response.use(responseInterceptor, async exception => {
-      const { response } = exception
+      const { response, message } = exception
 
-      if (response) {
-        if (!isUndefined(response.data)) {
-          return responseInterceptor(response)
-        }
+      if (response && isPlainObject(response.data)) {
+        const zoomResponse = responseInterceptor(response)
+        const { message: zoomMessage } = zoomResponse
 
+        exception.message = zoomMessage || message
+        exception.response = response
+      } else {
         delete exception.response
       }
 

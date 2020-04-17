@@ -117,8 +117,8 @@ describe('ZoomAPI', () => {
       .networkErrorOnce()
 
     await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow(livenessCheckServiceError)
-    await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow('Error: Request failed with status code 500')
-    await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow('Error: Network Error')
+    await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow('Request failed with status code 500')
+    await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow('Network Error')
   })
 
   test('faceSearch() should return enrollments with match levels', async () => {
@@ -157,7 +157,7 @@ describe('ZoomAPI', () => {
     const faceSearchServiceError = 'sessionId must be UUID in standard format.'
 
     zoomServiceMock
-      .onPost('/liveness')
+      .onPost('/search')
       .replyOnce(400, {
         meta: {
           ok: false,
@@ -167,14 +167,14 @@ describe('ZoomAPI', () => {
           subCode: 'invalidSessionId'
         }
       })
-      .onPost('/liveness')
+      .onPost('/search')
       .replyOnce(500)
-      .onPost('/liveness')
+      .onPost('/search')
       .networkErrorOnce()
 
     await expect(ZoomAPI.faceSearch(payload)).rejects.toThrow(faceSearchServiceError)
-    await expect(ZoomAPI.faceSearch(payload)).rejects.toThrow('Error: Request failed with status code 500')
-    await expect(ZoomAPI.faceSearch(payload)).rejects.toThrow('Error: Network Error')
+    await expect(ZoomAPI.faceSearch(payload)).rejects.toThrow('Request failed with status code 500')
+    await expect(ZoomAPI.faceSearch(payload)).rejects.toThrow('Network Error')
   })
 
   test('submitEnrollment() should enroll face and return enrollment status and identifier', async () => {
@@ -213,10 +213,8 @@ describe('ZoomAPI', () => {
       .replyOnce(500)
 
     await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow(enrollmentServiceError)
-    await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow('Error: Network Error')
+    await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow('Network Error')
 
-    await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow(
-      'Error: Request failed with status code 500'
-    )
+    await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow('Request failed with status code 500')
   })
 })

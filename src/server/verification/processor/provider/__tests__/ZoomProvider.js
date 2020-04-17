@@ -21,7 +21,7 @@ const testEnrollmentServiceError = async errorMessage => {
   const onEnrollmentProcessing = jest.fn()
   const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
 
-  await wrappedResponse.toThrow(`Error: ${errorMessage}`)
+  await wrappedResponse.toThrow(errorMessage)
   await wrappedResponse.not.toHaveProperty('response')
 
   expect(onEnrollmentProcessing).not.toHaveBeenCalled()
