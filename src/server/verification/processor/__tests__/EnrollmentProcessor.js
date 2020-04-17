@@ -13,7 +13,7 @@ let enrollmentProcessor
 const updateUserMock = jest.fn()
 const updateSessionMock = jest.fn()
 const whitelistUserMock = jest.fn()
-const getSessionRefMock = jest.fn(() => ({ put: updateSessionMock }))
+const getSessionRefMock = jest.fn()
 const getSessionRefImplementation = GunDBPublic.session
 
 const enrollmentIdentifier = 'fake-enrollment-identifier'
@@ -36,6 +36,8 @@ describe('EnrollmentProcessor', () => {
   beforeAll(() => {
     GunDBPublic.session = getSessionRefMock
     AdminWallet.whitelistUser = whitelistUserMock
+
+    getSessionRefMock.mockImplementation(() => ({ put: updateSessionMock }))
 
     enrollmentProcessor = createEnrollmentProcessor({ updateUser: updateUserMock })
     zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
