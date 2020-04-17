@@ -4,8 +4,8 @@ import MockAdapter from 'axios-mock-adapter'
 import { omit, invokeMap } from 'lodash'
 
 import createEnrollmentProcessor from '../EnrollmentProcessor'
-import { GunDBPublic } from '../../../gun/gun-middleware'
-import AdminWallet from '../../../blockchain/AdminWallet'
+import * as GunModule from '../../../gun/gun-middleware'
+import AdminWalletModule from '../../../blockchain/AdminWallet'
 
 const modulesToMock = ['../../../gun/gun-middleware', '../../../blockchain/AdminWallet']
 
@@ -37,8 +37,8 @@ describe('EnrollmentProcessor', () => {
   beforeAll(() => {
     modulesToMock.forEach(jest.mock)
 
-    GunDBPublic.mockImplementation(() => ({ session: getSessionRefMock }))
-    AdminWallet.mockImplementation(() => ({ whitelistUser: whitelistUserMock }))
+    GunModule.mockImplementation(() => ({ GunDBPublic: { session: getSessionRefMock } })) // eslint-disable-line
+    AdminWalletModule.mockImplementation(() => { whitelistUser: whitelistUserMock }) // eslint-disable-line
 
     enrollmentProcessor = createEnrollmentProcessor({ updateUser: updateUserMock })
     zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
