@@ -38,7 +38,7 @@ describe('EnrollmentProcessor', () => {
     modulesToMock.forEach(jest.mock)
 
     GunModule.mockImplementation(() => ({ GunDBPublic: { session: getSessionRefMock } })) // eslint-disable-line
-    AdminWalletModule.mockImplementation(() => { whitelistUser: whitelistUserMock }) // eslint-disable-line
+    AdminWalletModule.mockImplementation(() => ({ whitelistUser: whitelistUserMock })) // eslint-disable-line
 
     enrollmentProcessor = createEnrollmentProcessor({ updateUser: updateUserMock })
     zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
