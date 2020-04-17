@@ -159,11 +159,11 @@ describe('EnrollmentProcessor', () => {
       }
     })
 
-    const wrappedResponse = expect(enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)).rejects
+    const wrappedResponse = expect(enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)).resolves
 
     await wrappedResponse.toThrow(failedLivenessCheckMessage)
-    await wrappedResponse.toHaveProperty('response.success', false)
-    await wrappedResponse.toHaveProperty('response.enrollmentResult.isVerified', false)
+    await wrappedResponse.toHaveProperty('success', false)
+    await wrappedResponse.toHaveProperty('enrollmentResult.isVerified', false)
 
     expect(getSessionRefMock).toBeCalledWith(payload.sessionId)
     expect(updateSessionMock).toHaveBeenNthCalledWith(1, { isStarted: true })
