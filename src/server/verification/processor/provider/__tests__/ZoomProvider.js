@@ -3,6 +3,7 @@
 import MockAdapter from 'axios-mock-adapter'
 
 import ZoomProvider from '../ZoomProvider'
+import ZoomAPIMocks from '../../../api/__tests__/__util__'
 
 let zoomServiceMock
 const enrollmentIdentifier = 'fake-enrollment-identifier'
@@ -14,38 +15,26 @@ const payload = {
   lowQualityAuditTrailImage: 'data:image/png:FaKEimagE=='
 }
 
-const ResponseSuccessLiveness = {
-  meta: {
-    ok: true,
-    code: 200,
-    mode: 'dev',
-    message: 'The FaceTec 3D FaceMap evaluated and Liveness was proven.'
-  },
-  data: {
-    glasses: false,
-    isLowQuality: false,
-    isReplayFaceMap: true,
-    livenessStatus: 0
-  }
-}
+const {
+  mockSuccessLivenessCheck,
+  mockFailedLivenessCheck,
+  failedLivenessCheckMessage,
 
-const ResponseSuccessEnroll = {
-  meta: {
-    ok: true,
-    code: 200,
-    mode: 'dev',
-    message: 'The FaceMap was successfully enrolled.'
-  },
-  data: {
-    createdDate: '2019-09-16T17:30:40+00:00',
-    enrollmentIdentifier: enrollmentIdentifier,
-    faceMapType: 0,
-    glasses: false,
-    isEnrolled: true,
-    isLowQuality: false,
-    isReplayFaceMap: false,
-    livenessStatus: 0
-  }
+  mockEmptyResultsFaceSearch,
+
+  mockSuccessEnrollment,
+  mockFailedEnrollment,
+  failedEnrollmentMessage
+} = ZoomAPIMocks(zoomServiceMock)
+
+const testEnrollmentServiceError = async errorMessage => {
+  const onEnrollmentProcessing = jest.fn()
+  const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
+
+  await wrappedResponse.toThrow(`Error: ${errorMessage}`)
+  await wrappedResponse.not.toHaveProperty('response')
+
+  expect(onEnrollmentProcessing).not.toHaveBeenCalled()
 }
 
 describe('ZoomProvider', () => {
@@ -66,22 +55,9 @@ describe('ZoomProvider', () => {
   })
 
   test('enroll() returns successfull response if liveness passed, no duplicates and enrollment successfull', async () => {
-    zoomServiceMock.onPost('/liveness').reply(200, ResponseSuccessLiveness)
-    zoomServiceMock.onPost('/search').reply(200, {
-      meta: {
-        ok: true,
-        code: 200,
-        mode: 'dev',
-        message: 'The search request was processed successfully.'
-      },
-      data: {
-        results: [],
-        sourceFaceMap: {
-          isReplayFaceMap: false
-        }
-      }
-    })
-    zoomServiceMock.onPost('/enrollment').reply(200, ResponseSuccessEnroll)
+    mockSuccessLivenessCheck()
+    mockEmptyResultsFaceSearch()
+    mockSuccessEnrollment(enrollmentIdentifier)
 
     const onEnrollmentProcessing = jest.fn()
     const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).resolves
@@ -95,7 +71,8 @@ describe('ZoomProvider', () => {
   })
 
   test('enroll() returns successfull response if identifier was alreadsy enrolled', async () => {
-    zoomServiceMock.onPost('/liveness').reply(200, ResponseSuccessLiveness)
+    mockSuccessLivenessCheck()
+
     zoomServiceMock.onPost('/search').reply(200, {
       meta: {
         ok: true,
@@ -106,7 +83,7 @@ describe('ZoomProvider', () => {
       data: {
         results: [
           {
-            enrollmentIdentifier: enrollmentIdentifier,
+            enrollmentIdentifier,
             matchLevel: '0',
             auditTrailImage: 'data:image/png:FaKEimagE=='
           }
@@ -116,6 +93,7 @@ describe('ZoomProvider', () => {
         }
       }
     })
+
     zoomServiceMock.onPost('/enrollment').reply(200, {
       meta: {
         ok: false,
@@ -138,28 +116,12 @@ describe('ZoomProvider', () => {
   })
 
   test('enroll() throws if liveness check fails', async () => {
-    zoomServiceMock.onPost('/liveness').reply(200, {
-      meta: {
-        ok: true,
-        code: 200,
-        mode: 'dev',
-        message:
-          'Liveness was not processed. This occurs when processing ZoOm 2D FaceMaps because they do not have enough data to determine Liveness.'
-      },
-      data: {
-        glasses: false,
-        isLowQuality: false,
-        isReplayFaceMap: true,
-        livenessStatus: 2
-      }
-    })
+    mockFailedLivenessCheck()
 
     const onEnrollmentProcessing = jest.fn()
     const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
 
-    await wrappedResponse.toThrow(
-      'Liveness was not processed. This occurs when processing ZoOm 2D FaceMaps because they do not have enough data to determine Liveness.'
-    )
+    await wrappedResponse.toThrow(failedLivenessCheckMessage)
     await wrappedResponse.toHaveProperty('response')
     await wrappedResponse.toHaveProperty('response.isLive', false)
     await wrappedResponse.toHaveProperty('response.isVerified', false)
@@ -168,8 +130,10 @@ describe('ZoomProvider', () => {
   })
 
   test('enroll() throws if duplicates found', async () => {
-    // via zoomServiceMock mock:
-    zoomServiceMock.onPost('/liveness').reply(200, ResponseSuccessLiveness)
+    const duplicateEnrollmentIdentifier = 'another-one-fake-enrollment-identifier'
+
+    mockSuccessLivenessCheck()
+
     zoomServiceMock.onPost('/search').reply(200, {
       meta: {
         ok: true,
@@ -180,7 +144,7 @@ describe('ZoomProvider', () => {
       data: {
         results: [
           {
-            enrollmentIdentifier: 'test_dev',
+            enrollmentIdentifier: duplicateEnrollmentIdentifier,
             matchLevel: '1',
             auditTrailImage: 'data:image/png:FaKEimagE=='
           }
@@ -191,7 +155,7 @@ describe('ZoomProvider', () => {
     const onEnrollmentProcessing = jest.fn()
     const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
 
-    await wrappedResponse.toThrow("Duplicate with identifier 'test_dev' found.")
+    await wrappedResponse.toThrow(`Duplicate with identifier '${duplicateEnrollmentIdentifier}' found.`)
     await wrappedResponse.toHaveProperty('response')
     await wrappedResponse.toHaveProperty('response.isDuplicate', true)
     await wrappedResponse.toHaveProperty('response.isVerified', false)
@@ -201,50 +165,14 @@ describe('ZoomProvider', () => {
   })
 
   test('enroll() throws if enrollment fails in any other case expect alreadyEnrolled', async () => {
-    // via zoomServiceMock mock:
-    zoomServiceMock.onPost('/liveness').reply(200, ResponseSuccessLiveness)
-    zoomServiceMock.onPost('/search').reply(200, {
-      meta: {
-        ok: true,
-        code: 200,
-        mode: 'dev',
-        message: 'The search request was processed successfully.'
-      },
-      data: {
-        results: [],
-        sourceFaceMap: {
-          isReplayFaceMap: false
-        }
-      }
-    })
-    zoomServiceMock.onPost('/enrollment').reply(200, {
-      meta: {
-        ok: true,
-        code: 200,
-        mode: 'dev',
-        message: 'The FaceMap was not enrolled because Liveness could not be determined.'
-      },
-      data: {
-        auditTrailVerificationMessage: '...',
-        auditTrailVerificationStatus: 0,
-        createdDate: '2019-09-16T17:30:40+00:00',
-        enrollmentIdentifier: enrollmentIdentifier,
-        errorMessageFromZoomServer: null,
-        errorStatusFromZoomServer: 0,
-        faceMapType: 1,
-        glasses: true,
-        isEnrolled: false,
-        isLowQuality: false,
-        isReplayFaceMap: false,
-        livenessStatus: null
-      }
-    })
-    // - "enrollment failed because Liveness could not be determined" /enrollment response
+    mockSuccessLivenessCheck()
+    mockEmptyResultsFaceSearch()
+    mockFailedEnrollment(enrollmentIdentifier)
 
     const onEnrollmentProcessing = jest.fn()
     const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
 
-    await wrappedResponse.toThrow('Liveness could not be determined because wearing glasses were detected.')
+    await wrappedResponse.toThrow(failedEnrollmentMessage)
     await wrappedResponse.toHaveProperty('response')
     await wrappedResponse.toHaveProperty('response.isEnrolled', false)
     await wrappedResponse.toHaveProperty('response.isVerified', false)
@@ -261,14 +189,7 @@ describe('ZoomProvider', () => {
       .onPost('/liveness')
       .networkErrorOnce()
 
-    for (const message of ['Request failed with status code 500', 'Network Error']) {
-      const onEnrollmentProcessing = jest.fn()
-      const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
-
-      await wrappedResponse.toThrow(message) // eslint-disable-line no-await-in-loop
-      await wrappedResponse.not.toHaveProperty('response') // eslint-disable-line no-await-in-loop
-
-      expect(onEnrollmentProcessing).not.toHaveBeenCalled()
-    }
+    await testEnrollmentServiceError('Request failed with status code 500')
+    await testEnrollmentServiceError('Network Error')
   })
 })

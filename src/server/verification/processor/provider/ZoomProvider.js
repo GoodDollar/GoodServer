@@ -65,16 +65,17 @@ class ZoomProvider implements IEnrollmentProvider {
     const { results } = await api.faceSearch(payload)
     // excluding own enrollmentIdentifier
     const duplicate = results.find(({ enrollmentIdentifier: matchId }) => matchId !== enrollmentIdentifier)
+    // if there're at least one record left - we have a duplicate
+    const isDuplicate = !!duplicate
 
     // notifying about duplicates found or not
-    await notifyProcessor({ isDuplicate: !!duplicate })
+    await notifyProcessor({ isDuplicate })
 
     if (duplicate) {
+      const duplicateFoundMessage = `Duplicate with identifier '${duplicate.enrollmentIdentifier}' found.`
+
       // if duplicate found - throwing corresponding error
-      throwCustomException(`Duplicate with identifier '${duplicate.enrollmentIdentifier}' found.`, {
-        isDuplicate: !!duplicate,
-        ...duplicate
-      })
+      throwCustomException(duplicateFoundMessage, { isDuplicate, ...duplicate })
     }
 
     let enrollmentResult

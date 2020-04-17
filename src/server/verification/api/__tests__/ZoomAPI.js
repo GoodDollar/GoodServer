@@ -3,6 +3,7 @@
 import MockAdapter from 'axios-mock-adapter'
 
 import ZoomAPI from '../ZoomAPI'
+import ZoomAPIMocks from './__util__'
 
 let zoomServiceMock
 const enrollmentIdentifier = 'fake-enrollment-identifier'
@@ -18,6 +19,34 @@ const enrollmentPayload = {
   ...payload
 }
 
+const {
+  mockSuccessLivenessCheck,
+  mockFailedLivenessCheck,
+  failedLivenessCheckMessage,
+
+  mockSuccessEnrollment,
+  mockFailedEnrollment,
+  failedEnrollmentMessage
+} = ZoomAPIMocks(zoomServiceMock)
+
+const mockedFaceSearchResults = [
+  {
+    enrollmentIdentifier: 'fake-id-1',
+    matchLevel: '0',
+    auditTrailImage: 'data:image/png:FaKEimagE=='
+  },
+  {
+    enrollmentIdentifier: 'fake-id-2',
+    matchLevel: '1',
+    auditTrailImage: 'data:image/png:FaKEimagE=='
+  },
+  {
+    enrollmentIdentifier: 'fake-id-3',
+    matchLevel: '3',
+    auditTrailImage: 'data:image/png:FaKEimagE=='
+  }
+]
+
 const mockFaceSearch = () =>
   zoomServiceMock.onPost('/search').reply(200, {
     meta: {
@@ -27,23 +56,7 @@ const mockFaceSearch = () =>
       message: 'The search request was processed successfully.'
     },
     data: {
-      results: [
-        {
-          enrollmentIdentifier: 'fake-id-1',
-          matchLevel: '0',
-          auditTrailImage: 'data:image/png:FaKEimagE=='
-        },
-        {
-          enrollmentIdentifier: 'fake-id-2',
-          matchLevel: '1',
-          auditTrailImage: 'data:image/png:FaKEimagE=='
-        },
-        {
-          enrollmentIdentifier: 'fake-id-3',
-          matchLevel: '3',
-          auditTrailImage: 'data:image/png:FaKEimagE=='
-        }
-      ],
+      results: mockedFaceSearchResults,
       sourceFaceMap: {
         isReplayFaceMap: false
       }
@@ -63,62 +76,19 @@ describe('ZoomAPI', () => {
   })
 
   test('detectLiveness() passes if livenessStatus === 0 (LIVENESS_PASSED)', async () => {
-    zoomServiceMock.onPost('/liveness').reply(200, {
-      meta: {
-        ok: true,
-        code: 200,
-        mode: 'dev',
-        message: 'The FaceTec 3D FaceMap evaluated and Liveness was proven.'
-      },
-      data: {
-        glasses: false,
-        isLowQuality: false,
-        isReplayFaceMap: true,
-        livenessStatus: 0
-      }
-    })
+    mockSuccessLivenessCheck()
 
     await expect(ZoomAPI.detectLiveness(payload)).resolves.toBeDefined()
   })
 
   test('detectLiveness() throws if livenessStatus !== 0', async () => {
-    zoomServiceMock.onPost('/liveness').reply(200, {
-      meta: {
-        ok: true,
-        code: 200,
-        mode: 'dev',
-        message:
-          'Liveness was not processed. This occurs when processing ZoOm 2D FaceMaps because they do not have enough data to determine Liveness.'
-      },
-      data: {
-        glasses: false,
-        isLowQuality: false,
-        isReplayFaceMap: true,
-        livenessStatus: 2
-      }
-    })
+    mockFailedLivenessCheck()
 
-    await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow(
-      'Liveness was not processed. This occurs when processing ZoOm 2D FaceMaps because they do not have enough data to determine Liveness.'
-    )
+    await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow(failedLivenessCheckMessage)
   })
 
   test('detectLiveness() handles low photo quality', async () => {
-    zoomServiceMock.onPost('/liveness').reply(200, {
-      meta: {
-        ok: true,
-        code: 200,
-        mode: 'dev',
-        message:
-          'Liveness was not processed. This occurs when processing ZoOm 2D FaceMaps because they do not have enough data to determine Liveness.'
-      },
-      data: {
-        glasses: false,
-        isLowQuality: true,
-        isReplayFaceMap: true,
-        livenessStatus: 2
-      }
-    })
+    mockFailedLivenessCheck({ isLowQuality: true })
 
     await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow(
       'Liveness could not be determined because the photoshoots evaluated to be of poor quality.'
@@ -126,21 +96,7 @@ describe('ZoomAPI', () => {
   })
 
   test('detectLiveness() handles glasses weared', async () => {
-    zoomServiceMock.onPost('/liveness').reply(200, {
-      meta: {
-        ok: true,
-        code: 200,
-        mode: 'dev',
-        message:
-          'Liveness was not processed. This occurs when processing ZoOm 2D FaceMaps because they do not have enough data to determine Liveness.'
-      },
-      data: {
-        glasses: true,
-        isLowQuality: false,
-        isReplayFaceMap: true,
-        livenessStatus: 2
-      }
-    })
+    mockFailedLivenessCheck({ glasses: true })
 
     await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow(
       'Liveness could not be determined because wearing glasses were detected.'
@@ -148,20 +104,26 @@ describe('ZoomAPI', () => {
   })
 
   test('detectLiveness() should throw on service failures', async () => {
+    const livenessCheckServiceError = "The FaceMap passed to the 'faceMap' parameter was invalid."
+
     zoomServiceMock
       .onPost('/liveness')
       .replyOnce(400, {
-        // any failure response from zoom api docs
+        meta: {
+          ok: false,
+          code: 400,
+          mode: 'dev',
+          message: livenessCheckServiceError,
+          subCode: 'missingParameter'
+        }
       })
       .onPost('/liveness')
       .replyOnce(500)
       .onPost('/liveness')
       .networkErrorOnce()
 
-    await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow('<error message from mocked response here>')
-
+    await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow(livenessCheckServiceError)
     await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow('Error: Request failed with status code 500')
-
     await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow('Error: Network Error')
   })
 
@@ -169,23 +131,7 @@ describe('ZoomAPI', () => {
     mockFaceSearch()
 
     // setting minimum match level = 0 to get all faces
-    await expect(ZoomAPI.faceSearch(payload, 0)).resolves.toHaveProperty('results', [
-      {
-        enrollmentIdentifier: 'fake-id-1',
-        matchLevel: '0',
-        auditTrailImage: 'data:image/png:FaKEimagE=='
-      },
-      {
-        enrollmentIdentifier: 'fake-id-2',
-        matchLevel: '1',
-        auditTrailImage: 'data:image/png:FaKEimagE=='
-      },
-      {
-        enrollmentIdentifier: 'fake-id-3',
-        matchLevel: '3',
-        auditTrailImage: 'data:image/png:FaKEimagE=='
-      }
-    ])
+    await expect(ZoomAPI.faceSearch(payload, 0)).resolves.toHaveProperty('results', mockedFaceSearchResults)
   })
 
   test('faceSearch() should filter by the minimum match level', async () => {
@@ -207,47 +153,38 @@ describe('ZoomAPI', () => {
       payload,
       process.env.ZOOM_MINIMAL_MATCHLEVEL
     )
+
     const { results: resultsByDefaultMinMatchLevel } = await ZoomAPI.faceSearch(payload)
+
     expect(resultsByEnvMinMatchLevel).toEqual(resultsByDefaultMinMatchLevel)
   })
 
   test('faceSearch() should throw on service failure', async () => {
+    const faceSearchServiceError = 'sessionId must be UUID in standard format.'
+
     zoomServiceMock
       .onPost('/liveness')
       .replyOnce(400, {
-        // any failure response from zoom api docs
+        meta: {
+          ok: false,
+          code: 400,
+          mode: 'dev',
+          message: faceSearchServiceError,
+          subCode: 'invalidSessionId'
+        }
       })
       .onPost('/liveness')
       .replyOnce(500)
       .onPost('/liveness')
       .networkErrorOnce()
 
-    await expect(ZoomAPI.faceSearch(payload)).rejects.toThrow('<error message from mocked response here>')
-
+    await expect(ZoomAPI.faceSearch(payload)).rejects.toThrow(faceSearchServiceError)
     await expect(ZoomAPI.faceSearch(payload)).rejects.toThrow('Error: Request failed with status code 500')
-
     await expect(ZoomAPI.faceSearch(payload)).rejects.toThrow('Error: Network Error')
   })
 
   test('submitEnrollment() should enroll face and return enrollment status and identifier', async () => {
-    zoomServiceMock.onPost('/enrollment').reply(200, {
-      meta: {
-        ok: true,
-        code: 200,
-        mode: 'dev',
-        message: 'The FaceMap was successfully enrolled.'
-      },
-      data: {
-        createdDate: '2019-09-16T17:30:40+00:00',
-        enrollmentIdentifier: enrollmentIdentifier,
-        faceMapType: 0,
-        glasses: false,
-        isEnrolled: true,
-        isLowQuality: false,
-        isReplayFaceMap: false,
-        livenessStatus: 0
-      }
-    })
+    mockSuccessEnrollment(enrollmentIdentifier)
 
     const wrappedResponse = expect(ZoomAPI.submitEnrollment(enrollmentPayload)).resolves
 
@@ -257,49 +194,35 @@ describe('ZoomAPI', () => {
   })
 
   test("submitEnrollment() should throw when liveness couldn't be determined", async () => {
-    zoomServiceMock.onPost('/enrollment').reply(200, {
-      meta: {
-        ok: true,
-        code: 200,
-        mode: 'dev',
-        message: 'The FaceMap was not enrolled because Liveness could not be determined.'
-      },
-      data: {
-        createdDate: '2019-09-16T17:30:40+00:00',
-        enrollmentIdentifier: 'foo',
-        faceMapType: 1,
-        glasses: true,
-        isEnrolled: true,
-        isLowQuality: false,
-        isReplayFaceMap: false,
-        livenessStatus: null
-      }
-    })
+    mockFailedEnrollment(enrollmentIdentifier)
 
-    await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow(
-      'Liveness could not be determined because wearing glasses were detected.'
-    )
+    await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow(failedEnrollmentMessage)
   })
 
   test('submitEnrollment() should throw on service failures', async () => {
+    const enrollmentServiceError = 'You must pass a valid FaceMap or image parameter.'
+
     zoomServiceMock
       .onPost('/enrollment')
       .replyOnce(400, {
-        // any failure response from zoom api docs
+        meta: {
+          ok: false,
+          code: 400,
+          mode: 'dev',
+          message: enrollmentServiceError,
+          subCode: 'missingParameter'
+        }
       })
       .onPost('/enrollment')
-      .replyOnce(500)
-      .onPost('/enrollment')
       .networkErrorOnce()
+      .onPost('/enrollment')
+      .replyOnce(500)
 
-    await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow(
-      'You must pass an enrollmentIdentifier parameter.'
-    )
+    await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow(enrollmentServiceError)
+    await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow('Error: Network Error')
 
     await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow(
       'Error: Request failed with status code 500'
     )
-
-    await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow('Error: Network Error')
   })
 })
