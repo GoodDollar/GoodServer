@@ -1,5 +1,5 @@
 // @flow
-import { pick, findKey } from 'lodash'
+import { pick, findKey, isEmpty } from 'lodash'
 
 import { type IEnrollmentProvider } from '../typings'
 
@@ -13,9 +13,9 @@ class ZoomProvider implements IEnrollmentProvider {
   }
 
   isPayloadValid(payload: any): boolean {
-    return !findKey(
-      pick(payload, ['faceMap', 'lowQualityAuditTrailImage', 'auditTrailImage']),
-      fieldValue => !fieldValue
+    return (
+      !isEmpty(payload) &&
+      !findKey(pick(payload, ['faceMap', 'lowQualityAuditTrailImage', 'auditTrailImage']), fieldValue => !fieldValue)
     )
   }
 
@@ -71,7 +71,10 @@ class ZoomProvider implements IEnrollmentProvider {
 
     if (duplicate) {
       // if duplicate found - throwing corresponding error
-      throwCustomException(`Duplicate with identifier '${duplicate.enrollmentIdentifier}' found.`, duplicate)
+      throwCustomException(`Duplicate with identifier '${duplicate.enrollmentIdentifier}' found.`, {
+        isDuplicate: !!duplicate,
+        ...duplicate
+      })
     }
 
     let enrollmentResult

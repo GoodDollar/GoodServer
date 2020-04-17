@@ -83,20 +83,68 @@ describe('ZoomAPI', () => {
 
   test('detectLiveness() throws if livenessStatus !== 0', async () => {
     zoomServiceMock.onPost('/liveness').reply(200, {
-      // unsuccessfull liveness response from zoom api docs here
+      meta: {
+        ok: true,
+        code: 200,
+        mode: 'dev',
+        message:
+          'Liveness was not processed. This occurs when processing ZoOm 2D FaceMaps because they do not have enough data to determine Liveness.'
+      },
+      data: {
+        glasses: false,
+        isLowQuality: false,
+        isReplayFaceMap: true,
+        livenessStatus: 2
+      }
     })
 
-    await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow('<error message from mocked response here>')
+    await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow(
+      'Liveness was not processed. This occurs when processing ZoOm 2D FaceMaps because they do not have enough data to determine Liveness.'
+    )
   })
 
   test('detectLiveness() handles low photo quality', async () => {
-    // isLowQuality: true in mocked response
-    // check that error message should be "Liveness could not be determined because the photoshoots evaluated to be of poor quality."
+    zoomServiceMock.onPost('/liveness').reply(200, {
+      meta: {
+        ok: true,
+        code: 200,
+        mode: 'dev',
+        message:
+          'Liveness was not processed. This occurs when processing ZoOm 2D FaceMaps because they do not have enough data to determine Liveness.'
+      },
+      data: {
+        glasses: false,
+        isLowQuality: true,
+        isReplayFaceMap: true,
+        livenessStatus: 2
+      }
+    })
+
+    await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow(
+      'Liveness could not be determined because the photoshoots evaluated to be of poor quality.'
+    )
   })
 
   test('detectLiveness() handles glasses weared', async () => {
-    // glasses: true in mocked response
-    // check that error message should be "Liveness could not be determined because wearing glasses were detected."
+    zoomServiceMock.onPost('/liveness').reply(200, {
+      meta: {
+        ok: true,
+        code: 200,
+        mode: 'dev',
+        message:
+          'Liveness was not processed. This occurs when processing ZoOm 2D FaceMaps because they do not have enough data to determine Liveness.'
+      },
+      data: {
+        glasses: true,
+        isLowQuality: false,
+        isReplayFaceMap: true,
+        livenessStatus: 2
+      }
+    })
+
+    await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow(
+      'Liveness could not be determined because wearing glasses were detected.'
+    )
   })
 
   test('detectLiveness() should throw on service failures', async () => {
@@ -144,7 +192,11 @@ describe('ZoomAPI', () => {
     mockFaceSearch()
 
     await expect(ZoomAPI.faceSearch(payload, 2)).resolves.toHaveProperty('results', [
-      // put here the faces having mtach level 2 or above
+      {
+        enrollmentIdentifier: 'fake-id-3',
+        matchLevel: '3',
+        auditTrailImage: 'data:image/png:FaKEimagE=='
+      }
     ])
   })
 
@@ -156,8 +208,7 @@ describe('ZoomAPI', () => {
       process.env.ZOOM_MINIMAL_MATCHLEVEL
     )
     const { results: resultsByDefaultMinMatchLevel } = await ZoomAPI.faceSearch(payload)
-
-    // expect resultsByEnvMinMatchLevel to be deep equal to resultsByDefaultMinMatchLevel
+    expect(resultsByEnvMinMatchLevel).toEqual(resultsByDefaultMinMatchLevel)
   })
 
   test('faceSearch() should throw on service failure', async () => {
@@ -180,7 +231,22 @@ describe('ZoomAPI', () => {
 
   test('submitEnrollment() should enroll face and return enrollment status and identifier', async () => {
     zoomServiceMock.onPost('/enrollment').reply(200, {
-      // "enrolled successfully" response from zoom api docs
+      meta: {
+        ok: true,
+        code: 200,
+        mode: 'dev',
+        message: 'The FaceMap was successfully enrolled.'
+      },
+      data: {
+        createdDate: '2019-09-16T17:30:40+00:00',
+        enrollmentIdentifier: enrollmentIdentifier,
+        faceMapType: 0,
+        glasses: false,
+        isEnrolled: true,
+        isLowQuality: false,
+        isReplayFaceMap: false,
+        livenessStatus: 0
+      }
     })
 
     const wrappedResponse = expect(ZoomAPI.submitEnrollment(enrollmentPayload)).resolves
@@ -192,11 +258,26 @@ describe('ZoomAPI', () => {
 
   test("submitEnrollment() should throw when liveness couldn't be determined", async () => {
     zoomServiceMock.onPost('/enrollment').reply(200, {
-      // "enrollment failed because Liveness could not be determined" response from zoom api docs
+      meta: {
+        ok: true,
+        code: 200,
+        mode: 'dev',
+        message: 'The FaceMap was not enrolled because Liveness could not be determined.'
+      },
+      data: {
+        createdDate: '2019-09-16T17:30:40+00:00',
+        enrollmentIdentifier: 'foo',
+        faceMapType: 1,
+        glasses: true,
+        isEnrolled: true,
+        isLowQuality: false,
+        isReplayFaceMap: false,
+        livenessStatus: null
+      }
     })
 
     await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow(
-      '<error message from mocked response here>'
+      'Liveness could not be determined because wearing glasses were detected.'
     )
   })
 
@@ -212,7 +293,7 @@ describe('ZoomAPI', () => {
       .networkErrorOnce()
 
     await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow(
-      '<error message from mocked response here>'
+      'You must pass an enrollmentIdentifier parameter.'
     )
 
     await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow(

@@ -65,9 +65,56 @@ describe('EnrollmentProcessor', () => {
 
   test("enroll() proxies provider's response, updates session and whitelists user on success", async () => {
     // via zoomServiceMock mock:
-    // - success liveness check
-    // - empty search results
-    // - successfull enroll
+    zoomServiceMock.onPost('/liveness').reply(200, {
+      meta: {
+        ok: true,
+        code: 200,
+        mode: 'dev',
+        message: 'The FaceTec 3D FaceMap evaluated and Liveness was proven.'
+      },
+      data: {
+        glasses: false,
+        isLowQuality: false,
+        isReplayFaceMap: true,
+        livenessStatus: 0
+      }
+    })
+    zoomServiceMock.onPost('/search').reply(200, {
+      meta: {
+        ok: true,
+        code: 200,
+        mode: 'dev',
+        message: 'The search request was processed successfully.'
+      },
+      data: {
+        results: [],
+        sourceFaceMap: {
+          isReplayFaceMap: false
+        }
+      }
+    })
+    zoomServiceMock.onPost('/enrollment').reply(200, {
+      meta: {
+        ok: true,
+        code: 200,
+        mode: 'dev',
+        message: 'The FaceMap was successfully enrolled.'
+      },
+      data: {
+        auditTrailVerificationMessage: '...',
+        auditTrailVerificationStatus: 0,
+        createdDate: '2019-09-16T17:30:40+00:00',
+        enrollmentIdentifier: enrollmentIdentifier,
+        errorMessageFromZoomServer: null,
+        errorStatusFromZoomServer: 0,
+        faceMapType: 0,
+        glasses: false,
+        isEnrolled: true,
+        isLowQuality: false,
+        isReplayFaceMap: false,
+        livenessStatus: 0
+      }
+    })
 
     const { gdAddress, profilePublickey, loggedInAs } = user
     const wrappedResponse = expect(enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)).resolves
@@ -89,7 +136,20 @@ describe('EnrollmentProcessor', () => {
 
   test("enroll() proxies provider's error and sets error + non-whitelisted state in the session", async () => {
     // via zoomServiceMock mock:
-    // - "Liveness was unsuccessful" liveness check response
+    zoomServiceMock.onPost('/liveness').reply(200, {
+      meta: {
+        ok: true,
+        code: 200,
+        mode: 'dev',
+        message: 'The FaceTec 3D FaceMap evaluated and Liveness was proven.'
+      },
+      data: {
+        glasses: false,
+        isLowQuality: false,
+        isReplayFaceMap: true,
+        livenessStatus: 0
+      }
+    })
 
     const wrappedResponse = expect(enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)).rejects
 
