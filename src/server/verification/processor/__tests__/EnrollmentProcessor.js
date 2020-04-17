@@ -4,10 +4,8 @@ import MockAdapter from 'axios-mock-adapter'
 import { omit, invokeMap } from 'lodash'
 
 import createEnrollmentProcessor from '../EnrollmentProcessor'
-import * as GunModule from '../../../gun/gun-middleware'
-import AdminWalletModule from '../../../blockchain/AdminWallet'
-
-const modulesToMock = ['../../../gun/gun-middleware', '../../../blockchain/AdminWallet']
+import { GunDBPublic } from '../../../gun/gun-middleware'
+import AdminWallet from '../../../blockchain/AdminWallet'
 
 let zoomServiceMock
 let enrollmentProcessor
@@ -35,10 +33,8 @@ const user = {
 
 describe('EnrollmentProcessor', () => {
   beforeAll(() => {
-    modulesToMock.forEach(jest.mock)
-
-    GunModule.mockImplementation(() => ({ GunDBPublic: { session: getSessionRefMock } })) // eslint-disable-line
-    AdminWalletModule.mockImplementation(() => ({ whitelistUser: whitelistUserMock })) // eslint-disable-line
+    GunDBPublic.session = getSessionRefMock
+    AdminWallet.whitelistUser = whitelistUserMock
 
     enrollmentProcessor = createEnrollmentProcessor({ updateUser: updateUserMock })
     zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
@@ -51,7 +47,8 @@ describe('EnrollmentProcessor', () => {
   })
 
   afterAll(() => {
-    modulesToMock.forEach(jest.unmock)
+    GunDBPublic.session = GunDBPublic.prototype.session
+    AdminWallet.whitelistUser = AdminWallet.prototype.whitelistUser
 
     zoomServiceMock.restore()
     zoomServiceMock = null
