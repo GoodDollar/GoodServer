@@ -3,9 +3,11 @@
 import MockAdapter from 'axios-mock-adapter'
 
 import ZoomAPI from '../ZoomAPI'
-import ZoomAPIMocks from './__util__'
+import createMockingHelper from './__util__'
 
+let helper
 let zoomServiceMock
+
 const enrollmentIdentifier = 'fake-enrollment-identifier'
 
 const payload = {
@@ -18,16 +20,6 @@ const enrollmentPayload = {
   enrollmentIdentifier,
   ...payload
 }
-
-const {
-  mockSuccessLivenessCheck,
-  mockFailedLivenessCheck,
-  failedLivenessCheckMessage,
-
-  mockSuccessEnrollment,
-  mockFailedEnrollment,
-  failedEnrollmentMessage
-} = ZoomAPIMocks(zoomServiceMock)
 
 const mockedFaceSearchResults = [
   {
@@ -66,6 +58,7 @@ const mockFaceSearch = () =>
 describe('ZoomAPI', () => {
   beforeAll(() => {
     zoomServiceMock = new MockAdapter(ZoomAPI.http)
+    helper = createMockingHelper(zoomServiceMock)
   })
 
   afterEach(() => zoomServiceMock.reset())
@@ -73,22 +66,23 @@ describe('ZoomAPI', () => {
   afterAll(() => {
     zoomServiceMock.restore()
     zoomServiceMock = null
+    helper = null
   })
 
   test('detectLiveness() passes if livenessStatus === 0 (LIVENESS_PASSED)', async () => {
-    mockSuccessLivenessCheck()
+    helper.mockSuccessLivenessCheck()
 
     await expect(ZoomAPI.detectLiveness(payload)).resolves.toBeDefined()
   })
 
   test('detectLiveness() throws if livenessStatus !== 0', async () => {
-    mockFailedLivenessCheck()
+    helper.mockFailedLivenessCheck()
 
-    await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow(failedLivenessCheckMessage)
+    await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow(helper.failedLivenessCheckMessage)
   })
 
   test('detectLiveness() handles low photo quality', async () => {
-    mockFailedLivenessCheck({ isLowQuality: true })
+    helper.mockFailedLivenessCheck({ isLowQuality: true })
 
     await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow(
       'Liveness could not be determined because the photoshoots evaluated to be of poor quality.'
@@ -96,7 +90,7 @@ describe('ZoomAPI', () => {
   })
 
   test('detectLiveness() handles glasses weared', async () => {
-    mockFailedLivenessCheck({ glasses: true })
+    helper.mockFailedLivenessCheck({ glasses: true })
 
     await expect(ZoomAPI.detectLiveness(payload)).rejects.toThrow(
       'Liveness could not be determined because wearing glasses were detected.'
@@ -184,7 +178,7 @@ describe('ZoomAPI', () => {
   })
 
   test('submitEnrollment() should enroll face and return enrollment status and identifier', async () => {
-    mockSuccessEnrollment(enrollmentIdentifier)
+    helper.mockSuccessEnrollment(enrollmentIdentifier)
 
     const wrappedResponse = expect(ZoomAPI.submitEnrollment(enrollmentPayload)).resolves
 
@@ -194,9 +188,9 @@ describe('ZoomAPI', () => {
   })
 
   test("submitEnrollment() should throw when liveness couldn't be determined", async () => {
-    mockFailedEnrollment(enrollmentIdentifier)
+    helper.mockFailedEnrollment(enrollmentIdentifier)
 
-    await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow(failedEnrollmentMessage)
+    await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow(helper.failedEnrollmentMessage)
   })
 
   test('submitEnrollment() should throw on service failures', async () => {

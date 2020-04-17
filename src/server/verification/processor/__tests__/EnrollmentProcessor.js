@@ -7,8 +7,9 @@ import createEnrollmentProcessor from '../EnrollmentProcessor'
 import { GunDBPublic } from '../../../gun/gun-middleware'
 import AdminWallet from '../../../blockchain/AdminWallet'
 
-import ZoomAPIMocks from '../../api/__tests__/__util__'
+import createMockingHelper from '../../api/__tests__/__util__'
 
+let helper
 let zoomServiceMock
 let enrollmentProcessor
 
@@ -17,15 +18,6 @@ const updateSessionMock = jest.fn()
 const whitelistUserMock = jest.fn()
 const getSessionRefMock = jest.fn()
 const getSessionRefImplementation = GunDBPublic.session
-
-const {
-  mockSuccessLivenessCheck,
-  mockFailedLivenessCheck,
-  failedLivenessCheckMessage,
-
-  mockEmptyResultsFaceSearch,
-  mockSuccessEnrollment
-} = ZoomAPIMocks(zoomServiceMock)
 
 const enrollmentIdentifier = 'fake-enrollment-identifier'
 
@@ -50,6 +42,7 @@ describe('EnrollmentProcessor', () => {
 
     enrollmentProcessor = createEnrollmentProcessor({ updateUser: updateUserMock })
     zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
+    helper = createMockingHelper(zoomServiceMock)
   })
 
   beforeEach(() => {
@@ -68,6 +61,7 @@ describe('EnrollmentProcessor', () => {
 
     zoomServiceMock.restore()
     zoomServiceMock = null
+    helper = null
   })
 
   test('validate() passes when all user, enrollmentIdentifier and sessionId are present only', () => {
@@ -80,9 +74,9 @@ describe('EnrollmentProcessor', () => {
   })
 
   test("enroll() proxies provider's response, updates session and whitelists user on success", async () => {
-    mockSuccessLivenessCheck()
-    mockEmptyResultsFaceSearch()
-    mockSuccessEnrollment(enrollmentIdentifier)
+    helper.mockSuccessLivenessCheck()
+    helper.mockEmptyResultsFaceSearch()
+    helper.mockSuccessEnrollment(enrollmentIdentifier)
 
     const { gdAddress, profilePublickey, loggedInAs } = user
     const wrappedResponse = expect(enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)).resolves
@@ -103,12 +97,12 @@ describe('EnrollmentProcessor', () => {
   })
 
   test("enroll() proxies provider's error and sets error + non-whitelisted state in the session", async () => {
-    mockFailedLivenessCheck()
+    helper.mockFailedLivenessCheck()
 
     const wrappedResponse = expect(enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)).resolves
 
     await wrappedResponse.toHaveProperty('success', false)
-    await wrappedResponse.toHaveProperty('error', failedLivenessCheckMessage)
+    await wrappedResponse.toHaveProperty('error', helper.failedLivenessCheckMessage)
     await wrappedResponse.toHaveProperty('enrollmentResult.isVerified', false)
 
     expect(getSessionRefMock).toBeCalledWith(payload.sessionId)
@@ -119,7 +113,7 @@ describe('EnrollmentProcessor', () => {
       isLive: false,
       isDuplicate: true,
       isWhitelisted: false,
-      isError: failedLivenessCheckMessage
+      isError: helper.failedLivenessCheckMessage
     })
   })
 })

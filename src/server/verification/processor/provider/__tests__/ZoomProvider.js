@@ -3,9 +3,11 @@
 import MockAdapter from 'axios-mock-adapter'
 
 import ZoomProvider from '../ZoomProvider'
-import ZoomAPIMocks from '../../../api/__tests__/__util__'
+import createMockingHelper from '../../../api/__tests__/__util__'
 
+let helper
 let zoomServiceMock
+
 const enrollmentIdentifier = 'fake-enrollment-identifier'
 
 const payload = {
@@ -14,18 +16,6 @@ const payload = {
   auditTrailImage: 'data:image/png:FaKEimagE==',
   lowQualityAuditTrailImage: 'data:image/png:FaKEimagE=='
 }
-
-const {
-  mockSuccessLivenessCheck,
-  mockFailedLivenessCheck,
-  failedLivenessCheckMessage,
-
-  mockEmptyResultsFaceSearch,
-
-  mockSuccessEnrollment,
-  mockFailedEnrollment,
-  failedEnrollmentMessage
-} = ZoomAPIMocks(zoomServiceMock)
 
 const testEnrollmentServiceError = async errorMessage => {
   const onEnrollmentProcessing = jest.fn()
@@ -40,6 +30,7 @@ const testEnrollmentServiceError = async errorMessage => {
 describe('ZoomProvider', () => {
   beforeAll(() => {
     zoomServiceMock = new MockAdapter(ZoomProvider.api.http)
+    helper = createMockingHelper(zoomServiceMock)
   })
 
   afterEach(() => zoomServiceMock.reset())
@@ -47,6 +38,7 @@ describe('ZoomProvider', () => {
   afterAll(() => {
     zoomServiceMock.restore()
     zoomServiceMock = null
+    helper = null
   })
 
   test('isValid() validates payload if facemap and images are present', () => {
@@ -55,9 +47,9 @@ describe('ZoomProvider', () => {
   })
 
   test('enroll() returns successfull response if liveness passed, no duplicates and enrollment successfull', async () => {
-    mockSuccessLivenessCheck()
-    mockEmptyResultsFaceSearch()
-    mockSuccessEnrollment(enrollmentIdentifier)
+    helper.mockSuccessLivenessCheck()
+    helper.mockEmptyResultsFaceSearch()
+    helper.mockSuccessEnrollment(enrollmentIdentifier)
 
     const onEnrollmentProcessing = jest.fn()
     const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).resolves
@@ -71,7 +63,7 @@ describe('ZoomProvider', () => {
   })
 
   test('enroll() returns successfull response if identifier was alreadsy enrolled', async () => {
-    mockSuccessLivenessCheck()
+    helper.mockSuccessLivenessCheck()
 
     zoomServiceMock.onPost('/search').reply(200, {
       meta: {
@@ -116,12 +108,12 @@ describe('ZoomProvider', () => {
   })
 
   test('enroll() throws if liveness check fails', async () => {
-    mockFailedLivenessCheck()
+    helper.mockFailedLivenessCheck()
 
     const onEnrollmentProcessing = jest.fn()
     const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
 
-    await wrappedResponse.toThrow(failedLivenessCheckMessage)
+    await wrappedResponse.toThrow(helper.failedLivenessCheckMessage)
     await wrappedResponse.toHaveProperty('response')
     await wrappedResponse.toHaveProperty('response.isLive', false)
     await wrappedResponse.toHaveProperty('response.isVerified', false)
@@ -132,7 +124,7 @@ describe('ZoomProvider', () => {
   test('enroll() throws if duplicates found', async () => {
     const duplicateEnrollmentIdentifier = 'another-one-fake-enrollment-identifier'
 
-    mockSuccessLivenessCheck()
+    helper.mockSuccessLivenessCheck()
 
     zoomServiceMock.onPost('/search').reply(200, {
       meta: {
@@ -165,14 +157,14 @@ describe('ZoomProvider', () => {
   })
 
   test('enroll() throws if enrollment fails in any other case expect alreadyEnrolled', async () => {
-    mockSuccessLivenessCheck()
-    mockEmptyResultsFaceSearch()
-    mockFailedEnrollment(enrollmentIdentifier)
+    helper.mockSuccessLivenessCheck()
+    helper.mockEmptyResultsFaceSearch()
+    helper.mockFailedEnrollment(enrollmentIdentifier)
 
     const onEnrollmentProcessing = jest.fn()
     const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
 
-    await wrappedResponse.toThrow(failedEnrollmentMessage)
+    await wrappedResponse.toThrow(helper.failedEnrollmentMessage)
     await wrappedResponse.toHaveProperty('response')
     await wrappedResponse.toHaveProperty('response.isEnrolled', false)
     await wrappedResponse.toHaveProperty('response.isVerified', false)
