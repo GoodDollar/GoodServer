@@ -14,6 +14,7 @@ const updateUserMock = jest.fn()
 const updateSessionMock = jest.fn()
 const whitelistUserMock = jest.fn()
 const getSessionRefMock = jest.fn(() => ({ put: updateSessionMock }))
+const getSessionRefImplementation = GunDBPublic.session
 
 const enrollmentIdentifier = 'fake-enrollment-identifier'
 
@@ -47,7 +48,7 @@ describe('EnrollmentProcessor', () => {
   })
 
   afterAll(() => {
-    GunDBPublic.session = GunDBPublic.prototype.session
+    GunDBPublic.session = getSessionRefImplementation
     AdminWallet.whitelistUser = AdminWallet.prototype.whitelistUser
 
     zoomServiceMock.restore()
