@@ -37,10 +37,12 @@ describe('EnrollmentProcessor', () => {
     GunDBPublic.session = getSessionRefMock
     AdminWallet.whitelistUser = whitelistUserMock
 
-    getSessionRefMock.mockImplementation(() => ({ put: updateSessionMock }))
-
     enrollmentProcessor = createEnrollmentProcessor({ updateUser: updateUserMock })
     zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
+  })
+
+  beforeEach(() => {
+    getSessionRefMock.mockImplementation(() => ({ put: updateSessionMock }))
   })
 
   afterEach(() => {
