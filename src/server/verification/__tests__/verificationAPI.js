@@ -1,19 +1,26 @@
-// import fs from 'fs'
 import request from 'supertest'
-// import FormData from 'form-data'
 import moment from 'moment'
 import delay from 'delay'
-import makeServer from '../../server-test'
-import { getToken, getCreds } from '../../__util__/'
-import UserDBPrivate from '../../db/mongo/user-privat-provider'
+import MockAdapter from 'axios-mock-adapter'
+import { omit, invokeMap } from 'lodash'
+
 import Config from '../../server.config'
+
+import UserDBPrivate from '../../db/mongo/user-privat-provider'
 import AdminWallet from '../../blockchain/AdminWallet'
+import { GunDBPublic } from '../../gun/gun-middleware'
+
+import makeServer from '../../server-test'
+import createEnrollmentProcessor from '../processor/EnrollmentProcessor'
+import { getToken, getCreds } from '../../__util__/'
+import createMockingHelper from '../api/__tests__/__util__'
 
 const storage = UserDBPrivate
 
 Config.skipEmailVerification = false
 describe('verificationAPI', () => {
   let server
+
   beforeAll(done => {
     jest.setTimeout(50000)
     server = makeServer(done)
@@ -31,6 +38,193 @@ describe('verificationAPI', () => {
     })
   })
 
+  describe('face verification', () => {
+    let token
+    let credentials
+
+    let helper
+    let zoomServiceMock
+
+    const updateSessionMock = jest.fn()
+    const updateUserMock = jest.fn()
+    const whitelistUserMock = jest.fn()
+    const getSessionRefMock = jest.fn()
+    const getSessionRefImplementation = GunDBPublic.session
+
+    const enrollmentIdentifier = 'fake-enrollment-identifier'
+
+    const enrollmentUri = '/verify/face/' + encodeURIComponent(enrollmentIdentifier)
+
+    const payload = {
+      sessionId: 'fake-session-id',
+      faceMap: Buffer.alloc(32),
+      auditTrailImage: 'data:image/png:FaKEimagE==',
+      lowQualityAuditTrailImage: 'data:image/png:FaKEimagE=='
+    }
+
+    const testInvalidInput = async withoutField =>
+      request(server)
+        .put(enrollmentUri)
+        .send(omit(payload, withoutField))
+        .set('Authorization', `Bearer ${token}`)
+        .expect(400, { success: false, error: 'Invalid input' })
+
+    beforeAll(() => {
+      const enrollmentProcessor = createEnrollmentProcessor(storage)
+
+      GunDBPublic.session = getSessionRefMock
+      AdminWallet.whitelistUser = whitelistUserMock
+      UserDBPrivate.updateUser = updateUserMock
+
+      zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
+      helper = createMockingHelper(zoomServiceMock)
+    })
+
+    beforeEach(async () => {
+      credentials = await getCreds(true)
+      token = await getToken(server, credentials)
+
+      getSessionRefMock.mockImplementation(() => ({ put: updateSessionMock }))
+    })
+
+    afterEach(() => {
+      invokeMap([updateUserMock, updateSessionMock, getSessionRefMock, whitelistUserMock], 'mockReset')
+
+      zoomServiceMock.reset()
+    })
+
+    afterAll(() => {
+      GunDBPublic.session = getSessionRefImplementation
+      AdminWallet.whitelistUser = AdminWallet.constructor.prototype.whitelistUser
+      UserDBPrivate.updateUser = UserDBPrivate.constructor.prototype.updateUser
+
+      zoomServiceMock.restore()
+      zoomServiceMock = null
+      helper = null
+    })
+
+    test('PUT /verify/face/:enrollmentIdentifier returns 401 without credentials', async () => {
+      await request(server)
+        .put(enrollmentUri)
+        .expect(401)
+    })
+
+    test('PUT /verify/face/:enrollmentIdentifier returns 400 when payload is invalid', async () => {
+      await testInvalidInput('sessionId') // no sessionId
+      await testInvalidInput('faceMap') // no face map
+      await testInvalidInput('auditTrailImage') // no face photoshoots
+    })
+
+    test('PUT /verify/face/:enrollmentIdentifier returns 200 and success: true when verification was successfull', async () => {
+      helper.mockSuccessLivenessCheck()
+      helper.mockEmptyResultsFaceSearch()
+      helper.mockSuccessEnrollment(enrollmentIdentifier)
+
+      await request(server)
+        .put(enrollmentUri)
+        .send(payload)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200, {
+          success: true,
+          enrollmentResult: {
+            isVerified: true,
+            alreadyEnrolled: false,
+            ok: true,
+            code: 200,
+            mode: 'dev',
+            message: 'The FaceMap was successfully enrolled.',
+            createdDate: '2019-09-16T17:30:40+00:00',
+            enrollmentIdentifier,
+            faceMapType: 0,
+            glasses: false,
+            isEnrolled: true,
+            isLowQuality: false,
+            isReplayFaceMap: false,
+            livenessStatus: 0
+          }
+        })
+
+      const { address, profilePublickey } = credentials
+      const identifier = address.toLowerCase()
+
+      // to check has user been updated in the database
+      expect(updateUserMock).toHaveBeenCalledWith({ identifier, isVerified: true })
+      // in the GUN session
+      expect(updateSessionMock).toHaveBeenCalledWith({ isEnrolled: true })
+      expect(updateSessionMock).toHaveBeenCalledWith({ isWhitelisted: true })
+      // and in the waller
+      expect(whitelistUserMock).toHaveBeenCalledWith(identifier, profilePublickey)
+    })
+
+    test("PUT /verify/face/:enrollmentIdentifier returns 200 and success: false when verification wasn't successfull", async () => {
+      const { failedLivenessCheckMessage } = helper
+
+      helper.mockFailedLivenessCheck()
+
+      await request(server)
+        .put(enrollmentUri)
+        .send(payload)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200, {
+          success: false,
+          error: failedLivenessCheckMessage,
+          enrollmentResult: {
+            isVerified: false,
+            isLive: false,
+            ok: true,
+            code: 200,
+            mode: 'dev',
+            message: failedLivenessCheckMessage,
+            glasses: false,
+            isLowQuality: false,
+            isReplayFaceMap: true,
+            livenessStatus: 2
+          }
+        })
+
+      // to check that user hasn't beed updated nowhere
+      // in the database
+      expect(updateUserMock).not.toHaveBeenCalled()
+      // in the session
+      expect(updateSessionMock).not.toHaveBeenCalledWith({ isEnrolled: true })
+      expect(updateSessionMock).not.toHaveBeenCalledWith({ isWhitelisted: true })
+      // and in the wallet
+      expect(whitelistUserMock).not.toHaveBeenCalled()
+    })
+
+    describe('face verification: already verified', () => {
+      const getUserImplementation = storage.constructor.prototype.getUser
+
+      beforeEach(() => {
+        storage.getUser = jest.fn(async identifier => {
+          const user = await getUserImplementation.call(storage, identifier)
+
+          return {
+            ...user,
+            isVerified: true
+          }
+        })
+      })
+
+      afterEach(() => {
+        storage.getUser = getUserImplementation
+        invokeMap([updateSessionMock, getSessionRefMock], 'mockReset')
+      })
+
+      test('PUT /verify/face/:enrollmentIdentifier skips verification is user is already verified', async () => {
+        await request(server)
+          .put(enrollmentUri)
+          .send(payload)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200, { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } })
+
+        expect(getSessionRefMock).toHaveBeenCalledWith(payload.sessionId)
+        expect(updateSessionMock).toHaveBeenCalledWith({ isDuplicate: false, isLive: true, isEnrolled: true })
+        expect(updateSessionMock).not.toHaveBeenCalledWith({ isStarted: true })
+      })
+    })
+  })
+
   test('/verify/sendotp without creds -> 401', async () => {
     await request(server)
       .post('/verify/sendotp')
@@ -40,7 +234,11 @@ describe('verificationAPI', () => {
   test('/verify/sendotp without sms validation', async () => {
     const creds = await getCreds(true)
     const token = await getToken(server, creds)
-    await UserDBPrivate.updateUser({ identifier: token, smsValidated: false, fullName: 'test_user_sendemail' })
+    await UserDBPrivate.updateUser({
+      identifier: creds.address.toLowerCase(),
+      smsValidated: false,
+      fullName: 'test_user_sendemail'
+    })
 
     await request(server)
       .post('/verify/sendotp')

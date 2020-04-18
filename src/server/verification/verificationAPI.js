@@ -69,7 +69,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { sessionId } = payload
       const { enrollmentIdentifier } = params
 
-      let enrollmentResponse
+      let enrollmentResult
       const processor = createEnrollmentProcessor(storage)
 
       try {
@@ -80,9 +80,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
           // publish to subscribers
           sessionRef.put({ isDuplicate: false, isLive: true, isEnrolled: true })
-          enrollmentResponse = { success: true, enrollmentResponse: { isVerified: true, alreadyEnrolled: true } }
+          enrollmentResult = { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } }
         } else {
-          enrollmentResponse = await processor.enroll(user, enrollmentIdentifier, payload)
+          enrollmentResult = await processor.enroll(user, enrollmentIdentifier, payload)
         }
       } catch (exception) {
         const { message } = exception
@@ -92,7 +92,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         return
       }
 
-      res.json(enrollmentResponse)
+      res.json(enrollmentResult)
     })
   )
 

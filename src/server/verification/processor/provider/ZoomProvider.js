@@ -13,10 +13,7 @@ class ZoomProvider implements IEnrollmentProvider {
   }
 
   isPayloadValid(payload: any): boolean {
-    return (
-      !isEmpty(payload) &&
-      !findKey(pick(payload, ['faceMap', 'lowQualityAuditTrailImage', 'auditTrailImage']), fieldValue => !fieldValue)
-    )
+    return !['faceMap', 'lowQualityAuditTrailImage', 'auditTrailImage'].some(field => !payload[field])
   }
 
   async enroll(
@@ -144,16 +141,6 @@ class ZoomProvider implements IEnrollmentProvider {
 
       throw exception
     }
-  }
-
-  _analyzeEnrollmentResponse(enrollmentResponse) {
-    const { subCode, isEnrolled, livenessStatus } = enrollmentResponse
-
-    const isEnroll = isEnrolled
-    const isLive = 0 === livenessStatus
-    const isDuplicate = 'nameCollision' === subCode
-
-    return { isLive, isDuplicate, isEnroll }
   }
 }
 

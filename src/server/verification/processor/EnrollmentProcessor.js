@@ -1,4 +1,6 @@
 // @flow
+import { noop } from 'lodash'
+
 import Config from '../../server.config'
 import { GunDBPublic } from '../../gun/gun-middleware'
 import AdminWallet from '../../blockchain/AdminWallet'
@@ -58,7 +60,7 @@ class EnrollmentProcessor {
   }
 
   async enqueueDisposal(enrollmentIdentifier, signature) {
-    const { provider, storage } = this // eslint-disable-line
+    const { provider } = this
     const recovered = recoverPublickey(signature, enrollmentIdentifier, '')
 
     if (recovered.substr(2) !== enrollmentIdentifier.toLowerCase()) {
@@ -77,8 +79,7 @@ class EnrollmentProcessor {
   }
 
   async disposeEnqueuedEnrollments(onProcessed: (identifier: string, exception?: Error) => void): Promise<void> {
-    const { provider, storage } = this // eslint-disable-line
-
+    noop(onProcessed) // eslint / lgtm stub
     // TODO
 
     // 1. get all items from enqueued enrollment identifiers collection

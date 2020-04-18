@@ -57,9 +57,10 @@ describe('EnrollmentProcessor', () => {
 
   afterAll(() => {
     GunDBPublic.session = getSessionRefImplementation
-    AdminWallet.whitelistUser = AdminWallet.prototype.whitelistUser
+    AdminWallet.whitelistUser = AdminWallet.constructor.prototype.whitelistUser
 
     zoomServiceMock.restore()
+    enrollmentProcessor = null
     zoomServiceMock = null
     helper = null
   })
@@ -85,15 +86,15 @@ describe('EnrollmentProcessor', () => {
     await wrappedResponse.toHaveProperty('success', true)
     await wrappedResponse.toHaveProperty('enrollmentResult.isVerified', true)
 
-    expect(getSessionRefMock).toBeCalledWith(payload.sessionId)
+    expect(getSessionRefMock).toHaveBeenCalledWith(payload.sessionId)
     expect(updateSessionMock).toHaveBeenNthCalledWith(1, { isStarted: true })
     expect(updateSessionMock).toHaveBeenNthCalledWith(2, { isLive: true })
     expect(updateSessionMock).toHaveBeenNthCalledWith(3, { isDuplicate: false })
     expect(updateSessionMock).toHaveBeenNthCalledWith(4, { isEnrolled: true })
     expect(updateSessionMock).toHaveBeenNthCalledWith(5, { isWhitelisted: true })
 
-    expect(updateUserMock).toHaveBeenLastCalledWith({ identifier: loggedInAs, isVerified: true })
-    expect(whitelistUserMock).toHaveBeenLastCalledWith(gdAddress, profilePublickey)
+    expect(updateUserMock).toHaveBeenCalledWith({ identifier: loggedInAs, isVerified: true })
+    expect(whitelistUserMock).toHaveBeenCalledWith(gdAddress, profilePublickey)
   })
 
   test("enroll() proxies provider's error and sets error + non-whitelisted state in the session", async () => {
@@ -105,7 +106,7 @@ describe('EnrollmentProcessor', () => {
     await wrappedResponse.toHaveProperty('error', helper.failedLivenessCheckMessage)
     await wrappedResponse.toHaveProperty('enrollmentResult.isVerified', false)
 
-    expect(getSessionRefMock).toBeCalledWith(payload.sessionId)
+    expect(getSessionRefMock).toHaveBeenCalledWith(payload.sessionId)
     expect(updateSessionMock).toHaveBeenNthCalledWith(1, { isStarted: true })
     expect(updateSessionMock).toHaveBeenNthCalledWith(2, { isLive: false })
 
