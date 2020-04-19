@@ -22,7 +22,7 @@ describe('verificationAPI', () => {
 
   beforeAll(done => {
     Config.skipEmailVerification = false
-    //jest.setTimeout(50000)
+    jest.setTimeout(50000)
     server = makeServer(done)
 
     console.log('the server is ..')
