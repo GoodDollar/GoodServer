@@ -23,6 +23,7 @@ before_script:
   - npm run ganache &
   - npm run wait
   - npm run deploy
+  - npm link
   - popd
 
 script:
