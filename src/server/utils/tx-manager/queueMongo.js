@@ -56,10 +56,13 @@ export default class queueMongo {
         ]
       }
       const update = { isLock: true, lockedAt: +new Date() }
+      log.debug('getting free address')
       let wallet = await this.model.findOneAndUpdate(filter, update, {
         sort: { lockedAt: 1 }, //get least recently used
         returnNewDocument: true
       })
+      log.debug('got free address', wallet)
+
       if (this.reRunQueue) {
         clearTimeout(this.reRunQueue)
       }
@@ -111,6 +114,7 @@ export default class queueMongo {
         },
         { upsert: true }
       )
+      log.debug(`wallet initialized ${address} with nonce ${nonce} in mongo`)
       this.wallets[address] = true
     } catch (e) {
       log.error('TX queueMongo (create)', { address, errMessage: e.message, e })
