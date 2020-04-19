@@ -56,12 +56,12 @@ export default class queueMongo {
         ]
       }
       const update = { isLock: true, lockedAt: +new Date() }
-      log.debug('getting free address')
+      log.debug('getting free address', { addresses, expired })
       let wallet = await this.model.findOneAndUpdate(filter, update, {
         sort: { lockedAt: 1 }, //get least recently used
         returnNewDocument: true
       })
-      log.debug('got free address', { wallet })
+      log.debug('got free address', { addresses, expired, wallet })
 
       if (this.reRunQueue) {
         clearTimeout(this.reRunQueue)
@@ -109,6 +109,7 @@ export default class queueMongo {
           $setOnInsert: {
             address,
             nonce,
+            isLock: false,
             networkId: this.networkId
           }
         },
