@@ -139,12 +139,6 @@ export class Wallet {
     txManager.getTransactionCount = this.web3.eth.getTransactionCount
     await txManager.createListIfNotExists(this.addresses)
 
-    if (conf.topAdminsOnStartup) {
-      await this.topAdmins().catch(e => {
-        log.warn('Top admins failed', { e, errMessage: e.message })
-      })
-    }
-
     for (let addr of this.addresses) {
       const balance = await this.web3.eth.getBalance(addr)
       const isAdminWallet = await this.isVerifiedAdmin(addr)
@@ -158,6 +152,14 @@ export class Wallet {
       if (conf.env !== 'test') process.exit(-1)
     }
     this.address = this.filledAddresses[0]
+
+    if (conf.topAdminsOnStartup) {
+      // this needs to happen here after we have added atleast 1 admin address otherwise calling proxy contract
+      // wont work
+      await this.topAdmins().catch(e => {
+        log.warn('Top admins failed', { e, errMessage: e.message })
+      })
+    }
 
     this.identityContract = new this.web3.eth.Contract(
       IdentityABI.abi,
