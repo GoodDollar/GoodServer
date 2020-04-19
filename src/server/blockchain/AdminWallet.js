@@ -140,7 +140,7 @@ export class Wallet {
     await txManager.createListIfNotExists(this.addresses)
 
     if (conf.topAdminsOnStartup) {
-      await this.topAdmins({}).catch(e => {
+      await this.topAdmins().catch(e => {
         log.warn('Top admins failed', { e, errMessage: e.message })
       })
     }
