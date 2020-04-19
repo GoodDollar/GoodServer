@@ -6,7 +6,7 @@ import { omit, invokeMap } from 'lodash'
 
 import Config from '../../server.config'
 
-import UserDBPrivate from '../../db/mongo/user-privat-provider'
+import storage from '../../db/mongo/user-privat-provider'
 import AdminWallet from '../../blockchain/AdminWallet'
 import { GunDBPublic } from '../../gun/gun-middleware'
 
@@ -15,15 +15,16 @@ import createEnrollmentProcessor from '../processor/EnrollmentProcessor'
 import { getToken, getCreds } from '../../__util__/'
 import createMockingHelper from '../api/__tests__/__util__'
 
-const storage = UserDBPrivate
-
-Config.skipEmailVerification = false
 describe('verificationAPI', () => {
   let server
+  let { skipEmailVerification } = Config
+  const userIdentifier = '0x7ac080f6607405705aed79675789701a48c76f55'
 
   beforeAll(done => {
-    jest.setTimeout(50000)
+    Config.skipEmailVerification = false
+    //jest.setTimeout(50000)
     server = makeServer(done)
+
     console.log('the server is ..')
     console.log({ server })
   })
@@ -31,6 +32,7 @@ describe('verificationAPI', () => {
   afterAll(async done => {
     console.log('afterAll')
 
+    Object.assign(Config, { skipEmailVerification })
     await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
 
     server.close(err => {
@@ -40,13 +42,10 @@ describe('verificationAPI', () => {
 
   describe('face verification', () => {
     let token
-    let credentials
-
     let helper
     let zoomServiceMock
 
     const updateSessionMock = jest.fn()
-    const updateUserMock = jest.fn()
     const whitelistUserMock = jest.fn()
     const getSessionRefMock = jest.fn()
     const getSessionRefImplementation = GunDBPublic.session
@@ -69,26 +68,25 @@ describe('verificationAPI', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(400, { success: false, error: 'Invalid input' })
 
-    beforeAll(() => {
+    beforeAll(async () => {
       const enrollmentProcessor = createEnrollmentProcessor(storage)
 
       GunDBPublic.session = getSessionRefMock
       AdminWallet.whitelistUser = whitelistUserMock
-      UserDBPrivate.updateUser = updateUserMock
 
       zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
       helper = createMockingHelper(zoomServiceMock)
+      token = await getToken(server)
     })
 
     beforeEach(async () => {
-      credentials = await getCreds(true)
-      token = await getToken(server, credentials)
+      await storage.updateUser({ identifier: userIdentifier, isVerified: false })
 
       getSessionRefMock.mockImplementation(() => ({ put: updateSessionMock }))
     })
 
     afterEach(() => {
-      invokeMap([updateUserMock, updateSessionMock, getSessionRefMock, whitelistUserMock], 'mockReset')
+      invokeMap([updateSessionMock, getSessionRefMock, whitelistUserMock], 'mockReset')
 
       zoomServiceMock.reset()
     })
@@ -96,7 +94,6 @@ describe('verificationAPI', () => {
     afterAll(() => {
       GunDBPublic.session = getSessionRefImplementation
       AdminWallet.whitelistUser = AdminWallet.constructor.prototype.whitelistUser
-      UserDBPrivate.updateUser = UserDBPrivate.constructor.prototype.updateUser
 
       zoomServiceMock.restore()
       zoomServiceMock = null
@@ -144,16 +141,16 @@ describe('verificationAPI', () => {
           }
         })
 
-      const { address, profilePublickey } = credentials
-      const identifier = address.toLowerCase()
+      const { address, profilePublickey } = await getCreds()
+      const { isVerified } = await storage.getUser(userIdentifier)
 
       // to check has user been updated in the database
-      expect(updateUserMock).toHaveBeenCalledWith({ identifier, isVerified: true })
+      expect(isVerified).toBeTruthy()
       // in the GUN session
       expect(updateSessionMock).toHaveBeenCalledWith({ isEnrolled: true })
       expect(updateSessionMock).toHaveBeenCalledWith({ isWhitelisted: true })
       // and in the waller
-      expect(whitelistUserMock).toHaveBeenCalledWith(identifier, profilePublickey)
+      expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), profilePublickey)
     })
 
     test("PUT /verify/face/:enrollmentIdentifier returns 200 and success: false when verification wasn't successfull", async () => {
@@ -183,45 +180,32 @@ describe('verificationAPI', () => {
         })
 
       // to check that user hasn't beed updated nowhere
+
       // in the database
-      expect(updateUserMock).not.toHaveBeenCalled()
+      const { isVerified } = await storage.getUser(userIdentifier)
+
+      expect(isVerified).toBeFalsy()
+
       // in the session
       expect(updateSessionMock).not.toHaveBeenCalledWith({ isEnrolled: true })
       expect(updateSessionMock).not.toHaveBeenCalledWith({ isWhitelisted: true })
+
       // and in the wallet
       expect(whitelistUserMock).not.toHaveBeenCalled()
     })
 
-    describe('face verification: already verified', () => {
-      const getUserImplementation = storage.constructor.prototype.getUser
+    test('PUT /verify/face/:enrollmentIdentifier skips verification is user is already verified', async () => {
+      await storage.updateUser({ identifier: userIdentifier, isVerified: true })
 
-      beforeEach(() => {
-        storage.getUser = jest.fn(async identifier => {
-          const user = await getUserImplementation.call(storage, identifier)
+      await request(server)
+        .put(enrollmentUri)
+        .send(payload)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200, { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } })
 
-          return {
-            ...user,
-            isVerified: true
-          }
-        })
-      })
-
-      afterEach(() => {
-        storage.getUser = getUserImplementation
-        invokeMap([updateSessionMock, getSessionRefMock], 'mockReset')
-      })
-
-      test('PUT /verify/face/:enrollmentIdentifier skips verification is user is already verified', async () => {
-        await request(server)
-          .put(enrollmentUri)
-          .send(payload)
-          .set('Authorization', `Bearer ${token}`)
-          .expect(200, { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } })
-
-        expect(getSessionRefMock).toHaveBeenCalledWith(payload.sessionId)
-        expect(updateSessionMock).toHaveBeenCalledWith({ isDuplicate: false, isLive: true, isEnrolled: true })
-        expect(updateSessionMock).not.toHaveBeenCalledWith({ isStarted: true })
-      })
+      expect(getSessionRefMock).toHaveBeenCalledWith(payload.sessionId)
+      expect(updateSessionMock).toHaveBeenCalledWith({ isDuplicate: false, isLive: true, isEnrolled: true })
+      expect(updateSessionMock).not.toHaveBeenCalledWith({ isStarted: true })
     })
   })
 
@@ -232,10 +216,9 @@ describe('verificationAPI', () => {
   })
 
   test('/verify/sendotp without sms validation', async () => {
-    const creds = await getCreds(true)
-    const token = await getToken(server, creds)
-    await UserDBPrivate.updateUser({
-      identifier: creds.address.toLowerCase(),
+    const token = await getToken(server)
+    await storage.updateUser({
+      identifier: userIdentifier,
       smsValidated: false,
       fullName: 'test_user_sendemail'
     })
@@ -273,8 +256,8 @@ describe('verificationAPI', () => {
 
     await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
 
-    const user = await UserDBPrivate.updateUser({
-      identifier: '0x7ac080f6607405705aed79675789701a48c76f55',
+    const user = await storage.updateUser({
+      identifier: userIdentifier,
       fullName: 'test_user_sendemail'
     })
 
@@ -293,7 +276,7 @@ describe('verificationAPI', () => {
 
     await delay(500)
 
-    const dbUser = await UserDBPrivate.getUser('0x7ac080f6607405705aed79675789701a48c76f55')
+    const dbUser = await storage.getUser(userIdentifier)
 
     expect(dbUser.emailVerificationCode).toBeTruthy()
   })
@@ -301,8 +284,8 @@ describe('verificationAPI', () => {
   test('/verify/sendemail should fail with 429 status - too many requests (rate limiter)', async () => {
     await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
 
-    const user = await UserDBPrivate.updateUser({
-      identifier: '0x7ac080f6607405705aed79675789701a48c76f55',
+    const user = await storage.updateUser({
+      identifier: userIdentifier,
       fullName: 'test_user_sendemail'
     })
 

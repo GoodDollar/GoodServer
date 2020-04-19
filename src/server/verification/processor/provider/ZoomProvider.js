@@ -1,9 +1,7 @@
 // @flow
-import { pick, findKey, isEmpty } from 'lodash'
+import ZoomAPI from '../../api/ZoomAPI.js'
 
 import { type IEnrollmentProvider } from '../typings'
-
-import ZoomAPI from '../../api/ZoomAPI.js'
 
 class ZoomProvider implements IEnrollmentProvider {
   api = null
