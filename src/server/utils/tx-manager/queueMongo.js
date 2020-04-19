@@ -61,7 +61,7 @@ export default class queueMongo {
         sort: { lockedAt: 1 }, //get least recently used
         returnNewDocument: true
       })
-      log.debug('got free address', wallet)
+      log.debug('got free address', { wallet })
 
       if (this.reRunQueue) {
         clearTimeout(this.reRunQueue)
