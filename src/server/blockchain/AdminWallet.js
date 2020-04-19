@@ -1,4 +1,5 @@
 // @flow
+import Crypto from 'crypto'
 import Web3 from 'web3'
 import HDKey from 'hdkey'
 import bip39 from 'bip39-light'
@@ -104,7 +105,7 @@ export class Wallet {
       defaultGasPrice,
       transactionBlockTimeout: 5,
       transactionConfirmationBlocks: 1,
-      transactionPollingTimeout: 30
+      transactionPollingTimeout: 20
     })
     if (conf.privateKey) {
       let account = this.web3.eth.accounts.privateKeyToAccount(conf.privateKey)
@@ -397,20 +398,19 @@ export class Wallet {
     lastTopping?: moment.Moment = moment().subtract(1, 'day'),
     force: boolean = false
   ): PromiEvent<TransactionReceipt> {
-    let daysAgo = moment().diff(moment(lastTopping), 'days')
-    if (conf.env !== 'development' && daysAgo < 1) throw new Error('Daily limit reached')
-    try {
-      let userBalance = await this.web3.eth.getBalance(address)
-      let maxTopWei = parseInt(web3Utils.toWei('1000000', 'gwei'))
-      let toTop = maxTopWei - userBalance
-      log.debug('TopWallet:', { address, userBalance, toTop })
-      if (toTop > 0 && (force || toTop / maxTopWei >= 0.75)) {
-        let res = await this.sendTransaction(this.proxyContract.methods.topWallet(address))
-        log.debug('Topwallet result:', { res })
-        return res
-      }
-      log.debug("User doesn't need topping")
+    let userBalance = await this.web3.eth.getBalance(address)
+    let maxTopWei = parseInt(web3Utils.toWei('1000000', 'gwei'))
+    let toTop = maxTopWei - userBalance
+    log.debug('TopWallet:', { address, userBalance, toTop })
+    if (toTop <= 0 || toTop / maxTopWei < 0.75) {
+      log.debug("User doesn't need topping", { address })
       return { status: 1 }
+    }
+
+    try {
+      let res = await this.sendTransaction(this.proxyContract.methods.topWallet(address))
+      log.debug('Topwallet result:', { address, res })
+      return res
     } catch (e) {
       log.error('Error topWallet', { errMessage: e.message, address, lastTopping, force })
       throw e
@@ -464,22 +464,30 @@ export class Wallet {
         defaultGas
       gasPrice = gasPrice || defaultGasPrice
 
+      const uuid = Crypto.randomBytes(5).toString('base64')
+      log.debug('getting tx lock:', { uuid })
       const { nonce, release, fail, address } = await txManager.lock(this.filledAddresses)
+      let balance = NaN
+      if (conf.env === 'development') {
+        balance = await this.web3.eth.getBalance(address)
+      }
       currentAddress = address
-      log.debug(`sending tx from: ${address} | nonce: ${nonce}`, { gas, gasPrice })
+      log.debug(`sending tx from: ${address} | nonce: ${nonce}`, { uuid, balance, gas, gasPrice })
       return new Promise((res, rej) => {
         tx.send({ gas, gasPrice, chainId: this.networkId, nonce, from: address })
           .on('transactionHash', h => {
             release()
+            log.debug('got tx hash:', { uuid })
             onTransactionHash && onTransactionHash(h)
           })
           .on('receipt', r => {
+            log.debug('got tx receipt:', { uuid })
             onReceipt && onReceipt(r)
             res(r)
           })
           .on('confirmation', c => onConfirmation && onConfirmation(c))
           .on('error', async e => {
-            log.error('sendTransaction error:', { error: e.message, e, from: address })
+            log.error('sendTransaction error:', { error: e.message, e, from: address, uuid })
             if (isNonceError(e)) {
               let netNonce = parseInt(await this.web3.eth.getTransactionCount(address))
               log.warn('sendTransaciton nonce failure retry', {
