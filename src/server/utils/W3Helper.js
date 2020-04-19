@@ -45,12 +45,14 @@ export default {
         if (e.message && e.message.indexOf('email_not_in_whitelist')) {
           log.warn('email_not_in_whitelist error occurred during w3 API request', {
             errMessage: e.message,
-            error: e
+            error: e,
+            body
           })
         } else {
           log.error('Failed to execute the request to W3 API', {
             errMessage: e.message,
-            error: e
+            error: e,
+            body
           })
         }
 
@@ -64,8 +66,6 @@ export default {
       ..._options
     }
     const secureHash = md5(user.email + conf.secure_key)
-
-    log.debug('secureHash', { user, secureHash })
 
     return this.baseQuery(
       '',
