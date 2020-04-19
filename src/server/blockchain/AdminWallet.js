@@ -139,9 +139,11 @@ export class Wallet {
     txManager.getTransactionCount = this.web3.eth.getTransactionCount
     await txManager.createListIfNotExists(this.addresses)
 
-    await this.topAdmins({}).catch(e => {
-      log.warn('Top admins failed', { e, errMessage: e.message })
-    })
+    if (conf.topAdminsOnStartup) {
+      await this.topAdmins({}).catch(e => {
+        log.warn('Top admins failed', { e, errMessage: e.message })
+      })
+    }
 
     for (let addr of this.addresses) {
       const balance = await this.web3.eth.getBalance(addr)
@@ -471,6 +473,8 @@ export class Wallet {
       const uuid = Crypto.randomBytes(5).toString('base64')
       log.debug('getting tx lock:', { uuid })
       const { nonce, release, fail, address } = await txManager.lock(this.filledAddresses)
+      log.debug('got tx lock:', { uuid, address })
+
       let balance = NaN
       if (conf.env === 'development') {
         balance = await this.web3.eth.getBalance(address)
