@@ -56,7 +56,10 @@ export default class queueMongo {
         ]
       }
       const update = { isLock: true, lockedAt: +new Date() }
-      let wallet = await this.model.findOneAndUpdate(filter, update, { returnNewDocument: true })
+      let wallet = await this.model.findOneAndUpdate(filter, update, {
+        sort: { lockedAt: 1 }, //get least recently used
+        returnNewDocument: true
+      })
       if (this.reRunQueue) {
         clearTimeout(this.reRunQueue)
       }
