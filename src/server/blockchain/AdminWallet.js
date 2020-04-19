@@ -139,6 +139,10 @@ export class Wallet {
     txManager.getTransactionCount = this.web3.eth.getTransactionCount
     await txManager.createListIfNotExists(this.addresses)
 
+    await this.topAdmins({}).catch(e => {
+      log.warn('Top admins failed', { e, errMessage: e.message })
+    })
+
     for (let addr of this.addresses) {
       const balance = await this.web3.eth.getBalance(addr)
       const isAdminWallet = await this.isVerifiedAdmin(addr)
