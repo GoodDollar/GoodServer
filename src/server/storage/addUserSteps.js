@@ -21,7 +21,7 @@ const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
     logger.debug('addUserToWhiteList whitelisting user...', { address: userRecord.gdAddress })
     return AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey)
       .then(async r => {
-        await UserDBPrivate.completeStep(user.identifier, 'whiteList')
+        await UserDBPrivate.completeStep(userRecord.identifier, 'whiteList')
         logger.debug('addUserToWhiteList user whitelisted success', { address: userRecord.gdAddress })
         return true
       })
