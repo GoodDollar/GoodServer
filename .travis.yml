@@ -23,12 +23,10 @@ before_script:
   - npm run ganache &
   - npm run wait
   - npm run deploy
-  - npm link
   - popd
 
 script:
   - export MNEMONIC=$ADMIN_MNEMONIC
-  - npm link @gooddollar/goodcontracts
   - npm run coverage -- --silent
   - npm run coveralls
   - npm run build
