@@ -12,6 +12,7 @@ export default class queueMongo {
     this.nonce = null
     this.getTransactionCount = () => 0
     this.reRunQueue = null
+    this.wallets = {}
     const filter = [
       {
         $match: {
@@ -90,6 +91,9 @@ export default class queueMongo {
    * @returns {Promise<void>}
    */
   async createWallet(address) {
+    if (this.wallets[address]) {
+      return
+    }
     try {
       const nonce = await this.getTransactionCount(address)
       log.debug(`init wallet ${address} with nonce ${nonce} in mongo`)
@@ -104,6 +108,7 @@ export default class queueMongo {
         },
         { upsert: true }
       )
+      this.wallets[address] = true
     } catch (e) {
       log.error('TX queueMongo (create)', { address, errMessage: e.message, e })
     }
