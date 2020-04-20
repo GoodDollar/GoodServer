@@ -304,18 +304,18 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         return res.json({ ok: 0, error: 'Email already exists, please use a different one' })
       }
 
-      if ((!user.mauticId && !tempMauticId) || (currentEmail && currentEmail !== email)) {
-        const mauticContact = await Mautic.createContact(userRec)
-
-        //otp might be undefined so we use spread operator instead of userRec.otp.tempId=
-        userRec.otp = {
-          ...userRec.otp,
-          tempMauticId: mauticContact.contact.fields.all.id
-        }
-        log.debug('created new user mautic contact', userRec)
-      }
-
       if (conf.skipEmailVerification === false) {
+        if ((!user.mauticId && !tempMauticId) || (currentEmail && currentEmail !== email)) {
+          const mauticContact = await Mautic.createContact(userRec)
+
+          //otp might be undefined so we use spread operator instead of userRec.otp.tempId=
+          userRec.otp = {
+            ...userRec.otp,
+            tempMauticId: mauticContact.contact.fields.all.id
+          }
+          log.debug('created new user mautic contact', userRec)
+        }
+
         const code = generateOTP(6)
         if (!user.isEmailConfirmed || email !== currentEmail) {
           try {
