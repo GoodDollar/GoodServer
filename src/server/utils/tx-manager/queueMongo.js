@@ -202,7 +202,7 @@ export default class queueMongo {
         if (walletNonce) {
           nextTr.cb({ nonce: walletNonce.nonce, address: walletNonce.address })
         } else {
-          this.queue.unshift(nextTr)
+          this.queue.push(nextTr)
         }
       }
     } catch (e) {
