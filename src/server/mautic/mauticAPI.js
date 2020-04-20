@@ -42,19 +42,26 @@ export const Mautic = {
   },
 
   deleteContact(user: UserRecord) {
+    if (user.mauticId === undefined) return
     return this.baseQuery(`/contacts/${user.mauticId}/delete`, this.baseHeaders, {}, 'delete')
   },
 
   deleteContactFromDNC(user: UserRecord, group = 'email') {
+    if (user.mauticId === undefined) return
     return this.baseQuery(`/contacts/${user.mauticId}/dnc/${group}/remove`, this.baseHeaders, {}, 'post')
   },
 
   addContactToDNC(user: UserRecord, group = 'email') {
+    if (user.mauticId === undefined) return
     return this.baseQuery(`/contacts/${user.mauticId}/dnc/${group}/add`, this.baseHeaders, {}, 'post')
   },
 
   async createContact(user: UserRecord) {
     const tags = ['dappuser']
+    if (user.email === undefined) {
+      log.warn('failed creating contact, no email.', { user })
+      return
+    }
     if (Config.isEtoro) tags.push('etorobeta')
     tags.push(Config.version)
     const mauticRecord = await this.baseQuery('/contacts/new', this.baseHeaders, { ...user, tags })
