@@ -3,9 +3,10 @@ import { Router } from 'express'
 import passport from 'passport'
 import { wrapAsync, onlyInEnv } from '../utils/helpers'
 import { sendLinkByEmail, sendLinkBySMS } from './send.sendgrid'
-import { sendMagicCodeBySMS } from '../../imports/otp'
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
+
+// import { sendMagicCodeBySMS } from '../../imports/otp'
 
 const setup = (app: Router, storage) => {
   /**
@@ -25,7 +26,6 @@ const setup = (app: Router, storage) => {
     onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res, next) => {
       const log = req.log
-      const { user } = req
       const { to, sendLink } = req.body
 
       log.info('sending email', { to, sendLink })
@@ -70,21 +70,21 @@ const setup = (app: Router, storage) => {
    * @apiSuccess {Number} ok
    * @ignore
    */
-  app.post(
-    '/send/magiccode',
-    passport.authenticate('jwt', { session: false }),
-    onlyInEnv('production', 'staging'),
-    wrapAsync(async (req, res, next) => {
-      const log = req.log
-      const { to, magicCode } = req.body
-
-      log.info('sending sms with magic code', { to, magicCode })
-
-      await sendMagicCodeBySMS(to, magicCode)
-
-      res.json({ ok: 1 })
-    })
-  )
+  // app.post(
+  //   '/send/magiccode',
+  //   passport.authenticate('jwt', { session: false }),
+  //   onlyInEnv('production', 'staging'),
+  //   wrapAsync(async (req, res, next) => {
+  //     const log = req.log
+  //     const { to, magicCode } = req.body
+  //
+  //     log.info('sending sms with magic code', { to, magicCode })
+  //
+  //     await sendMagicCodeBySMS(to, magicCode)
+  //
+  //     res.json({ ok: 1 })
+  //   })
+  // )
 
   /**
    * @api {post} /send/recoveryinstructions Send recovery instructions email
