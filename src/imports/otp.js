@@ -40,11 +40,11 @@ export const sendOTP = (user: UserRecord): Promise<any> => {
  * @param {String} code - magic code to be send to user
  * @returns {Promise<any>}
  */
-export const sendMagicCodeBySMS = async (to, code) => {
-  const { twilioAuthID, twilioAuthToken, twilioPhoneNumber } = conf
-  const client = Twilio(twilioAuthID, twilioAuthToken)
-  const msg = 'Open the GoodDollar app you just installed and paste this code:'
-
-  await client.messages.create({ to, from: twilioPhoneNumber, body: msg })
-  await client.messages.create({ to, from: twilioPhoneNumber, body: code })
-}
+// export const sendMagicCodeBySMS = async (to, code) => {
+//   const { twilioAuthID, twilioAuthToken, twilioPhoneNumber } = conf
+//   const client = Twilio(twilioAuthID, twilioAuthToken)
+//   const msg = 'Open the GoodDollar app you just installed and paste this code:'
+//
+//   await client.messages.create({ to, from: twilioPhoneNumber, body: msg })
+//   await client.messages.create({ to, from: twilioPhoneNumber, body: code })
+// }
