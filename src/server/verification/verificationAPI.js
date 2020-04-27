@@ -586,7 +586,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const logger = req.log
 
       if (conf.enableInvites === false) res.json({ ok: 0, message: 'invites disabled' })
-      const w3Record = await addUserSteps.updateW3Record(user) //make sure w3 registration was done
+      const w3Record = await addUserSteps.updateW3Record(user, logger) //make sure w3 registration was done
       let loginToken = w3Record.loginToken
 
       if (!loginToken) {
