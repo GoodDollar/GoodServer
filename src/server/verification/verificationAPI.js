@@ -17,6 +17,7 @@ import fs from 'fs'
 import W3Helper from '../utils/W3Helper'
 import gdToWei from '../utils/gdToWei'
 import txManager from '../utils/tx-manager'
+import addUserSteps from '../storage/addUserSteps'
 
 const fsPromises = fs.promises
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
@@ -584,7 +585,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { user } = req
       const logger = req.log
 
-      let loginToken = user.loginToken
+      if (conf.enableInvites === false) res.json({ ok: 0, message: 'invites disabled' })
+      const w3Record = await addUserSteps.updateW3Record(user) //make sure w3 registration was done
+      let loginToken = w3Record.loginToken
 
       if (!loginToken) {
         const w3Data = await W3Helper.getLoginOrWalletToken(user)
@@ -620,6 +623,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log
 
       const { user: currentUser } = req
+
+      if (conf.enableInvites === false) res.json({ ok: 0, message: 'invites disabled' })
+
       const isUserWhitelisted = await AdminWallet.isVerified(currentUser.gdAddress)
 
       log.info('currentUser', { currentUser })
