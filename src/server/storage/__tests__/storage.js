@@ -42,7 +42,7 @@ describe('storageAPI', () => {
   test('check updateMauticRecord', async () => {
     const creds = await getCreds()
     const userRecord = { ...creds, ...user }
-    await addUserSteps.updateMauticRecord(userRecord)
+    await addUserSteps.updateMauticRecord(userRecord, console)
     const mauticId = await UserDBPrivate.getUserField(user.identifier, 'mauticId')
     expect(mauticId).toBeTruthy()
   })
@@ -51,7 +51,7 @@ describe('storageAPI', () => {
     const creds = await getCreds(true)
     let userRecord = { ...creds, ...user, gdAddress: creds.address }
     userRecord.profilePublicKey = '' + Math.random()
-    await addUserSteps.addUserToWhiteList(userRecord)
+    await addUserSteps.addUserToWhiteList(userRecord, console)
     const userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')
     expect(userIsCompleted.whiteList).toBeTruthy()
   })
@@ -59,13 +59,13 @@ describe('storageAPI', () => {
   test('check updateW3Record', async () => {
     const creds = await getCreds(true)
     let userRecord = { ...creds, ...user, gdAddress: creds.address }
-    await addUserSteps.updateW3Record(userRecord)
+    await addUserSteps.updateW3Record(userRecord, console)
     const userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')
     expect(userIsCompleted.w3Record).toBeTruthy()
   })
 
   test('check updateMarketToken', async () => {
-    await addUserSteps.updateMarketToken(user)
+    await addUserSteps.updateMarketToken(user, console)
     const userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')
     expect(userIsCompleted.marketToken).toBeTruthy()
   })

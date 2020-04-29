@@ -1,6 +1,5 @@
 // @flow
 import conf from '../server.config'
-import logger from '../../imports/logger'
 import AdminWallet from '../blockchain/AdminWallet'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
 import { type UserRecord } from '../../imports/types'
@@ -15,45 +14,50 @@ const Timeout = (timeout: msec, msg: string) => {
   })
 }
 
-const addUserToWhiteList = async (userRecord: UserRecord) => {
+const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
   let user = await UserDBPrivate.getUser(userRecord.identifier)
   const whiteList = get(user, 'isCompleted.whiteList', false)
   if (conf.disableFaceVerification && !whiteList) {
+    logger.debug('addUserToWhiteList whitelisting user...', { address: userRecord.gdAddress })
     return AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey)
       .then(async r => {
-        await UserDBPrivate.completeStep(user.identifier, 'whiteList')
+        await UserDBPrivate.completeStep(userRecord.identifier, 'whiteList')
+        logger.debug('addUserToWhiteList user whitelisted success', { address: userRecord.gdAddress })
         return true
       })
       .catch(e => {
-        logger.error('failed whitelisting', e.message, e, { userRecord })
+        logger.error('addUserToWhiteList failed whitelisting', { e, errMessage: e.message, userRecord })
         return false
       })
   }
+  whiteList && logger.debug('addUserToWhiteList user already whitelisted', { address: userRecord.gdAddress })
   return true
 }
 
-const updateMauticRecord = async (userRecord: UserRecord) => {
+const updateMauticRecord = async (userRecord: UserRecord, logger: any) => {
   if (!userRecord.mauticId) {
     const mauticRecord = await Mautic.createContact(userRecord).catch(e => {
-      logger.error('Create Mautic Record Failed', { e })
+      logger.error('updateMauticRecord Create Mautic Record Failed', { e, errMessage: e.message, userRecord })
       throw e
     })
     const mauticId = !userRecord.mauticId ? get(mauticRecord, 'contact.fields.all.id', -1) : userRecord.mauticId
     await UserDBPrivate.updateUser({ identifier: userRecord.identifier, mauticId })
-    logger.debug('User mautic record', { mauticId, mauticRecord })
+    logger.debug('updateMauticRecord user mautic record updated', { mauticId, mauticRecord })
   }
 
   return true
 }
 
-const updateW3Record = async (user: any) => {
+const updateW3Record = async (user: any, logger: any) => {
   if (conf.env !== 'test' && conf.enableInvites === false) {
     return
   }
   let userDB = await UserDBPrivate.getUser(user.identifier)
   const w3Record = get(userDB, 'isCompleted.w3Record', false)
   if (!w3Record) {
-    const web3Record = await W3Helper.registerUser(user)
+    const web3Record = await W3Helper.registerUser(user).catch(e => {
+      logger.error('updateW3Record error registering user to w3', { e, errMessage: e.message, user })
+    })
     if (web3Record && web3Record.login_token && web3Record.wallet_token) {
       await UserDBPrivate.updateUser({
         identifier: user.identifier,
@@ -61,7 +65,10 @@ const updateW3Record = async (user: any) => {
         w3Token: web3Record.wallet_token,
         'isCompleted.w3Record': true
       })
-      logger.debug('got web3 user records', { web3Record })
+      logger.debug('updateW3Record got web3 user records', { web3Record })
+    } else {
+      logger.error('updateW3Record empty w3 response', { user })
+      throw new Error('empty w3 response')
     }
     return {
       loginToken: web3Record.login_token,
@@ -71,7 +78,7 @@ const updateW3Record = async (user: any) => {
   return userDB
 }
 
-const updateMarketToken = async (user: any) => {
+const updateMarketToken = async (user: any, logger: any) => {
   if (conf.env !== 'test' && conf.isEtoro === false) {
     return
   }
@@ -89,20 +96,22 @@ const updateMarketToken = async (user: any) => {
   return userDB.marketToken
 }
 
-const topUserWallet = async (userRecord: UserRecord) => {
+const topUserWallet = async (userRecord: UserRecord, logger: any) => {
   let user = await UserDBPrivate.getUser(userRecord.identifier)
   const topWallet = get(user, 'isCompleted.topWallet', false)
   if (!topWallet) {
-    return Promise.race([AdminWallet.topWallet(userRecord.gdAddress, null, true), Timeout(15000, 'topWallet')])
+    return Promise.race([AdminWallet.topWallet(userRecord.gdAddress, null), Timeout(15000, 'topWallet')])
       .then(r => {
         UserDBPrivate.completeStep(userRecord.identifier, 'topWallet')
+        logger.debug('topUserWallet success', { address: userRecord.gdAddress })
         return true
       })
       .catch(e => {
-        logger.error('New user topping failed', { errMessage: e.message })
+        logger.error('New user topping failed', { errMessage: e.message, userRecord })
         return false
       })
   }
+  logger.debug('topUserWallet user wallet already topped', { address: userRecord.gdAddress })
   return true
 }
 

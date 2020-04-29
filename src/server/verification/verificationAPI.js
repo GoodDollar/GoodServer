@@ -15,6 +15,7 @@ import { Mautic } from '../mautic/mauticAPI'
 import W3Helper from '../utils/W3Helper'
 import gdToWei from '../utils/gdToWei'
 import txManager from '../utils/tx-manager'
+import addUserSteps from '../storage/addUserSteps'
 
 import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 
@@ -294,18 +295,18 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         return res.json({ ok: 0, error: 'Email already exists, please use a different one' })
       }
 
-      if ((!user.mauticId && !tempMauticId) || (currentEmail && currentEmail !== email)) {
-        const mauticContact = await Mautic.createContact(userRec)
-
-        //otp might be undefined so we use spread operator instead of userRec.otp.tempId=
-        userRec.otp = {
-          ...userRec.otp,
-          tempMauticId: mauticContact.contact.fields.all.id
-        }
-        log.debug('created new user mautic contact', userRec)
-      }
-
       if (conf.skipEmailVerification === false) {
+        if ((!user.mauticId && !tempMauticId) || (currentEmail && currentEmail !== email)) {
+          const mauticContact = await Mautic.createContact(userRec)
+
+          //otp might be undefined so we use spread operator instead of userRec.otp.tempId=
+          userRec.otp = {
+            ...userRec.otp,
+            tempMauticId: mauticContact.contact.fields.all.id
+          }
+          log.debug('created new user mautic contact', userRec)
+        }
+
         const code = generateOTP(6)
         if (!user.isEmailConfirmed || email !== currentEmail) {
           try {
@@ -574,7 +575,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { user } = req
       const logger = req.log
 
-      let loginToken = user.loginToken
+      if (conf.enableInvites === false) res.json({ ok: 0, message: 'invites disabled' })
+      const w3Record = await addUserSteps.updateW3Record(user, logger) //make sure w3 registration was done
+      let loginToken = w3Record.loginToken
 
       if (!loginToken) {
         const w3Data = await W3Helper.getLoginOrWalletToken(user)
@@ -610,6 +613,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log
 
       const { user: currentUser } = req
+
+      if (conf.enableInvites === false) res.json({ ok: 0, message: 'invites disabled' })
+
       const isUserWhitelisted = await AdminWallet.isVerified(currentUser.gdAddress)
 
       log.info('currentUser', { currentUser })

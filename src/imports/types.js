@@ -10,7 +10,9 @@ export type UserRecord = {
   otp?: { code: number, expirationDate: number, tempMauticId: string },
   isCompleted?: { whiteList: boolean, w3Record: boolean, marketToken: boolean, topWallet: boolean },
   emailVerificationCode?: string,
-  mauticId?: string
+  mauticId?: string,
+  loginToken?: string,
+  walletToken?: string
 }
 
 export type JWTRecord = {

@@ -5,6 +5,11 @@ import conf from './server.config'
 import { GunDBPublic } from './gun/gun-middleware'
 import app from './app'
 
+const Timeout = (timeout, err) => {
+  return new Promise((res, rej) => {
+    setTimeout(rej, timeout, new Error('Request Timeout:' + err))
+  })
+}
 export default function start(workerId) {
   console.log(`start workerId = ${workerId}`)
 
@@ -33,5 +38,11 @@ export default function start(workerId) {
     console.log('Press Ctrl+C to quit.')
   })
 
-  GunDBPublic.init(server, conf.gundbPassword, `publicdb${workerId}`, conf.gunPublicS3)
+  Promise.race([
+    Timeout(3000, 'gun not initialized'),
+    GunDBPublic.init(server, conf.gundbPassword, `publicdb${workerId}`, conf.gunPublicS3)
+  ]).catch(e => {
+    console.log('gun failed... quiting', e)
+    process.exit(-1)
+  })
 }

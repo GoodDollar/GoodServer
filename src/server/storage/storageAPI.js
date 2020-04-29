@@ -56,30 +56,86 @@ const setup = (app: Router, storage: StorageAPI) => {
             }
       })
 
-      await storage.updateUser(user)
-
+      const signUpPromises = []
+      const p1 = storage
+        .updateUser(user)
+        .then(r => logger.debug('updated new user record', { user }))
+        .catch(e => {
+          logger.error('failed updating new user record', { e, errMessage: e.message, user })
+          throw e
+        })
+      signUpPromises.push(p1)
       if (conf.disableFaceVerification) {
-        const isWhitelisted = await addUserSteps.addUserToWhiteList(userRecord)
-        if (isWhitelisted === false) throw new Error('Failed whitelisting user')
+        const p2 = addUserSteps
+          .addUserToWhiteList(userRecord, logger)
+          .then(isWhitelisted => {
+            logger.debug('addUserToWhiteList result', { isWhitelisted })
+            if (isWhitelisted === false) throw new Error('Failed whitelisting user')
+          })
+          .catch(e => {
+            logger.error('addUserToWhiteList failed', { e, errMessage: e.message, userRecord })
+            throw e
+          })
+        signUpPromises.push(p2)
       }
 
       if (!userRecord.mauticId && process.env.NODE_ENV !== 'development') {
-        await addUserSteps.updateMauticRecord(userRecord)
+        const p3 = addUserSteps
+          .updateMauticRecord(userRecord, logger)
+          .then(r => logger.debug('updateMauticRecord success'))
+          .catch(e => {
+            logger.error('updateMauticRecord failed', { e, errMessage: e.message, userRecord })
+            throw e
+          })
+        signUpPromises.push(p3)
       }
 
-      const web3Record = await addUserSteps.updateW3Record(user)
+      const web3RecordP = addUserSteps
+        .updateW3Record(user, logger)
+        .then(r => {
+          logger.debug('updateW3Record success')
+          return r
+        })
+        .catch(e => {
+          logger.error('updateW3Record failed', { e, errMessage: e.message, user })
+          throw e
+        })
+      signUpPromises.push(web3RecordP)
 
-      const marketToken = await addUserSteps.updateMarketToken(user)
+      const marketTokenP = addUserSteps
+        .updateMarketToken(user, logger)
+        .then(r => {
+          logger.debug('updateMarketToken success')
+          return r
+        })
+        .catch(e => {
+          logger.error('updateMarketToken failed', { e, errMessage: e.message, user })
+          throw e
+        })
+      signUpPromises.push(marketTokenP)
 
-      let isTopWallet = await addUserSteps.topUserWallet(userRecord)
-      if (isTopWallet === false) throw new Error('Failed to top wallet of user')
-      logger.debug('added new user:', { user, isTopWallet })
+      const p4 = addUserSteps
+        .topUserWallet(userRecord, logger)
+        .then(isTopWallet => {
+          if (isTopWallet === false) throw new Error('Failed to top wallet of new user')
+          logger.debug('topUserWallet success')
+        })
+        .catch(e => {
+          logger.error('topUserWallet failed', { e, errMessage: e.message, userRecord })
+          throw e
+        })
+
+      signUpPromises.push(p4)
+
+      await Promise.all(signUpPromises)
+      logger.debug('signup stepss success. adding new user:', { user })
 
       await storage.updateUser({
         identifier: userRecord.loggedInAs,
         createdDate: new Date().toString()
       })
-
+      const web3Record = await web3RecordP
+      const marketToken = await marketTokenP
       res.json({
         ok: 1,
         loginToken: web3Record && web3Record.loginToken,

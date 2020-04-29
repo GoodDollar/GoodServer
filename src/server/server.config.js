@@ -379,6 +379,12 @@ const conf = convict({
     format: '*',
     env: 'ENABLE_INVITES',
     default: true
+  },
+  topAdminsOnStartup: {
+    doc: 'call topAdmins in adminwallet smart contract',
+    format: '*',
+    env: 'TOP_ADMINS',
+    default: false
   }
 })
 

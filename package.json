@@ -1,6 +1,6 @@
 {
   "name": "@gooddollar/goodserver",
-  "version": "0.18.1-2",
+  "version": "0.19.5-0",
   "description": "GoodDollar Server",
   "main": "src/server/index.js",
   "engines": {
@@ -43,7 +43,7 @@
   "homepage": "https://gooddollar.org",
   "dependencies": {
     "@babel/polyfill": "^7.4.4",
-    "@gooddollar/goodcontracts": "^1.1.0",
+    "@gooddollar/goodcontracts": "^1.2.0",
     "@sendgrid/mail": "^6.4.0",
     "apidoc": "^0.17.7",
     "apidoc-markdown": "^0.2.1",
@@ -86,7 +86,9 @@
     "twilio": "^3.35.0",
     "web3": "^2.0.0-alpha.1",
     "web3-provider-engine": "^15.0.3",
+    "web3-providers": "^2.0.0-alpha.1",
     "web3-utils": "^2.0.0-alpha.1",
+    "websocket": "^1.0.29",
     "winston": "^3.2.1"
   },
   "devDependencies": {
