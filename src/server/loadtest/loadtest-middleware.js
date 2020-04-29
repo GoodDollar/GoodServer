@@ -43,7 +43,7 @@ const setup = (app: Router) => {
       for (i in users) {
         const u = users[i]
         console.log('user index:', i)
-        if (i == 259 || i == 329 || i == 351) {
+        if ([259, 329, 351].includes(i)) {
           console.log('skipping', u)
           continue
         }

@@ -196,12 +196,6 @@ const conf = convict({
     env: 'WALLET_URL',
     default: 'WALLET_URL'
   },
-  faceRecoServer: {
-    doc: 'Face Recognition Server URL',
-    format: '*',
-    env: 'FACE_RECO_SERVER',
-    default: 'FACE_RECO_SERVER'
-  },
   mauticURL: {
     doc: 'mautic URL',
     format: '*',
@@ -232,23 +226,23 @@ const conf = convict({
     env: 'MAUTIC_VERIFY_ID',
     default: '31'
   },
-  zoomURL: {
-    doc: 'Zoom Client URL',
-    format: '*',
-    env: 'ZOOM_API_URL',
-    default: 'https://api.zoomauth.com/api/v1/biometrics'
-  },
-  zoomToken: {
-    doc: 'Zoom APP Token',
-    format: '*',
-    env: 'ZOOM_TOKEN',
-    default: ''
-  },
-  zoomMinMatchLevel: {
-    doc: 'Zoom minimum match level in search',
-    format: '*',
-    env: 'ZOOM_MIN_MATCH_LEVEL',
+  zoomMinimalMatchLevel: {
+    doc: 'Minimal FaceTec Match Level threshold to mark enrollment as duplicate',
+    format: Number,
+    env: 'ZOOM_MINIMAL_MATCHLEVEL',
     default: 1
+  },
+  zoomServerBaseUrl: {
+    doc: 'FaceTec Managed Testing API URL',
+    format: '*',
+    env: 'ZOOM_SERVER_BASEURL',
+    default: 'https://api.zoomauth.com/api/v2/biometrics'
+  },
+  zoomLicenseKey: {
+    doc: 'Zoom (Face Recognition / Liveness Test API) License key',
+    format: '*',
+    env: 'ZOOM_LICENSE_KEY',
+    default: ''
   },
   gunPrivateS3: {
     key: {
@@ -290,17 +284,17 @@ const conf = convict({
     env: 'SKIP_EMAIL_VERIFICATION',
     default: false
   },
-  skipFaceRecognition: {
+  skipFaceVerification: {
     doc: 'Returns FR passed with no Zoom API interaction',
     format: Boolean,
-    env: 'SKIP_FACE_RECO',
+    env: 'SKIP_FACE_VERIFICATION',
     default: false
   },
-  allowFaceRecognitionDuplicates: {
-    doc: 'Allows passing FR process even if duplicate exists',
-    format: Boolean,
-    env: 'ALLOW_FACE_RECO_DUPS',
-    default: false
+  keepFaceVerificationRecords: {
+    doc: 'Time interval (in hours) to store face verification records after user deletes his account',
+    format: Number,
+    env: 'KEEP_FACE_VERIFICATION_RECORDS',
+    default: 24
   },
   enableMongoLock: {
     doc: 'Enable or disable transaction locks for mongo',

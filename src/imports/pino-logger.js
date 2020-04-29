@@ -2,7 +2,7 @@ import pino from 'pino'
 import Rollbar from 'rollbar'
 import conf from '../server/server.config'
 let rollbar
-if (conf.env != 'development' && conf.rollbarToken)
+if (conf.env !== 'development' && conf.rollbarToken)
   rollbar = new Rollbar({
     accessToken: conf.rollbarToken,
     captureUncaught: true,

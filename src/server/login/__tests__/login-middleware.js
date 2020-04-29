@@ -1,5 +1,3 @@
-import { strategy } from '../login-middleware'
-
 describe.skip('login-middleware', () => {
   it('Should create JWT token', () => {
     expect(false).toBeTruthy()

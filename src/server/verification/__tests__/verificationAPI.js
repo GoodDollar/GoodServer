@@ -1,22 +1,30 @@
-// import fs from 'fs'
 import request from 'supertest'
-// import FormData from 'form-data'
 import moment from 'moment'
 import delay from 'delay'
-import makeServer from '../../server-test'
-import { getToken, getCreds } from '../../__util__/'
-import UserDBPrivate from '../../db/mongo/user-privat-provider'
+import MockAdapter from 'axios-mock-adapter'
+import { omit, invokeMap } from 'lodash'
+
 import Config from '../../server.config'
+
+import storage from '../../db/mongo/user-privat-provider'
 import AdminWallet from '../../blockchain/AdminWallet'
+import { GunDBPublic } from '../../gun/gun-middleware'
 
-const storage = UserDBPrivate
+import makeServer from '../../server-test'
+import createEnrollmentProcessor from '../processor/EnrollmentProcessor'
+import { getToken, getCreds } from '../../__util__/'
+import createMockingHelper from '../api/__tests__/__util__'
 
-Config.skipEmailVerification = false
 describe('verificationAPI', () => {
   let server
+  let { skipEmailVerification } = Config
+  const userIdentifier = '0x7ac080f6607405705aed79675789701a48c76f55'
+
   beforeAll(done => {
+    Config.skipEmailVerification = false
     jest.setTimeout(50000)
     server = makeServer(done)
+
     console.log('the server is ..')
     console.log({ server })
   })
@@ -24,10 +32,180 @@ describe('verificationAPI', () => {
   afterAll(async done => {
     console.log('afterAll')
 
+    Object.assign(Config, { skipEmailVerification })
     await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
 
     server.close(err => {
       done()
+    })
+  })
+
+  describe('face verification', () => {
+    let token
+    let helper
+    let zoomServiceMock
+
+    const updateSessionMock = jest.fn()
+    const whitelistUserMock = jest.fn()
+    const getSessionRefMock = jest.fn()
+    const getSessionRefImplementation = GunDBPublic.session
+
+    const enrollmentIdentifier = 'fake-enrollment-identifier'
+
+    const enrollmentUri = '/verify/face/' + encodeURIComponent(enrollmentIdentifier)
+
+    const payload = {
+      sessionId: 'fake-session-id',
+      faceMap: Buffer.alloc(32),
+      auditTrailImage: 'data:image/png:FaKEimagE==',
+      lowQualityAuditTrailImage: 'data:image/png:FaKEimagE=='
+    }
+
+    const testInvalidInput = async withoutField =>
+      request(server)
+        .put(enrollmentUri)
+        .send(omit(payload, withoutField))
+        .set('Authorization', `Bearer ${token}`)
+        .expect(400, { success: false, error: 'Invalid input' })
+
+    beforeAll(async () => {
+      const enrollmentProcessor = createEnrollmentProcessor(storage)
+
+      GunDBPublic.session = getSessionRefMock
+      AdminWallet.whitelistUser = whitelistUserMock
+
+      zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
+      helper = createMockingHelper(zoomServiceMock)
+      token = await getToken(server)
+    })
+
+    beforeEach(async () => {
+      await storage.updateUser({ identifier: userIdentifier, isVerified: false })
+
+      getSessionRefMock.mockImplementation(() => ({ put: updateSessionMock }))
+    })
+
+    afterEach(() => {
+      invokeMap([updateSessionMock, getSessionRefMock, whitelistUserMock], 'mockReset')
+
+      zoomServiceMock.reset()
+    })
+
+    afterAll(() => {
+      GunDBPublic.session = getSessionRefImplementation
+      AdminWallet.whitelistUser = AdminWallet.constructor.prototype.whitelistUser
+
+      zoomServiceMock.restore()
+      zoomServiceMock = null
+      helper = null
+    })
+
+    test('PUT /verify/face/:enrollmentIdentifier returns 401 without credentials', async () => {
+      await request(server)
+        .put(enrollmentUri)
+        .expect(401)
+    })
+
+    test('PUT /verify/face/:enrollmentIdentifier returns 400 when payload is invalid', async () => {
+      await testInvalidInput('sessionId') // no sessionId
+      await testInvalidInput('faceMap') // no face map
+      await testInvalidInput('auditTrailImage') // no face photoshoots
+    })
+
+    test('PUT /verify/face/:enrollmentIdentifier returns 200 and success: true when verification was successfull', async () => {
+      helper.mockSuccessLivenessCheck()
+      helper.mockEmptyResultsFaceSearch()
+      helper.mockSuccessEnrollment(enrollmentIdentifier)
+
+      await request(server)
+        .put(enrollmentUri)
+        .send(payload)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200, {
+          success: true,
+          enrollmentResult: {
+            isVerified: true,
+            alreadyEnrolled: false,
+            ok: true,
+            code: 200,
+            mode: 'dev',
+            message: 'The FaceMap was successfully enrolled.',
+            createdDate: '2019-09-16T17:30:40+00:00',
+            enrollmentIdentifier,
+            faceMapType: 0,
+            glasses: false,
+            isEnrolled: true,
+            isLowQuality: false,
+            isReplayFaceMap: false,
+            livenessStatus: 0
+          }
+        })
+
+      const { address, profilePublickey } = await getCreds()
+      const { isVerified } = await storage.getUser(userIdentifier)
+
+      // to check has user been updated in the database
+      expect(isVerified).toBeTruthy()
+      // in the GUN session
+      expect(updateSessionMock).toHaveBeenCalledWith({ isEnrolled: true })
+      expect(updateSessionMock).toHaveBeenCalledWith({ isWhitelisted: true })
+      // and in the waller
+      expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), profilePublickey)
+    })
+
+    test("PUT /verify/face/:enrollmentIdentifier returns 200 and success: false when verification wasn't successfull", async () => {
+      const { failedLivenessCheckMessage } = helper
+
+      helper.mockFailedLivenessCheck()
+
+      await request(server)
+        .put(enrollmentUri)
+        .send(payload)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200, {
+          success: false,
+          error: failedLivenessCheckMessage,
+          enrollmentResult: {
+            isVerified: false,
+            isLive: false,
+            ok: true,
+            code: 200,
+            mode: 'dev',
+            message: failedLivenessCheckMessage,
+            glasses: false,
+            isLowQuality: false,
+            isReplayFaceMap: true,
+            livenessStatus: 2
+          }
+        })
+
+      // to check that user hasn't beed updated nowhere
+
+      // in the database
+      const { isVerified } = await storage.getUser(userIdentifier)
+
+      expect(isVerified).toBeFalsy()
+
+      // in the session
+      expect(updateSessionMock).not.toHaveBeenCalledWith({ isEnrolled: true })
+      expect(updateSessionMock).not.toHaveBeenCalledWith({ isWhitelisted: true })
+
+      // and in the wallet
+      expect(whitelistUserMock).not.toHaveBeenCalled()
+    })
+
+    test('PUT /verify/face/:enrollmentIdentifier skips verification is user is already verified', async () => {
+      await storage.updateUser({ identifier: userIdentifier, isVerified: true })
+
+      await request(server)
+        .put(enrollmentUri)
+        .send(payload)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200, { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } })
+
+      expect(getSessionRefMock).toHaveBeenCalledWith(payload.sessionId)
+      expect(updateSessionMock).toHaveBeenCalledWith({ isDuplicate: false, isLive: true, isEnrolled: true })
+      expect(updateSessionMock).not.toHaveBeenCalledWith({ isStarted: true })
     })
   })
 
@@ -38,20 +216,12 @@ describe('verificationAPI', () => {
   })
 
   test('/verify/sendotp without sms validation', async () => {
-    const userCredentials = {
-      signature:
-        '0x7acee1dc0d8a07d3e4f2cd1cbbebed9098afea5600bbb1f8a99bd7154e2de4a35e42b868dd373a831e78f0bbf2a8d0340cc63fa8345e433fd3fe64b01bcae0781c',
-      gdSignature:
-        '0xd2e95cd11e2b3148674f2207d4f054dbf25e4d2a6e763418ba9bd62c5a99be621f738a0419c4754cc95395c93ac76688f781d7cb00dda0b79693c05de0bee4971b',
-      nonce: 'a29344af372abf77dd68',
-      profileSignature:
-        'SEA{"m":"Login to GoodDAPPa29344af372abf77dd68","s":"nxiNDIdE714q1qTHGzXDy/uJqnXD4uE/QBQDym2ZTTN8cxQyBlODP7x/7+LQggC0K4uO6Y+tTddGLHdSyJGblQ=="}',
-      profilePublickey: 'kxudRZes6qS44fus50kd0knUVftOeyDTQnmsnMmiaWA.uzJ1fJM0evhtave7yZ5OWBa2O91MBU7DNAHau8xUXYw',
-      networkId: 4447
-    }
-    const creds = await getCreds(true)
-    const token = await getToken(server, creds)
-    await UserDBPrivate.updateUser({ identifier: token, smsValidated: false, fullName: 'test_user_sendemail' })
+    const token = await getToken(server)
+    await storage.updateUser({
+      identifier: userIdentifier,
+      smsValidated: false,
+      fullName: 'test_user_sendemail'
+    })
 
     await request(server)
       .post('/verify/sendotp')
@@ -86,8 +256,8 @@ describe('verificationAPI', () => {
 
     await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
 
-    const user = await UserDBPrivate.updateUser({
-      identifier: '0x7ac080f6607405705aed79675789701a48c76f55',
+    const user = await storage.updateUser({
+      identifier: userIdentifier,
       fullName: 'test_user_sendemail'
     })
 
@@ -106,18 +276,16 @@ describe('verificationAPI', () => {
 
     await delay(500)
 
-    const dbUser = await UserDBPrivate.getUser('0x7ac080f6607405705aed79675789701a48c76f55')
+    const dbUser = await storage.getUser(userIdentifier)
 
     expect(dbUser.emailVerificationCode).toBeTruthy()
   })
 
   test('/verify/sendemail should fail with 429 status - too many requests (rate limiter)', async () => {
-    const token = await getToken(server)
-
     await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
 
-    const user = await UserDBPrivate.updateUser({
-      identifier: '0x7ac080f6607405705aed79675789701a48c76f55',
+    const user = await storage.updateUser({
+      identifier: userIdentifier,
       fullName: 'test_user_sendemail'
     })
 
@@ -177,24 +345,6 @@ describe('verificationAPI', () => {
     expect(res.status).toBe(422)
     expect(res.body).toMatchObject({ ok: -1, message: 'Wrong web3 token or email' })
   })
-
-  /*test('/verify/facerecognition creates proper verification data from a valid request', async () => {
-    const token = await getToken(server)
-    let req = new FormData()
-
-    req.append('sessionId', 'fake-session-id')
-    const facemap = fs.createReadStream('./facemap.zip')
-    const auditTrailImage = fs.createReadStream('./auditTrailImage.jpg')
-    req.append('facemap', facemap, { contentType: 'application/zip' })
-    req.append('auditTrailImage', auditTrailImage, { contentType: 'image/jpeg' })
-    req.append('enrollmentIdentifier', '0x9d5499D5099DE6Fe5A8f39874617dDFc967cA6e5')
-    const res = await request(server)
-      .post('/verify/facerecognition')
-      .send(req)
-      .set('Authorization', `Bearer ${token}`)
-      .set('Accept', `multipart/form-data;`)
-    console.log({ res })
-  })*/
 
   test('/verify/w3/logintoken', async () => {
     const token = await getToken(server)

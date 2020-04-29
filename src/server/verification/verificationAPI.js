@@ -3,7 +3,6 @@ import { Router } from 'express'
 import passport from 'passport'
 import _ from 'lodash'
 import moment from 'moment'
-import multer from 'multer'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
@@ -13,97 +12,88 @@ import { sendOTP, generateOTP } from '../../imports/otp'
 import conf from '../server.config'
 import { GunDBPublic } from '../gun/gun-middleware'
 import { Mautic } from '../mautic/mauticAPI'
-import fs from 'fs'
 import W3Helper from '../utils/W3Helper'
 import gdToWei from '../utils/gdToWei'
 import txManager from '../utils/tx-manager'
 import addUserSteps from '../storage/addUserSteps'
 
-const fsPromises = fs.promises
+import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
+
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
-  var upload = multer({ dest: 'uploads/' }) // to handle blob parameters of faceReco
+  /**
+   * @api {delete} /verify/face/:enrollmentIdentifier Enqueue users face for disposal since 24th
+   * @apiName Dispose Face
+   * @apiGroup Verification
+   *
+   * @apiParam {String} enrollmentIdentifier
+   * @apiParam {String} signature
+   *
+   * @ignore
+   */
+  app.delete(
+    '/verify/face/:enrollmentIdentifier',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res) => {
+      const { params, query } = req
+      const { enrollmentIdentifier } = params
+      const { signature } = query
+      const processor = createEnrollmentProcessor(storage)
+
+      try {
+        await processor.enqueueDisposal(enrollmentIdentifier, signature)
+      } catch (exception) {
+        const { message } = exception
+
+        res.status(400).json({ success: false, error: message })
+        return
+      }
+
+      res.json({ success: true })
+    })
+  )
 
   /**
-   * @api {post} /verify/facerecognition Verify users face
-   * @apiName Face Recognition
+   * @api {put} /verify/:enrollmentIdentifier Verify users face
+   * @apiName Face Verification
    * @apiGroup Verification
    *
    * @apiParam {String} enrollmentIdentifier
    * @apiParam {String} sessionId
    *
-   * @apiSuccess {Number} ok
-   * @apiSuccess {Boolean} isVerified
-   * @apiSuccess {Object} enrollResult: { alreadyEnrolled: true }
-   * @apiSuccess {Boolean} enrollResult.alreadyEnrolled
    * @ignore
    */
-  app.post(
-    '/verify/facerecognition',
+  app.put(
+    '/verify/face/:enrollmentIdentifier',
     passport.authenticate('jwt', { session: false }),
-    upload.any(),
-    wrapAsync(async (req, res, next) => {
-      const log = req.log
-      const { body, files, user } = req
-      log.debug({ user })
-      const sessionId = body.sessionId
-      GunDBPublic.gun
-        .get(sessionId)
-        .get('isStarted')
-        .put(true) // publish initialized data to subscribers
-      log.debug('written FR status to gun', { data: await GunDBPublic.gun.get(sessionId) })
+    wrapAsync(async (req, res) => {
+      const { user, log, params, body: payload } = req
+      const { sessionId } = payload
+      const { enrollmentIdentifier } = params
 
-      const verificationData = {
-        facemapFile: _.get(_.find(files, { fieldname: 'facemap' }), 'path', ''),
-        auditTrailImageFile: _.get(_.find(files, { fieldname: 'auditTrailImage' }), 'path', ''),
-        enrollmentIdentifier: body.enrollmentIdentifier,
-        sessionId: sessionId
+      let enrollmentResult
+      const processor = createEnrollmentProcessor(storage)
+
+      try {
+        processor.validate(user, enrollmentIdentifier, payload)
+
+        if (user.isVerified || conf.skipFaceVerification) {
+          const sessionRef = GunDBPublic.session(sessionId)
+
+          // publish to subscribers
+          sessionRef.put({ isDuplicate: false, isLive: true, isEnrolled: true })
+          enrollmentResult = { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } }
+        } else {
+          enrollmentResult = await processor.enroll(user, enrollmentIdentifier, payload)
+        }
+      } catch (exception) {
+        const { message } = exception
+
+        log.error('Face verification error:', message, exception)
+        res.status(400).json({ success: false, error: message })
+        return
       }
-      let result = { ok: 0 }
-      if (!user.isVerified && !conf.skipFaceRecognition)
-        result = await verifier
-          .verifyUser(user, verificationData)
-          .catch(e => {
-            log.error('Facerecognition error:', { e })
-            GunDBPublic.gun.get(sessionId).put({ isNotDuplicate: false, isLive: false, isError: e.message })
-            return { ok: 1, error: e.message, isVerified: false }
-          })
-          .finally(() => {
-            //cleanup
-            log.info('cleaning up facerecognition files')
-            fsPromises.unlink(verificationData.facemapFile)
-            fsPromises.unlink(verificationData.auditTrailImageFile)
-          })
-      else {
-        GunDBPublic.gun.get(sessionId).put({ isNotDuplicate: true, isLive: true, isEnrolled: true }) // publish to subscribers
-        // mocked result for verified user or development mode
-        result = {
-          ok: 1,
-          isVerified: true,
-          enrollResult: { alreadyEnrolled: true, enrollmentIdentifier: verificationData.enrollmentIdentifier }
-        } // skip facereco only in dev mode
-      }
-      log.debug('Facerecogintion result:', result)
-      if (result.isVerified) {
-        log.debug('Whitelisting new user', user)
-        await Promise.all([
-          AdminWallet.whitelistUser(user.gdAddress, user.profilePublickey),
-          storage
-            .updateUser({ identifier: user.loggedInAs, isVerified: true })
-            .then(updatedUser => log.debug('updatedUser:', updatedUser))
-        ])
-          .then(
-            _ =>
-              GunDBPublic.gun
-                .get(sessionId)
-                .get('isWhitelisted')
-                .put(true) // publish to subscribers
-          )
-          .catch(e => {
-            log.error('Whitelisting failed', e)
-            GunDBPublic.gun.get(sessionId).put({ isWhitelisted: false, isError: e.message })
-          })
-      }
-      res.json(result)
+
+      res.json(enrollmentResult)
     })
   )
 

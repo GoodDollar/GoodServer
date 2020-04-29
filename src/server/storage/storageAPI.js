@@ -7,8 +7,6 @@ import { wrapAsync } from '../utils/helpers'
 import { defaults } from 'lodash'
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
-import { recoverPublickey } from '../utils/eth'
-import zoomHelper from '../verification/faceRecognition/faceRecognitionHelper'
 import addUserSteps from './addUserSteps'
 import { generateMarketToken } from '../utils/market'
 
@@ -152,8 +150,6 @@ const setup = (app: Router, storage: StorageAPI) => {
    * @apiName Delete
    * @apiGroup Storage
    *
-   * @apiParam {String} zoomId
-   *
    * @apiSuccess {Number} ok
    * @apiSuccess {[Object]} results
    * @ignore
@@ -162,21 +158,8 @@ const setup = (app: Router, storage: StorageAPI) => {
     '/user/delete',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
-      const { user, log, body } = req
-      const { zoomSignature, zoomId } = body
+      const { user, log } = req
       log.info('delete user', { user })
-
-      if (zoomId && zoomSignature) {
-        const recovered = recoverPublickey(zoomSignature, zoomId, '').replace('0x', '')
-
-        if (recovered === body.zoomId.toLowerCase()) {
-          await zoomHelper.delete(zoomId)
-          log.info('zoom delete', { zoomId })
-        } else {
-          log.warn('/user/delete', { message: 'SigUtil unable to recover the message signer' })
-          throw new Error('Unable to verify credentials')
-        }
-      }
 
       const results = await Promise.all([
         (user.identifier ? storage.deleteUser(user) : Promise.reject())
