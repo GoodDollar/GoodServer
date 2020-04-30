@@ -1,8 +1,5 @@
 import verification from '../verification'
-import { GunDBPublic } from '../../gun/gun-middleware'
 import UserDBPrivate from '../../db/mongo/user-privat-provider'
-
-jest.genMockFromModule('../../gun/gun-middleware.js')
 
 const emailVerificationCode = 123456
 
@@ -15,22 +12,9 @@ const testUser = {
 }
 
 describe('verification', () => {
-  beforeAll(async done => {
-    await GunDBPublic.init()
-    await UserDBPrivate.updateUser(testUser)
+  beforeAll(async () => UserDBPrivate.updateUser(testUser))
 
-    done()
-  })
-
-  beforeEach(() => {})
-
-  afterEach(() => {
-    jest.clearAllMocks()
-  })
-
-  afterAll(async () => {
-    await UserDBPrivate.model.deleteMany({ fullName: new RegExp('mongo_test', 'i') })
-  })
+  afterAll(async () => UserDBPrivate.model.deleteMany({ fullName: new RegExp('mongo_test', 'i') }))
 
   test('verifyUser email true', async () => {
     const code = emailVerificationCode
