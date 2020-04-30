@@ -34,7 +34,7 @@ class Verifications implements VerificationAPI {
       throw new Error("Oops, it's not right code")
     }
 
-    if (otp.expirationDate >= Date.now()) {
+    if (otp.expirationDate <= Date.now()) {
       throw new Error('Code expired, retry')
     }
 
