@@ -44,6 +44,8 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       const user: UserRecord = defaults(bodyUser, {
         identifier: userRecord.loggedInAs,
+        regMethod: bodyUser.regMethod,
+        torusProvider: bodyUser.torusProvider,
         email: get(userRecord, 'otp.email', email), //for development/test use email from body
         mobile: get(userRecord, 'otp.mobile', mobile), //for development/test use mobile from body
         isCompleted: bodyUser.isCompleted
