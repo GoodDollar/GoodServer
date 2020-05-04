@@ -48,6 +48,12 @@ export const UserPrivateSchema = new mongoose.Schema({
   emailVerificationCode: {
     type: String
   },
+  regMethod: {
+    type: String
+  },
+  torusProvider: {
+    type: String
+  },
   createdDate: {
     type: Date
   },
