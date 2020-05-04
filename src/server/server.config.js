@@ -291,7 +291,9 @@ const conf = convict({
     default: false
   },
   keepFaceVerificationRecords: {
-    doc: 'Time interval (in hours) to store face verification records after user deletes his account',
+    doc:
+      'Time interval (in hours) to store face verification records after user deletes his account.' +
+      ' Set to 0 or -1 to remove face verification records immediately',
     format: Number,
     env: 'KEEP_FACE_VERIFICATION_RECORDS',
     default: 24

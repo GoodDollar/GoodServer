@@ -60,7 +60,7 @@ class EnrollmentProcessor {
   }
 
   async enqueueDisposal(enrollmentIdentifier, signature) {
-    const { provider } = this
+    const { provider, keepEnrollments } = this
     const recovered = recoverPublickey(signature, enrollmentIdentifier, '')
 
     if (recovered.substr(2) !== enrollmentIdentifier.toLowerCase()) {
@@ -73,6 +73,12 @@ class EnrollmentProcessor {
     const enrollmentExists = await provider.enrollmentExists(enrollmentIdentifier)
 
     if (enrollmentExists) {
+      // if KEEP_FACE_VERIFICATION_RECORDS env var lte 0 - delete face record immediately
+      if (keepEnrollments <= 0) {
+        await provider.dispose(enrollmentIdentifier)
+        return
+      }
+
       // TODO: enqueue enrollmentIdentifier to the corresponding mongo collection using storage
       // add current timestamp to each collection item
     }
