@@ -69,7 +69,7 @@ class ZoomProvider implements IEnrollmentProvider {
     await notifyProcessor({ isDuplicate })
 
     if (duplicate) {
-      const duplicateFoundMessage = `Duplicate with identifier '${duplicate.enrollmentIdentifier}' found.`
+      const duplicateFoundMessage = `Duplicate exists for FaceMap you're trying to enroll.`
 
       // if duplicate found - throwing corresponding error
       throwCustomException(duplicateFoundMessage, { isDuplicate, ...duplicate })
@@ -80,29 +80,37 @@ class ZoomProvider implements IEnrollmentProvider {
 
     // 3. performing enroll
     try {
+      // returning last respose
       enrollmentResult = await api.submitEnrollment({ ...payload, enrollmentIdentifier })
     } catch (exception) {
       const { response, message } = exception
 
-      // rethrowing unexpected errors (e.g. no conneciton or service error)
+      // if exception has no response (e.g. no conneciton or service error)
+      // just rethrowing it and stopping enrollment
       if (!response) {
         throw exception
       }
 
-      // if exception isn't related to the case when
-      // facemap is just already enrolled
+      // if exception has response checking
+      // is subCode non-equals to 'nameCollision'
+      // that we have some enrollment error
+      // (e.g. liveness wasn't passsed, glasses detected, poor quality)
       if ('nameCollision' !== response.subCode) {
         const isEnrolled = false
 
-        // then notifying & throwing custom exception
+        // then notifying & throwing enrollment exception
         await notifyProcessor({ isEnrolled })
         throwCustomException(message, { isEnrolled, ...response })
       }
 
-      // otherwise going further (as dupliucate check is already passed)
-      // and facemap was just already enrolled
-      enrollmentResult = response
+      // otherwise, if subCode equals to 'nameCollision'
+      // that means identifier was already enrolled
+      // as we've already passed dupliucate check
+      // we don't throw anything, but setting alreadyEnrolled flag
       alreadyEnrolled = true
+
+      // returning last response
+      enrollmentResult = response
     }
 
     // notifying about successfull enrollment

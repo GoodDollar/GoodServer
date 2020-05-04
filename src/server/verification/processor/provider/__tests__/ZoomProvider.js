@@ -147,7 +147,7 @@ describe('ZoomProvider', () => {
     const onEnrollmentProcessing = jest.fn()
     const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
 
-    await wrappedResponse.toThrow(`Duplicate with identifier '${duplicateEnrollmentIdentifier}' found.`)
+    await wrappedResponse.toThrow(`Duplicate exists for FaceMap you're trying to enroll.`)
     await wrappedResponse.toHaveProperty('response')
     await wrappedResponse.toHaveProperty('response.isDuplicate', true)
     await wrappedResponse.toHaveProperty('response.isVerified', false)
