@@ -4,6 +4,9 @@ import Axios from 'axios'
 import { merge, pick, isPlainObject } from 'lodash'
 
 import Config from '../../server.config'
+import logger from '../../../imports/logger'
+
+const log = logger.child({ from: 'ZoomAPI' })
 
 const LIVENESS_PASSED = 0
 
@@ -28,21 +31,25 @@ class ZoomAPI {
     this.defaultMinimalMatchLevel = Number(zoomMinimalMatchLevel)
   }
 
-  async detectLiveness(payload) {
-    const response = await this.http.post('/liveness', payload)
-
-    this._checkLivenessStatus(response)
-    return response
-  }
-
   async submitEnrollment(payload) {
     const response = await this.http.post('/enrollment', payload)
-    const { code, message, isEnrolled } = response
+    const { code, glasses, message, isLowQuality, isEnrolled } = response
+    const isLivenessPassed = this.checkLivenessStatus(response)
 
-    this._checkLivenessStatus(response)
+    if (200 !== code || !isLivenessPassed || !isEnrolled) {
+      let errorMessage = message
 
-    if (200 !== code || !isEnrolled) {
-      const exception = new Error(message)
+      if (!isLivenessPassed && (isLowQuality || glasses)) {
+        errorMessage = 'Liveness could not be determined because '
+
+        if (isLowQuality) {
+          errorMessage += 'the photoshoots evaluated to be of poor quality.'
+        } else if (glasses) {
+          errorMessage += 'wearing glasses were detected.'
+        }
+      }
+
+      const exception = new Error(errorMessage)
 
       exception.response = response
       throw exception
@@ -90,25 +97,8 @@ class ZoomAPI {
     return response
   }
 
-  _checkLivenessStatus(response) {
-    const { code, glasses, message, livenessStatus, isLowQuality } = response
-
-    if (200 !== code || LIVENESS_PASSED !== livenessStatus) {
-      let errorMessage = 'Liveness could not be determined because '
-
-      if (isLowQuality) {
-        errorMessage += 'the photoshoots evaluated to be of poor quality.'
-      } else if (glasses) {
-        errorMessage += 'wearing glasses were detected.'
-      } else {
-        errorMessage = message
-      }
-
-      const exception = new Error(errorMessage)
-
-      exception.response = response
-      throw exception
-    }
+  checkLivenessStatus(response) {
+    return LIVENESS_PASSED === response.livenessStatus
   }
 
   _configureRequests() {
@@ -125,6 +115,8 @@ class ZoomAPI {
         return encodeURIComponent(parameterValue)
       }
 
+      log.debug('Calling Zoom API:', config)
+
       return {
         ...config,
         params: searchParams,
@@ -135,23 +127,44 @@ class ZoomAPI {
 
   _configureResponses() {
     const { response } = this.http.interceptors
-    const responseInterceptor = ({ data }) => merge(...Object.values(pick(data, 'meta', 'data')))
 
-    response.use(responseInterceptor, async exception => {
-      const { response, message } = exception
+    response.use(response => this._responseInterceptor(response), exception => this._exceptionInterceptor(exception))
+  }
 
-      if (response && isPlainObject(response.data)) {
-        const zoomResponse = responseInterceptor(response)
-        const { message: zoomMessage } = zoomResponse
+  _responseTransformer(response) {
+    const { data } = response
 
-        exception.message = zoomMessage || message
-        exception.response = response
+    return merge(...Object.values(pick(data, 'meta', 'data')))
+  }
+
+  _responseInterceptor(response) {
+    log('Received response from Zoom API:', response)
+
+    return this.transformedResponse(response)
+  }
+
+  _exceptionInterceptor(exception) {
+    const { response, message } = exception
+
+    if (response && isPlainObject(response.data)) {
+      log.debug('Zoom API exception:', response.data)
+
+      const zoomResponse = this._responseTransformer(response)
+      const { message: zoomMessage } = zoomResponse
+
+      exception.message = zoomMessage || message
+      exception.response = zoomResponse
+    } else {
+      if (response) {
+        log.debug('HTTP exception during Zoom API call:', pick(response, 'data', 'status', 'statusText'))
       } else {
-        delete exception.response
+        log.debug('Unexpected exception during Zoom API call:', message)
       }
 
-      throw exception
-    })
+      delete exception.response
+    }
+
+    throw exception
   }
 }
 

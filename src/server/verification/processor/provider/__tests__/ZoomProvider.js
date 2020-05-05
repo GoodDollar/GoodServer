@@ -46,8 +46,7 @@ describe('ZoomProvider', () => {
     expect(ZoomProvider.isPayloadValid({})).toBeFalsy()
   })
 
-  test('enroll() returns successfull response if liveness passed, no duplicates and enrollment successfull', async () => {
-    helper.mockSuccessLivenessCheck()
+  test('enroll() returns successfull response if no duplicates found and enrollment was successfull', async () => {
     helper.mockEmptyResultsFaceSearch()
     helper.mockSuccessEnrollment(enrollmentIdentifier)
 
@@ -57,14 +56,11 @@ describe('ZoomProvider', () => {
     await wrappedResponse.toHaveProperty('isVerified', true)
     await wrappedResponse.toHaveProperty('alreadyEnrolled', false)
 
-    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: true })
-    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(2, { isDuplicate: false })
-    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(3, { isEnrolled: true })
+    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isDuplicate: false })
+    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(2, { isEnrolled: true, isLive: true })
   })
 
   test('enroll() returns successfull response if identifier was alreadsy enrolled', async () => {
-    helper.mockSuccessLivenessCheck()
-
     zoomServiceMock.onPost('/search').reply(200, {
       meta: {
         ok: true,
@@ -102,52 +98,18 @@ describe('ZoomProvider', () => {
     await wrappedResponse.toHaveProperty('isVerified', true)
     await wrappedResponse.toHaveProperty('alreadyEnrolled', true)
 
-    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: true })
-    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(2, { isDuplicate: false })
-    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(3, { isEnrolled: true })
-  })
-
-  test('enroll() throws if liveness check fails', async () => {
-    helper.mockFailedLivenessCheck()
-
-    const onEnrollmentProcessing = jest.fn()
-    const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
-
-    await wrappedResponse.toThrow(helper.failedLivenessCheckMessage)
-    await wrappedResponse.toHaveProperty('response')
-    await wrappedResponse.toHaveProperty('response.isLive', false)
-    await wrappedResponse.toHaveProperty('response.isVerified', false)
-
-    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: false })
+    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isDuplicate: false })
+    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(2, { isEnrolled: true, isLive: true })
   })
 
   test('enroll() throws if duplicates found', async () => {
-    const duplicateEnrollmentIdentifier = 'another-one-fake-enrollment-identifier'
-
     helper.mockSuccessLivenessCheck()
-
-    zoomServiceMock.onPost('/search').reply(200, {
-      meta: {
-        ok: true,
-        code: 200,
-        mode: 'dev',
-        message: 'The search request was processed successfully.'
-      },
-      data: {
-        results: [
-          {
-            enrollmentIdentifier: duplicateEnrollmentIdentifier,
-            matchLevel: '1',
-            auditTrailImage: 'data:image/png:FaKEimagE=='
-          }
-        ]
-      }
-    })
+    helper.mockDuplicatesFound()
 
     const onEnrollmentProcessing = jest.fn()
     const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
 
-    await wrappedResponse.toThrow(`Duplicate exists for FaceMap you're trying to enroll.`)
+    await wrappedResponse.toThrow(helper.duplicateFoundMessage)
     await wrappedResponse.toHaveProperty('response')
     await wrappedResponse.toHaveProperty('response.isDuplicate', true)
     await wrappedResponse.toHaveProperty('response.isVerified', false)
@@ -156,8 +118,7 @@ describe('ZoomProvider', () => {
     expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(2, { isDuplicate: true })
   })
 
-  test('enroll() throws if enrollment fails in any other case expect alreadyEnrolled', async () => {
-    helper.mockSuccessLivenessCheck()
+  test('enroll() throws if liveness check fails', async () => {
     helper.mockEmptyResultsFaceSearch()
     helper.mockFailedEnrollment(enrollmentIdentifier)
 
@@ -168,10 +129,10 @@ describe('ZoomProvider', () => {
     await wrappedResponse.toHaveProperty('response')
     await wrappedResponse.toHaveProperty('response.isEnrolled', false)
     await wrappedResponse.toHaveProperty('response.isVerified', false)
+    await wrappedResponse.toHaveProperty('response.isLive', false)
 
-    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: true })
-    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(2, { isDuplicate: false })
-    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(3, { isEnrolled: false })
+    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isDuplicate: false })
+    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(2, { isEnrolled: false, isLive: false })
   })
 
   test('enroll() throws on any Zoom service error and terminates without returning any response or calling callback', async () => {
@@ -183,5 +144,58 @@ describe('ZoomProvider', () => {
 
     await testEnrollmentServiceError('Request failed with status code 500')
     await testEnrollmentServiceError('Network Error')
+  })
+
+  test('enrollmentExists() checks existing enrollment', async () => {
+    zoomServiceMock.onGet(helper.enrollmentUri(enrollmentIdentifier)).reply(200, {
+      meta: {
+        ok: true,
+        code: 200,
+        mode: 'dev',
+        message: 'A FaceMap was found for that enrollmentIdentifier.'
+      },
+      data: {
+        enrollmentIdentifier,
+        createDate: '2017-01-01T00:00:00+00:00',
+        auditTrailImage: 'data:image/png:FaKEimagE==',
+        faceMap: Buffer.alloc(32).toString(),
+        faceMapType: 0
+      }
+    })
+
+    await expect(ZoomProvider.enrollmentExists(enrollmentIdentifier)).resolves.toBe(true)
+  })
+
+  test('enrollmentExists() checks non-existing enrollment and not throws, just returns false', async () => {
+    zoomServiceMock.onGet(helper.enrollmentUri(enrollmentIdentifier)).reply(400, {
+      meta: {
+        ok: true,
+        code: 400,
+        mode: 'dev',
+        message: 'No entry found in the database for this enrollmentIdentifier.',
+        subCode: 'facemapNotFound'
+      }
+    })
+
+    await expect(ZoomProvider.enrollmentExists(enrollmentIdentifier)).resolves.toBe(false)
+  })
+
+  test('dispose() removes existing enrollment', async () => {
+    zoomServiceMock.onDelete(helper.enrollmentUri(enrollmentIdentifier)).reply(200, {
+      meta: {
+        ok: true,
+        code: 200,
+        mode: 'dev',
+        message: 'The entry in the database for this enrollmentIdentifier was successfully deleted.'
+      }
+    })
+
+    await expect(ZoomProvider.dispose(enrollmentIdentifier)).resolves.toBeUndefined()
+  })
+
+  test('dispose() not throws trying to remove non-existing enrollment', async () => {
+    helper.mockFailedRemoval()
+
+    await expect(ZoomProvider.dispose(enrollmentIdentifier)).resolve.toBeUndefined()
   })
 })

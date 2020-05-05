@@ -1,42 +1,10 @@
 export default zoomServiceMock => {
-  const failedLivenessCheckMessage =
-    'Liveness was not processed. This occurs when ' +
-    'processing ZoOm 2D FaceMaps because they do not have enough data to determine Liveness.'
-
   const failedEnrollmentMessage = 'The FaceMap was not enrolled because Liveness could not be determined.'
+  const failedRemovalMessage = 'No entry found in the database for this enrollmentIdentifier.'
+  const duplicateFoundMessage = `Duplicate exists for FaceMap you're trying to enroll.`
+  const duplicateEnrollmentIdentifier = 'another-one-fake-enrollment-identifier'
 
-  const mockSuccessLivenessCheck = () =>
-    zoomServiceMock.onPost('/liveness').reply(200, {
-      meta: {
-        ok: true,
-        code: 200,
-        mode: 'dev',
-        message: 'The FaceTec 3D FaceMap evaluated and Liveness was proven.'
-      },
-      data: {
-        glasses: false,
-        isLowQuality: false,
-        isReplayFaceMap: true,
-        livenessStatus: 0
-      }
-    })
-
-  const mockFailedLivenessCheck = (customResponse = {}) =>
-    zoomServiceMock.onPost('/liveness').reply(200, {
-      meta: {
-        ok: true,
-        code: 200,
-        mode: 'dev',
-        message: failedLivenessCheckMessage
-      },
-      data: {
-        glasses: false,
-        isLowQuality: false,
-        isReplayFaceMap: true,
-        livenessStatus: 2,
-        ...customResponse
-      }
-    })
+  const enrollmentUri = enrollmentIdentifier => `/enrollment/${encodeURIComponent(enrollmentIdentifier)}`
 
   const mockEmptyResultsFaceSearch = () =>
     zoomServiceMock.onPost('/search').reply(200, {
@@ -53,6 +21,24 @@ export default zoomServiceMock => {
         }
       }
     })
+
+  const mockDuplicatesFound = zoomServiceMock.onPost('/search').reply(200, {
+    meta: {
+      ok: true,
+      code: 200,
+      mode: 'dev',
+      message: 'The search request was processed successfully.'
+    },
+    data: {
+      results: [
+        {
+          enrollmentIdentifier: duplicateEnrollmentIdentifier,
+          matchLevel: '1',
+          auditTrailImage: 'data:image/png:FaKEimagE=='
+        }
+      ]
+    }
+  })
 
   const mockSuccessEnrollment = enrollmentIdentifier =>
     zoomServiceMock.onPost('/enrollment').reply(200, {
@@ -74,7 +60,7 @@ export default zoomServiceMock => {
       }
     })
 
-  const mockFailedEnrollment = enrollmentIdentifier =>
+  const mockFailedEnrollment = (enrollmentIdentifier, customResponse = {}) =>
     zoomServiceMock.onPost('/enrollment').reply(200, {
       meta: {
         ok: true,
@@ -94,19 +80,34 @@ export default zoomServiceMock => {
         isEnrolled: false,
         isLowQuality: false,
         isReplayFaceMap: false,
-        livenessStatus: null
+        livenessStatus: null,
+        ...customResponse
+      }
+    })
+
+  const mockFailedRemoval = () =>
+    zoomServiceMock.onDelete(/\/enrollment\/.+/).reply(200, {
+      meta: {
+        ok: true,
+        code: 200,
+        mode: 'dev',
+        message: failedRemovalMessage
       }
     })
 
   return {
-    mockSuccessLivenessCheck,
-    mockFailedLivenessCheck,
-    failedLivenessCheckMessage,
+    enrollmentUri,
 
     mockEmptyResultsFaceSearch,
+    mockDuplicatesFound,
+    duplicateEnrollmentIdentifier,
+    duplicateFoundMessage,
 
     mockSuccessEnrollment,
     mockFailedEnrollment,
-    failedEnrollmentMessage
+    failedEnrollmentMessage,
+
+    failedRemovalMessage,
+    mockFailedRemoval
   }
 }

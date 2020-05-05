@@ -52,9 +52,8 @@ class EnrollmentProcessor {
     }
   }
 
-  async enroll(user: any, enrollmentIdenfitier: string, payload: any): Promise<any> {
-    const { provider, storage, adminApi, gun } = this
-    const session = new EnrollmentSession(user, provider, storage, adminApi, gun)
+  async enroll(user: any, enrollmentIdenfitier: string, payload: any, customLogger = null): Promise<any> {
+    const session = this.createEnrollmentSession(user, customLogger)
 
     return session.enroll(enrollmentIdenfitier, payload)
   }
@@ -64,10 +63,7 @@ class EnrollmentProcessor {
     const recovered = recoverPublickey(signature, enrollmentIdentifier, '')
 
     if (recovered.substr(2) !== enrollmentIdentifier.toLowerCase()) {
-      throw new Error(
-        `Unable to enqueue enrollment '${enrollmentIdentifier}' disposal: ` +
-          `SigUtil unable to recover the message signer`
-      )
+      throw new Error(`Unable to enqueue enrollment disposal: SigUtil unable to recover the message signer`)
     }
 
     const enrollmentExists = await provider.enrollmentExists(enrollmentIdentifier)
@@ -106,6 +102,12 @@ class EnrollmentProcessor {
 
     // 6. execute deleteMany for items have rest in the chunk
     // (items sucessfully disposed on the Zoom)
+  }
+
+  createEnrollmentSession(user, customLogger = null) {
+    const { provider, storage, adminApi, gun } = this
+
+    return new EnrollmentSession(user, provider, storage, adminApi, gun, customLogger)
   }
 }
 

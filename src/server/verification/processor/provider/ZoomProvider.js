@@ -32,32 +32,11 @@ class ZoomProvider implements IEnrollmentProvider {
       throw exception
     }
 
-    // 1. checking liveness
-    try {
-      await api.detectLiveness(payload)
-      // if passed - notifying and going further
-      await notifyProcessor({ isLive: true })
-    } catch (exception) {
-      const { message, response } = exception
-
-      // rethrowing unexpected errors (e.g. no conneciton or service error)
-      if (!response) {
-        throw exception
-      }
-
-      // if api have returned failed response
-      // notifying about it and returning custom exception
-      const isLive = false
-
-      await notifyProcessor({ isLive })
-      throwCustomException(message, { isLive, ...response })
-    }
-
-    // 2. checking for duplicates
+    // 1. checking for duplicates
     // we don't need to catch specific cases so
     // we don't wrapping call to try catch
     // any unexpected errors will be automatically rethrown
-    const { results } = await api.faceSearch(payload)
+    const { results, ...searchResponse } = await api.faceSearch(payload)
     // excluding own enrollmentIdentifier
     const duplicate = results.find(
       ({ enrollmentIdentifier: matchId }) => matchId.toLowerCase() !== enrollmentIdentifier.toLowerCase()
@@ -72,13 +51,13 @@ class ZoomProvider implements IEnrollmentProvider {
       const duplicateFoundMessage = `Duplicate exists for FaceMap you're trying to enroll.`
 
       // if duplicate found - throwing corresponding error
-      throwCustomException(duplicateFoundMessage, { isDuplicate, ...duplicate })
+      throwCustomException(duplicateFoundMessage, { isDuplicate, ...searchResponse })
     }
 
     let enrollmentResult
     let alreadyEnrolled = false
 
-    // 3. performing enroll
+    // 2. performing enroll
     try {
       // returning last respose
       enrollmentResult = await api.submitEnrollment({ ...payload, enrollmentIdentifier })
@@ -97,10 +76,11 @@ class ZoomProvider implements IEnrollmentProvider {
       // (e.g. liveness wasn't passsed, glasses detected, poor quality)
       if ('nameCollision' !== response.subCode) {
         const isEnrolled = false
+        const isLive = api.checkLivenessStatus(response)
 
         // then notifying & throwing enrollment exception
-        await notifyProcessor({ isEnrolled })
-        throwCustomException(message, { isEnrolled, ...response })
+        await notifyProcessor({ isEnrolled, isLive })
+        throwCustomException(message, { isEnrolled, isLive, ...response })
       }
 
       // otherwise, if subCode equals to 'nameCollision'
@@ -114,7 +94,7 @@ class ZoomProvider implements IEnrollmentProvider {
     }
 
     // notifying about successfull enrollment
-    await notifyProcessor({ isEnrolled: true })
+    await notifyProcessor({ isEnrolled: true, isLive: true })
     // returning successfull result
     return { isVerified: true, alreadyEnrolled, ...enrollmentResult }
   }
