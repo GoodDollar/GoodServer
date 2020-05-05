@@ -78,10 +78,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
         // if user is already verified, we're skipping enroillment logic
         if (user.isVerified || skipFaceVerification) {
-          const { sessionId } = payload
-          const sessionRef = GunDBPublic.session(sessionId)
+          // creating enrollment session manually for this user
+          const enrollmentSession = enrollmentProcessor.createEnrollmentSession(user, log)
+          // to access user's session reference in the Gun
+          const { sessionRef } = enrollmentSession.initialize(payload)
 
-          // and immediately publishing isEnrolled to subscribers
+          // immediately publishing isEnrolled to subscribers
           sessionRef.put({ isDuplicate: false, isLive: true, isEnrolled: true })
           enrollmentResult = { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } }
 
@@ -92,9 +94,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           // so we trust that we already whitelisted him in the past
           // and whitelist him again in the new contract
           if (!skipFaceVerification) {
-            // creating enrollment session manually for this user
-            const enrollmentSession = enrollmentProcessor.createEnrollmentSession(user, log)
-
             try {
               // in the session's lifecycle onEnrollmentCompleted() is called
               // after enrollment was successfull

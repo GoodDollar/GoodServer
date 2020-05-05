@@ -103,8 +103,8 @@ describe('ZoomProvider', () => {
   })
 
   test('enroll() throws if duplicates found', async () => {
-    helper.mockSuccessLivenessCheck()
-    helper.mockDuplicatesFound()
+    helper.mockEmptyResultsFaceSearch()
+    helper.mockDuplicateFound()
 
     const onEnrollmentProcessing = jest.fn()
     const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
@@ -114,8 +114,7 @@ describe('ZoomProvider', () => {
     await wrappedResponse.toHaveProperty('response.isDuplicate', true)
     await wrappedResponse.toHaveProperty('response.isVerified', false)
 
-    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: true })
-    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(2, { isDuplicate: true })
+    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isDuplicate: true })
   })
 
   test('enroll() throws if liveness check fails', async () => {
@@ -137,9 +136,9 @@ describe('ZoomProvider', () => {
 
   test('enroll() throws on any Zoom service error and terminates without returning any response or calling callback', async () => {
     zoomServiceMock
-      .onPost('/liveness')
+      .onPost('/search')
       .replyOnce(500)
-      .onPost('/liveness')
+      .onPost('/search')
       .networkErrorOnce()
 
     await testEnrollmentServiceError('Request failed with status code 500')
@@ -194,8 +193,8 @@ describe('ZoomProvider', () => {
   })
 
   test('dispose() not throws trying to remove non-existing enrollment', async () => {
-    helper.mockFailedRemoval()
+    helper.mockFailedRemoval(enrollmentIdentifier)
 
-    await expect(ZoomProvider.dispose(enrollmentIdentifier)).resolve.toBeUndefined()
+    await expect(ZoomProvider.dispose(enrollmentIdentifier)).resolves.toBeUndefined()
   })
 })

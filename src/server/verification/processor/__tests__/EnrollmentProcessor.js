@@ -96,7 +96,7 @@ describe('EnrollmentProcessor', () => {
   })
 
   test("enroll() proxies provider's error and sets error + non-whitelisted state in the session", async () => {
-    helper.mockDuplicatesFound()
+    helper.mockDuplicateFound()
 
     const wrappedResponse = expect(enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)).resolves
 
@@ -111,6 +111,7 @@ describe('EnrollmentProcessor', () => {
     expect(updateSessionMock).toHaveBeenNthCalledWith(3, {
       isLive: false,
       isDuplicate: true,
+      isEnrolled: false,
       isWhitelisted: false,
       isError: helper.duplicateFoundMessage
     })

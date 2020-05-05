@@ -81,7 +81,6 @@ class ZoomAPI {
   async faceSearch(payload, minimalMatchLevel: number = null) {
     const { http, defaultMinimalMatchLevel } = this
     const response = await http.post('/search', payload)
-    console.log({ response })
     let minMatchLevel = minimalMatchLevel
 
     if (null === minMatchLevel) {
@@ -121,7 +120,7 @@ class ZoomAPI {
       return {
         ...config,
         params: searchParams,
-        url: (url || '').replace(/:(\w[\w\d]*?)/g, substituteParameter)
+        url: (url || '').replace(/:(\w[\w\d]+)/g, substituteParameter)
       }
     })
   }
@@ -139,9 +138,9 @@ class ZoomAPI {
   }
 
   _responseInterceptor(response) {
-    log('Received response from Zoom API:', response)
+    log.debug('Received response from Zoom API:', response)
 
-    return this.transformedResponse(response)
+    return this._responseTransformer(response)
   }
 
   _exceptionInterceptor(exception) {

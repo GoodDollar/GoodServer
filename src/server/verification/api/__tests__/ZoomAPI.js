@@ -166,7 +166,7 @@ describe('ZoomAPI', () => {
   })
 
   test("disposeEnrollment() should throw error if enrollment isn't found", async () => {
-    helper.mockFailedRemoval()
+    helper.mockFailedRemoval(enrollmentIdentifier)
 
     const wrappedResponse = expect(ZoomAPI.disposeEnrollment(enrollmentIdentifier)).rejects
 

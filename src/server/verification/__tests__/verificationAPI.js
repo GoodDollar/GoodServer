@@ -146,14 +146,14 @@ describe('verificationAPI', () => {
       // to check has user been updated in the database
       expect(isVerified).toBeTruthy()
       // in the GUN session
-      expect(updateSessionMock).toHaveBeenCalledWith({ isEnrolled: true })
+      expect(updateSessionMock).toHaveBeenCalledWith({ isLive: true, isEnrolled: true })
       expect(updateSessionMock).toHaveBeenCalledWith({ isWhitelisted: true })
       // and in the waller
       expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), profilePublickey)
     })
 
     test("PUT /verify/face/:enrollmentIdentifier returns 200 and success: false when verification wasn't successfull", async () => {
-      helper.mockDuplicatesFound()
+      helper.mockDuplicateFound()
 
       await request(server)
         .put(enrollmentUri)
@@ -168,12 +168,12 @@ describe('verificationAPI', () => {
             ok: true,
             code: 200,
             mode: 'dev',
-            message: 'The search request was processed successfully.',
-            sourceFaceMap: {
-              isReplayFaceMap: false
-            }
+            message: 'The search request was processed successfully.'
           }
         })
+
+      // checking that duplicate flag was set in the session
+      expect(updateSessionMock).toHaveBeenCalledWith({ isDuplicate: true })
 
       // to check that user hasn't beed updated nowhere
 
@@ -183,7 +183,7 @@ describe('verificationAPI', () => {
       expect(isVerified).toBeFalsy()
 
       // in the session
-      expect(updateSessionMock).not.toHaveBeenCalledWith({ isEnrolled: true })
+      expect(updateSessionMock).not.toHaveBeenCalledWith({ isLive: true, isEnrolled: true })
       expect(updateSessionMock).not.toHaveBeenCalledWith({ isWhitelisted: true })
 
       // and in the wallet

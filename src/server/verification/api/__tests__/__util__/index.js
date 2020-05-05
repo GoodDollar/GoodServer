@@ -22,23 +22,24 @@ export default zoomServiceMock => {
       }
     })
 
-  const mockDuplicatesFound = zoomServiceMock.onPost('/search').reply(200, {
-    meta: {
-      ok: true,
-      code: 200,
-      mode: 'dev',
-      message: 'The search request was processed successfully.'
-    },
-    data: {
-      results: [
-        {
-          enrollmentIdentifier: duplicateEnrollmentIdentifier,
-          matchLevel: '1',
-          auditTrailImage: 'data:image/png:FaKEimagE=='
-        }
-      ]
-    }
-  })
+  const mockDuplicateFound = () =>
+    zoomServiceMock.onPost('/search').reply(200, {
+      meta: {
+        ok: true,
+        code: 200,
+        mode: 'dev',
+        message: 'The search request was processed successfully.'
+      },
+      data: {
+        results: [
+          {
+            enrollmentIdentifier: duplicateEnrollmentIdentifier,
+            matchLevel: '1',
+            auditTrailImage: 'data:image/png:FaKEimagE=='
+          }
+        ]
+      }
+    })
 
   const mockSuccessEnrollment = enrollmentIdentifier =>
     zoomServiceMock.onPost('/enrollment').reply(200, {
@@ -85,8 +86,8 @@ export default zoomServiceMock => {
       }
     })
 
-  const mockFailedRemoval = () =>
-    zoomServiceMock.onDelete(/\/enrollment\/.+/).reply(200, {
+  const mockFailedRemoval = enrollmentIdentifier =>
+    zoomServiceMock.onDelete(enrollmentUri(enrollmentIdentifier)).reply(200, {
       meta: {
         ok: true,
         code: 200,
@@ -99,7 +100,7 @@ export default zoomServiceMock => {
     enrollmentUri,
 
     mockEmptyResultsFaceSearch,
-    mockDuplicatesFound,
+    mockDuplicateFound,
     duplicateEnrollmentIdentifier,
     duplicateFoundMessage,
 

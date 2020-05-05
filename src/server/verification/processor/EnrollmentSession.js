@@ -12,6 +12,7 @@ export default class EnrollmentSession {
   provider = null
   storage = null
   adminApi = null
+  sessionRef = null
 
   constructor(user, provider, storage, adminApi, gun, customLogger = null) {
     this.gun = gun
@@ -25,17 +26,15 @@ export default class EnrollmentSession {
   }
 
   async enroll(enrollmentIdentifier, payload: any): Promise<any> {
-    const { log, gun, provider, onEnrollmentProcessing } = this
-    const { sessionId } = payload
-    const sessionRef = gun.session(sessionId)
+    const { log, provider, onEnrollmentProcessing } = this
     let result = { success: true }
 
     log.info('Enrollment session started', { enrollmentIdentifier, payload })
 
-    this.sessionRef = sessionRef
-    this.onEnrollmentStarted()
-
     try {
+      this.initialize(payload)
+      this.onEnrollmentStarted()
+
       const enrollmentResult = await provider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)
 
       log.info('Enrollment session completed with result:', enrollmentResult)
@@ -61,6 +60,16 @@ export default class EnrollmentSession {
     return result
   }
 
+  initialize(payload: any) {
+    const { gun } = this
+    const { sessionId } = payload
+
+    this.sessionRef = gun.session(sessionId)
+    // returning this to allow initialize &
+    // get sessionRef via destructuring in a single call
+    return this
+  }
+
   onEnrollmentStarted() {
     const { sessionRef } = this
 
@@ -71,11 +80,11 @@ export default class EnrollmentSession {
     const { sessionRef, log } = this
 
     if ('isDuplicate' in processingPayload) {
-      log('Checked for duplicates:', processingPayload)
+      log.info('Checked for duplicates:', processingPayload)
     }
 
     if ('isEnrolled' in processingPayload) {
-      log('Checked for liveness and tried to enroll:', processingPayload)
+      log.info('Checked for liveness and tried to enroll:', processingPayload)
     }
 
     sessionRef.put(processingPayload)
