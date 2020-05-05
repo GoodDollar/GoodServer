@@ -81,6 +81,7 @@ class ZoomAPI {
   async faceSearch(payload, minimalMatchLevel: number = null) {
     const { http, defaultMinimalMatchLevel } = this
     const response = await http.post('/search', payload)
+    console.log({ response })
     let minMatchLevel = minimalMatchLevel
 
     if (null === minMatchLevel) {
