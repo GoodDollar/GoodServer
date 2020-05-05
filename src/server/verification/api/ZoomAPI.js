@@ -52,7 +52,7 @@ class ZoomAPI {
   }
 
   async readEnrollment(enrollmentIdentifier) {
-    return this.http.get('/enrollment/:enrollmentIdentifier', { params: { enrollmentIdentifier } })
+    return this.http.get('/enrollment', { params: { enrollmentIdentifier } })
   }
 
   async disposeEnrollment(enrollmentIdentifier) {
@@ -74,6 +74,7 @@ class ZoomAPI {
   async faceSearch(payload, minimalMatchLevel: number = null) {
     const { http, defaultMinimalMatchLevel } = this
     const response = await http.post('/search', payload)
+    console.log({ response })
     let minMatchLevel = minimalMatchLevel
 
     if (null === minMatchLevel) {
@@ -145,7 +146,7 @@ class ZoomAPI {
         const { message: zoomMessage } = zoomResponse
 
         exception.message = zoomMessage || message
-        exception.response = response
+        exception.response = zoomResponse
       } else {
         delete exception.response
       }
