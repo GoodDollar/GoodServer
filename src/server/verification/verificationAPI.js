@@ -34,16 +34,16 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     '/verify/face/:enrollmentIdentifier',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
-      const { params, query } = req
+      const { params, query, log, user } = req
       const { enrollmentIdentifier } = params
       const { signature } = query
-      const processor = createEnrollmentProcessor(storage)
 
       try {
+        const processor = createEnrollmentProcessor(storage)
         await processor.enqueueDisposal(enrollmentIdentifier, signature)
       } catch (exception) {
         const { message } = exception
-
+        log.error('delete face record failed:', { message, exception, enrollmentIdentifier, user })
         res.status(400).json({ success: false, error: message })
         return
       }
@@ -71,9 +71,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { enrollmentIdentifier } = params
 
       let enrollmentResult
-      const processor = createEnrollmentProcessor(storage)
 
       try {
+        const processor = createEnrollmentProcessor(storage)
         processor.validate(user, enrollmentIdentifier, payload)
 
         if (user.isVerified || conf.skipFaceVerification) {
@@ -88,7 +88,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       } catch (exception) {
         const { message } = exception
 
-        log.error('Face verification error:', message, exception)
+        log.error('Face verification error:', { message, exception, enrollmentIdentifier })
         res.status(400).json({ success: false, error: message })
         return
       }
@@ -233,7 +233,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         })
         isUserSendEtherOutOfSystem = result.some(r => Number(r.value) > 0)
       } catch (e) {
-        log.error('Check user transactions error', { e })
+        log.error('Check user transactions error', { error: e.message, e })
       }
 
       if (isUserSendEtherOutOfSystem) {
@@ -253,7 +253,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           return { ok: 1 }
         })
         .catch(async e => {
-          log.error('Failed top wallet tx', e.message, e.stack)
+          log.error('Failed top wallet tx', { error: e.message, e })
           //restore last top wallet in case of error
           await storage.updateUser({ identifier: user.loggedInAs, lastTopWallet: user.lastTopWallet })
 
@@ -319,7 +319,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
             )
             log.debug('sent new user email validation code', code)
           } catch (e) {
-            log.error('failed sending email verification to user:', e.message, { userRec, code })
+            log.error('failed sending email verification to user:', { error: e.message, e, userRec, code })
             throw e
           }
         }
@@ -628,7 +628,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         })
       }
 
-      AdminWallet.checkHanukaBonus(currentUser, storage).catch(e => log.error('checkHnukaBonus failed', e.message, e))
+      AdminWallet.checkHanukaBonus(currentUser, storage).catch(e =>
+        log.error('checkHnukaBonus failed', { error: e.message, e })
+      )
 
       let wallet_token = currentUser.w3Token
 
