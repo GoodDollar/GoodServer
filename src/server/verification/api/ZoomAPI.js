@@ -52,7 +52,7 @@ class ZoomAPI {
   }
 
   async readEnrollment(enrollmentIdentifier) {
-    return this.http.get('/enrollment', { params: { enrollmentIdentifier } })
+    return this.http.get('/enrollment/:enrollmentIdentifier', { params: { enrollmentIdentifier } })
   }
 
   async disposeEnrollment(enrollmentIdentifier) {
