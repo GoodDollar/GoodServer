@@ -1,4 +1,6 @@
 // @flow
+import { pick } from 'lodash'
+
 import ZoomAPI from '../../api/ZoomAPI.js'
 
 import { type IEnrollmentProvider } from '../typings'
@@ -26,10 +28,15 @@ class ZoomProvider implements IEnrollmentProvider {
 
     // throws custom exception related to the predefined verification cases
     // e.g. livenes wasn't passed, duplicate found etc
-    const throwCustomException = (errorMessage, errorResponse) => {
-      const exception = new Error(errorMessage)
+    const throwCustomException = (customMessage, customResponse, zoomResponse = {}) => {
+      const exception = new Error(customMessage)
 
-      exception.response = { isVerified: false, ...errorResponse }
+      exception.response = {
+        ...pick(zoomResponse, 'code', 'subCode', 'message'),
+        ...customResponse,
+        isVerified: false
+      }
+
       throw exception
     }
 
@@ -38,7 +45,7 @@ class ZoomProvider implements IEnrollmentProvider {
     // we don't wrapping call to try catch
     // any unexpected errors will be automatically rethrown
     const { defaultMinimalMatchLevel } = api
-    const { results, ...searchResponse } = await api.faceSearch(payload, defaultMinimalMatchLevel, customLogger)
+    const { results, response } = await api.faceSearch(payload, defaultMinimalMatchLevel, customLogger)
     // excluding own enrollmentIdentifier
     const duplicate = results.find(
       ({ enrollmentIdentifier: matchId }) => matchId.toLowerCase() !== enrollmentIdentifier.toLowerCase()
@@ -53,16 +60,18 @@ class ZoomProvider implements IEnrollmentProvider {
       const duplicateFoundMessage = `Duplicate exists for FaceMap you're trying to enroll.`
 
       // if duplicate found - throwing corresponding error
-      throwCustomException(duplicateFoundMessage, { isDuplicate, ...searchResponse })
+      throwCustomException(duplicateFoundMessage, { isDuplicate }, response)
     }
 
-    let enrollmentResult
+    let enrollmentStatus
     let alreadyEnrolled = false
 
     // 2. performing enroll
     try {
       // returning last respose
-      enrollmentResult = await api.submitEnrollment({ ...payload, enrollmentIdentifier }, customLogger)
+      const { message } = await api.submitEnrollment({ ...payload, enrollmentIdentifier }, customLogger)
+
+      enrollmentStatus = message
     } catch (exception) {
       const { response, message } = exception
 
@@ -82,7 +91,7 @@ class ZoomProvider implements IEnrollmentProvider {
 
         // then notifying & throwing enrollment exception
         await notifyProcessor({ isEnrolled, isLive })
-        throwCustomException(message, { isEnrolled, isLive, ...response })
+        throwCustomException(message, { isEnrolled, isLive }, response)
       }
 
       // otherwise, if subCode equals to 'nameCollision'
@@ -91,14 +100,14 @@ class ZoomProvider implements IEnrollmentProvider {
       // we don't throw anything, but setting alreadyEnrolled flag
       alreadyEnrolled = true
 
-      // returning last response
-      enrollmentResult = response
+      // returning successful status
+      enrollmentStatus = 'The FaceMap was successfully enrolled.'
     }
 
     // notifying about successfull enrollment
     await notifyProcessor({ isEnrolled: true, isLive: true })
     // returning successfull result
-    return { isVerified: true, alreadyEnrolled, ...enrollmentResult }
+    return { isVerified: true, alreadyEnrolled, message: enrollmentStatus }
   }
 
   async enrollmentExists(enrollmentIdentifier: string, customLogger = null): Promise<boolean> {

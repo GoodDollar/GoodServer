@@ -125,18 +125,7 @@ describe('verificationAPI', () => {
           enrollmentResult: {
             isVerified: true,
             alreadyEnrolled: false,
-            ok: true,
-            code: 200,
-            mode: 'dev',
-            message: 'The FaceMap was successfully enrolled.',
-            createdDate: '2019-09-16T17:30:40+00:00',
-            enrollmentIdentifier,
-            faceMapType: 0,
-            glasses: false,
-            isEnrolled: true,
-            isLowQuality: false,
-            isReplayFaceMap: false,
-            livenessStatus: 0
+            message: 'The FaceMap was successfully enrolled.'
           }
         })
 
@@ -164,11 +153,7 @@ describe('verificationAPI', () => {
           error: helper.duplicateFoundMessage,
           enrollmentResult: {
             isVerified: false,
-            isDuplicate: true,
-            ok: true,
-            code: 200,
-            mode: 'dev',
-            message: 'The search request was processed successfully.'
+            isDuplicate: true
           }
         })
 
