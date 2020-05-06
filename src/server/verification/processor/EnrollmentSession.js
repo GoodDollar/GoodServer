@@ -26,11 +26,12 @@ export default class EnrollmentSession {
   }
 
   async enroll(enrollmentIdentifier, payload: any): Promise<any> {
-    const { log, provider, onEnrollmentProcessing } = this
+    const { log, user, provider, onEnrollmentProcessing } = this
     let result = { success: true }
 
     log.info('Enrollment session started', {
       enrollmentIdentifier,
+      userIdentifier: user.loggedInAs,
       payload: omit(payload, 'faceMap', 'auditTrailImage', 'lowQualityAuditTrailImage')
     })
 
