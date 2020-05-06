@@ -40,7 +40,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       try {
         const processor = createEnrollmentProcessor(storage)
-        await processor.enqueueDisposal(enrollmentIdentifier, signature)
+        await processor.enqueueDisposal(enrollmentIdentifier, signature, log)
       } catch (exception) {
         const { message } = exception
         log.error('delete face record failed:', { message, exception, enrollmentIdentifier, user })

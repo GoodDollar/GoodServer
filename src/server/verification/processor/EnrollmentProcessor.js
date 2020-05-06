@@ -58,7 +58,7 @@ class EnrollmentProcessor {
     return session.enroll(enrollmentIdenfitier, payload)
   }
 
-  async enqueueDisposal(enrollmentIdentifier, signature) {
+  async enqueueDisposal(enrollmentIdentifier, signature, customLogger = null) {
     const { provider, keepEnrollments } = this
     const recovered = recoverPublickey(signature, enrollmentIdentifier, '')
 
@@ -66,12 +66,12 @@ class EnrollmentProcessor {
       throw new Error(`Unable to enqueue enrollment disposal: SigUtil unable to recover the message signer`)
     }
 
-    const enrollmentExists = await provider.enrollmentExists(enrollmentIdentifier)
+    const enrollmentExists = await provider.enrollmentExists(enrollmentIdentifier, customLogger)
 
     if (enrollmentExists) {
       // if KEEP_FACE_VERIFICATION_RECORDS env var lte 0 - delete face record immediately
       if (keepEnrollments <= 0) {
-        await provider.dispose(enrollmentIdentifier)
+        await provider.dispose(enrollmentIdentifier, customLogger)
         return
       }
 

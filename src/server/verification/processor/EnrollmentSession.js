@@ -1,5 +1,5 @@
 // @flow
-import { bindAll } from 'lodash'
+import { bindAll, omit } from 'lodash'
 import { type IEnrollmentEventPayload } from './typings'
 
 import logger from '../../../imports/logger'
@@ -29,13 +29,16 @@ export default class EnrollmentSession {
     const { log, provider, onEnrollmentProcessing } = this
     let result = { success: true }
 
-    log.info('Enrollment session started', { enrollmentIdentifier, payload })
+    log.info('Enrollment session started', {
+      enrollmentIdentifier,
+      payload: omit(payload, 'faceMap', 'auditTrailImage', 'lowQualityAuditTrailImage')
+    })
 
     try {
       this.initialize(payload)
       this.onEnrollmentStarted()
 
-      const enrollmentResult = await provider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)
+      const enrollmentResult = await provider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing, log)
 
       log.info('Enrollment session completed with result:', enrollmentResult)
 
@@ -80,11 +83,11 @@ export default class EnrollmentSession {
     const { sessionRef, log } = this
 
     if ('isDuplicate' in processingPayload) {
-      log.info('Checked for duplicates:', processingPayload)
+      log.info('Checking for duplicates:', processingPayload)
     }
 
     if ('isEnrolled' in processingPayload) {
-      log.info('Checked for liveness and tried to enroll:', processingPayload)
+      log.info('Checking for liveness and tried to enroll:', processingPayload)
     }
 
     sessionRef.put(processingPayload)

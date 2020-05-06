@@ -17,7 +17,8 @@ class ZoomProvider implements IEnrollmentProvider {
   async enroll(
     enrollmentIdentifier: string,
     payload: any,
-    onEnrollmentProcessing: (payload: IEnrollmentEventPayload) => void | Promise<void>
+    onEnrollmentProcessing: (payload: IEnrollmentEventPayload) => void | Promise<void>,
+    customLogger = null
   ): Promise<any> {
     const { api } = this
     // send event to onEnrollmentProcessing
@@ -36,7 +37,8 @@ class ZoomProvider implements IEnrollmentProvider {
     // we don't need to catch specific cases so
     // we don't wrapping call to try catch
     // any unexpected errors will be automatically rethrown
-    const { results, ...searchResponse } = await api.faceSearch(payload)
+    const { defaultMinimalMatchLevel } = api
+    const { results, ...searchResponse } = await api.faceSearch(payload, defaultMinimalMatchLevel, customLogger)
     // excluding own enrollmentIdentifier
     const duplicate = results.find(
       ({ enrollmentIdentifier: matchId }) => matchId.toLowerCase() !== enrollmentIdentifier.toLowerCase()
@@ -60,7 +62,7 @@ class ZoomProvider implements IEnrollmentProvider {
     // 2. performing enroll
     try {
       // returning last respose
-      enrollmentResult = await api.submitEnrollment({ ...payload, enrollmentIdentifier })
+      enrollmentResult = await api.submitEnrollment({ ...payload, enrollmentIdentifier }, customLogger)
     } catch (exception) {
       const { response, message } = exception
 
@@ -99,9 +101,9 @@ class ZoomProvider implements IEnrollmentProvider {
     return { isVerified: true, alreadyEnrolled, ...enrollmentResult }
   }
 
-  async enrollmentExists(enrollmentIdentifier: string): Promise<boolean> {
+  async enrollmentExists(enrollmentIdentifier: string, customLogger = null): Promise<boolean> {
     try {
-      await this.api.readEnrollment(enrollmentIdentifier)
+      await this.api.readEnrollment(enrollmentIdentifier, customLogger)
     } catch (exception) {
       const { subCode } = exception.response || {}
 
@@ -115,9 +117,9 @@ class ZoomProvider implements IEnrollmentProvider {
     return true
   }
 
-  async dispose(enrollmentIdentifier: string): Promise<void> {
+  async dispose(enrollmentIdentifier: string, customLogger = null): Promise<void> {
     try {
-      await this.api.disposeEnrollment(enrollmentIdentifier)
+      await this.api.disposeEnrollment(enrollmentIdentifier, customLogger)
     } catch (exception) {
       const { subCode } = exception.response || {}
 

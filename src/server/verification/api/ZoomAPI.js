@@ -1,7 +1,7 @@
 // @flow
 
 import Axios from 'axios'
-import { merge, pick, isPlainObject } from 'lodash'
+import { merge, pick, omit, isPlainObject, isArray, mapValues } from 'lodash'
 
 import Config from '../../server.config'
 import logger from '../../../imports/logger'
@@ -31,8 +31,8 @@ class ZoomAPI {
     this.defaultMinimalMatchLevel = Number(zoomMinimalMatchLevel)
   }
 
-  async submitEnrollment(payload) {
-    const response = await this.http.post('/enrollment', payload)
+  async submitEnrollment(payload, customLogger = null) {
+    const response = await this.http.post('/enrollment', payload, { customLogger })
     const { code, glasses, message, isLowQuality, isEnrolled } = response
     const isLivenessPassed = this.checkLivenessStatus(response)
 
@@ -58,12 +58,15 @@ class ZoomAPI {
     return response
   }
 
-  async readEnrollment(enrollmentIdentifier) {
-    return this.http.get('/enrollment/:enrollmentIdentifier', { params: { enrollmentIdentifier } })
+  async readEnrollment(enrollmentIdentifier, customLogger = null) {
+    return this.http.get('/enrollment/:enrollmentIdentifier', { customLogger, params: { enrollmentIdentifier } })
   }
 
-  async disposeEnrollment(enrollmentIdentifier) {
-    const response = await this.http.delete('/enrollment/:enrollmentIdentifier', { params: { enrollmentIdentifier } })
+  async disposeEnrollment(enrollmentIdentifier, customLogger = null) {
+    const response = await this.http.delete('/enrollment/:enrollmentIdentifier', {
+      customLogger,
+      params: { enrollmentIdentifier }
+    })
 
     const { code, message } = response
 
@@ -78,9 +81,9 @@ class ZoomAPI {
     return response
   }
 
-  async faceSearch(payload, minimalMatchLevel: number = null) {
+  async faceSearch(payload, minimalMatchLevel: number = null, customLogger = null) {
     const { http, defaultMinimalMatchLevel } = this
-    const response = await http.post('/search', payload)
+    const response = await http.post('/search', payload, { customLogger })
     let minMatchLevel = minimalMatchLevel
 
     if (null === minMatchLevel) {
@@ -104,8 +107,8 @@ class ZoomAPI {
   _configureRequests() {
     const { request } = this.http.interceptors
 
-    request.use(config => {
-      const { url, params } = config
+    request.use(request => {
+      const { url, params } = request
       let searchParams = params instanceof URLSearchParams ? params : new URLSearchParams(params || {})
 
       const substituteParameter = (_, parameter) => {
@@ -115,10 +118,10 @@ class ZoomAPI {
         return encodeURIComponent(parameterValue)
       }
 
-      log.debug('Calling Zoom API:', config)
+      this._logRequest(request)
 
       return {
-        ...config,
+        ...request,
         params: searchParams,
         url: (url || '').replace(/:(\w[\w\d]+)/g, substituteParameter)
       }
@@ -131,40 +134,74 @@ class ZoomAPI {
     response.use(response => this._responseInterceptor(response), exception => this._exceptionInterceptor(exception))
   }
 
-  _responseTransformer(response) {
-    const { data } = response
-
-    return merge(...Object.values(pick(data, 'meta', 'data')))
-  }
-
   _responseInterceptor(response) {
-    log.debug('Received response from Zoom API:', response)
+    this._logResponse('Received response from Zoom API:', response)
 
-    return this._responseTransformer(response)
+    return this._transformResponse(response)
   }
 
   _exceptionInterceptor(exception) {
     const { response, message } = exception
 
     if (response && isPlainObject(response.data)) {
-      log.debug('Zoom API exception:', response.data)
+      this._logResponse('Zoom API exception:', response)
 
-      const zoomResponse = this._responseTransformer(response)
+      const zoomResponse = this._transformResponse(response)
       const { message: zoomMessage } = zoomResponse
 
       exception.message = zoomMessage || message
       exception.response = zoomResponse
     } else {
-      if (response) {
-        log.debug('HTTP exception during Zoom API call:', pick(response, 'data', 'status', 'statusText'))
-      } else {
-        log.debug('Unexpected exception during Zoom API call:', message)
-      }
+      this._logUnexpectedExecption(exception)
 
       delete exception.response
     }
 
     throw exception
+  }
+
+  _transformResponse(response) {
+    return merge(...Object.values(pick(response.data, 'meta', 'data')))
+  }
+
+  _logRequest(request) {
+    const requestCopy = pick(request, 'url', 'method', 'headers', 'params')
+    const { data, customLogger } = request
+    const logger = customLogger || log
+
+    requestCopy.data = this._createLoggingSafeCopy(data)
+    logger.debug('Calling Zoom API:', requestCopy)
+  }
+
+  _logResponse(logMessage, response) {
+    const { data, config } = response
+    const logger = config.customLogger || log
+
+    logger.debug(logMessage, this._createLoggingSafeCopy(data))
+  }
+
+  _logUnexpectedExecption(exception) {
+    const { response, message } = exception
+
+    if (response) {
+      log.debug('HTTP exception during Zoom API call:', pick(response, 'data', 'status', 'statusText'))
+    } else {
+      log.debug('Unexpected exception during Zoom API call:', message)
+    }
+  }
+
+  _createLoggingSafeCopy(payload) {
+    if (isArray(payload)) {
+      return payload.map(item => this._createLoggingSafeCopy(item))
+    }
+
+    if (!isPlainObject(payload)) {
+      return payload
+    }
+
+    return mapValues(omit(payload, 'faceMap', 'auditTrailImage', 'lowQualityAuditTrailImage'), payloadField =>
+      this._createLoggingSafeCopy(payloadField)
+    )
   }
 }
 
