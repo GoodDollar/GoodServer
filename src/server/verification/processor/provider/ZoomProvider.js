@@ -100,8 +100,8 @@ class ZoomProvider implements IEnrollmentProvider {
       // we don't throw anything, but setting alreadyEnrolled flag
       alreadyEnrolled = true
 
-      // returning successful status
-      enrollmentStatus = 'The FaceMap was successfully enrolled.'
+      // returning 'already enrolled' status
+      enrollmentStatus = 'The FaceMap was already enrolled.'
     }
 
     // notifying about successfull enrollment
