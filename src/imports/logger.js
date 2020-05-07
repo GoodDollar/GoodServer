@@ -1,4 +1,5 @@
 import winston from 'winston'
+import { omit, isPlainObject } from 'lodash'
 import conf from '../server/server.config'
 import Rollbar from 'rollbar'
 import Crypto from 'crypto'
@@ -84,10 +85,16 @@ const addRequestLogger = (req, res, next) => {
   req.log = logger.child({ uuid, from: req.url, userId: req.user && req.user.identifier })
   res.on('finish', () => {
     const responseTimeSeconds = (Date.now() - startTime) / 1000
+    let logBody = req.body
+
+    if (req.url.startsWith('/verify/face/') && isPlainObject(logBody)) {
+      logBody = omit(logBody, 'faceMap', 'auditTrailImage', 'lowQualityAuditTrailImage')
+    }
+
     req.log.log('http', 'Incoming Request', {
       responseTimeSeconds,
       method: req.method,
-      body: req.body,
+      body: logBody,
       query: req.query,
       headers: req.headers
     })

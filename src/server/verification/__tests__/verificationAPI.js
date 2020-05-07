@@ -113,7 +113,6 @@ describe('verificationAPI', () => {
     })
 
     test('PUT /verify/face/:enrollmentIdentifier returns 200 and success: true when verification was successfull', async () => {
-      helper.mockSuccessLivenessCheck()
       helper.mockEmptyResultsFaceSearch()
       helper.mockSuccessEnrollment(enrollmentIdentifier)
 
@@ -126,18 +125,7 @@ describe('verificationAPI', () => {
           enrollmentResult: {
             isVerified: true,
             alreadyEnrolled: false,
-            ok: true,
-            code: 200,
-            mode: 'dev',
-            message: 'The FaceMap was successfully enrolled.',
-            createdDate: '2019-09-16T17:30:40+00:00',
-            enrollmentIdentifier,
-            faceMapType: 0,
-            glasses: false,
-            isEnrolled: true,
-            isLowQuality: false,
-            isReplayFaceMap: false,
-            livenessStatus: 0
+            message: 'The FaceMap was successfully enrolled.'
           }
         })
 
@@ -147,16 +135,14 @@ describe('verificationAPI', () => {
       // to check has user been updated in the database
       expect(isVerified).toBeTruthy()
       // in the GUN session
-      expect(updateSessionMock).toHaveBeenCalledWith({ isEnrolled: true })
+      expect(updateSessionMock).toHaveBeenCalledWith({ isLive: true, isEnrolled: true })
       expect(updateSessionMock).toHaveBeenCalledWith({ isWhitelisted: true })
       // and in the waller
       expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), profilePublickey)
     })
 
     test("PUT /verify/face/:enrollmentIdentifier returns 200 and success: false when verification wasn't successfull", async () => {
-      const { failedLivenessCheckMessage } = helper
-
-      helper.mockFailedLivenessCheck()
+      helper.mockDuplicateFound()
 
       await request(server)
         .put(enrollmentUri)
@@ -164,20 +150,15 @@ describe('verificationAPI', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200, {
           success: false,
-          error: failedLivenessCheckMessage,
+          error: helper.duplicateFoundMessage,
           enrollmentResult: {
             isVerified: false,
-            isLive: false,
-            ok: true,
-            code: 200,
-            mode: 'dev',
-            message: failedLivenessCheckMessage,
-            glasses: false,
-            isLowQuality: false,
-            isReplayFaceMap: true,
-            livenessStatus: 2
+            isDuplicate: true
           }
         })
+
+      // checking that duplicate flag was set in the session
+      expect(updateSessionMock).toHaveBeenCalledWith({ isDuplicate: true })
 
       // to check that user hasn't beed updated nowhere
 
@@ -187,14 +168,14 @@ describe('verificationAPI', () => {
       expect(isVerified).toBeFalsy()
 
       // in the session
-      expect(updateSessionMock).not.toHaveBeenCalledWith({ isEnrolled: true })
+      expect(updateSessionMock).not.toHaveBeenCalledWith({ isLive: true, isEnrolled: true })
       expect(updateSessionMock).not.toHaveBeenCalledWith({ isWhitelisted: true })
 
       // and in the wallet
       expect(whitelistUserMock).not.toHaveBeenCalled()
     })
 
-    test('PUT /verify/face/:enrollmentIdentifier skips verification is user is already verified', async () => {
+    test('PUT /verify/face/:enrollmentIdentifier skips verification and re-whitelists user was already verified', async () => {
       await storage.updateUser({ identifier: userIdentifier, isVerified: true })
 
       await request(server)
@@ -203,9 +184,20 @@ describe('verificationAPI', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200, { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } })
 
+      const { address, profilePublickey } = await getCreds()
+
+      // checking that there was access to the user's session
       expect(getSessionRefMock).toHaveBeenCalledWith(payload.sessionId)
+
+      // verification & whitelisting state were updated
       expect(updateSessionMock).toHaveBeenCalledWith({ isDuplicate: false, isLive: true, isEnrolled: true })
+      expect(updateSessionMock).toHaveBeenCalledWith({ isWhitelisted: true })
+
+      // but enrollment process wasn't started
       expect(updateSessionMock).not.toHaveBeenCalledWith({ isStarted: true })
+
+      // and user was actrally re-whitelisted in the wallet
+      expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), profilePublickey)
     })
   })
 

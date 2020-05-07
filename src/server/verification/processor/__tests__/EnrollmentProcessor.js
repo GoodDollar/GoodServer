@@ -75,7 +75,6 @@ describe('EnrollmentProcessor', () => {
   })
 
   test("enroll() proxies provider's response, updates session and whitelists user on success", async () => {
-    helper.mockSuccessLivenessCheck()
     helper.mockEmptyResultsFaceSearch()
     helper.mockSuccessEnrollment(enrollmentIdentifier)
 
@@ -88,33 +87,33 @@ describe('EnrollmentProcessor', () => {
 
     expect(getSessionRefMock).toHaveBeenCalledWith(payload.sessionId)
     expect(updateSessionMock).toHaveBeenNthCalledWith(1, { isStarted: true })
-    expect(updateSessionMock).toHaveBeenNthCalledWith(2, { isLive: true })
-    expect(updateSessionMock).toHaveBeenNthCalledWith(3, { isDuplicate: false })
-    expect(updateSessionMock).toHaveBeenNthCalledWith(4, { isEnrolled: true })
-    expect(updateSessionMock).toHaveBeenNthCalledWith(5, { isWhitelisted: true })
+    expect(updateSessionMock).toHaveBeenNthCalledWith(2, { isDuplicate: false })
+    expect(updateSessionMock).toHaveBeenNthCalledWith(3, { isEnrolled: true, isLive: true })
+    expect(updateSessionMock).toHaveBeenNthCalledWith(4, { isWhitelisted: true })
 
     expect(updateUserMock).toHaveBeenCalledWith({ identifier: loggedInAs, isVerified: true })
     expect(whitelistUserMock).toHaveBeenCalledWith(gdAddress, profilePublickey)
   })
 
   test("enroll() proxies provider's error and sets error + non-whitelisted state in the session", async () => {
-    helper.mockFailedLivenessCheck()
+    helper.mockDuplicateFound()
 
     const wrappedResponse = expect(enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)).resolves
 
     await wrappedResponse.toHaveProperty('success', false)
-    await wrappedResponse.toHaveProperty('error', helper.failedLivenessCheckMessage)
+    await wrappedResponse.toHaveProperty('error', helper.duplicateFoundMessage)
     await wrappedResponse.toHaveProperty('enrollmentResult.isVerified', false)
 
     expect(getSessionRefMock).toHaveBeenCalledWith(payload.sessionId)
     expect(updateSessionMock).toHaveBeenNthCalledWith(1, { isStarted: true })
-    expect(updateSessionMock).toHaveBeenNthCalledWith(2, { isLive: false })
+    expect(updateSessionMock).toHaveBeenNthCalledWith(2, { isDuplicate: true })
 
     expect(updateSessionMock).toHaveBeenNthCalledWith(3, {
       isLive: false,
       isDuplicate: true,
+      isEnrolled: false,
       isWhitelisted: false,
-      isError: helper.failedLivenessCheckMessage
+      isError: helper.duplicateFoundMessage
     })
   })
 })

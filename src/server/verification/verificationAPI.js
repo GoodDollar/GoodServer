@@ -40,7 +40,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       try {
         const processor = createEnrollmentProcessor(storage)
-        await processor.enqueueDisposal(enrollmentIdentifier, signature)
+        await processor.enqueueDisposal(enrollmentIdentifier, signature, log)
       } catch (exception) {
         const { message } = exception
         log.error('delete face record failed:', { message, exception, enrollmentIdentifier, user })
@@ -67,23 +67,50 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { user, log, params, body: payload } = req
-      const { sessionId } = payload
       const { enrollmentIdentifier } = params
-
       let enrollmentResult
 
       try {
-        const processor = createEnrollmentProcessor(storage)
-        processor.validate(user, enrollmentIdentifier, payload)
+        const { skipFaceVerification } = conf
+        const enrollmentProcessor = createEnrollmentProcessor(storage)
 
-        if (user.isVerified || conf.skipFaceVerification) {
-          const sessionRef = GunDBPublic.session(sessionId)
+        enrollmentProcessor.validate(user, enrollmentIdentifier, payload)
 
-          // publish to subscribers
+        // if user is already verified, we're skipping enroillment logic
+        if (user.isVerified || skipFaceVerification) {
+          // creating enrollment session manually for this user
+          const enrollmentSession = enrollmentProcessor.createEnrollmentSession(user, log)
+          // to access user's session reference in the Gun
+          const { sessionRef } = enrollmentSession.initialize(payload)
+
+          // immediately publishing isEnrolled to subscribers
           sessionRef.put({ isDuplicate: false, isLive: true, isEnrolled: true })
           enrollmentResult = { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } }
+
+          // when FR is enabled and user is already verified,
+          // we need to make sure to whitelist him,
+          // maybe we changed the whitelisting contract and
+          // he is no longer whitelisted there,
+          // so we trust that we already whitelisted him in the past
+          // and whitelist him again in the new contract
+          if (!skipFaceVerification) {
+            try {
+              // in the session's lifecycle onEnrollmentCompleted() is called
+              // after enrollment was successfull
+              // it whitelists user in the wallet and updates Gun's session
+              // here we're calling it manually as we've skipped enroll()
+              await enrollmentSession.onEnrollmentCompleted()
+            } catch (exception) {
+              // also we should try...catch manually,
+              // on failure call call onEnrollmentFailed()
+              // for set non-whitelistened and error in the Gun's session
+              enrollmentSession.onEnrollmentFailed(exception)
+              // and rethrow exception for return { success: false } JSON response
+              throw exception
+            }
+          }
         } else {
-          enrollmentResult = await processor.enroll(user, enrollmentIdentifier, payload)
+          enrollmentResult = await enrollmentProcessor.enroll(user, enrollmentIdentifier, payload, log)
         }
       } catch (exception) {
         const { message } = exception

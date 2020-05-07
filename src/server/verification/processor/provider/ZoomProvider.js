@@ -1,4 +1,6 @@
 // @flow
+import { pick } from 'lodash'
+
 import ZoomAPI from '../../api/ZoomAPI.js'
 
 import { type IEnrollmentProvider } from '../typings'
@@ -17,7 +19,8 @@ class ZoomProvider implements IEnrollmentProvider {
   async enroll(
     enrollmentIdentifier: string,
     payload: any,
-    onEnrollmentProcessing: (payload: IEnrollmentEventPayload) => void | Promise<void>
+    onEnrollmentProcessing: (payload: IEnrollmentEventPayload) => void | Promise<void>,
+    customLogger = null
   ): Promise<any> {
     const { api } = this
     // send event to onEnrollmentProcessing
@@ -25,39 +28,24 @@ class ZoomProvider implements IEnrollmentProvider {
 
     // throws custom exception related to the predefined verification cases
     // e.g. livenes wasn't passed, duplicate found etc
-    const throwCustomException = (errorMessage, errorResponse) => {
-      const exception = new Error(errorMessage)
+    const throwCustomException = (customMessage, customResponse, zoomResponse = {}) => {
+      const exception = new Error(customMessage)
 
-      exception.response = { isVerified: false, ...errorResponse }
+      exception.response = {
+        ...pick(zoomResponse, 'code', 'subCode', 'message'),
+        ...customResponse,
+        isVerified: false
+      }
+
       throw exception
     }
 
-    // 1. checking liveness
-    try {
-      await api.detectLiveness(payload)
-      // if passed - notifying and going further
-      await notifyProcessor({ isLive: true })
-    } catch (exception) {
-      const { message, response } = exception
-
-      // rethrowing unexpected errors (e.g. no conneciton or service error)
-      if (!response) {
-        throw exception
-      }
-
-      // if api have returned failed response
-      // notifying about it and returning custom exception
-      const isLive = false
-
-      await notifyProcessor({ isLive })
-      throwCustomException(message, { isLive, ...response })
-    }
-
-    // 2. checking for duplicates
+    // 1. checking for duplicates
     // we don't need to catch specific cases so
     // we don't wrapping call to try catch
     // any unexpected errors will be automatically rethrown
-    const { results } = await api.faceSearch(payload)
+    const { defaultMinimalMatchLevel } = api
+    const { results, response } = await api.faceSearch(payload, defaultMinimalMatchLevel, customLogger)
     // excluding own enrollmentIdentifier
     const duplicate = results.find(
       ({ enrollmentIdentifier: matchId }) => matchId.toLowerCase() !== enrollmentIdentifier.toLowerCase()
@@ -69,51 +57,62 @@ class ZoomProvider implements IEnrollmentProvider {
     await notifyProcessor({ isDuplicate })
 
     if (duplicate) {
-      const duplicateFoundMessage = `Duplicate with identifier '${duplicate.enrollmentIdentifier}' found.`
+      const duplicateFoundMessage = `Duplicate exists for FaceMap you're trying to enroll.`
 
       // if duplicate found - throwing corresponding error
-      throwCustomException(duplicateFoundMessage, { isDuplicate, ...duplicate })
+      throwCustomException(duplicateFoundMessage, { isDuplicate }, response)
     }
 
-    let enrollmentResult
+    let enrollmentStatus
     let alreadyEnrolled = false
 
-    // 3. performing enroll
+    // 2. performing enroll
     try {
-      enrollmentResult = await api.submitEnrollment({ ...payload, enrollmentIdentifier })
+      // returning last respose
+      const { message } = await api.submitEnrollment({ ...payload, enrollmentIdentifier }, customLogger)
+
+      enrollmentStatus = message
     } catch (exception) {
       const { response, message } = exception
 
-      // rethrowing unexpected errors (e.g. no conneciton or service error)
+      // if exception has no response (e.g. no conneciton or service error)
+      // just rethrowing it and stopping enrollment
       if (!response) {
         throw exception
       }
 
-      // if exception isn't related to the case when
-      // facemap is just already enrolled
+      // if exception has response checking
+      // is subCode non-equals to 'nameCollision'
+      // that we have some enrollment error
+      // (e.g. liveness wasn't passsed, glasses detected, poor quality)
       if ('nameCollision' !== response.subCode) {
         const isEnrolled = false
+        const isLive = api.checkLivenessStatus(response)
 
-        // then notifying & throwing custom exception
-        await notifyProcessor({ isEnrolled })
-        throwCustomException(message, { isEnrolled, ...response })
+        // then notifying & throwing enrollment exception
+        await notifyProcessor({ isEnrolled, isLive })
+        throwCustomException(message, { isEnrolled, isLive }, response)
       }
 
-      // otherwise going further (as dupliucate check is already passed)
-      // and facemap was just already enrolled
-      enrollmentResult = response
+      // otherwise, if subCode equals to 'nameCollision'
+      // that means identifier was already enrolled
+      // as we've already passed dupliucate check
+      // we don't throw anything, but setting alreadyEnrolled flag
       alreadyEnrolled = true
+
+      // returning 'already enrolled' status
+      enrollmentStatus = 'The FaceMap was already enrolled.'
     }
 
     // notifying about successfull enrollment
-    await notifyProcessor({ isEnrolled: true })
+    await notifyProcessor({ isEnrolled: true, isLive: true })
     // returning successfull result
-    return { isVerified: true, alreadyEnrolled, ...enrollmentResult }
+    return { isVerified: true, alreadyEnrolled, message: enrollmentStatus }
   }
 
-  async enrollmentExists(enrollmentIdentifier: string): Promise<boolean> {
+  async enrollmentExists(enrollmentIdentifier: string, customLogger = null): Promise<boolean> {
     try {
-      await this.api.readEnrollment(enrollmentIdentifier)
+      await this.api.readEnrollment(enrollmentIdentifier, customLogger)
     } catch (exception) {
       const { subCode } = exception.response || {}
 
@@ -127,9 +126,9 @@ class ZoomProvider implements IEnrollmentProvider {
     return true
   }
 
-  async dispose(enrollmentIdentifier: string): Promise<void> {
+  async dispose(enrollmentIdentifier: string, customLogger = null): Promise<void> {
     try {
-      await this.api.disposeEnrollment(enrollmentIdentifier)
+      await this.api.disposeEnrollment(enrollmentIdentifier, customLogger)
     } catch (exception) {
       const { subCode } = exception.response || {}
 
