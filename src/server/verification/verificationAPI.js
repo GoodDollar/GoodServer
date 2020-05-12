@@ -95,8 +95,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           // and whitelist him again in the new contract
           if (!skipFaceVerification) {
             // checking for skipFaceVerification only
+            // because on automated tests runs user also should be whitelisted
             try {
-              // on automated tests runs user also should be whitelisted
               // in the session's lifecycle onEnrollmentCompleted() is called
               // after enrollment was successfull
               // it whitelists user in the wallet and updates Gun's session
