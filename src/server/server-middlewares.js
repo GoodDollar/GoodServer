@@ -11,21 +11,22 @@ import addStorageMiddlewares from './storage/storageAPI'
 import addVerificationMiddlewares from './verification/verificationAPI'
 import addSendMiddlewares from './send/sendAPI'
 import addLoadTestMiddlewares from './loadtest/loadtest-middleware'
+import addCypressMiddleware from './cypress/cypress-middleware'
 import { rollbar, addRequestLogger } from '../imports/logger'
 import VerificationAPI from './verification/verification'
 import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
 export default (app: Router, env: any) => {
   // parse application/x-www-form-urlencoded
   // for easier testing with Postman or plain HTML forms
-
   app.use(express.json({ limit: '100mb', extended: true }))
-
   // parse application/json
   app.use(bodyParser.json({ limit: '100mb' }))
 
   app.options(cors())
   app.use(cors())
   app.use(addRequestLogger)
+
+  addCypressMiddleware(app)
   addLoginMiddlewares(app)
   addGunMiddlewares(app)
   addStorageMiddlewares(app, UserDBPrivate)
