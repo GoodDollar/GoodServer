@@ -57,8 +57,9 @@ class ZoomProvider implements IEnrollmentProvider {
     await notifyProcessor({ isDuplicate })
 
     if (duplicate) {
+      delete duplicate.auditTrailImage
       const duplicateFoundMessage = `Duplicate exists for FaceMap you're trying to enroll.`
-      customLogger.warn(duplicateFoundMessage, { duplicate, enrollmentIdentifier })
+      customLogger && customLogger.warn(duplicateFoundMessage, { duplicate, enrollmentIdentifier })
 
       // if duplicate found - throwing corresponding error
       throwCustomException(duplicateFoundMessage, { isDuplicate }, response)
