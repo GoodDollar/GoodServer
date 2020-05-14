@@ -35,9 +35,7 @@ describe('verificationAPI', () => {
     Object.assign(Config, { skipEmailVerification })
     await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
 
-    server.close(err => {
-      done()
-    })
+    server.close(done)
   })
 
   describe('face verification', () => {
@@ -67,6 +65,23 @@ describe('verificationAPI', () => {
         .send(omit(payload, withoutField))
         .set('Authorization', `Bearer ${token}`)
         .expect(400, { success: false, error: 'Invalid input' })
+
+    const testVerificationSkipped = async () => {
+      const { address, profilePublickey } = await getCreds()
+
+      // checking that there was access to the user's session
+      expect(getSessionRefMock).toHaveBeenCalledWith(payload.sessionId)
+
+      // verification & whitelisting state were updated
+      expect(updateSessionMock).toHaveBeenCalledWith({ isDuplicate: false, isLive: true, isEnrolled: true })
+      expect(updateSessionMock).toHaveBeenCalledWith({ isWhitelisted: true })
+
+      // but enrollment process wasn't started
+      expect(updateSessionMock).not.toHaveBeenCalledWith({ isStarted: true })
+
+      // and user was actrally re-whitelisted in the wallet
+      expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), profilePublickey)
+    }
 
     beforeAll(async () => {
       const enrollmentProcessor = createEnrollmentProcessor(storage)
@@ -184,20 +199,25 @@ describe('verificationAPI', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200, { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } })
 
-      const { address, profilePublickey } = await getCreds()
+      await testVerificationSkipped()
+    })
 
-      // checking that there was access to the user's session
-      expect(getSessionRefMock).toHaveBeenCalledWith(payload.sessionId)
+    test('PUT /verify/face/:enrollmentIdentifier skips verification and re-whitelists user if request comes from E2E test runs', async () => {
+      const currentEnv = Config.env
 
-      // verification & whitelisting state were updated
-      expect(updateSessionMock).toHaveBeenCalledWith({ isDuplicate: false, isLive: true, isEnrolled: true })
-      expect(updateSessionMock).toHaveBeenCalledWith({ isWhitelisted: true })
+      Config.env = 'development'
 
-      // but enrollment process wasn't started
-      expect(updateSessionMock).not.toHaveBeenCalledWith({ isStarted: true })
-
-      // and user was actrally re-whitelisted in the wallet
-      expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), profilePublickey)
+      await request(server)
+        .put(enrollmentUri)
+        .send(payload)
+        .set('Authorization', `Bearer ${token}`)
+        .set(
+          'User-Agent',
+          'Mozilla/5.0 (X11; Linux x86_64; Cypress) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36'
+        )
+        .expect(200, { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } })
+        .then(testVerificationSkipped)
+        .finally(() => (Config.env = currentEnv))
     })
   })
 
