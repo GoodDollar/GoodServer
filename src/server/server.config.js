@@ -387,6 +387,12 @@ const conf = convict({
     format: '*',
     env: 'TOP_ADMINS',
     default: false
+  },
+  claimQueueAllowed: {
+    doc: 'From how many users start to enqueue',
+    format: Number,
+    env: 'CLAIM_QUEUE_ALLOWED',
+    default: 0
   }
 })
 

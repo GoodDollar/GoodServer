@@ -236,5 +236,34 @@ const setup = (app: Router, storage: StorageAPI) => {
       res.json({ ok: 1, result })
     })
   )
+
+  /**
+   * @api {post} /user/enqueue Puts user in claim queue for phase1
+   * @apiName Enqueue
+   * @apiGroup Storage
+   *
+   * @apiSuccess {Number} ok
+   * @apiSuccess {String} status
+   * @ignore
+   */
+  app.post(
+    '/user/enqueue',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res, next) => {
+      const { user, log, body } = req
+
+      if (user.claimQueue || user.isVerified) {
+        return res.json({ ok: 0, queue: user.claimQueue || { status: 'verified' } })
+      }
+      const totalQueued = await storage.model.count({ 'claimQueue.status': { $exists: true } })
+      const openSpaces = conf.claimQueueAllowed - totalQueued
+
+      let status = openSpaces > 0 ? 'approved' : 'pending'
+      //if user was added to queue tag him in mautic
+      if (user.mauticId && status === 'pending') Mautic.updateContact(user.mauticId, { tags: ['inClaimQueue'] })
+      await storage.updateUser({ identifier: user.identifier, claimQueue: { status, date: Date.now() } })
+      res.json({ ok: 1, queue: { status } })
+    })
+  )
 }
 export default setup

@@ -84,6 +84,11 @@ export const UserPrivateSchema = new mongoose.Schema({
       type: Boolean,
       default: false
     }
+  },
+  isVerified: { type: Boolean, default: false },
+  claimQueue: {
+    date: { type: Date },
+    status: { type: String, index: { unique: false } }
   }
 })
 
