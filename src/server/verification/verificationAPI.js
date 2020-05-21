@@ -112,7 +112,19 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
             }
           }
         } else {
+          //only approved users can do the process
+          const isApprovedToClaim = user.claimQueue && ['approved', 'whitelisted'].includes(user.claimQueue.status)
+          if (conf.claimQueueAllowed > 0 && isApprovedToClaim === false)
+            throw new Error('User not approved to claim, not in queue or still pending')
           enrollmentResult = await enrollmentProcessor.enroll(user, enrollmentIdentifier, payload, log)
+          //if user has passed, then we mark that in claim queue and tag the user
+          if (enrollmentResult.isVerified) {
+            await Promise.all([
+              user.claimQueue &&
+                storage.updateUser({ identifier: user.identifier, 'claimQueue.status': 'whitelisted' }),
+              Mautic.updateContact(user.mauticId, { tags: ['whitelisted'] })
+            ])
+          }
         }
       } catch (exception) {
         const { message } = exception
