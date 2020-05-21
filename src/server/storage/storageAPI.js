@@ -238,7 +238,7 @@ const setup = (app: Router, storage: StorageAPI) => {
         )
         .lean()
       const approvedUsers = pendingUsers.map(_ => _._id)
-      storage.model.updateMany({ _id: { $in: approvedUsers } }, { $set: { 'claimQueue.status': 'approved' } })
+      await storage.model.updateMany({ _id: { $in: approvedUsers } }, { $set: { 'claimQueue.status': 'approved' } })
       log.debug('claim queue updated', { pendingUsers, newAllowed, stillPending })
       res.json({ ok: 1, newAllowed, pendingUsers, stillPending })
     })
