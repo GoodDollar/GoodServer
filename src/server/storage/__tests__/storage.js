@@ -92,4 +92,11 @@ describe('storageAPI', () => {
     const queue = await UserDBPrivate.getUserField(user.identifier, 'claimQueue')
     expect(queue).toMatchObject({ status: 'pending', date: expect.anything() })
   })
+
+  test('user should be marked as whitelisted', async () => {
+    const queue = await UserDBPrivate.getUserField(user.identifier, 'claimQueue')
+    await UserDBPrivate.updateUser({ identifier: user.identifier, 'claimQueue.status': 'whitelisted' })
+    const updated = await UserDBPrivate.getUserField(user.identifier, 'claimQueue')
+    expect(updated).toMatchObject({ status: 'whitelisted', date: queue.date })
+  })
 })
