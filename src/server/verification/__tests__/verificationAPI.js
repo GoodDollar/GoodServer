@@ -326,7 +326,6 @@ describe('verificationAPI', () => {
     return request(server)
       .post('/verify/w3/email')
       .then(res => {
-        console.log('res test', res.statusCode)
         expect(res.statusCode).toBe(401)
       })
   })
@@ -358,7 +357,12 @@ describe('verificationAPI', () => {
     expect(res.body).toMatchObject({ ok: -1, message: 'Wrong web3 token or email' })
   })
 
-  test('/verify/w3/logintoken', async () => {
+  test('/verify/w3/logintoken should generate token if email is given', async () => {
+    await storage.updateUser({
+      identifier: userIdentifier,
+      fullName: 'test_user_sendemail',
+      email: 'testlogintoken@gooddollarx.org'
+    })
     const token = await getToken(server)
 
     let res = await request(server)
