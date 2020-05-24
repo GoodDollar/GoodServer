@@ -208,6 +208,12 @@ const conf = convict({
     env: 'MAUTIC_TOKEN',
     default: 'MAUTIC_TOKEN'
   },
+  mauticBasicToken: {
+    doc: 'mautic basic auth token',
+    format: String,
+    env: 'MAUTIC_BASIC_TOKEN',
+    default: null
+  },
   mauticRecoveryEmailId: {
     doc: 'id of email template',
     format: '*',
