@@ -106,5 +106,11 @@ export const Mautic = {
     return this.baseQuery(`/emails/${Config.mauticmagicLinkEmailId}/contact/${user.mauticId}/send`, this.baseHeaders, {
       tokens: { link: magicLink, firstName: user.fullName }
     })
+  },
+
+  addContactsToSegment(mauticIdsArr: Array<Number>, segmentId: string) {
+    return this.baseQuery(`/segments/${segmentId}/contacts/add`, this.baseHeaders, {
+      ids: mauticIdsArr
+    })
   }
 }

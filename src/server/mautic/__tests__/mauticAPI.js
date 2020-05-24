@@ -72,6 +72,11 @@ describe('Send', () => {
     expect(res).toEqual({ success: true })
   })
 
+  it('should add contact to segment', async () => {
+    const res = await Mautic.addContactsToSegment([mauticId], conf.mauticClaimQueueApprovedSegmentId)
+    expect(res.details[mauticId].success).toEqual(true)
+  })
+
   it('should delete contact', async () => {
     const res = await Mautic.deleteContact({
       fullName: 'h r',

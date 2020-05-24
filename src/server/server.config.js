@@ -226,6 +226,24 @@ const conf = convict({
     env: 'MAUTIC_VERIFY_ID',
     default: '31'
   },
+  mauticClaimQueueSegmentId: {
+    doc: 'id of segment',
+    format: '*',
+    env: 'MAUTIC_CLAIM_QUEUE_SEG_ID',
+    default: '52'
+  },
+  mauticClaimQueueApprovedSegmentId: {
+    doc: 'id of segment',
+    format: '*',
+    env: 'MAUTIC_CLAIM_QUEUE_APPROVED_SEG_ID',
+    default: '53'
+  },
+  mauticClaimQueueWhitelistedSegmentId: {
+    doc: 'id of segment',
+    format: '*',
+    env: 'MAUTIC_CLAIM_QUEUE_APPROVED_SEG_ID',
+    default: '54'
+  },
   zoomMinimalMatchLevel: {
     doc: 'Minimal FaceTec Match Level threshold to mark enrollment as duplicate',
     format: Number,

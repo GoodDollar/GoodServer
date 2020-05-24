@@ -122,7 +122,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
             await Promise.all([
               user.claimQueue &&
                 storage.updateUser({ identifier: user.identifier, 'claimQueue.status': 'whitelisted' }),
-              Mautic.updateContact(user.mauticId, { tags: ['whitelisted'] })
+              Mautic.addContactsToSegment([user.mauticId], conf.mauticClaimQueueWhitelistedSegmentId).catch(e => {
+                log.error('Failed Mautic adding user to claim queue whitelisted segment', { errMessage: e.message, e })
+              })
             ])
           }
         }

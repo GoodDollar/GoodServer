@@ -238,9 +238,13 @@ const setup = (app: Router, storage: StorageAPI) => {
         )
         .lean()
       const approvedUsers = pendingUsers.map(_ => _._id)
+      const mauticIds = pendingUsers.map(_ => _.mauticId)
+      Mautic.addContactsToSegment(mauticIds, conf.mauticClaimQueueApprovedSegmentId).catch(e => {
+        log.error('Failed Mautic adding user to claim queue approved segment', { errMessage: e.message, e })
+      })
       await storage.model.updateMany({ _id: { $in: approvedUsers } }, { $set: { 'claimQueue.status': 'approved' } })
       log.debug('claim queue updated', { pendingUsers, newAllowed, stillPending })
-      res.json({ ok: 1, newAllowed, pendingUsers, stillPending })
+      res.json({ ok: 1, newAllowed, stillPending, pendingUsers })
     })
   )
 
@@ -294,8 +298,8 @@ const setup = (app: Router, storage: StorageAPI) => {
       let status = openSpaces > 0 ? 'approved' : 'pending'
       //if user was added to queue tag him in mautic
       if (['test', 'development'].includes(conf.env) === false && user.mauticId && status === 'pending')
-        Mautic.updateContact(user.mauticId, { tags: ['inClaimQueue'] }).catch(e => {
-          log.error('Failed Mautic tagging queued user', { errMessage: e.message, e })
+        Mautic.addContactsToSegment([user.mauticId], conf.mauticClaimQueueSegment).catch(e => {
+          log.error('Failed Mautic adding user to claim queue segment', { errMessage: e.message, e })
         })
       storage.updateUser({ identifier: user.identifier, claimQueue: { status, date: Date.now() } })
       res.json({ ok: 1, queue: { status, date: Date.now() } })
