@@ -98,14 +98,10 @@ describe('storageAPI', () => {
       .post('/user/enqueue')
       .set('Authorization', `Bearer ${token}`)
       .send()
+
     const res = await request(server)
       .post('/admin/queue')
       .send({ allow: 2, password: 'password' })
-    const updated = await PropsModel.findOne({ name: 'claimQueueAllowed' })
-    const stillPending = await UserDBPrivate.model.count({ 'claimQueue.status': 'pending' })
-    expect(stillPending).toEqual(1)
-    expect(updated.value).toEqual(3)
-    expect(res.body.pendingUsers).not.toEqual(expect.arrayContaining([{ mauticId: '3' }]))
     expect(res.body).toMatchObject({
       ok: 1,
       newAllowed: 3,
@@ -116,5 +112,12 @@ describe('storageAPI', () => {
       ]),
       stillPending: 1
     })
+    expect(res.body.pendingUsers).not.toEqual(expect.arrayContaining([{ mauticId: '3' }]))
+
+    const updated = await PropsModel.findOne({ name: 'claimQueueAllowed' })
+    expect(updated.value).toEqual(3)
+
+    const stillPending = await UserDBPrivate.model.count({ 'claimQueue.status': 'pending' })
+    expect(stillPending).toEqual(1)
   })
 })
