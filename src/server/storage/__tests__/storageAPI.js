@@ -101,7 +101,7 @@ describe('storageAPI', () => {
 
     const res = await request(server)
       .post('/admin/queue')
-      .send({ allow: 2, password: 'password' })
+      .send({ allow: 2, password: process.env.GUNDB_PASS })
     expect(res.body).toMatchObject({
       ok: 1,
       newAllowed: 3,
