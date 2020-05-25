@@ -5,11 +5,22 @@ import SEA from 'gun/sea'
 import 'gun/lib/load'
 import { memoize } from 'lodash'
 // import les from 'gun/lib/les'
-import { type StorageAPI } from '../../imports/types'
+import { LoggedUser, type StorageAPI } from '../../imports/types'
 import conf from '../server.config'
 import logger from '../../imports/logger'
-
+import { sha3 } from 'web3-utils'
 const log = logger.child({ from: 'GunDB-Middleware' })
+
+Gun.chain.putAck = function(data, cb) {
+  var gun = this,
+    callback =
+      cb ||
+      function(ctx) {
+        return ctx
+      }
+  let promise = new Promise((res, rej) => gun.put(data, ack => (ack.err ? rej(ack) : res(ack))))
+  return promise.then(callback)
+}
 
 /**
  * @type
@@ -115,7 +126,7 @@ class GunDB implements StorageAPI {
         multicast: false
       })
     } else {
-      this.gun = Gun({ web: server, file: name, gc_delay, memory, name, axe: true, multicast: false })
+      this.gun = Gun({ web: server, file: name, gc_delay, memory, name })
       log.info('Starting gun with radisk:', { gc_delay, memory })
       if (conf.env === 'production') log.error('Started production without S3')
     }
@@ -128,6 +139,7 @@ class GunDB implements StorageAPI {
           if (authres.err) {
             log.error('Failed authenticating gundb user:', { name, error: authres.err })
             if (conf.env !== 'test') return reject(authres.err)
+            resolve(false)
           }
           log.info('Authenticated GunDB user:', { name })
           this.usersCol = this.user.get('users')
@@ -159,6 +171,30 @@ class GunDB implements StorageAPI {
     let sig = await SEA.sign(attestation, this.user.pair())
     attestation.sig = sig
     return attestation
+  }
+
+  async addUserToIndex(index: string, value: String, user: LoggedUser) {
+    const updateP = this.user
+      .get(`users/by${index}`)
+      .get(sha3(value))
+      .putAck(user.profilePublickey)
+      .catch(e => {
+        log.error('failed updating user index', { index, value, user })
+        return false
+      })
+    return updateP
+  }
+  async getIndex(index: string) {
+    const res = await this.user.get(`users/by${index}`).then()
+    return res
+  }
+
+  async getIndexId(index: string) {
+    return this.user.get(`users/by${index}`).then(_ => Gun.node.soul(_))
+  }
+
+  async getPublicProfile() {
+    return this.user.is
   }
 }
 
