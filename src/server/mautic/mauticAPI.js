@@ -100,8 +100,10 @@ export const Mautic = {
   },
 
   sendMagicLinkEmail(user: UserRecord, magicLink: string) {
-    if (!(magicLink && user.fullName && user.mauticId && Config.mauticmagicLinkEmailId))
+    if (!(magicLink && user.fullName && user.mauticId && Config.mauticmagicLinkEmailId)) {
+      log.warn('missing input for sending magiclink', { magicLink, user, emailId: Config.mauticmagicLinkEmailId })
       throw new Error('missing input for sending magicLink email')
+    }
 
     return this.baseQuery(`/emails/${Config.mauticmagicLinkEmailId}/contact/${user.mauticId}/send`, this.baseHeaders, {
       tokens: { link: magicLink, firstName: user.fullName }
