@@ -2,6 +2,7 @@
 import { Router } from 'express'
 import passport from 'passport'
 import get from 'lodash/get'
+import { sha3 } from 'web3-utils'
 import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync } from '../utils/helpers'
 import { defaults } from 'lodash'
@@ -36,7 +37,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       )
         throw new Error('User email or mobile not verified!')
 
-      if (!conf.allowDuplicateUserData && userRecord.createdDate) {
+      if (userRecord.createdDate) {
         throw new Error('You cannot create more than 1 account with the same credentials')
       }
 
@@ -129,12 +130,22 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       signUpPromises.push(p4)
 
+      const p5 = Promise.all([
+        user.smsValidated && user.mobile && storage.addUserToIndex('mobile', user.mobile, user),
+        user.email && user.isEmailConfirmed && storage.addUserToIndex('email', user.email, user),
+        user.gdAddress && storage.addUserToIndex('walletAddress', user.gdAddress, user)
+      ])
+
+      signUpPromises.push(p5)
       await Promise.all(signUpPromises)
       logger.debug('signup stepss success. adding new user:', { user })
 
       await storage.updateUser({
         identifier: userRecord.loggedInAs,
-        createdDate: new Date().toString()
+        createdDate: new Date().toString(),
+        email: sha3(get(userRecord, 'otp.email', email)), //we keep email and mobile hashed after we are done with them
+        mobile: sha3(get(userRecord, 'otp.mobile', mobile)),
+        otp: {} //delete trace of mobile,email
       })
       const web3Record = await web3RecordP
       const marketToken = await marketTokenP
@@ -205,8 +216,8 @@ const setup = (app: Router, storage: StorageAPI) => {
       const { body } = req
       if (body.password !== conf.gundbPassword) return res.json({ ok: 0 })
       let user = {}
-      if (body.email) user = await storage.getUserByEmail(body.email)
-      if (body.mobile) user = await storage.getUserByMobile(body.mobile)
+      if (body.email) user = await storage.getUserByEmail(sha3(body.email))
+      if (body.mobile) user = await storage.getUserByMobile(sha3(body.mobile))
       if (body.identifier) user = await storage.getUser(body.identifier)
 
       res.json({ ok: 1, user })
