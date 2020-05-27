@@ -16,7 +16,7 @@ const Timeout = (timeout: msec) => {
 export const Mautic = {
   baseUrl: Config.mauticURL,
   baseHeaders: {
-    Authorization: `Basic ${Config.mauticBasicToken}`,
+    Authorization: Config.mauticBasicToken? `Basic ${Config.mauticBasicToken}` : `Bearer ${Config.mauticToken}`,
     'Content-Type': 'application/json'
   },
 
