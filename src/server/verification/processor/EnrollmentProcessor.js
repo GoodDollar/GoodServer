@@ -107,9 +107,9 @@ class EnrollmentProcessor {
   }
 
   createEnrollmentSession(user, customLogger = null) {
-    const { provider, storage, adminApi, gun } = this
+    const { provider, storage, adminApi, queueApi, gun } = this
 
-    return new EnrollmentSession(user, provider, storage, adminApi, gun, customLogger)
+    return new EnrollmentSession(user, provider, storage, adminApi, queueApi, gun, customLogger)
   }
 }
 
