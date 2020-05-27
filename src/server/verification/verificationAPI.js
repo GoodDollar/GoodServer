@@ -115,7 +115,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           const isApprovedToClaim = ['approved', 'whitelisted'].includes(get(user, 'claimQueue.status'))
           
           // only approved users can do the process
-          if (claimQueueAllowed && !isApprovedToClaim) {
+          if (claimQueueAllowed > 0 && false === isApprovedToClaim) {
             throw new Error('User not approved to claim, not in queue or still pending')
           }
             
