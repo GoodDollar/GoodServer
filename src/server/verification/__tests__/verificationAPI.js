@@ -21,6 +21,8 @@ describe('verificationAPI', () => {
   const userIdentifier = '0x7ac080f6607405705aed79675789701a48c76f55'
 
   beforeAll(done => {
+    //remove claim queue
+    Config.claimQueueAllowed = 0
     Config.skipEmailVerification = false
     jest.setTimeout(50000)
     server = makeServer(done)
@@ -188,6 +190,21 @@ describe('verificationAPI', () => {
 
       // and in the wallet
       expect(whitelistUserMock).not.toHaveBeenCalled()
+    })
+
+    test('PUT /verify/face/:enrollmentIdentifier returns 400 when user not approved in claim queue', async () => {
+      Config.claimQueueAllowed = 1
+      helper.mockEmptyResultsFaceSearch()
+      helper.mockSuccessEnrollment(enrollmentIdentifier)
+
+      await request(server)
+        .put(enrollmentUri)
+        .send(payload)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(400, {
+          success: false,
+          error: 'User not approved to claim, not in queue or still pending'
+        })
     })
 
     test('PUT /verify/face/:enrollmentIdentifier skips verification and re-whitelists user was already verified', async () => {
