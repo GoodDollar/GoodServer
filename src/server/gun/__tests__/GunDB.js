@@ -5,11 +5,23 @@ import { GunDBPublic as storage } from '../gun-middleware'
 import Gun from 'gun'
 import SEA from 'gun/sea'
 import { sha3 } from 'web3-utils'
+import request from 'supertest'
+import makeServer from '../../server-test'
+
 jest.setTimeout(10000)
+let server
 describe('GunDB', () => {
-  beforeAll(async () => {
-    storage.init(null, 'test', 'testdb')
-    await storage.ready
+  beforeAll(async done => {
+    // storage.init(null, 'test', 'testdb')
+    // await storage.ready
+    server = makeServer(done)
+  })
+
+  afterAll(done => {
+    server.close(err => {
+      console.log({ err })
+      done()
+    })
   })
 
   it('Gun and SEA should work in tests', async () => {
@@ -71,6 +83,42 @@ describe('GunDB', () => {
     expect(index).toHaveProperty(sha3('0x05'))
   })
 
+  it('should remove user from index', async () => {
+    const indexid = await storage.getIndexId('walletAddress')
+    const indexValueBefore = await storage.gun
+      .get(indexid)
+      .get(sha3('0x05'))
+      .then()
+    expect(indexValueBefore).toBeTruthy()
+    await storage.removeUserFromIndex('walletAddress', sha3('0x05'))
+    const indexValue = await storage.gun
+      .get(indexid)
+      .get(sha3('0x05'))
+      .then()
+    expect(indexValue).toEqual('')
+  })
+
+  it('/trust should return trusted public key and souls of indexes via', async () => {
+    const { status, body } = await request(server)
+      .get('/trust')
+      .send()
+    const bywalletAddress = await storage.getIndexId('walletAddress')
+    const bymobile = await storage.getIndexId('mobile')
+    const byemail = await storage.getIndexId('email')
+
+    expect(body).toMatchObject({
+      goodDollarPublicKey: storage.user.is.pub,
+      byemail,
+      bymobile,
+      bywalletAddress
+    })
+    expect(bywalletAddress).not.toEqual(bymobile)
+    expect(byemail).not.toEqual(bymobile)
+    expect(bywalletAddress).not.toEqual(byemail)
+    expect(status).toEqual(200)
+  })
+
+  //this test should be last since it modifies the gundb user on server
   it('should not allow other user to update index', async () => {
     const indexid = await storage.getIndexId('walletAddress')
     storage.user.leave()

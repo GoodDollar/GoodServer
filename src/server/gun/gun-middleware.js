@@ -5,6 +5,7 @@ import SEA from 'gun/sea'
 import 'gun/lib/load'
 import { memoize } from 'lodash'
 // import les from 'gun/lib/les'
+import { wrapAsync } from '../utils/helpers'
 import { LoggedUser, type StorageAPI } from '../../imports/types'
 import conf from '../server.config'
 import logger from '../../imports/logger'
@@ -57,6 +58,24 @@ export type S3Conf = {
 const setup = (app: Router) => {
   if (conf.gundbServerMode) app.use(Gun.serve)
   global.Gun = Gun // / make global to `node --inspect` - debug only
+  //returns details about our gundb trusted indexes
+  app.get(
+    '/trust',
+    wrapAsync(async (req, res) => {
+      const goodDollarPublicKey = GunDBPublic.user.is.pub
+      const bymobile = await GunDBPublic.getIndexId('mobile')
+      const byemail = await GunDBPublic.getIndexId('email')
+      const bywalletAddress = await GunDBPublic.getIndexId('walletAddress')
+      res.json({
+        ok: 1,
+        goodDollarPublicKey,
+        bymobile,
+        byemail,
+        bywalletAddress
+      })
+    })
+  )
+
   log.info('Done setup GunDB middleware.')
 }
 
@@ -110,7 +129,7 @@ class GunDB implements StorageAPI {
     }
     if (this.serverMode === false) {
       log.info('Starting gun as client:', { peers: this.peers })
-      this.gun = Gun({ file: name, peers: this.peers, axe: true, multicast: false })
+      this.gun = Gun({ file: name, peers: this.peers })
     } else if (s3 && s3.secret) {
       log.info('Starting gun with S3:', { gc_delay, memory })
       this.gun = Gun({
@@ -184,6 +203,18 @@ class GunDB implements StorageAPI {
       })
     return updateP
   }
+  async removeUserFromIndex(index: string, hashedValue: String) {
+    const updateP = this.user
+      .get(`users/by${index}`)
+      .get(hashedValue)
+      .putAck('')
+      .catch(e => {
+        log.error('failed removing user from index', { index, hashedValue })
+        return false
+      })
+    return updateP
+  }
+
   async getIndex(index: string) {
     const res = await this.user.get(`users/by${index}`).then()
     return res

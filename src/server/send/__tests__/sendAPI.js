@@ -63,7 +63,7 @@ describe('sendAPÏ', () => {
   //     .expect(200, { ok: 1, onlyInEnv: { current: 'test', onlyIn: ['production', 'staging'] } })
   // })
 
-  test('/verify/sendemail with creds', async () => {
+  test('/send/recoveryinstructions with creds', async () => {
     const token = await getToken(server)
     //make sure fullname is set for user which is required for sending the recovery email
     const user = await UserDBPrivate.updateUser({
@@ -83,7 +83,7 @@ describe('sendAPÏ', () => {
       .expect(200, { ok: 1 })
   })
 
-  test('/verify/sendemail without required fields should fail', async () => {
+  test('/send/recoveryinstructions without required fields should fail', async () => {
     const token = await getToken(server)
     //make sure mauticid is unset which is required
 
