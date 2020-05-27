@@ -4,11 +4,11 @@
 
 import request from 'supertest'
 import makeServer from '../../server-test'
-import { getToken, getCreds } from '../../__util__/'
+import { getToken, getCreds } from '../../__util__'
 import UserDBPrivate from '../../db/mongo/user-privat-provider'
 import PropsModel from '../../db/mongo/models/props'
 
-describe('storageAPI', () => {
+describe('claimQueueAPI', () => {
   let server, creds, token
   beforeAll(async done => {
     await UserDBPrivate.model.deleteMany({ claimQueue: { $exists: true } })
