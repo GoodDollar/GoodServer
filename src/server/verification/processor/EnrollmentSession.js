@@ -1,7 +1,7 @@
 // @flow
 import { bindAll, omit } from 'lodash'
 import { type IEnrollmentEventPayload } from './typings'
-
+import { ClaimQueue } from '../../claimQueue/claimQueueAPI'
 import logger from '../../../imports/logger'
 
 const log = logger.child({ from: 'EnrollmentSession' })
@@ -101,6 +101,7 @@ export default class EnrollmentSession {
     log.info('Whitelistening user:', loggedInAs)
 
     await Promise.all([
+      ClaimQueue.setWhitelisted(user, storage, log),
       adminApi.whitelistUser(gdAddress, profilePublickey),
       storage.updateUser({ identifier: loggedInAs, isVerified: true })
     ])
