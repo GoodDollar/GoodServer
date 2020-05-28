@@ -4,6 +4,7 @@ import express from 'express'
 import conf from './server.config'
 import { GunDBPublic } from './gun/gun-middleware'
 import app from './app'
+import exitHandler from './utils/exitHandler'
 
 const Timeout = (timeout, err) => {
   return new Promise((res, rej) => {
@@ -15,13 +16,15 @@ export default function start(workerId) {
 
   process.on('uncaughtException', (err, origin) => {
     console.log(`Uncaught exception: ${err}\nException origin: ${origin}`)
-    process.exit(-1)
+    exitHandler({ exit: true, exitCode: -1 })
   })
-
   process.on('unhandledRejection', (reason, promise) => {
     console.log('Unhandled Rejection at:', promise, 'reason:', reason)
     // Application specific logging, throwing an error, or other logic here
   })
+  process.on('SIGINT', exitHandler.bind(null, { exit: true }))
+  process.on('SIGTERM', exitHandler.bind(null, { exit: true }))
+
   const DIST_DIR = __dirname
 
   const HTML_FILE = path.join(DIST_DIR, 'index.html')
