@@ -9,8 +9,12 @@ class TaskRunner {
 
   // TODO: inject logger
   constructor(lock, jobFactory) {
+    const exitEvents = ['SIGINT', 'SIGTERM', 'exit']
+
     this.lock = lock
     this.jobFactory = jobFactory
+
+    exitEvents.forEach(event => process.on(event, () => this.stopTasks()))
   }
 
   registerTask(task) {

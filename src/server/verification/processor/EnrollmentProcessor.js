@@ -12,6 +12,8 @@ import { type IEnrollmentProvider } from './typings'
 import EnrollmentSession from './EnrollmentSession'
 import ZoomProvider from './provider/ZoomProvider'
 
+export const DISPOSE_ENROLLMENTS_TASK = 'verification/dispose_enrollments'
+
 class EnrollmentProcessor {
   gun = null
   storage = null
@@ -123,5 +125,3 @@ export default storage => {
 
   return enrollmentProcessors.get(storage)
 }
-
-export const DISPOSE_ENROLLMENTS_NAME = 'verification/dispose_enrollments'
