@@ -30,7 +30,7 @@ class EnrollmentProcessor {
     return _provider
   }
 
-  constructor(storage, Config, adminApi, gun) {
+  constructor(storage, adminApi, gun) {
     const { keepFaceVerificationRecords } = Config
 
     this.gun = gun
@@ -115,7 +115,7 @@ const enrollmentProcessors = new WeakMap()
 
 export default storage => {
   if (!enrollmentProcessors.has(storage)) {
-    const enrollmentProcessor = new EnrollmentProcessor(storage, Config, AdminWallet, GunDBPublic)
+    const enrollmentProcessor = new EnrollmentProcessor(storage, AdminWallet, GunDBPublic)
 
     enrollmentProcessor.registerProvier(ZoomProvider)
     enrollmentProcessors.set(storage, enrollmentProcessor)
@@ -123,3 +123,5 @@ export default storage => {
 
   return enrollmentProcessors.get(storage)
 }
+
+export const DISPOSE_ENROLLMENTS_NAME = 'verification/dispose_enrollments'

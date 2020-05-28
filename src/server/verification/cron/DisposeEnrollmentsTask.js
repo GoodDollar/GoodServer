@@ -1,6 +1,6 @@
 // @flow
 
-import createEnrollmentProcessor from '../processor/EnrollmentProcessor'
+import createEnrollmentProcessor, { DISPOSE_ENROLLMENTS_NAME } from '../processor/EnrollmentProcessor'
 
 class DisposeEnrollmentsTask {
   processor = null
@@ -10,7 +10,7 @@ class DisposeEnrollmentsTask {
   }
 
   get name() {
-    return 'verification/dispose_enrollments'
+    return DISPOSE_ENROLLMENTS_NAME
   }
 
   // TODO: inject logger
