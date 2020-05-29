@@ -1,5 +1,5 @@
 // @flow
-import { pick } from 'lodash'
+import { pick, noop, omit } from 'lodash'
 
 import ZoomAPI from '../../api/ZoomAPI.js'
 
@@ -20,7 +20,7 @@ class ZoomProvider implements IEnrollmentProvider {
     enrollmentIdentifier: string,
     payload: any,
     onEnrollmentProcessing: (payload: IEnrollmentEventPayload) => void | Promise<void>,
-    customLogger = null
+    customLogger = noop
   ): Promise<any> {
     const { api } = this
     // send event to onEnrollmentProcessing
@@ -32,6 +32,7 @@ class ZoomProvider implements IEnrollmentProvider {
       const exception = new Error(customMessage)
 
       exception.response = {
+        // removing all large data (e.g. images , facemaps)
         ...pick(zoomResponse, 'code', 'subCode', 'message'),
         ...customResponse,
         isVerified: false
@@ -47,7 +48,7 @@ class ZoomProvider implements IEnrollmentProvider {
     const { defaultMinimalMatchLevel } = api
     const { results, response } = await api.faceSearch(payload, defaultMinimalMatchLevel, customLogger)
     // excluding own enrollmentIdentifier
-    const duplicate = results.find(
+    let duplicate = results.find(
       ({ enrollmentIdentifier: matchId }) => matchId.toLowerCase() !== enrollmentIdentifier.toLowerCase()
     )
     // if there're at least one record left - we have a duplicate
@@ -56,12 +57,13 @@ class ZoomProvider implements IEnrollmentProvider {
     // notifying about duplicates found or not
     await notifyProcessor({ isDuplicate })
 
-    if (duplicate) {
-      delete duplicate.auditTrailImage
+    if (isDuplicate) {
       const duplicateFoundMessage = `Duplicate exists for FaceMap you're trying to enroll.`
-      customLogger && customLogger.warn(duplicateFoundMessage, { duplicate, enrollmentIdentifier })
 
       // if duplicate found - throwing corresponding error
+      duplicate = omit(duplicate, 'auditTrailImage')
+      customLogger.warn(duplicateFoundMessage, { duplicate, enrollmentIdentifier })
+
       throwCustomException(duplicateFoundMessage, { isDuplicate }, response)
     }
 
@@ -112,32 +114,38 @@ class ZoomProvider implements IEnrollmentProvider {
     return { isVerified: true, alreadyEnrolled, message: enrollmentStatus }
   }
 
-  async enrollmentExists(enrollmentIdentifier: string, customLogger = null): Promise<boolean> {
+  async enrollmentExists(enrollmentIdentifier: string, customLogger = noop): Promise<boolean> {
     try {
       await this.api.readEnrollment(enrollmentIdentifier, customLogger)
     } catch (exception) {
-      const { subCode } = exception.response || {}
+      const { response, message: errMessage } = exception
+      const { subCode } = response || {}
 
       if ('facemapNotFound' === subCode) {
+        customLogger.warn('Enrollment not exists', { enrollmentIdentifier })
         return false
       }
 
+      customLogger.warn('Error checking enrollment', { e: exception, errMessage, enrollmentIdentifier })
       throw exception
     }
 
     return true
   }
 
-  async dispose(enrollmentIdentifier: string, customLogger = null): Promise<void> {
+  async dispose(enrollmentIdentifier: string, customLogger = noop): Promise<void> {
     try {
       await this.api.disposeEnrollment(enrollmentIdentifier, customLogger)
     } catch (exception) {
-      const { subCode } = exception.response || {}
+      const { response, message: errMessage } = exception
+      const { subCode } = response || {}
 
       if ('facemapNotFound' === subCode) {
+        customLogger.warn('Enrollment not exists', { enrollmentIdentifier })
         return
       }
 
+      customLogger.warn('Error disposing enrollment', { e: exception, errMessage, enrollmentIdentifier })
       throw exception
     }
   }

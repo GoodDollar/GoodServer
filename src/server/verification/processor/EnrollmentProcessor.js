@@ -60,29 +60,46 @@ class EnrollmentProcessor {
     return session.enroll(enrollmentIdenfitier, payload)
   }
 
-  async enqueueDisposal(enrollmentIdentifier, signature, customLogger = null) {
+  async enqueueDisposal(enrollmentIdentifier, signature, customLogger = noop) {
     const { provider, keepEnrollments } = this
     const recovered = recoverPublickey(signature, enrollmentIdentifier, '')
 
+    customLogger.info('Requested disposal for enrollment', { enrollmentIdentifier })
+
     if (recovered.substr(2) !== enrollmentIdentifier.toLowerCase()) {
-      throw new Error(`Unable to enqueue enrollment disposal: SigUtil unable to recover the message signer`)
+      const signerException = new Error(
+        `Unable to enqueue enrollment disposal: SigUtil unable to recover the message signer`
+      )
+      const logPayload = { e: signerException, errMessage: signerException.message, enrollmentIdentifier }
+
+      customLogger.warn("Enrollment disposal: Couldn't confirm signer of the enrollment identifier sent", logPayload)
+      throw signerException
     }
 
     const enrollmentExists = await provider.enrollmentExists(enrollmentIdentifier, customLogger)
 
-    if (enrollmentExists) {
-      // if KEEP_FACE_VERIFICATION_RECORDS env var lte 0 - delete face record immediately
-      if (keepEnrollments <= 0) {
-        await provider.dispose(enrollmentIdentifier, customLogger)
-        return
-      }
-
-      // TODO: enqueue enrollmentIdentifier to the corresponding mongo collection using storage
-      // add current timestamp to each collection item
+    if (!enrollmentExists) {
+      customLogger.info("Enrollment doesn't exists, skipping disposal", { enrollmentIdentifier })
+      return
     }
+
+    // if KEEP_FACE_VERIFICATION_RECORDS env var lte 0 - delete face record immediately
+    if (keepEnrollments <= 0) {
+      const logMsg = "KEEP_FACE_VERIFICATION_RECORDS env variable isn't set, disposing enrollment immediately"
+
+      customLogger.info(logMsg, { enrollmentIdentifier })
+      await provider.dispose(enrollmentIdentifier, customLogger)
+      return
+    }
+
+    // TODO: enqueue enrollmentIdentifier to the corresponding mongo collection using storage
+    // add current timestamp to each collection item
   }
 
-  async disposeEnqueuedEnrollments(onProcessed: (identifier: string, exception?: Error) => void): Promise<void> {
+  async disposeEnqueuedEnrollments(
+    onProcessed: (identifier: string, exception?: Error) => void,
+    customLogger = noop
+  ): Promise<void> {
     noop(onProcessed) // eslint / lgtm stub
     // TODO
 
