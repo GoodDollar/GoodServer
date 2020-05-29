@@ -15,6 +15,16 @@ export type UserRecord = {
   walletToken?: string
 }
 
+export type DelayedTaskStatusType = 'pending' | 'running' | 'failed' | 'complete'
+
+export type DelayedTaskRecord = {
+  createdAt: Date,
+  userIdentifier: string,
+  taskName: string,
+  taskSubject?: any,
+  status: DelayedTaskStatusType
+}
+
 export type JWTRecord = {
   method: 'eth',
   loggedInAs: string,

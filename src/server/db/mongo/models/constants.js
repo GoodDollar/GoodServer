@@ -1,4 +1,7 @@
 import config from '../../../server.config'
-export const MODEL_USER_PRIVATE = 'userprivate_' + (process.env.APP_NAME || config.network)
-export const MODEL_WALLET_NONCE = 'walletnonce'
+
+const envId = process.env.APP_NAME || config.network
+
+export const MODEL_USER_PRIVATE = `userprivate_${envId}`
 export const MODEL_DELAYED_TASK = 'delayedtask'
+export const MODEL_WALLET_NONCE = 'walletnonce'
