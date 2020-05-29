@@ -1,7 +1,9 @@
 import { values } from 'lodash'
 
-import mongoose from '../../mongo-db'
-import { MODEL_DELAYED_TASK } from './constants'
+import mongoose, { Schema, Types } from '../../mongo-db'
+import { MODEL_DELAYED_TASK, MODEL_USER_PRIVATE } from './constants'
+
+const { ObjectId, Mixed } = Types
 
 export const DelayedTaskStatus = {
   Pending: 'pending',
@@ -10,7 +12,7 @@ export const DelayedTaskStatus = {
   Complete: 'complete'
 }
 
-export const DelayedTaskSchema = new mongoose.Schema({
+export const DelayedTaskSchema = new Schema({
   createdAt: {
     // date of creation (value to determine are we're ready to remove enrollment or not)
     type: Date,
@@ -18,7 +20,8 @@ export const DelayedTaskSchema = new mongoose.Schema({
     index: true
   },
   userIdentifier: {
-    type: String,
+    type: ObjectId,
+    ref: MODEL_USER_PRIVATE,
     required: true
   },
   taskName: {

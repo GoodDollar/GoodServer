@@ -192,8 +192,10 @@ class UserPrivate {
    * @param {string} taskName
    * @param {any} subject
    */
-  async enqueueTask(userIdentifier: string, taskName: string, subject?: any): Promise<DelayedTaskRecord> {
+  async enqueueTask(user: UserRecord, taskName: string, subject?: any): Promise<DelayedTaskRecord> {
     const { taskModel, logger } = this
+    // using mongo's _id to keep relationship between user & task models
+    const userIdentifier = user._id
 
     try {
       return taskModel.create({ userIdentifier, taskName, subject })
