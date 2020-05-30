@@ -9,6 +9,7 @@ import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import addUserSteps from './addUserSteps'
 import { generateMarketToken } from '../utils/market'
+import PropsModel from '../db/mongo/models/props'
 
 const setup = (app: Router, storage: StorageAPI) => {
   /**

@@ -24,7 +24,7 @@ export const getCreds = async (random = false) => {
     web3.eth.accounts.wallet.add(account)
     const signature = (await web3.eth.sign('Login to GoodDAPP' + creds.nonce, account.address)).signature
     const gdSignature = signature
-    randomCreds = { signature, gdSignature, address: account.address }
+    randomCreds = { signature, gdSignature, address: account.address.toLowerCase() }
   }
   return { ...creds, ...randomCreds }
 }

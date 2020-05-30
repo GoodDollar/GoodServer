@@ -21,6 +21,8 @@ describe('verificationAPI', () => {
   const userIdentifier = '0x7ac080f6607405705aed79675789701a48c76f55'
 
   beforeAll(done => {
+    //remove claim queue
+    Config.claimQueueAllowed = 0
     Config.skipEmailVerification = false
     jest.setTimeout(50000)
     server = makeServer(done)
@@ -190,6 +192,21 @@ describe('verificationAPI', () => {
       expect(whitelistUserMock).not.toHaveBeenCalled()
     })
 
+    test('PUT /verify/face/:enrollmentIdentifier returns 400 when user not approved in claim queue', async () => {
+      Config.claimQueueAllowed = 1
+      helper.mockEmptyResultsFaceSearch()
+      helper.mockSuccessEnrollment(enrollmentIdentifier)
+
+      await request(server)
+        .put(enrollmentUri)
+        .send(payload)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(400, {
+          success: false,
+          error: 'User not approved to claim, not in queue or still pending'
+        })
+    })
+
     test('PUT /verify/face/:enrollmentIdentifier skips verification and re-whitelists user was already verified', async () => {
       await storage.updateUser({ identifier: userIdentifier, isVerified: true })
 
@@ -326,7 +343,6 @@ describe('verificationAPI', () => {
     return request(server)
       .post('/verify/w3/email')
       .then(res => {
-        console.log('res test', res.statusCode)
         expect(res.statusCode).toBe(401)
       })
   })
@@ -358,7 +374,12 @@ describe('verificationAPI', () => {
     expect(res.body).toMatchObject({ ok: -1, message: 'Wrong web3 token or email' })
   })
 
-  test('/verify/w3/logintoken', async () => {
+  test('/verify/w3/logintoken should generate token if email is given', async () => {
+    await storage.updateUser({
+      identifier: userIdentifier,
+      fullName: 'test_user_sendemail',
+      email: 'testlogintoken@gooddollarx.org'
+    })
     const token = await getToken(server)
 
     let res = await request(server)

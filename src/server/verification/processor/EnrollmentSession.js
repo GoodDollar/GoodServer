@@ -1,7 +1,6 @@
 // @flow
 import { bindAll, omit } from 'lodash'
 import { type IEnrollmentEventPayload } from './typings'
-
 import logger from '../../../imports/logger'
 
 const log = logger.child({ from: 'EnrollmentSession' })
@@ -12,14 +11,16 @@ export default class EnrollmentSession {
   provider = null
   storage = null
   adminApi = null
+  queueApi = null
   sessionRef = null
 
-  constructor(user, provider, storage, adminApi, gun, customLogger = null) {
+  constructor(user, provider, storage, adminApi, queueApi, gun, customLogger = null) {
     this.gun = gun
     this.user = user
     this.provider = provider
     this.storage = storage
     this.adminApi = adminApi
+    this.queueApi = queueApi
     this.log = customLogger || log
 
     bindAll(this, 'onEnrollmentProcessing')
@@ -95,12 +96,13 @@ export default class EnrollmentSession {
   }
 
   async onEnrollmentCompleted() {
-    const { sessionRef, user, storage, adminApi, log } = this
+    const { sessionRef, user, storage, adminApi, queueApi, log } = this
     const { gdAddress, profilePublickey, loggedInAs } = user
 
     log.info('Whitelistening user:', loggedInAs)
 
     await Promise.all([
+      queueApi.setWhitelisted(user, storage, log),
       adminApi.whitelistUser(gdAddress, profilePublickey),
       storage.updateUser({ identifier: loggedInAs, isVerified: true })
     ])
