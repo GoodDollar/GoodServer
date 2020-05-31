@@ -195,13 +195,13 @@ class UserPrivate {
   async enqueueTask(user: UserRecord, taskName: string, subject?: any): Promise<DelayedTaskRecord> {
     const { taskModel, logger } = this
     // using mongo's _id to keep relationship between user & task models
-    const userIdentifier = user._id
+    const userIdentifier = user && user._id
 
     try {
       return taskModel.create({ userIdentifier, taskName, subject })
     } catch (exception) {
       const { message: errMessage } = exception
-      const logPayload = { e: exception, errMessage, userIdentifier, taskName }
+      const logPayload = { e: exception, errMessage, userIdentifier, taskName, subject }
 
       logger.error("Couldn't enqueue task", logPayload)
       throw exception

@@ -22,7 +22,7 @@ export const DelayedTaskSchema = new Schema({
   userIdentifier: {
     type: ObjectId,
     ref: MODEL_USER_PRIVATE,
-    required: true
+    required: false
   },
   taskName: {
     // name (type, kind) of the delayed task. For 24h it should be 'verification/dispose_enrollments' (defined as constant in EnrollmentProcessor.js)
@@ -30,9 +30,10 @@ export const DelayedTaskSchema = new Schema({
     required: true,
     index: true
   },
-  taskSubject: {
+  subject: {
     // some parameters (subject, options) of the task. Could be string number or object corresponding to the kind of the task.
-    type: mongoose.Schema.Types.Mixed
+    type: mongoose.Schema.Types.Mixed,
+    index: true
   },
   status: {
     // running flag to solve 'sync between different backend instances' issue

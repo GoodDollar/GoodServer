@@ -18,10 +18,11 @@ export type UserRecord = {
 export type DelayedTaskStatusType = 'pending' | 'running' | 'failed' | 'complete'
 
 export type DelayedTaskRecord = {
+  _id: any,
   createdAt: Date,
-  userIdentifier: string,
+  userIdentifier?: string,
   taskName: string,
-  taskSubject?: any,
+  subject?: any,
   status: DelayedTaskStatusType
 }
 
