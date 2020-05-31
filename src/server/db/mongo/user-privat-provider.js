@@ -304,6 +304,11 @@ class UserPrivate {
       throw exception
     }
   }
+
+  async hasTaskQueued(subject: any): Promise<boolean> {
+    const { taskModel } = this
+    return taskModel.exists({ subject })
+  }
 }
 
 export default new UserPrivate(UserPrivateModel, DelayedTaskModel, logger.child({ from: 'UserDBPrivate' }))

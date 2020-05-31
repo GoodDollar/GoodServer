@@ -77,8 +77,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       let enrollmentResult
 
       try {
-        //TODO: make sure user record is not being deleted at the moment
-
+        //make sure user record is not being deleted at the moment
+        const hasTaskQueued = await storage.hasTaskQueued(enrollmentIdentifier)
+        if (hasTaskQueued) {
+          throw new Error('Facemap record with same identifier is being deleted...')
+        }
         const { skipFaceVerification, claimQueueAllowed } = conf
         const enrollmentProcessor = createEnrollmentProcessor(storage)
 
