@@ -39,14 +39,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { signature } = query
 
       try {
-        //make sure user is not whitelisted
-        if (AdminWallet.isVerified(user.gdAddress)) {
-          await AdminWallet.removeWhitelisted(user.gdAddress)
-        }
         const processor = createEnrollmentProcessor(storage)
 
-        //dont pass user to keep privacy
-        await processor.enqueueDisposal(null, enrollmentIdentifier, signature, log)
+        await processor.enqueueDisposal(user, enrollmentIdentifier, signature, log)
       } catch (exception) {
         const { message } = exception
         log.error('delete face record failed:', { message, exception, enrollmentIdentifier, user })
@@ -77,15 +72,10 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       let enrollmentResult
 
       try {
-        //make sure user record is not being deleted at the moment
-        const hasTaskQueued = await storage.hasTaskQueued(enrollmentIdentifier)
-        if (hasTaskQueued) {
-          throw new Error('Facemap record with same identifier is being deleted...')
-        }
         const { skipFaceVerification, claimQueueAllowed } = conf
         const enrollmentProcessor = createEnrollmentProcessor(storage)
 
-        enrollmentProcessor.validate(user, enrollmentIdentifier, payload)
+        await enrollmentProcessor.validate(user, enrollmentIdentifier, payload)
 
         // if user is already verified, we're skipping enroillment logic
         if (user.isVerified || skipFaceVerification || isE2ERunning) {

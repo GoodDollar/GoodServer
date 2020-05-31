@@ -66,10 +66,11 @@ describe('EnrollmentProcessor', () => {
   })
 
   test('validate() passes when all user, enrollmentIdentifier and sessionId are present only', () => {
-    expect(() => enrollmentProcessor.validate(user, enrollmentIdentifier, payload)).not.toThrow()
-    expect(() => enrollmentProcessor.validate(null, enrollmentIdentifier, payload)).toThrow('Invalid input')
-    expect(() => enrollmentProcessor.validate(user, null, payload)).toThrow('Invalid input')
-    expect(() => enrollmentProcessor.validate(user, enrollmentIdentifier, omit(payload, 'sessionId'))).toThrow(
+    //TODO: enqueued for removal case test
+    expect(enrollmentProcessor.validate(user, enrollmentIdentifier, payload)).resolves.toBeUndefined()
+    expect(enrollmentProcessor.validate(null, enrollmentIdentifier, payload)).rejects.toThrow('Invalid input')
+    expect(enrollmentProcessor.validate(user, null, payload)).rejects.toThrow('Invalid input')
+    expect(enrollmentProcessor.validate(user, enrollmentIdentifier, omit(payload, 'sessionId'))).rejects.toThrow(
       'Invalid input'
     )
   })

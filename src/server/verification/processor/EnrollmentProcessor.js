@@ -55,26 +55,39 @@ class EnrollmentProcessor {
     this._provider = provider
   }
 
-  validate(user: any, enrollmentIdenfitier: string, payload: any) {
+  async validate(user: any, enrollmentIdentifier: string, payload: any): Promise<void> {
     const { sessionId } = payload || {}
-    const { provider } = this
+    const { provider, storage } = this
 
-    if (!user || !enrollmentIdenfitier || !payload || !sessionId || !provider.isPayloadValid(payload)) {
+    if (!user || !enrollmentIdentifier || !payload || !sessionId || !provider.isPayloadValid(payload)) {
       throw new Error('Invalid input')
+    }
+
+    // make sure user record is not being deleted at the moment
+    const hasDisposalTaskQueued = await storage.hasTasksQueued({ subject: enrollmentIdentifier })
+
+    if (hasDisposalTaskQueued) {
+      throw new Error('Facemap record with same identifier is being deleted...')
     }
   }
 
-  async enroll(user: any, enrollmentIdenfitier: string, payload: any, customLogger = null): Promise<any> {
+  async enroll(user: any, enrollmentIdentifier: string, payload: any, customLogger = null): Promise<any> {
     const session = this.createEnrollmentSession(user, customLogger)
 
-    return session.enroll(enrollmentIdenfitier, payload)
+    return session.enroll(enrollmentIdentifier, payload)
   }
 
-  async enqueueDisposal(user: any, enrollmentIdentifier, signature, customLogger = noop) {
-    const { storage, provider, keepEnrollments } = this
+  async enqueueDisposal(user: any, enrollmentIdentifier: string, signature: string, customLogger = noop) {
     const recovered = recoverPublickey(signature, enrollmentIdentifier, '')
+    const { storage, provider, adminApi, keepEnrollments } = this
+    const { gdAddress } = user
 
     customLogger.info('Requested disposal for enrollment', { enrollmentIdentifier })
+
+    if (adminApi.isVerified(gdAddress)) {
+      customLogger.info('Walllet is whitelisted, making user non-whitelisted', { gdAddress })
+      await adminApi.removeWhitelisted(gdAddress)
+    }
 
     if (recovered.substr(2) !== enrollmentIdentifier.toLowerCase()) {
       const signerException = new Error(
@@ -103,7 +116,8 @@ class EnrollmentProcessor {
     }
 
     try {
-      const task = await storage.enqueueTask(user, DISPOSE_ENROLLMENTS_TASK, enrollmentIdentifier)
+      // dont pass user to task records to keep privacy
+      const task = await storage.enqueueTask(DISPOSE_ENROLLMENTS_TASK, enrollmentIdentifier)
 
       customLogger.info('Enqueued enrollment disposal task', { enrollmentIdentifier, taskId: task._id })
     } catch (exception) {

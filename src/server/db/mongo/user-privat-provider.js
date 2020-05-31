@@ -1,5 +1,6 @@
 //@flow
 import { v4 as uuidv4 } from 'uuid'
+import { get } from 'lodash'
 
 import UserPrivateModel from './models/user-private'
 import DelayedTaskModel, { DelayedTaskStatus } from './models/delayed-task'
@@ -192,20 +193,31 @@ class UserPrivate {
    * @param {string} taskName
    * @param {any} subject
    */
-  async enqueueTask(user: UserRecord, taskName: string, subject?: any): Promise<DelayedTaskRecord> {
+  async enqueueTask(taskName: string, subject?: any, user?: UserRecord): Promise<DelayedTaskRecord> {
     const { taskModel, logger } = this
     // using mongo's _id to keep relationship between user & task models
-    const userIdentifier = user && user._id
+    const userIdentifier = get(user, '_id')
 
     try {
       return taskModel.create({ userIdentifier, taskName, subject })
     } catch (exception) {
       const { message: errMessage } = exception
-      const logPayload = { e: exception, errMessage, userIdentifier, taskName, subject }
+      const logPayload = { e: exception, errMessage, taskName, userIdentifier, subject }
 
       logger.error("Couldn't enqueue task", logPayload)
       throw exception
     }
+  }
+
+  /**
+   * Checks if there exists tasks of the type specifid and matching optional filters
+   * @param {string} taskName
+   * @param {object} filters
+   */
+  async hasTasksQueued(taskName: string, filters: object = {}): Promise<boolean> {
+    const { taskModel } = this
+
+    return taskModel.exists({ taskName, ...filters })
   }
 
   /**
@@ -303,11 +315,6 @@ class UserPrivate {
       logger.error("Couldn't unlock and update delayed tasks", logPayload)
       throw exception
     }
-  }
-
-  async hasTaskQueued(subject: any): Promise<boolean> {
-    const { taskModel } = this
-    return taskModel.exists({ subject })
   }
 }
 
