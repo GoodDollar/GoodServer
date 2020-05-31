@@ -85,12 +85,14 @@ class EnrollmentProcessor {
   async enqueueDisposal(user: any, enrollmentIdentifier: string, signature: string, customLogger = null) {
     const recovered = recoverPublickey(signature, enrollmentIdentifier, '')
     const { storage, provider, adminApi, keepEnrollments, logger } = this
-    const { gdAddress } = user
     const log = customLogger || logger
 
     log.info('Requested disposal for enrollment', { enrollmentIdentifier })
+    
+    const { gdAddress } = user
+    const isUserWhitelisted = await adminApi.isVerified(gdAddress)
 
-    if (adminApi.isVerified(gdAddress)) {
+    if (isUserWhitelisted) {
       log.info('Walllet is whitelisted, making user non-whitelisted', { gdAddress })
       await adminApi.removeWhitelisted(gdAddress)
     }
