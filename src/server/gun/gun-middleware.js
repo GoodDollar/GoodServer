@@ -3,7 +3,8 @@ import express, { Router } from 'express'
 import Gun from 'gun'
 import SEA from 'gun/sea'
 import 'gun/lib/load'
-import { memoize } from 'lodash'
+import { assign, identity, memoize, once } from 'lodash'
+import util from 'util'
 // import les from 'gun/lib/les'
 import { wrapAsync } from '../utils/helpers'
 import { LoggedUser, type StorageAPI } from '../../imports/types'
@@ -12,16 +13,14 @@ import logger from '../../imports/logger'
 import { sha3 } from 'web3-utils'
 const log = logger.child({ from: 'GunDB-Middleware' })
 
-Gun.chain.putAck = function(data, cb) {
-  var gun = this,
-    callback =
-      cb ||
-      function(ctx) {
-        return ctx
-      }
-  let promise = new Promise((res, rej) => gun.put(data, ack => (ack.err ? rej(ack) : res(ack))))
-  return promise.then(callback)
-}
+assign(Gun.chain, {
+  async putAck(data, callback = identity) {
+    const nodeCompatiblePut = cb => this.put(data, once(ack => cb(ack.err, ack)))
+    const promisifiedPut = util.promisify(nodeCompatiblePut)
+
+    return promisifiedPut().then(callback)
+  }
+})
 
 /**
  * @type
