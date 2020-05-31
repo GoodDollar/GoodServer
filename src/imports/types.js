@@ -12,7 +12,8 @@ export type UserRecord = {
   emailVerificationCode?: string,
   mauticId?: string,
   loginToken?: string,
-  walletToken?: string
+  walletToken?: string,
+  claimQueue?: { date: Date, status: string }
 }
 
 export type JWTRecord = {

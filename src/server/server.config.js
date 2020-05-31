@@ -208,6 +208,12 @@ const conf = convict({
     env: 'MAUTIC_TOKEN',
     default: 'MAUTIC_TOKEN'
   },
+  mauticBasicToken: {
+    doc: 'mautic basic auth token',
+    format: String,
+    env: 'MAUTIC_BASIC_TOKEN',
+    default: null
+  },
   mauticRecoveryEmailId: {
     doc: 'id of email template',
     format: '*',
@@ -225,6 +231,24 @@ const conf = convict({
     format: '*',
     env: 'MAUTIC_VERIFY_ID',
     default: '31'
+  },
+  mauticClaimQueueSegmentId: {
+    doc: 'id of segment',
+    format: '*',
+    env: 'MAUTIC_CLAIM_QUEUE_SEG_ID',
+    default: '52'
+  },
+  mauticClaimQueueApprovedSegmentId: {
+    doc: 'id of segment',
+    format: '*',
+    env: 'MAUTIC_CLAIM_QUEUE_APPROVED_SEG_ID',
+    default: '53'
+  },
+  mauticClaimQueueWhitelistedSegmentId: {
+    doc: 'id of segment',
+    format: '*',
+    env: 'MAUTIC_CLAIM_QUEUE_APPROVED_SEG_ID',
+    default: '54'
   },
   zoomMinimalMatchLevel: {
     doc: 'Minimal FaceTec Match Level threshold to mark enrollment as duplicate',
@@ -387,6 +411,12 @@ const conf = convict({
     format: '*',
     env: 'TOP_ADMINS',
     default: false
+  },
+  claimQueueAllowed: {
+    doc: 'From how many users start to enqueue',
+    format: Number,
+    env: 'CLAIM_QUEUE_ALLOWED',
+    default: 0
   }
 })
 

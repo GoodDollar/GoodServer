@@ -92,7 +92,7 @@ const setup = (app: Router) => {
           client: networkId,
           server: Config.ethereum.network_id
         })
-        throw new Error('Network ID mismatch')
+        throw new Error(`Network ID mismatch client: ${networkId} ours: ${Config.ethereum.network_id}`)
       }
       log.debug('/auth/eth', { signature, method })
 

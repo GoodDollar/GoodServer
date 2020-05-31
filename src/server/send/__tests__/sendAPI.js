@@ -6,10 +6,19 @@ import request from 'supertest'
 import makeServer from '../../server-test'
 import { getToken } from '../../__util__/'
 import UserDBPrivate from '../../db/mongo/user-privat-provider'
+import { Mautic } from '../../mautic/mauticAPI'
 
 describe('sendAPÏ', () => {
   let server
-  beforeAll(done => {
+  beforeAll(async done => {
+    const res = await Mautic.createContact({ firstname: 'h', lastname: 'r', email: 'hadartest@gooddollar.org' })
+    const mauticId = res.contact.fields.all.id
+    //make sure fullname is set for user which is required for sending the recovery email
+    await UserDBPrivate.updateUser({
+      identifier: '0x7ac080f6607405705aed79675789701a48c76f55',
+      fullName: 'full name',
+      mauticId
+    })
     jest.setTimeout(30000)
     server = makeServer(done)
   })
@@ -65,14 +74,6 @@ describe('sendAPÏ', () => {
 
   test('/send/recoveryinstructions with creds', async () => {
     const token = await getToken(server)
-    //make sure fullname is set for user which is required for sending the recovery email
-    const user = await UserDBPrivate.updateUser({
-      identifier: '0x7ac080f6607405705aed79675789701a48c76f55',
-      fullName: 'full name',
-      mauticId: 5151
-    })
-
-    expect(user).toBeDefined()
 
     await request(server)
       .post('/send/recoveryinstructions')
@@ -108,26 +109,6 @@ describe('sendAPÏ', () => {
     await request(server)
       .post('/send/magiclink')
       .expect(401)
-  })
-
-  test('/send/magiclink with creds', async () => {
-    const token = await getToken(server)
-    //make sure fullname is set for user which is required for sending the recovery email
-    const user = await UserDBPrivate.updateUser({
-      identifier: '0x7ac080f6607405705aed79675789701a48c76f55',
-      fullName: 'full name',
-      mauticId: 5151
-    })
-
-    expect(user).toBeDefined()
-
-    await request(server)
-      .post('/send/magiclink')
-      .send({
-        magiclink: 'unit test magicLink'
-      })
-      .set('Authorization', `Bearer ${token}`)
-      .expect(200, { ok: 1 })
   })
 
   test('/send/magiclink without required fields should ok', async () => {
