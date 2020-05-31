@@ -1,7 +1,7 @@
 // @flow
 import { Router } from 'express'
 import passport from 'passport'
-import _ from 'lodash'
+import { get, defaults } from 'lodash'
 import moment from 'moment'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
@@ -77,9 +77,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       let enrollmentResult
 
       try {
-        const { skipFaceVerification } = conf
-        //make sure user record is not being deleted at the moment
+        //TODO: make sure user record is not being deleted at the moment
 
+        const { skipFaceVerification, claimQueueAllowed } = conf
         const enrollmentProcessor = createEnrollmentProcessor(storage)
 
         enrollmentProcessor.validate(user, enrollmentIdentifier, payload)
@@ -120,6 +120,13 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
             }
           }
         } else {
+          const isApprovedToClaim = ['approved', 'whitelisted'].includes(get(user, 'claimQueue.status'))
+
+          // only approved users can do the process
+          if (claimQueueAllowed > 0 && false === isApprovedToClaim) {
+            throw new Error('User not approved to claim, not in queue or still pending')
+          }
+
           enrollmentResult = await enrollmentProcessor.enroll(user, enrollmentIdentifier, payload, log)
         }
       } catch (exception) {
@@ -157,7 +164,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       const mobile = body.user.mobile || user.otp.mobile
 
-      let userRec: UserRecord = _.defaults(body.user, user, { identifier: user.loggedInAs })
+      let userRec: UserRecord = defaults(body.user, user, { identifier: user.loggedInAs })
       const savedMobile = user.mobile
 
       if (conf.allowDuplicateUserData === false && (await storage.isDupUserData({ mobile }))) {
@@ -324,7 +331,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { email } = body.user
 
       //merge user details for use by mautic
-      let userRec: UserRecord = _.defaults(body.user, user)
+      let userRec: UserRecord = defaults(body.user, user)
       const currentEmail = user.email
       const tempMauticId = user.otp && user.otp.tempMauticId
 

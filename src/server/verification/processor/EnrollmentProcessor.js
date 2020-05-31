@@ -5,7 +5,7 @@ import moment from 'moment'
 import Config from '../../server.config'
 import { GunDBPublic } from '../../gun/gun-middleware'
 import AdminWallet from '../../blockchain/AdminWallet'
-
+import { ClaimQueue } from '../../claimQueue/claimQueueAPI'
 import { recoverPublickey } from '../../utils/eth'
 
 import { type IEnrollmentProvider } from './typings'
@@ -26,6 +26,7 @@ class EnrollmentProcessor {
   gun = null
   storage = null
   adminApi = null
+  queueApi = null
   keepEnrollments = null
 
   _provider = null
@@ -40,12 +41,13 @@ class EnrollmentProcessor {
     return _provider
   }
 
-  constructor(config, storage, adminApi, gun) {
+  constructor(config, storage, adminApi, queueApi, gun) {
     const { keepFaceVerificationRecords } = config
 
     this.gun = gun
     this.storage = storage
     this.adminApi = adminApi
+    this.queueApi = queueApi
     this.keepEnrollments = keepFaceVerificationRecords
   }
 
@@ -152,9 +154,9 @@ class EnrollmentProcessor {
   }
 
   createEnrollmentSession(user, customLogger = null) {
-    const { provider, storage, adminApi, gun } = this
+    const { provider, storage, adminApi, queueApi, gun } = this
 
-    return new EnrollmentSession(user, provider, storage, adminApi, gun, customLogger)
+    return new EnrollmentSession(user, provider, storage, adminApi, queueApi, gun, customLogger)
   }
 
   /**
@@ -199,7 +201,7 @@ const enrollmentProcessors = new WeakMap()
 
 export default storage => {
   if (!enrollmentProcessors.has(storage)) {
-    const enrollmentProcessor = new EnrollmentProcessor(Config, storage, AdminWallet, GunDBPublic)
+    const enrollmentProcessor = new EnrollmentProcessor(Config, storage, AdminWallet, ClaimQueue, GunDBPublic)
 
     enrollmentProcessor.registerProvier(ZoomProvider)
     enrollmentProcessors.set(storage, enrollmentProcessor)
