@@ -1,15 +1,18 @@
 // @flow
-import { pick, noop, omit } from 'lodash'
+import { pick, omit } from 'lodash'
 
 import ZoomAPI from '../../api/ZoomAPI.js'
+import logger from '../../../../imports/logger'
 
 import { type IEnrollmentProvider } from '../typings'
 
 class ZoomProvider implements IEnrollmentProvider {
   api = null
+  logger = null
 
-  constructor(api) {
+  constructor(api, logger) {
     this.api = api
+    this.logger = logger
   }
 
   isPayloadValid(payload: any): boolean {
@@ -20,9 +23,10 @@ class ZoomProvider implements IEnrollmentProvider {
     enrollmentIdentifier: string,
     payload: any,
     onEnrollmentProcessing: (payload: IEnrollmentEventPayload) => void | Promise<void>,
-    customLogger = noop
+    customLogger = null
   ): Promise<any> {
-    const { api } = this
+    const { api, logger } = this
+    const log = customLogger || logger
     // send event to onEnrollmentProcessing
     const notifyProcessor = async eventPayload => onEnrollmentProcessing(eventPayload)
 
@@ -62,7 +66,7 @@ class ZoomProvider implements IEnrollmentProvider {
 
       // if duplicate found - throwing corresponding error
       duplicate = omit(duplicate, 'auditTrailImage')
-      customLogger.warn(duplicateFoundMessage, { duplicate, enrollmentIdentifier })
+      log.warn(duplicateFoundMessage, { duplicate, enrollmentIdentifier })
 
       throwCustomException(duplicateFoundMessage, { isDuplicate }, response)
     }
@@ -114,41 +118,47 @@ class ZoomProvider implements IEnrollmentProvider {
     return { isVerified: true, alreadyEnrolled, message: enrollmentStatus }
   }
 
-  async enrollmentExists(enrollmentIdentifier: string, customLogger = noop): Promise<boolean> {
+  async enrollmentExists(enrollmentIdentifier: string, customLogger = null): Promise<boolean> {
+    const { api, logger } = this
+    const log = customLogger || logger
+
     try {
-      await this.api.readEnrollment(enrollmentIdentifier, customLogger)
+      await api.readEnrollment(enrollmentIdentifier, customLogger)
     } catch (exception) {
       const { response, message: errMessage } = exception
       const { subCode } = response || {}
 
       if ('facemapNotFound' === subCode) {
-        customLogger.warn('Enrollment not exists', { enrollmentIdentifier })
+        log.warn('Enrollment not exists', { enrollmentIdentifier })
         return false
       }
 
-      customLogger.warn('Error checking enrollment', { e: exception, errMessage, enrollmentIdentifier })
+      log.warn('Error checking enrollment', { e: exception, errMessage, enrollmentIdentifier })
       throw exception
     }
 
     return true
   }
 
-  async dispose(enrollmentIdentifier: string, customLogger = noop): Promise<void> {
+  async dispose(enrollmentIdentifier: string, customLogger = null): Promise<void> {
+    const { api, logger } = this
+    const log = customLogger || logger
+
     try {
-      await this.api.disposeEnrollment(enrollmentIdentifier, customLogger)
+      await api.disposeEnrollment(enrollmentIdentifier, customLogger)
     } catch (exception) {
       const { response, message: errMessage } = exception
       const { subCode } = response || {}
 
       if ('facemapNotFound' === subCode) {
-        customLogger.warn('Enrollment not exists', { enrollmentIdentifier })
+        log.warn('Enrollment not exists', { enrollmentIdentifier })
         return
       }
 
-      customLogger.warn('Error disposing enrollment', { e: exception, errMessage, enrollmentIdentifier })
+      log.warn('Error disposing enrollment', { e: exception, errMessage, enrollmentIdentifier })
       throw exception
     }
   }
 }
 
-export default new ZoomProvider(ZoomAPI)
+export default new ZoomProvider(ZoomAPI, logger.child({ from: 'ZoomProvider' }))

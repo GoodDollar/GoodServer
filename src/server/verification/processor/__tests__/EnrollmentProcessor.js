@@ -40,7 +40,7 @@ describe('EnrollmentProcessor', () => {
     GunDBPublic.session = getSessionRefMock
     AdminWallet.whitelistUser = whitelistUserMock
 
-    enrollmentProcessor = createEnrollmentProcessor({ updateUser: updateUserMock })
+    enrollmentProcessor = createEnrollmentProcessor({ updateUser: updateUserMock, hasTasksQueued: async () => false })
     zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
     helper = createMockingHelper(zoomServiceMock)
   })
@@ -65,12 +65,12 @@ describe('EnrollmentProcessor', () => {
     helper = null
   })
 
-  test('validate() passes when all user, enrollmentIdentifier and sessionId are present only', () => {
+  test('validate() passes when all user, enrollmentIdentifier and sessionId are present only', async () => {
     //TODO: enqueued for removal case test
-    expect(enrollmentProcessor.validate(user, enrollmentIdentifier, payload)).resolves.toBeUndefined()
-    expect(enrollmentProcessor.validate(null, enrollmentIdentifier, payload)).rejects.toThrow('Invalid input')
-    expect(enrollmentProcessor.validate(user, null, payload)).rejects.toThrow('Invalid input')
-    expect(enrollmentProcessor.validate(user, enrollmentIdentifier, omit(payload, 'sessionId'))).rejects.toThrow(
+    await expect(enrollmentProcessor.validate(user, enrollmentIdentifier, payload)).resolves.toBeUndefined()
+    await expect(enrollmentProcessor.validate(null, enrollmentIdentifier, payload)).rejects.toThrow('Invalid input')
+    await expect(enrollmentProcessor.validate(user, null, payload)).rejects.toThrow('Invalid input')
+    await expect(enrollmentProcessor.validate(user, enrollmentIdentifier, omit(payload, 'sessionId'))).rejects.toThrow(
       'Invalid input'
     )
   })

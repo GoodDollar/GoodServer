@@ -1,5 +1,5 @@
 // @flow
-import { noop, chunk } from 'lodash'
+import { chunk, noop } from 'lodash'
 import moment from 'moment'
 
 import Config from '../../server.config'
@@ -7,6 +7,7 @@ import { GunDBPublic } from '../../gun/gun-middleware'
 import AdminWallet from '../../blockchain/AdminWallet'
 import { ClaimQueue } from '../../claimQueue/claimQueueAPI'
 import { recoverPublickey } from '../../utils/eth'
+import pino from '../../../imports/logger'
 
 import { type IEnrollmentProvider } from './typings'
 import { type DelayedTaskRecord } from '../../../imports/types'
@@ -24,6 +25,7 @@ const DISPOSE_BATCH_MAXIMAL = 50
 
 class EnrollmentProcessor {
   gun = null
+  logger = null
   storage = null
   adminApi = null
   queueApi = null
@@ -41,10 +43,11 @@ class EnrollmentProcessor {
     return _provider
   }
 
-  constructor(config, storage, adminApi, queueApi, gun) {
+  constructor(config, storage, adminApi, queueApi, gun, logger) {
     const { keepFaceVerificationRecords } = config
 
     this.gun = gun
+    this.logger = logger
     this.storage = storage
     this.adminApi = adminApi
     this.queueApi = queueApi
@@ -79,15 +82,16 @@ class EnrollmentProcessor {
     return session.enroll(enrollmentIdentifier, payload)
   }
 
-  async enqueueDisposal(user: any, enrollmentIdentifier: string, signature: string, customLogger = noop) {
+  async enqueueDisposal(user: any, enrollmentIdentifier: string, signature: string, customLogger = null) {
     const recovered = recoverPublickey(signature, enrollmentIdentifier, '')
-    const { storage, provider, adminApi, keepEnrollments } = this
+    const { storage, provider, adminApi, keepEnrollments, logger } = this
     const { gdAddress } = user
+    const log = customLogger || logger
 
-    customLogger.info('Requested disposal for enrollment', { enrollmentIdentifier })
+    log.info('Requested disposal for enrollment', { enrollmentIdentifier })
 
     if (adminApi.isVerified(gdAddress)) {
-      customLogger.info('Walllet is whitelisted, making user non-whitelisted', { gdAddress })
+      log.info('Walllet is whitelisted, making user non-whitelisted', { gdAddress })
       await adminApi.removeWhitelisted(gdAddress)
     }
 
@@ -98,21 +102,21 @@ class EnrollmentProcessor {
 
       const logPayload = { e: signerException, errMessage: signerException.message, enrollmentIdentifier }
 
-      customLogger.warn("Enrollment disposal: Couldn't confirm signer of the enrollment identifier sent", logPayload)
+      log.warn("Enrollment disposal: Couldn't confirm signer of the enrollment identifier sent", logPayload)
       throw signerException
     }
 
     const enrollmentExists = await provider.enrollmentExists(enrollmentIdentifier, customLogger)
 
     if (!enrollmentExists) {
-      customLogger.info("Enrollment doesn't exists, skipping disposal", { enrollmentIdentifier })
+      log.info("Enrollment doesn't exists, skipping disposal", { enrollmentIdentifier })
       return
     }
 
     if (keepEnrollments <= 0) {
       const logMsg = "KEEP_FACE_VERIFICATION_RECORDS env variable isn't set, disposing enrollment immediately"
 
-      customLogger.info(logMsg, { enrollmentIdentifier })
+      log.info(logMsg, { enrollmentIdentifier })
       await provider.dispose(enrollmentIdentifier, customLogger)
       return
     }
@@ -121,21 +125,23 @@ class EnrollmentProcessor {
       // dont pass user to task records to keep privacy
       const task = await storage.enqueueTask(DISPOSE_ENROLLMENTS_TASK, enrollmentIdentifier)
 
-      customLogger.info('Enqueued enrollment disposal task', { enrollmentIdentifier, taskId: task._id })
+      log.info('Enqueued enrollment disposal task', { enrollmentIdentifier, taskId: task._id })
     } catch (exception) {
       const { message: errMessage } = exception
       const logPayload = { e: exception, errMessage, enrollmentIdentifier }
 
-      customLogger.warn("Couldn't enqueue enrollment disposal task", logPayload)
+      log.warn("Couldn't enqueue enrollment disposal task", logPayload)
       throw exception
     }
   }
 
   async disposeEnqueuedEnrollments(
     onProcessed: (identifier: string, exception?: Error) => void = noop,
-    customLogger = noop
+    customLogger = null
   ): Promise<void> {
-    const { storage, keepEnrollments } = this
+    const { storage, keepEnrollments, logger } = this
+    const log = customLogger || logger
+
     const enqueuedAtFilters = {
       createdAt: {
         $lte: moment()
@@ -151,7 +157,7 @@ class EnrollmentProcessor {
       const disposeBatchSize = Math.min(DISPOSE_BATCH_MAXIMAL, Math.max(DISPOSE_BATCH_MINIMAL, approximatedBatchSize))
       const chunkedDisposalTasks = chunk(enqueuedDisposalTasks, disposeBatchSize)
 
-      customLogger.info('Enqueued disposal task fetched and ready to processing', {
+      log.info('Enqueued disposal task fetched and ready to processing', {
         enqueuedTasksCount,
         disposeBatchSize
       })
@@ -164,7 +170,7 @@ class EnrollmentProcessor {
       const { message: errMessage } = exception
       const logPayload = { e: exception, errMessage }
 
-      customLogger.warn('Error processing enrollments enqueued for disposal', logPayload)
+      log.warn('Error processing enrollments enqueued for disposal', logPayload)
       throw exception
     }
   }
@@ -217,7 +223,8 @@ const enrollmentProcessors = new WeakMap()
 
 export default storage => {
   if (!enrollmentProcessors.has(storage)) {
-    const enrollmentProcessor = new EnrollmentProcessor(Config, storage, AdminWallet, ClaimQueue, GunDBPublic)
+    const logger = pino.child({ from: 'EnrollmentProcessor' })
+    const enrollmentProcessor = new EnrollmentProcessor(Config, storage, AdminWallet, ClaimQueue, GunDBPublic, logger)
 
     enrollmentProcessor.registerProvier(ZoomProvider)
     enrollmentProcessors.set(storage, enrollmentProcessor)
