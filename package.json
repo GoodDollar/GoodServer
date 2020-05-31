@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "webpack --mode production --config webpack.server.config.js",
+    "postbuild": "babel-node scripts/dbUpdates.js",
     "test": "jest --forceExit --detectOpenHandles --maxWorkers=1",
     "test:staging": "jest --forceExit --detectOpenHandles",
     "coverage": "jest --forceExit --detectOpenHandles --coverage --maxWorkers=1",
