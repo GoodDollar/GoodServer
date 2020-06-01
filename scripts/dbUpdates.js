@@ -14,7 +14,7 @@ class DBUpdates {
   }
   async upgrade() {
     const dbversion = await PropsModel.findOne({ name: 'DATABASE_VERSION' })
-    console.log(dbversion)
+    logger.info({ dbversion })
     const version = get(dbversion, 'value.version', 0)
     if (version < 1) {
       const docs = await UserPrivateModel.find()
@@ -36,7 +36,7 @@ class DBUpdates {
     }
   }
 }
-
+if (process.env.NODE_ENV === 'test') process.exit(0)
 const updater = new DBUpdates()
 updater
   .runUpgrades()
