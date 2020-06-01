@@ -17,11 +17,11 @@ export default function start(workerId) {
     console.log(`Uncaught exception: ${err}\nException origin: ${origin}`)
     process.exit(-1)
   })
-
   process.on('unhandledRejection', (reason, promise) => {
     console.log('Unhandled Rejection at:', promise, 'reason:', reason)
     // Application specific logging, throwing an error, or other logic here
   })
+
   const DIST_DIR = __dirname
 
   const HTML_FILE = path.join(DIST_DIR, 'index.html')

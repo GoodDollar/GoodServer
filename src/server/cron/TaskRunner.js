@@ -1,43 +1,58 @@
 import AsyncLock from 'async-lock'
 import { CronJob } from 'cron'
-import { invokeMap } from 'lodash'
+import { invokeMap, map, filter } from 'lodash'
+
+import logger from '../../imports/logger'
 
 class TaskRunner {
   lock = null
   jobFactory = null
   tasks = []
 
-  // TODO: inject logger
-  constructor(lock, jobFactory) {
+  constructor(lock, jobFactory, logger) {
+    const exitEvents = ['SIGINT', 'SIGTERM', 'exit']
+
     this.lock = lock
+    this.logger = logger
     this.jobFactory = jobFactory
+
+    exitEvents.forEach(event => process.on(event, () => this.stopTasks()))
   }
 
   registerTask(task) {
-    const { tasks, lock, jobFactory } = this
+    const { logger, tasks, lock, jobFactory } = this
     const { schedule, name } = task
     const taskIdentifier = name || tasks.length
 
     tasks.push(
       new jobFactory(schedule, async () => {
+        logger.info('Running cron task', { taskIdentifier })
+
         try {
           await lock.acquire(taskIdentifier, async () => task.execute())
-          // TODO: log task success
+          logger.info('Cron task completed', { taskIdentifier })
         } catch (exception) {
-          // TODO: log task error
+          const { message: errMessage } = exception
+
+          logger.error('Cron task failed', { e: exception, errMessage, taskIdentifier })
         }
       })
     )
   }
 
-  // TODO: log tasks started / stopped
   startTasks() {
-    invokeMap(this.tasks, 'start')
+    const { logger, tasks } = this
+
+    logger.info('Starting cron tasks', filter(map(tasks, 'name')))
+    invokeMap(tasks, 'start')
   }
 
   stopTasks() {
-    invokeMap(this.tasks, 'stop')
+    const { logger, tasks } = this
+
+    logger.info('Stopping cron tasks')
+    invokeMap(tasks, 'stop')
   }
 }
 
-export default new TaskRunner(new AsyncLock(), CronJob)
+export default new TaskRunner(new AsyncLock(), CronJob, logger.child({ from: 'TaskRunner' }))

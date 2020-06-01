@@ -16,6 +16,17 @@ export type UserRecord = {
   claimQueue?: { date: Date, status: string }
 }
 
+export type DelayedTaskStatusType = 'pending' | 'running' | 'failed' | 'complete'
+
+export type DelayedTaskRecord = {
+  _id: any,
+  createdAt: Date,
+  userIdentifier?: string,
+  taskName: string,
+  subject?: any,
+  status: DelayedTaskStatusType
+}
+
 export type JWTRecord = {
   method: 'eth',
   loggedInAs: string,

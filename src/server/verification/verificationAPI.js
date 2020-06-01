@@ -40,7 +40,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       try {
         const processor = createEnrollmentProcessor(storage)
-        await processor.enqueueDisposal(enrollmentIdentifier, signature, log)
+
+        await processor.enqueueDisposal(user, enrollmentIdentifier, signature, log)
       } catch (exception) {
         const { message } = exception
         log.error('delete face record failed:', { message, exception, enrollmentIdentifier, user })
@@ -74,7 +75,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         const { skipFaceVerification, claimQueueAllowed } = conf
         const enrollmentProcessor = createEnrollmentProcessor(storage)
 
-        enrollmentProcessor.validate(user, enrollmentIdentifier, payload)
+        await enrollmentProcessor.validate(user, enrollmentIdentifier, payload)
 
         // if user is already verified, we're skipping enroillment logic
         if (user.isVerified || skipFaceVerification || isE2ERunning) {
@@ -113,12 +114,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           }
         } else {
           const isApprovedToClaim = ['approved', 'whitelisted'].includes(get(user, 'claimQueue.status'))
-          
+
           // only approved users can do the process
           if (claimQueueAllowed > 0 && false === isApprovedToClaim) {
             throw new Error('User not approved to claim, not in queue or still pending')
           }
-            
+
           enrollmentResult = await enrollmentProcessor.enroll(user, enrollmentIdentifier, payload, log)
         }
       } catch (exception) {
