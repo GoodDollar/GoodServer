@@ -99,7 +99,7 @@ export default zoomServiceMock => {
       data: {
         createdDate: '2019-09-16T17:30:40+00:00',
         enrollmentIdentifier,
-        faceMap: Buffer.alloc(32),
+        faceMap: Buffer.alloc(32).toString(),
         auditTrailImage: 'data:image/png:FaKEimagE==',
         faceMapType: 0
       }
