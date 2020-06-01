@@ -11,16 +11,14 @@ import requestRateLimiter from '../utils/requestRateLimiter'
 import fuseapi from '../utils/fuseapi'
 import { sendOTP, generateOTP } from '../../imports/otp'
 import conf from '../server.config'
-import { GunDBPublic } from '../gun/gun-middleware'
 import { Mautic } from '../mautic/mauticAPI'
 import W3Helper from '../utils/W3Helper'
 import gdToWei from '../utils/gdToWei'
 import txManager from '../utils/tx-manager'
-import addUserSteps from '../storage/addUserSteps'
 
 import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 
-const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
+const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, storage: StorageAPI) => {
   /**
    * @api {delete} /verify/face/:enrollmentIdentifier Enqueue users face for disposal since 24th
    * @apiName Dispose Face
@@ -114,12 +112,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           }
         } else {
           const isApprovedToClaim = ['approved', 'whitelisted'].includes(get(user, 'claimQueue.status'))
-          
+
           // only approved users can do the process
           if (claimQueueAllowed > 0 && false === isApprovedToClaim) {
             throw new Error('User not approved to claim, not in queue or still pending')
           }
-            
+
           enrollmentResult = await enrollmentProcessor.enroll(user, enrollmentIdentifier, payload, log)
         }
       } catch (exception) {
@@ -229,12 +227,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           'otp.mobile': undefined
         })
         if (currentMobile && currentMobile !== hashedNewMobile) {
-          storage.removeUserFromIndex('mobile', currentMobile)
-          storage.addUserToIndex('mobile', tempSavedMobile, user)
+          gunPublic.removeUserFromIndex('mobile', currentMobile)
+          gunPublic.addUserToIndex('mobile', tempSavedMobile, user)
         }
       }
 
-      const signedMobile = await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: tempSavedMobile })
+      const signedMobile = await gunPublic.signClaim(user.profilePubkey, { hasMobile: tempSavedMobile })
 
       res.json({ ok: 1, attestation: signedMobile })
     })
@@ -443,12 +441,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         await storage.updateUser(updateUserUbj)
         //update indexes, if new user, indexes are set in /adduser
         if (currentEmail && currentEmail !== tempSavedEmail) {
-          storage.removeUserFromIndex('email', currentEmail)
-          storage.addUserToIndex('email', tempSavedEmail, user)
+          gunPublic.removeUserFromIndex('email', currentEmail)
+          gunPublic.addUserToIndex('email', tempSavedEmail, user)
         }
       }
 
-      const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: tempSavedEmail })
+      const signedEmail = await gunPublic.signClaim(req.user.profilePubkey, { hasEmail: tempSavedEmail })
 
       res.json({ ok: 1, attestation: signedEmail })
     })

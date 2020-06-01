@@ -12,7 +12,7 @@ import addUserSteps from './addUserSteps'
 import { generateMarketToken } from '../utils/market'
 import PropsModel from '../db/mongo/models/props'
 
-const setup = (app: Router, storage: StorageAPI) => {
+const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
   /**
    * @api {post} /user/add Add user account
    * @apiName Add
@@ -132,9 +132,9 @@ const setup = (app: Router, storage: StorageAPI) => {
       signUpPromises.push(p4)
 
       const p5 = Promise.all([
-        user.smsValidated && user.mobile && storage.addUserToIndex('mobile', user.mobile, user),
-        user.email && user.isEmailConfirmed && storage.addUserToIndex('email', user.email, user),
-        user.gdAddress && storage.addUserToIndex('walletAddress', user.gdAddress, user)
+        user.smsValidated && user.mobile && gunPublic.addUserToIndex('mobile', user.mobile, user),
+        user.email && user.isEmailConfirmed && gunPublic.addUserToIndex('email', user.email, user),
+        user.gdAddress && gunPublic.addUserToIndex('walletAddress', user.gdAddress, user)
       ])
 
       signUpPromises.push(p5)
