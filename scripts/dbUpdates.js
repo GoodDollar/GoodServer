@@ -1,18 +1,63 @@
 //@flow
 import { sha3 } from 'web3-utils'
-import { get } from 'lodash'
+import { get, delay } from 'lodash'
 import logger from '../src/imports/logger'
 import { type UserRecord } from '../src/imports/types'
+import { GunDBPublic } from '../src/server/gun/gun-middleware'
+import conf from '../src/server/server.config'
 if (process.env.NODE_ENV === 'test') process.exit(0)
 
 const UserPrivateModel = require('../src/server/db/mongo/models/user-private.js')
 const PropsModel = require('../src/server/db/mongo/models/props.js')
 class DBUpdates {
   async runUpgrades() {
-    return this.upgrade()
-      .then(_ => logger.info('upgrade done'))
-      .catch(e => logger.error('upgrade failed', { err: e.message, e }))
+    return Promise.all([
+      this.upgrade()
+        .then(_ => logger.info('upgrade done'))
+        .catch(e => logger.error('upgrade failed', { err: e.message, e })),
+      this.upgradeGun()
+        .then(_ => logger.info('gun upgrade done'))
+        .catch(e => logger.error('gun upgrade failed', { err: e.message, e }))
+    ])
   }
+  async upgradeGun() {
+    await GunDBPublic.init(null, conf.gundbPassword, `publicdb0`, null)
+    let ps = []
+    GunDBPublic.gun.get('users/bywalletAddress').once(data => {
+      const updatedIndex = {}
+      Object.keys(data).forEach(k => {
+        if (data[k] == null || k === '_') return
+        updatedIndex[sha3(k)] = data[k]
+      })
+      ps.push(GunDBPublic.gun.get('users/bywalletAddress').putAck(updatedIndex))
+    })
+    GunDBPublic.gun.get('users/bymobile').once(data => {
+      const updatedIndex = {}
+      Object.keys(data).forEach(k => {
+        if (data[k] == null || k === '_') return
+        updatedIndex[sha3(k)] = data[k]
+      })
+      ps.push(GunDBPublic.gun.get('users/bymobile').putAck(updatedIndex))
+    })
+    GunDBPublic.gun.get('users/byemail').once(data => {
+      const updatedIndex = {}
+      Object.keys(data).forEach(k => {
+        if (data[k] == null || k === '_') return
+        updatedIndex[sha3(k)] = data[k]
+      })
+      ps.push(GunDBPublic.gun.get('users/byemail').putAck(updatedIndex))
+    })
+    return new Promise((res, rej) => {
+      delay(
+        () =>
+          Promise.all(ps)
+            .then(res)
+            .catch(rej),
+        5000
+      )
+    })
+  }
+
   async upgrade() {
     const dbversion = await PropsModel.findOne({ name: 'DATABASE_VERSION' })
     logger.info({ dbversion })
