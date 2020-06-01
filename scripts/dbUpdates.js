@@ -1,11 +1,12 @@
 //@flow
 import { sha3 } from 'web3-utils'
-import UserPrivateModel from '../src/server/db/mongo/models/user-private.js'
-import PropsModel from '../src/server/db/mongo/models/props.js'
 import { get } from 'lodash'
 import logger from '../src/imports/logger'
 import { type UserRecord } from '../src/imports/types'
+if (process.env.NODE_ENV === 'test') process.exit(0)
 
+const UserPrivateModel = require('../src/server/db/mongo/models/user-private.js')
+const PropsModel = require('../src/server/db/mongo/models/props.js')
 class DBUpdates {
   async runUpgrades() {
     return this.upgrade()
@@ -36,7 +37,7 @@ class DBUpdates {
     }
   }
 }
-if (process.env.NODE_ENV === 'test') process.exit(0)
+
 const updater = new DBUpdates()
 updater
   .runUpgrades()
