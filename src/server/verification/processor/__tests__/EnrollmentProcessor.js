@@ -17,6 +17,7 @@ const updateUserMock = jest.fn()
 const updateSessionMock = jest.fn()
 const whitelistUserMock = jest.fn()
 const getSessionRefMock = jest.fn()
+const hasTasksQueuedMock = jest.fn(() => false)
 const getSessionRefImplementation = GunDBPublic.session
 
 const enrollmentIdentifier = 'fake-enrollment-identifier'
@@ -35,12 +36,19 @@ const user = {
   loggedInAs: 'fake@email.com'
 }
 
+const testValidation = async (validationPromise, errorMessage = 'Invalid input') =>
+  expect(validationPromise).rejects.toThrow(errorMessage)
+
 describe('EnrollmentProcessor', () => {
   beforeAll(() => {
     GunDBPublic.session = getSessionRefMock
     AdminWallet.whitelistUser = whitelistUserMock
 
-    enrollmentProcessor = createEnrollmentProcessor({ updateUser: updateUserMock, hasTasksQueued: async () => false })
+    enrollmentProcessor = createEnrollmentProcessor({
+      updateUser: updateUserMock,
+      hasTasksQueued: hasTasksQueuedMock
+    })
+
     zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
     helper = createMockingHelper(zoomServiceMock)
   })
@@ -50,7 +58,10 @@ describe('EnrollmentProcessor', () => {
   })
 
   afterEach(() => {
-    invokeMap([updateUserMock, updateSessionMock, getSessionRefMock, whitelistUserMock], 'mockReset')
+    invokeMap(
+      [updateUserMock, updateSessionMock, getSessionRefMock, hasTasksQueuedMock, whitelistUserMock],
+      'mockReset'
+    )
 
     zoomServiceMock.reset()
   })
@@ -65,13 +76,22 @@ describe('EnrollmentProcessor', () => {
     helper = null
   })
 
-  test('validate() passes when all user, enrollmentIdentifier and sessionId are present only', async () => {
-    //TODO: enqueued for removal case test
+  test('validate() passes when  user, enrollmentIdentifier and sessionId are present', async () => {
     await expect(enrollmentProcessor.validate(user, enrollmentIdentifier, payload)).resolves.toBeUndefined()
-    await expect(enrollmentProcessor.validate(null, enrollmentIdentifier, payload)).rejects.toThrow('Invalid input')
-    await expect(enrollmentProcessor.validate(user, null, payload)).rejects.toThrow('Invalid input')
-    await expect(enrollmentProcessor.validate(user, enrollmentIdentifier, omit(payload, 'sessionId'))).rejects.toThrow(
-      'Invalid input'
+  })
+
+  test('validate() fails when if user, enrollmentIdentifier or sessionId are empty', async () => {
+    await testValidation(enrollmentProcessor.validate(null, enrollmentIdentifier, payload))
+    await testValidation(enrollmentProcessor.validate(user, null, payload))
+    await testValidation(enrollmentProcessor.validate(user, enrollmentIdentifier, omit(payload, 'sessionId')))
+  })
+
+  test('validate() fails if user is being deleted', async () => {
+    hasTasksQueuedMock.mockReturnValueOnce(true)
+
+    await testValidation(
+      enrollmentProcessor.validate(user, enrollmentIdentifier, payload),
+      'Facemap record with same identifier is being deleted.'
     )
   })
 

@@ -72,7 +72,7 @@ class EnrollmentProcessor {
     })
 
     if (hasDisposalTaskQueued) {
-      throw new Error('Facemap record with same identifier is being deleted...')
+      throw new Error('Facemap record with same identifier is being deleted.')
     }
   }
 
@@ -88,7 +88,7 @@ class EnrollmentProcessor {
     const log = customLogger || logger
 
     log.info('Requested disposal for enrollment', { enrollmentIdentifier })
-    
+
     const { gdAddress } = user
     const isUserWhitelisted = await adminApi.isVerified(gdAddress)
 
