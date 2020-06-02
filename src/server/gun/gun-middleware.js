@@ -128,7 +128,7 @@ class GunDB implements StorageAPI {
     }
     if (this.serverMode === false) {
       log.info('Starting gun as client:', { peers: this.peers })
-      this.gun = Gun({ file: name, peers: this.peers })
+      this.gun = Gun({ file: name, peers: this.peers, axe: false, multicast: false, radisk: false })
     } else if (s3 && s3.secret) {
       log.info('Starting gun with S3:', { gc_delay, memory })
       this.gun = Gun({
@@ -151,9 +151,9 @@ class GunDB implements StorageAPI {
     this.user = this.gun.user()
     this.serverName = name
     this.ready = new Promise((resolve, reject) => {
-      this.user.create('gooddollar', password, createres => {
+      this.user.create('gooddollarorg', password, createres => {
         log.info('Created gundb GoodDollar User', { name })
-        this.user.auth('gooddollar', password, async authres => {
+        this.user.auth('gooddollarorg', password, async authres => {
           if (authres.err) {
             log.error('Failed authenticating gundb user:', { name, error: authres.err })
             if (conf.env !== 'test') return reject(authres.err)
