@@ -1,7 +1,7 @@
 // @flow
 
 import MockAdapter from 'axios-mock-adapter'
-import { omit, invokeMap, first } from 'lodash'
+import { assign, omit, invokeMap, first } from 'lodash'
 
 import createEnrollmentProcessor, { DISPOSE_ENROLLMENTS_TASK } from '../EnrollmentProcessor'
 import { GunDBPublic } from '../../../gun/gun-middleware'
@@ -11,7 +11,6 @@ import createMockingHelper from '../../api/__tests__/__util__'
 
 let helper
 let zoomServiceMock
-let enrollmentProcessor
 
 // storage mocks
 const updateUserMock = jest.fn()
@@ -31,6 +30,16 @@ const whitelistUserMock = jest.fn()
 const removeWhitelistedMock = jest.fn(async () => {})
 const isVerifiedMock = jest.fn(async () => false)
 
+const enrollmentProcessor = createEnrollmentProcessor({
+  updateUser: updateUserMock,
+  hasTasksQueued: hasTasksQueuedMock,
+  enqueueTask: enqueueTaskMock,
+  fetchTasksForProcessing: fetchTasksForProcessingMock,
+  removeDelayedTasks: removeDelayedTasksMock,
+  failDelayedTasks: failDelayedTasksMock
+})
+
+const { keepEnrollments } = enrollmentProcessor
 const enrollmentIdentifier = 'fake-enrollment-identifier'
 const signature =
   '0x04a0b8f3995cf577a408b03fcb206f43c79ae69196f891773c2016dbe9553c775250256bf1d54884519db1343246c8b8fa0aa854d0403ecf740c738f8567579c1b'
@@ -57,17 +66,12 @@ describe('EnrollmentProcessor', () => {
     GunDBPublic.session = getSessionRefMock
     AdminWallet.whitelistUser = whitelistUserMock
 
-    enrollmentProcessor = createEnrollmentProcessor({
-      updateUser: updateUserMock,
-      hasTasksQueued: hasTasksQueuedMock
-    })
-
     zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
     helper = createMockingHelper(zoomServiceMock)
-    enrollmentProcessor.keepEnrollments = 24
   })
 
   beforeEach(() => {
+    enrollmentProcessor.keepEnrollments = 24
     getSessionRefMock.mockImplementation(() => ({ put: updateSessionMock }))
   })
 
@@ -92,14 +96,15 @@ describe('EnrollmentProcessor', () => {
     )
 
     zoomServiceMock.reset()
+    zoomServiceMock.resetHistory()
   })
 
   afterAll(() => {
     GunDBPublic.session = getSessionRefImplementation
     AdminWallet.whitelistUser = AdminWallet.constructor.prototype.whitelistUser
 
+    assign(enrollmentProcessor, { keepEnrollments })
     zoomServiceMock.restore()
-    enrollmentProcessor = null
     zoomServiceMock = null
     helper = null
   })
@@ -182,14 +187,15 @@ describe('EnrollmentProcessor', () => {
   })
 
   test('enqueueDisposal() disposes enrollment immediately if KEEP_FACE_VERIFICATION_RECORDS = 0', async () => {
-    const disposeMock = jest.fn(async () => {})
-
     helper.mockEnrollmentFound(enrollmentIdentifier)
     enrollmentProcessor.keepEnrollments = 0
-    enrollmentProcessor.provider.dispose = disposeMock
 
     await expect(enrollmentProcessor.enqueueDisposal(user, enrollmentIdentifier, signature)).resolves.toBeUndefined()
-    expect(disposeMock).toHaveBeenCalledWith(enrollmentIdentifier)
+
+    const [disposeRequest] = zoomServiceMock.history.delete
+
+    expect(disposeRequest).toBeDefined()
+    expect(disposeRequest.url).toBe(helper.enrollmentUri(enrollmentIdentifier))
   })
 
   test('enqueueDisposal() fails with invalid signature', async () => {
