@@ -228,11 +228,11 @@ describe('EnrollmentProcessor', () => {
 
     await expect(enrollmentProcessor.disposeEnqueuedEnrollments(onProcessedMock)).resolves.toBeUndefined()
 
-    const [firstCallIdentifier, firstCallexpection] = first(onProcessedMock.mock.calls)
+    const [firstCallIdentifier, firstCallException] = first(onProcessedMock.mock.calls)
 
     expect(firstCallIdentifier).toBe(failedEnrollmentIdentifier)
-    expect(firstCallexpection).toBeInstanceOf(Error)
-    expect(firstCallexpection).toHaveProperty('message', helper.serviceErrorMessage)
+    expect(firstCallException).toBeInstanceOf(Error)
+    expect(firstCallException).toHaveProperty('message', helper.serviceErrorMessage)
     expect(onProcessedMock).toHaveBeenLastCalledWith(enrollmentIdentifier)
 
     expect(failDelayedTasksMock).toHaveBeenCalledWith(taskId(failedEnrollmentIdentifier))
