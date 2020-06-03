@@ -141,7 +141,7 @@ describe('ZoomProvider', () => {
       .onPost('/search')
       .networkErrorOnce()
 
-    await testEnrollmentServiceError('Request failed with status code 500')
+    await testEnrollmentServiceError(helper.serviceErrorMessage)
     await testEnrollmentServiceError('Network Error')
   })
 
@@ -159,5 +159,11 @@ describe('ZoomProvider', () => {
 
     helper.mockEnrollmentNotFound(enrollmentIdentifier)
     await expect(ZoomProvider.dispose(enrollmentIdentifier)).resolves.toBeUndefined()
+  })
+
+  test('dispose() throws on Zoom service error', async () => {
+    helper.mockServiceErrorHappenedWhileDisposing(enrollmentIdentifier)
+
+    await expect(ZoomProvider.dispose(enrollmentIdentifier)).rejects.toThrow(helper.serviceErrorMessage)
   })
 })

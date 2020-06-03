@@ -1,4 +1,5 @@
 export default zoomServiceMock => {
+  const serviceErrorMessage = 'Request failed with status code 500'
   const failedEnrollmentMessage = 'The FaceMap was not enrolled because Liveness could not be determined.'
   const enrollmentDisposedMessage = 'The entry in the database for this enrollmentIdentifier was successfully deleted'
   const enrollmentFoundMessage = 'A FaceMap was found for that enrollmentIdentifier.'
@@ -136,8 +137,12 @@ export default zoomServiceMock => {
     })
   }
 
+  const mockServiceErrorHappenedWhileDisposing = enrollmentIdentifier =>
+    zoomServiceMock.onDelete(enrollmentUri(enrollmentIdentifier)).reply(500)
+
   return {
     enrollmentUri,
+    serviceErrorMessage,
 
     mockEmptyResultsFaceSearch,
     mockDuplicateFound,
@@ -152,6 +157,7 @@ export default zoomServiceMock => {
     mockEnrollmentNotFound,
     enrollmentFoundMessage,
     enrollmentNotFoundMessage,
-    enrollmentDisposedMessage
+    enrollmentDisposedMessage,
+    mockServiceErrorHappenedWhileDisposing
   }
 }

@@ -206,6 +206,6 @@ describe('ZoomAPI', () => {
       .replyOnce(500)
 
     await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow('Network Error')
-    await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow('Request failed with status code 500')
+    await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow(helper.serviceErrorMessage)
   })
 })
