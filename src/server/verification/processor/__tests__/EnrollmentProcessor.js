@@ -1,11 +1,12 @@
 // @flow
 
 import MockAdapter from 'axios-mock-adapter'
-import { assign, omit, invokeMap, first } from 'lodash'
+import { assign, omit, invokeMap } from 'lodash'
 
 import createEnrollmentProcessor, { DISPOSE_ENROLLMENTS_TASK } from '../EnrollmentProcessor'
 import { GunDBPublic } from '../../../gun/gun-middleware'
 import AdminWallet from '../../../blockchain/AdminWallet'
+import { ClaimQueue } from '../../../claimQueue/claimQueueAPI'
 
 import createMockingHelper from '../../api/__tests__/__util__'
 
@@ -14,35 +15,38 @@ let zoomServiceMock
 
 // storage mocks
 const updateUserMock = jest.fn()
-const enqueueTaskMock = jest.fn(async () => {})
-const hasTasksQueuedMock = jest.fn(() => false)
-const fetchTasksForProcessingMock = jest.fn(async () => {})
-const removeDelayedTasksMock = jest.fn(async () => {})
-const failDelayedTasksMock = jest.fn(async () => {})
+const enqueueTaskMock = jest.fn()
+const hasTasksQueuedMock = jest.fn()
+const fetchTasksForProcessingMock = jest.fn()
+const removeDelayedTasksMock = jest.fn()
+const failDelayedTasksMock = jest.fn()
 
 // GUN mocks
 const updateSessionMock = jest.fn()
 const getSessionRefMock = jest.fn()
 const getSessionRefImplementation = GunDBPublic.session
+const setWhitelistedImplementation = ClaimQueue.setWhitelisted
+
+// queue mocks
+const whitelistInQueueMock = jest.fn()
 
 // wallet mocks
 const whitelistUserMock = jest.fn()
-const removeWhitelistedMock = jest.fn(async () => {})
-const isVerifiedMock = jest.fn(async () => false)
+const removeWhitelistedMock = jest.fn()
+const isVerifiedMock = jest.fn()
 
-const enrollmentProcessor = createEnrollmentProcessor({
+const storageMock = {
   updateUser: updateUserMock,
   hasTasksQueued: hasTasksQueuedMock,
   enqueueTask: enqueueTaskMock,
   fetchTasksForProcessing: fetchTasksForProcessingMock,
   removeDelayedTasks: removeDelayedTasksMock,
   failDelayedTasks: failDelayedTasksMock
-})
+}
 
-const { keepEnrollments } = enrollmentProcessor
-const enrollmentIdentifier = 'fake-enrollment-identifier'
+const enrollmentIdentifier = 'f0D7A688489Ab3079491d407A03BF16e5B027b2c'
 const signature =
-  '0x04a0b8f3995cf577a408b03fcb206f43c79ae69196f891773c2016dbe9553c775250256bf1d54884519db1343246c8b8fa0aa854d0403ecf740c738f8567579c1b'
+  '0xff612279b69900493cec3e5f8707413ad4734aa1748483b61c856d3093bf0c88458e82722365f35dfedf88438ba1419774bbb67527057d9066eba9a548d4fc751b'
 
 const payload = {
   sessionId: 'fake-session-id',
@@ -62,9 +66,15 @@ const testValidation = async (validationPromise, errorMessage = 'Invalid input')
   expect(validationPromise).rejects.toThrow(errorMessage)
 
 describe('EnrollmentProcessor', () => {
+  const enrollmentProcessor = createEnrollmentProcessor(storageMock)
+  const { keepEnrollments } = enrollmentProcessor
+
   beforeAll(() => {
     GunDBPublic.session = getSessionRefMock
     AdminWallet.whitelistUser = whitelistUserMock
+    AdminWallet.removeWhitelisted = removeWhitelistedMock
+    AdminWallet.isVerified = isVerifiedMock
+    ClaimQueue.setWhitelisted = whitelistInQueueMock
 
     zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
     helper = createMockingHelper(zoomServiceMock)
@@ -72,7 +82,23 @@ describe('EnrollmentProcessor', () => {
 
   beforeEach(() => {
     enrollmentProcessor.keepEnrollments = 24
+
+    isVerifiedMock.mockResolvedValue(false)
+    hasTasksQueuedMock.mockReturnValue(false)
+    enqueueTaskMock.mockResolvedValue({ _id: 'fake-task-id' })
     getSessionRefMock.mockImplementation(() => ({ put: updateSessionMock }))
+
+    invokeMap(
+      [
+        updateUserMock,
+        fetchTasksForProcessingMock,
+        failDelayedTasksMock,
+        removeDelayedTasksMock,
+
+        removeWhitelistedMock
+      ],
+      'mockResolvedValuw'
+    )
   })
 
   afterEach(() => {
@@ -88,6 +114,8 @@ describe('EnrollmentProcessor', () => {
         updateSessionMock,
         getSessionRefMock,
 
+        whitelistInQueueMock,
+
         whitelistUserMock,
         isVerifiedMock,
         removeWhitelistedMock
@@ -101,7 +129,9 @@ describe('EnrollmentProcessor', () => {
 
   afterAll(() => {
     GunDBPublic.session = getSessionRefImplementation
-    AdminWallet.whitelistUser = AdminWallet.constructor.prototype.whitelistUser
+    ClaimQueue.whitelistUser = setWhitelistedImplementation[
+      ('whitelistUser', 'removeWhitelisted', 'isVerified')
+    ].forEach(method => (AdminWallet[method] = AdminWallet.constructor.prototype[method]))
 
     assign(enrollmentProcessor, { keepEnrollments })
     zoomServiceMock.restore()
@@ -146,6 +176,7 @@ describe('EnrollmentProcessor', () => {
     expect(updateSessionMock).toHaveBeenNthCalledWith(4, { isWhitelisted: true })
 
     expect(updateUserMock).toHaveBeenCalledWith({ identifier: loggedInAs, isVerified: true })
+    expect(whitelistInQueueMock).toHaveBeenCalledWith(user, storageMock, expect.anything())
     expect(whitelistUserMock).toHaveBeenCalledWith(gdAddress, profilePublickey)
   })
 
@@ -228,14 +259,14 @@ describe('EnrollmentProcessor', () => {
 
     await expect(enrollmentProcessor.disposeEnqueuedEnrollments(onProcessedMock)).resolves.toBeUndefined()
 
-    const [firstCallIdentifier, firstCallException] = first(onProcessedMock.mock.calls)
+    expect(onProcessedMock).toHaveBeenCalledWith(enrollmentIdentifier)
+    expect(onProcessedMock).toHaveBeenCalledWith(failedEnrollmentIdentifier, expect.any(Error))
+    expect(onProcessedMock).toHaveBeenCalledWith(
+      failedEnrollmentIdentifier,
+      expect.objectContaining({ message: helper.serviceErrorMessage })
+    )
 
-    expect(firstCallIdentifier).toBe(failedEnrollmentIdentifier)
-    expect(firstCallException).toBeInstanceOf(Error)
-    expect(firstCallException).toHaveProperty('message', helper.serviceErrorMessage)
-    expect(onProcessedMock).toHaveBeenLastCalledWith(enrollmentIdentifier)
-
-    expect(failDelayedTasksMock).toHaveBeenCalledWith(taskId(failedEnrollmentIdentifier))
-    expect(removeDelayedTasksMock).toHaveBeenCalledWith(taskId(enrollmentIdentifier))
+    expect(failDelayedTasksMock).toHaveBeenCalledWith([taskId(failedEnrollmentIdentifier)])
+    expect(removeDelayedTasksMock).toHaveBeenCalledWith([taskId(enrollmentIdentifier)])
   })
 })

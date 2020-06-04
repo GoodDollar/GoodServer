@@ -83,7 +83,6 @@ class EnrollmentProcessor {
   }
 
   async enqueueDisposal(user: any, enrollmentIdentifier: string, signature: string, customLogger = null) {
-    const recovered = recoverPublickey(signature, enrollmentIdentifier, '')
     const { storage, provider, adminApi, keepEnrollments, logger } = this
     const log = customLogger || logger
 
@@ -97,7 +96,14 @@ class EnrollmentProcessor {
       await adminApi.removeWhitelisted(gdAddress)
     }
 
-    if (recovered.substr(2) !== enrollmentIdentifier.toLowerCase()) {
+    try {
+      // recoverPublickey() also could throw so we're wrapping its call to try block
+      const recovered = recoverPublickey(signature, enrollmentIdentifier, '')
+
+      if (recovered.substr(2) !== enrollmentIdentifier.toLowerCase()) {
+        throw new Error("Public key doesn't matches")
+      }
+    } catch {
       const signerException = new Error(
         `Unable to enqueue enrollment disposal: SigUtil unable to recover the message signer`
       )

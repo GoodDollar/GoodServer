@@ -56,9 +56,9 @@ describe('verificationAPI', () => {
     const getSessionRefMock = jest.fn()
     const getSessionRefImplementation = GunDBPublic.session
 
-    const enrollmentIdentifier = 'fake-enrollment-identifier'
+    const enrollmentIdentifier = 'f0D7A688489Ab3079491d407A03BF16e5B027b2c'
     const signature =
-      '0x04a0b8f3995cf577a408b03fcb206f43c79ae69196f891773c2016dbe9553c775250256bf1d54884519db1343246c8b8fa0aa854d0403ecf740c738f8567579c1b'
+      '0xff612279b69900493cec3e5f8707413ad4734aa1748483b61c856d3093bf0c88458e82722365f35dfedf88438ba1419774bbb67527057d9066eba9a548d4fc751b'
 
     const enrollmentUri = '/verify/face/' + encodeURIComponent(enrollmentIdentifier)
 

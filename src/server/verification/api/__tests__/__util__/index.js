@@ -5,7 +5,7 @@ export default zoomServiceMock => {
   const enrollmentFoundMessage = 'A FaceMap was found for that enrollmentIdentifier.'
   const enrollmentNotFoundMessage = 'No entry found in the database for this enrollmentIdentifier.'
   const duplicateFoundMessage = `Duplicate exists for FaceMap you're trying to enroll.`
-  const duplicateEnrollmentIdentifier = 'another-one-fake-enrollment-identifier'
+  const duplicateEnrollmentIdentifier = 'another-one-f0D7A688489Ab3079491d407A03BF16e5B027b2c'
 
   const enrollmentUri = enrollmentIdentifier => `/enrollment/${encodeURIComponent(enrollmentIdentifier)}`
 
@@ -117,7 +117,7 @@ export default zoomServiceMock => {
   }
 
   const mockEnrollmentNotFound = enrollmentIdentifier => {
-    zoomServiceMock.onGet(enrollmentUri(enrollmentIdentifier)).reply(200, {
+    zoomServiceMock.onGet(enrollmentUri(enrollmentIdentifier)).reply(400, {
       meta: {
         ok: false,
         code: 400,
