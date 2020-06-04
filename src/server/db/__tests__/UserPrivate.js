@@ -276,11 +276,9 @@ describe('UserPrivate', () => {
     await storage.completeDelayedTasks([_id])
 
     // no complete/failed tasks should be found despite we've called corresponding storage methods
-    await Promise.all(
-      [Complete, Failed].map(async status =>
-        expect(taskModel.find({ taskName: testTaskName, status })).resolves.toBeArrayOfSize(0)
-      )
-    )
+    await expect(
+      taskModel.find({ taskName: testTaskName, status: { $in: [Complete, Failed] } })
+    ).resolves.toBeArrayOfSize(0)
   })
 
   it('Should remove delayed tasks', async () => {
