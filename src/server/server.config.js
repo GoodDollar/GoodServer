@@ -308,12 +308,6 @@ const conf = convict({
     env: 'SKIP_EMAIL_VERIFICATION',
     default: false
   },
-  skipFaceVerification: {
-    doc: 'Returns FR passed with no Zoom API interaction',
-    format: Boolean,
-    env: 'SKIP_FACE_VERIFICATION',
-    default: false
-  },
   keepFaceVerificationRecords: {
     doc:
       'Time interval (in hours) to store face verification records after user deletes his account.' +
@@ -329,10 +323,10 @@ const conf = convict({
     default: false
   },
   disableFaceVerification: {
-    doc: 'Whitelist user once they register',
+    doc: 'Whitelist user once they register, returns already enrolled with no Zoom API interaction',
     format: Boolean,
     env: 'DISABLE_FACE_VERIFICATION',
-    default: true
+    default: false
   },
   rollbarToken: {
     doc: 'access token for rollbar logging',
