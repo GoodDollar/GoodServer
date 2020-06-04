@@ -52,9 +52,12 @@ describe('verificationAPI', () => {
     const { keepEnrollments } = enrollmentProcessor
 
     const updateSessionMock = jest.fn()
-    const whitelistUserMock = jest.fn()
     const getSessionRefMock = jest.fn()
     const getSessionRefImplementation = GunDBPublic.session
+
+    // wallet mocks
+    const whitelistUserMock = jest.fn()
+    const isVerifiedMock = jest.fn()
 
     const enrollmentIdentifier = 'f0D7A688489Ab3079491d407A03BF16e5B027b2c'
     const signature =
@@ -120,6 +123,7 @@ describe('verificationAPI', () => {
     beforeAll(async () => {
       GunDBPublic.session = getSessionRefMock
       AdminWallet.whitelistUser = whitelistUserMock
+      AdminWallet.isVerified = isVerifiedMock
 
       zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
       helper = createMockingHelper(zoomServiceMock)
@@ -131,6 +135,7 @@ describe('verificationAPI', () => {
       await storage.taskModel.deleteMany({ subject: enrollmentIdentifier })
 
       enrollmentProcessor.keepEnrollments = 24
+      isVerifiedMock.mockResolvedValue(false)
       getSessionRefMock.mockImplementation(() => ({ put: updateSessionMock }))
     })
 
@@ -141,8 +146,10 @@ describe('verificationAPI', () => {
     })
 
     afterAll(() => {
+      const restoreWalletMethods = ['whitelistUser', 'isVerified']
+
       GunDBPublic.session = getSessionRefImplementation
-      AdminWallet.whitelistUser = AdminWallet.constructor.prototype.whitelistUser
+      restoreWalletMethods.forEach(method => (AdminWallet[method] = AdminWallet.constructor.prototype[method]))
 
       assign(enrollmentProcessor, { keepEnrollments })
       zoomServiceMock.restore()
@@ -245,12 +252,28 @@ describe('verificationAPI', () => {
       helper.mockSuccessEnrollment(enrollmentIdentifier)
 
       // user with approved status
-      await storage.updateUser({ identifier: userIdentifier, claimQueue: { status: 'approved' } })
+      await storage.updateUser({ identifier: userIdentifier, claimQueue: { status: 'approved' }, isVerified: false })
       await testVerificationSuccessfull()
 
       // user with whitelisted status
-      await storage.updateUser({ identifier: userIdentifier, claimQueue: { status: 'whitelisted' } })
+      await storage.updateUser({ identifier: userIdentifier, claimQueue: { status: 'whitelisted' }, isVerified: false })
       await testVerificationSuccessfull()
+    })
+
+    test('PUT /verify/face/:enrollmentIdentifier whitelists user in the claim queue', async () => {
+      // enabling claim queue.
+      Config.claimQueueAllowed = 1
+      helper.mockEmptyResultsFaceSearch()
+      helper.mockSuccessEnrollment(enrollmentIdentifier)
+
+      // set approved status
+      await storage.updateUser({ identifier: userIdentifier, claimQueue: { status: 'approved' }, isVerified: false })
+      await testVerificationSuccessfull()
+
+      const { claimQueue } = await storage.getUser(userIdentifier)
+
+      // to check has user been updated in the database
+      expect(claimQueue).toHaveProperty('status', 'whitelisted')
     })
 
     test('PUT /verify/face/:enrollmentIdentifier skips verification and re-whitelists user was already verified', async () => {
@@ -284,7 +307,7 @@ describe('verificationAPI', () => {
     })
 
     test('DELETE /verify/face/:enrollmentIdentifier returns 200, success = true and enqueues disposal task if enrollment exists, signature is valid and KEEP_FACE_VERIFICATION_RECORDS is set', async () => {
-      helper.mockEnrollmentFound()
+      helper.mockEnrollmentFound(enrollmentIdentifier)
 
       await request(server)
         .delete(enrollmentUri)
@@ -298,7 +321,7 @@ describe('verificationAPI', () => {
     })
 
     test("DELETE /verify/face/:enrollmentIdentifier returns 200 and success = true but disposes enrollment immediately if KEEP_FACE_VERIFICATION_RECORDS isn't set", async () => {
-      helper.mockEnrollmentFound()
+      helper.mockEnrollmentFound(enrollmentIdentifier)
       enrollmentProcessor.keepEnrollments = 0
 
       await request(server)
@@ -313,7 +336,7 @@ describe('verificationAPI', () => {
     })
 
     test('DELETE /verify/face/:enrollmentIdentifier returns 400 and success = false if signature is invalid', async () => {
-      helper.mockEnrollmentFound()
+      helper.mockEnrollmentFound(enrollmentIdentifier)
 
       await request(server)
         .delete(enrollmentUri)

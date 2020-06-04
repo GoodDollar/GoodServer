@@ -8,7 +8,7 @@ import createMockingHelper from './__util__'
 let helper
 let zoomServiceMock
 
-const enrollmentIdentifier = 'f0D7A688489Ab3079491d407A03BF16e5B027b2c'
+const enrollmentIdentifier = 'fake-enrollment-identifier'
 
 const payload = {
   sessionId: 'fake-session-id',

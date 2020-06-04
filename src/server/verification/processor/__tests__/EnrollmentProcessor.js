@@ -128,10 +128,11 @@ describe('EnrollmentProcessor', () => {
   })
 
   afterAll(() => {
+    const restoreWalletMethods = ['whitelistUser', 'removeWhitelisted', 'isVerified']
+
     GunDBPublic.session = getSessionRefImplementation
-    ClaimQueue.whitelistUser = setWhitelistedImplementation[
-      ('whitelistUser', 'removeWhitelisted', 'isVerified')
-    ].forEach(method => (AdminWallet[method] = AdminWallet.constructor.prototype[method]))
+    ClaimQueue.whitelistUser = setWhitelistedImplementation
+    restoreWalletMethods.forEach(method => (AdminWallet[method] = AdminWallet.constructor.prototype[method]))
 
     assign(enrollmentProcessor, { keepEnrollments })
     zoomServiceMock.restore()
