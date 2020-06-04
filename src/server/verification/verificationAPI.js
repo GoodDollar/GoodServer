@@ -39,7 +39,8 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
       try {
         const processor = createEnrollmentProcessor(storage)
-        await processor.enqueueDisposal(enrollmentIdentifier, signature, log)
+
+        await processor.enqueueDisposal(user, enrollmentIdentifier, signature, log)
       } catch (exception) {
         const { message } = exception
         log.error('delete face record failed:', { message, exception, enrollmentIdentifier, user })
@@ -73,7 +74,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         const { skipFaceVerification, claimQueueAllowed } = conf
         const enrollmentProcessor = createEnrollmentProcessor(storage)
 
-        enrollmentProcessor.validate(user, enrollmentIdentifier, payload)
+        await enrollmentProcessor.validate(user, enrollmentIdentifier, payload)
 
         // if user is already verified, we're skipping enroillment logic
         if (user.isVerified || skipFaceVerification || isE2ERunning) {
