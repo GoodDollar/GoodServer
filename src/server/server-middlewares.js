@@ -3,6 +3,7 @@ import express, { Router } from 'express'
 import type { NextFunction } from 'express'
 import bodyParser from 'body-parser'
 import cors from 'cors'
+import { version as contractsVersion } from '@gooddollar/goodcontracts/package.json'
 import addLoginMiddlewares from './login/login-middleware'
 import { setup as addGunMiddlewares } from './gun/gun-middleware'
 import UserDBPrivate from './db/mongo/user-privat-provider'
@@ -16,7 +17,7 @@ import { rollbar, addRequestLogger } from '../imports/logger'
 import VerificationAPI from './verification/verification'
 import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
 import addClaimQueueMiddlewares from './claimQueue/claimQueueAPI'
-
+import { fishInactiveTask, collectFundsTask } from './blockchain/stakingModelTasks'
 export default (app: Router, env: any) => {
   // parse application/x-www-form-urlencoded
   // for easier testing with Postman or plain HTML forms
@@ -48,5 +49,9 @@ export default (app: Router, env: any) => {
   const disposeEnrollmentsTask = createDisposeEnrollmentsTask(UserDBPrivate)
 
   CronTasksRunner.registerTask(disposeEnrollmentsTask)
+  if (contractsVersion >= '2.0.0') {
+    CronTasksRunner.registerTask(collectFundsTask)
+    CronTasksRunner.registerTask(fishInactiveTask)
+  }
   CronTasksRunner.startTasks()
 }
