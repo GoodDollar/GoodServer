@@ -1,6 +1,9 @@
 export default zoomServiceMock => {
+  const serviceErrorMessage = 'Request failed with status code 500'
   const failedEnrollmentMessage = 'The FaceMap was not enrolled because Liveness could not be determined.'
-  const failedRemovalMessage = 'No entry found in the database for this enrollmentIdentifier.'
+  const enrollmentDisposedMessage = 'The entry in the database for this enrollmentIdentifier was successfully deleted'
+  const enrollmentFoundMessage = 'A FaceMap was found for that enrollmentIdentifier.'
+  const enrollmentNotFoundMessage = 'No entry found in the database for this enrollmentIdentifier.'
   const duplicateFoundMessage = `Duplicate exists for FaceMap you're trying to enroll.`
   const duplicateEnrollmentIdentifier = 'another-one-fake-enrollment-identifier'
 
@@ -86,18 +89,60 @@ export default zoomServiceMock => {
       }
     })
 
-  const mockFailedRemoval = enrollmentIdentifier =>
+  const mockEnrollmentFound = enrollmentIdentifier => {
+    zoomServiceMock.onGet(enrollmentUri(enrollmentIdentifier)).reply(200, {
+      meta: {
+        ok: true,
+        code: 200,
+        mode: 'dev',
+        message: enrollmentFoundMessage
+      },
+      data: {
+        createdDate: '2019-09-16T17:30:40+00:00',
+        enrollmentIdentifier,
+        faceMap: Buffer.alloc(32).toString(),
+        auditTrailImage: 'data:image/png:FaKEimagE==',
+        faceMapType: 0
+      }
+    })
+
     zoomServiceMock.onDelete(enrollmentUri(enrollmentIdentifier)).reply(200, {
       meta: {
         ok: true,
         code: 200,
         mode: 'dev',
-        message: failedRemovalMessage
+        message: enrollmentDisposedMessage
+      }
+    })
+  }
+
+  const mockEnrollmentNotFound = enrollmentIdentifier => {
+    zoomServiceMock.onGet(enrollmentUri(enrollmentIdentifier)).reply(400, {
+      meta: {
+        ok: false,
+        code: 400,
+        mode: 'dev',
+        message: enrollmentNotFoundMessage,
+        subCode: 'facemapNotFound'
       }
     })
 
+    zoomServiceMock.onDelete(enrollmentUri(enrollmentIdentifier)).reply(200, {
+      meta: {
+        ok: true,
+        code: 200,
+        mode: 'dev',
+        message: enrollmentNotFoundMessage
+      }
+    })
+  }
+
+  const mockServiceErrorHappenedWhileDisposing = enrollmentIdentifier =>
+    zoomServiceMock.onDelete(enrollmentUri(enrollmentIdentifier)).reply(500)
+
   return {
     enrollmentUri,
+    serviceErrorMessage,
 
     mockEmptyResultsFaceSearch,
     mockDuplicateFound,
@@ -108,7 +153,11 @@ export default zoomServiceMock => {
     mockFailedEnrollment,
     failedEnrollmentMessage,
 
-    failedRemovalMessage,
-    mockFailedRemoval
+    mockEnrollmentFound,
+    mockEnrollmentNotFound,
+    enrollmentFoundMessage,
+    enrollmentNotFoundMessage,
+    enrollmentDisposedMessage,
+    mockServiceErrorHappenedWhileDisposing
   }
 }
