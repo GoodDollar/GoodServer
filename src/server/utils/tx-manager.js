@@ -11,14 +11,20 @@ class TransactionRun {
   static getManagerInstance() {
     let queueManager = null
 
-    if (config.enableMongoLock) {
-      queueManager = new queueMongo()
-    } else {
-      queueManager = new queueMutex()
-    }
-
+    queueManager = getManager(config.ethereum.network_id)
     return queueManager
   }
 }
 
+const getManager = networkId => {
+  let queueManager = null
+  if (config.enableMongoLock) {
+    queueManager = new queueMongo(networkId)
+  } else {
+    queueManager = new queueMutex()
+  }
+  return queueManager
+}
+
+export { getManager }
 export default TransactionRun.getManagerInstance()
