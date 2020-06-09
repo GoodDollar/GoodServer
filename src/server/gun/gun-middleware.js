@@ -128,7 +128,7 @@ class GunDB implements StorageAPI {
     }
     if (this.serverMode === false) {
       log.info('Starting gun as client:', { peers: this.peers })
-      this.gun = Gun({ file: name, peers: this.peers, axe: false, multicast: false, radisk: false })
+      this.gun = Gun({ file: name, peers: this.peers })
     } else if (s3 && s3.secret) {
       log.info('Starting gun with S3:', { gc_delay, memory })
       this.gun = Gun({
