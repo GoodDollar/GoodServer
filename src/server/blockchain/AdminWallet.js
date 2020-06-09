@@ -8,7 +8,6 @@ import GoodDollarABI from '@gooddollar/goodcontracts/build/contracts/GoodDollar.
 import UBIABI from '@gooddollar/goodcontracts/build/contracts/FixedUBI.min.json'
 import ProxyContractABI from '@gooddollar/goodcontracts/build/contracts/AdminWallet.min.json'
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
-import ContractsAddressStakingModel from '@gooddollar/goodcontracts/stakingModel/releases/deployment.json'
 
 import conf from '../server.config'
 import logger from '../../imports/logger'
