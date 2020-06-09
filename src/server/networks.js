@@ -5,6 +5,12 @@ const networks = {
     httpWeb3Provider: `https://kovan.infura.io/v3/${process.env.INFURA_API}`,
     websocketWeb3Provider: 'wss://kovan.infura.io/ws'
   },
+  3: {
+    network_id: 3,
+    web3Transport: 'HttpProvider',
+    httpWeb3Provider: `https://ropsten.infura.io/v3/${process.env.INFURA_API}`,
+    websocketWeb3Provider: 'wss://ropsten.infura.io/ws'
+  },
   4447: {
     network_id: 4447,
     web3Transport: 'HttpProvider',

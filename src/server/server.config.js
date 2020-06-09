@@ -1,3 +1,4 @@
+import { get } from 'lodash'
 import networks from './networks'
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
 import { version } from '../../package.json'
@@ -100,6 +101,12 @@ const conf = convict({
     default: ''
   },
   ethereum: {
+    network_id: 42,
+    httpWeb3Provider: 'https://kovan.infura.io/v3/',
+    websocketWeb3Provider: 'wss://kovan.infura.io/ws',
+    web3Transport: 'HttpProvider'
+  },
+  ethereumMainnet: {
     network_id: 42,
     httpWeb3Provider: 'https://kovan.infura.io/v3/',
     websocketWeb3Provider: 'wss://kovan.infura.io/ws',
@@ -417,7 +424,11 @@ const conf = convict({
 // Load environment dependent configuration
 const network = conf.get('network')
 const networkId = ContractsAddress[network].networkId
+const mainNetworkId = get(ContractsAddress, `${network}-mainnet.networkId`, networkId)
+
 conf.set('ethereum', networks[networkId])
+conf.set('ethereumMainnet', networks[mainNetworkId])
+
 //parse S3 details for gundb in format of key,secret,bucket
 const privateS3 = process.env.GUN_PRIVATE_S3
 if (privateS3) {
