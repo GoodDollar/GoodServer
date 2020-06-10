@@ -3,7 +3,7 @@ import type { UserRecord } from '../../../imports/types'
 import UserDBPrivate from '../../db/mongo/user-privat-provider'
 import { getCreds } from '../../__util__'
 import addUserSteps from '../addUserSteps'
-
+import config from '../../server.config'
 jest.setTimeout(30000)
 
 describe('storageAPI', () => {
@@ -48,6 +48,7 @@ describe('storageAPI', () => {
   })
 
   test('check addUserToWhiteList', async () => {
+    config.disableFaceVerification = true
     const creds = await getCreds(true)
     let userRecord = { ...creds, ...user, gdAddress: creds.address }
     userRecord.profilePublicKey = '' + Math.random()
