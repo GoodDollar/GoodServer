@@ -5,18 +5,22 @@ import delay from 'delay'
 jest.setTimeout(10000)
 describe('TaskRunner', () => {
   const testTask = {
-    schedule: moment().add(3, 'seconds'),
+    schedule: moment()
+      .add(3, 'seconds')
+      .toDate(),
     name: 'testTask',
-    execute: () => {
-      return { result: 1, cronTime: moment().add(3, 'seconds') }
+    execute: async ({ setTime }) => {
+      setTime(
+        moment()
+          .add(3, 'seconds')
+          .toDate()
+      )
     }
   }
   const testCronTask = {
     schedule: '* * * * * *',
     name: 'testCronTask',
-    execute: () => {
-      return { result: 1 }
-    }
+    execute: async () => {}
   }
 
   const executeSpy = jest.spyOn(testTask, 'execute')
