@@ -257,7 +257,31 @@ class FishingManager {
 
 const fishManager = new FishingManager()
 
-class CollectFundsTask {
+class StakingModelTask {
+  // using context allowing us to manipulate task execution
+  // it's more clear that return some values.
+  // also, delayed task pattern doesn't generally includes that task should return something
+  // the task could pass or fail that's all. async function contract allows us to implement those statuses
+  async execute({ setTime }) {
+    const { cronTime } = await this.run()
+
+    if (cronTime) {
+      // According to the docs, setTime accepts CronTime only
+      // CronTime constructor accepts cron string or JS Date.
+      // there's no info about moment object support.
+      // probavbly it works due to the .toString or [Symbol.toPrimitive] override
+      // but let's better convert moment to the JS date to strictly keep node-cron's contracts
+      setTime(cronTime.toDate())
+    }
+  }
+
+  /**
+   * @abstract
+   */
+  async run() {}
+}
+
+class CollectFundsTask extends StakingModelTask {
   get schedule() {
     return '0 0 0 * * *'
   }
@@ -266,12 +290,12 @@ class CollectFundsTask {
     return 'StakingModel'
   }
 
-  async execute() {
+  async run() {
     return fundManager.run()
   }
 }
 
-class FishInactiveTask {
+class FishInactiveTask extends StakingModelTask {
   get schedule() {
     return '0 0 0 * * *'
   }
@@ -280,7 +304,7 @@ class FishInactiveTask {
     return 'FishInactiveUsers'
   }
 
-  async execute() {
+  async run() {
     return fishManager.run()
   }
 }

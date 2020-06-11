@@ -49,9 +49,11 @@ export default (app: Router, env: any) => {
   const disposeEnrollmentsTask = createDisposeEnrollmentsTask(UserDBPrivate)
 
   CronTasksRunner.registerTask(disposeEnrollmentsTask)
+
   if (contractsVersion >= '2.0.0') {
     CronTasksRunner.registerTask(collectFundsTask)
     CronTasksRunner.registerTask(fishInactiveTask)
   }
+
   CronTasksRunner.startTasks()
 }
