@@ -221,7 +221,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         if (verified === false) return
 
         await Promise.all([
-          Mautic.updateContact(user.mauticId, { mobile: tempSavedMobile }),
+          user.mauticId && Mautic.updateContact(user.mauticId, { mobile: tempSavedMobile }),
           storage.updateUser({ identifier: user.loggedInAs, smsValidated: true, mobile: tempSavedMobile })
         ])
       }
