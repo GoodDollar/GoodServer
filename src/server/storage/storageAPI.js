@@ -82,7 +82,7 @@ const setup = (app: Router, storage: StorageAPI) => {
         signUpPromises.push(p2)
       }
 
-      if (!userRecord.mauticId && process.env.NODE_ENV !== 'development') {
+      if (process.env.NODE_ENV !== 'development') {
         const p3 = addUserSteps
           .updateMauticRecord(userRecord, logger)
           .then(r => logger.debug('updateMauticRecord success'))
