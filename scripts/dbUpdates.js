@@ -5,7 +5,7 @@ import logger from '../src/imports/logger'
 import { type UserRecord } from '../src/imports/types'
 import { GunDBPublic } from '../src/server/gun/gun-middleware'
 import conf from '../src/server/server.config'
-if (process.env.NODE_ENV === 'test') process.exit(0)
+if (process.env.NODE_ENV === 'test' || process.env.CONTINUOUS_INTEGRATION === true) process.exit(0)
 
 const UserPrivateModel = require('../src/server/db/mongo/models/user-private.js').default
 const PropsModel = require('../src/server/db/mongo/models/props.js').default
