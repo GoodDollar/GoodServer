@@ -60,10 +60,19 @@ class TorusVerifier {
         throw new Error('unknown torus login type: ' + torusType)
     }
   }
+  async isFacebookEmail(token, email) {
+    return true
+  }
   async verifyProof(signature, torusType, userRecord, nonce) {
     if (Date.now() - nonce > 60000) {
       throw new Error('torus proof nonce invalid:' + nonce)
     }
+    //TODO: use auth token to verify facebook users
+    if (torusType === 'facebook') {
+      const isOwner = this.isFacebookEmail(signature, userRecord.email)
+      return { emailVerified: isOwner, mobileVerified: false }
+    }
+
     const { verifier, identifier, emailVerified, mobileVerified } = this.getVerifierAndIdentifier(torusType, userRecord)
     const signedPublicKey = recoverPublickey(signature, identifier, nonce)
     const isOwner = await this.isIdentifierOwner(signedPublicKey, verifier, identifier)
