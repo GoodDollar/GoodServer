@@ -5,6 +5,7 @@ import logger from '../src/imports/logger'
 import { type UserRecord } from '../src/imports/types'
 import { GunDBPublic } from '../src/server/gun/gun-middleware'
 import conf from '../src/server/server.config'
+console.log(process.env, process.env.NODE_ENV, process.env.TRAVIS)
 if (process.env.NODE_ENV === 'test' || process.env.TRAVIS === true) process.exit(0)
 
 const UserPrivateModel = require('../src/server/db/mongo/models/user-private.js').default
