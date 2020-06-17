@@ -1,4 +1,10 @@
 const networks = {
+  1: {
+    network_id: 1,
+    web3Transport: 'HttpProvider',
+    httpWeb3Provider: `https://mainnet.infura.io/v3/${process.env.INFURA_API}`,
+    websocketWeb3Provider: 'wss://mainnet.infura.io/ws'
+  },
   42: {
     network_id: 42,
     web3Transport: 'HttpProvider',
