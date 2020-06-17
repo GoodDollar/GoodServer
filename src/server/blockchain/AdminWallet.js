@@ -666,7 +666,8 @@ export class Wallet {
   async sendTransactionMainnet(
     tx: any,
     txCallbacks: PromiEvents = {},
-    { gas, gasPrice }: GasValues = { gas: undefined, gasPrice: undefined }
+    { gas, gasPrice }: GasValues = { gas: undefined, gasPrice: undefined },
+    forceAddress: string
   ) {
     let currentAddress
     try {
@@ -685,7 +686,7 @@ export class Wallet {
 
       const uuid = Crypto.randomBytes(5).toString('base64')
       log.debug('getting tx lock:', { uuid })
-      const { nonce, release, fail, address } = await this.mainnetTxManager.lock(this.mainnetAddresses)
+      const { nonce, release, fail, address } = await this.mainnetTxManager.lock(forceAddress || this.mainnetAddresses)
       log.debug('got tx lock:', { uuid, address })
 
       let balance = NaN
