@@ -48,6 +48,13 @@ describe('stakingModelManager', () => {
     expect(gains[0].toNumber()).toBeGreaterThan(0)
   })
 
+  test(`stakingModelManager should mock interest`, async () => {
+    const gains = await fundManager.getAvailableInterest()
+    await fundManager.mockInterest()
+    const gains2 = await fundManager.getAvailableInterest()
+    expect(gains2[0].toNumber()).toBeGreaterThan(gains[0].toNumber())
+  })
+
   let transferBlock, ubiAmount
   test(`stakingModelManager should succeed to transfer interest`, async () => {
     const event = await fundManager.transferInterest()

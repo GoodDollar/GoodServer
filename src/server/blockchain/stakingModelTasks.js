@@ -1,14 +1,16 @@
 import FundManagerABI from '@gooddollar/goodcontracts/stakingModel/build/contracts/GoodFundManager.min.json'
 import StakingABI from '@gooddollar/goodcontracts/stakingModel/build/contracts/SimpleDAIStaking.min.json'
 import UBISchemeABI from '@gooddollar/goodcontracts/stakingModel/build/contracts/UBIScheme.min.json'
-
+import DaiABI from '@gooddollar/goodcontracts/build/contracts/DAIMock.min.json'
+import cDaiABI from '@gooddollar/goodcontracts/build/contracts/cDAIMock.min.json'
 import ContractsAddress from '@gooddollar/goodcontracts/stakingModel/releases/deployment.json'
 import AdminWallet from './AdminWallet'
 import { get, chunk } from 'lodash'
 import logger from '../../imports/logger'
 import delay from 'delay'
 import moment from 'moment'
-
+import { toWei } from 'web3-utils'
+import config from '../server.config'
 const log = logger.child({ from: 'StakingModelManager' })
 
 const BRIDGE_TRANSFER_TIMEOUT = 60 * 1000 * 5 //5 min
@@ -16,11 +18,17 @@ const BRIDGE_TRANSFER_TIMEOUT = 60 * 1000 * 5 //5 min
  * a manager to make sure we collect and transfer the interest from the staking contract
  */
 export class StakingModelManager {
-  managerAddress = get(ContractsAddress, `${AdminWallet.network}.FundManager`)
-  stakingAddress = get(ContractsAddress, `${AdminWallet.network}.DAIStaking`)
+  addresses = get(ContractsAddress, `${AdminWallet.network}-mainnet`) || get(ContractsAddress, `${AdminWallet.network}`)
+  managerAddress = this.addresses['FundManager']
+  stakingAddress = this.addresses['DAIStaking']
+  daiAddress = this.addresses['DAI']
+  cDaiAddress = this.addresses['cDAI']
+
   constructor() {
     this.managerContract = AdminWallet.mainnetWeb3.eth.Contract(FundManagerABI.abi, this.managerAddress)
     this.stakingContract = AdminWallet.mainnetWeb3.eth.Contract(StakingABI.abi, this.stakingAddress)
+    this.dai = AdminWallet.mainnetWeb3.eth.Contract(DaiABI.abi, this.daiAddress)
+    this.cDai = AdminWallet.mainnetWeb3.eth.Contract(cDaiABI.abi, this.cDaiAddress)
     this.managerContract.methods.bridgeContract.call().then(_ => (this.bridge = _))
     this.managerContract.methods.ubiRecipient.call().then(_ => (this.ubiScheme = _))
   }
@@ -55,9 +63,48 @@ export class StakingModelManager {
     }
     return moment()
   }
+
+  mockInterest = async () => {
+    if (config.ethereumMainnet.network_id !== 1) {
+      const tx1 = AdminWallet.sendTransactionMainnet(
+        this.dai.methods.approve(this.cDai.address, toWei('100', 'ether')),
+        {},
+        {},
+        AdminWallet.mainnetAddresses[0]
+      )
+      const tx2 = AdminWallet.sendTransactionMainnet(
+        this.dai.methods.allocateTo(AdminWallet.mainnetAddresses[0], toWei('100', 'ether')),
+        {},
+        {}
+      )
+      await Promise.all([tx1, tx2])
+      const tx3 = await AdminWallet.sendTransactionMainnet(
+        this.cDai.methods.mint(toWei('100', 'ether')),
+        {},
+        {},
+        AdminWallet.mainnetAddresses[0]
+      )
+
+      let ownercDaiBalanceAfter = await this.cDai.methods
+        .balanceOf(AdminWallet.mainnetAddresses[0])
+        .call()
+        .then(_ => _.toString())
+
+      log.info('mockInterest minted fake cDai, transferring to staking contract...', { ownercDaiBalanceAfter })
+      await AdminWallet.sendTransactionMainnet(
+        this.cDai.methods.transfer(this.stakingAddress, ownercDaiBalanceAfter),
+        {},
+        {},
+        AdminWallet.mainnetAddresses[0]
+      )
+    }
+  }
   run = async () => {
     try {
+      await this.mockInterest()
+      const availableInterest = await this.getAvailableInterest().then(_ => _.toString())
       const nextCollectionTime = await this.getNextCollectionTime()
+      log.info('starting collect interest', { availableInterest, nextCollectionTime: nextCollectionTime.toString() })
       if (nextCollectionTime.isAfter()) {
         return { result: 'waiting', cronTime: nextCollectionTime }
       }
