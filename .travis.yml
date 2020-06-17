@@ -20,9 +20,11 @@ env:
 before_script:
   - pushd node_modules/@gooddollar/goodcontracts
   - npm ci
-  - npm run ganache &
+  - cd stakingModel
+  - npm ci
+  - npm run ganache:test &
   - npm run wait
-  - npm run deploy
+  - npm run start:withmain
   - popd
 
 script:
