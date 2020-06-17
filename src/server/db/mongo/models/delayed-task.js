@@ -22,13 +22,15 @@ export const DelayedTaskSchema = new Schema({
   userIdentifier: {
     type: ObjectId,
     ref: MODEL_USER_PRIVATE,
-    required: false
+    required: false,
+    unique: false
   },
   taskName: {
     // name (type, kind) of the delayed task. For 24h it should be 'verification/dispose_enrollments' (defined as constant in EnrollmentProcessor.js)
     type: String,
     required: true,
-    index: true
+    index: true,
+    unique: false
   },
   subject: {
     // some parameters (subject, options) of the task. Could be string number or object corresponding to the kind of the task.

@@ -220,7 +220,10 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
         if (verified === false) return
 
-        await storage.updateUser({ identifier: user.loggedInAs, smsValidated: true, mobile: tempSavedMobile })
+        await Promise.all([
+          user.mauticId && Mautic.updateContact(user.mauticId, { mobile: tempSavedMobile }),
+          storage.updateUser({ identifier: user.loggedInAs, smsValidated: true, mobile: tempSavedMobile })
+        ])
       }
 
       const signedMobile = await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: tempSavedMobile })
