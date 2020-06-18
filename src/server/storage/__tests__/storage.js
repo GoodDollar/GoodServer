@@ -47,11 +47,21 @@ describe('storageAPI', () => {
     expect(mauticId).toBeTruthy()
   })
 
-  test('check addUserToWhiteList', async () => {
+  test('should not  addUserToWhiteList when faceverification enabled', async () => {
+    config.disableFaceVerification = false
+    const creds = await getCreds(true)
+    let userRecord = { ...creds, ...user, gdAddress: creds.address }
+    userRecord.profilePublickey = String(Math.random())
+    await addUserSteps.addUserToWhiteList(userRecord, console)
+    const userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')
+    expect(userIsCompleted.whiteList).toBeFalsy()
+  })
+
+  test('should addUserToWhiteList when faceverification disabled', async () => {
     config.disableFaceVerification = true
     const creds = await getCreds(true)
     let userRecord = { ...creds, ...user, gdAddress: creds.address }
-    userRecord.profilePublicKey = '' + Math.random()
+    userRecord.profilePublickey = String(Math.random())
     await addUserSteps.addUserToWhiteList(userRecord, console)
     const userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')
     expect(userIsCompleted.whiteList).toBeTruthy()

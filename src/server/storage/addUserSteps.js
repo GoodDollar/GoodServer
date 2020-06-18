@@ -18,7 +18,10 @@ const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
   let user = await UserDBPrivate.getUser(userRecord.identifier)
   const whiteList = get(user, 'isCompleted.whiteList', false)
   if (conf.disableFaceVerification && !whiteList) {
-    logger.debug('addUserToWhiteList whitelisting user...', { address: userRecord.gdAddress })
+    logger.debug('addUserToWhiteList whitelisting user...', {
+      address: userRecord.gdAddress,
+      profile: userRecord.profilePublickey
+    })
     return AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey)
       .then(async r => {
         await UserDBPrivate.completeStep(userRecord.identifier, 'whiteList')
@@ -35,15 +38,13 @@ const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
 }
 
 const updateMauticRecord = async (userRecord: UserRecord, logger: any) => {
-  if (!userRecord.mauticId) {
-    const mauticRecord = await Mautic.createContact(userRecord).catch(e => {
-      logger.error('updateMauticRecord Create Mautic Record Failed', { e, errMessage: e.message, userRecord })
-      throw e
-    })
-    const mauticId = !userRecord.mauticId ? get(mauticRecord, 'contact.fields.all.id', -1) : userRecord.mauticId
-    await UserDBPrivate.updateUser({ identifier: userRecord.identifier, mauticId })
-    logger.debug('updateMauticRecord user mautic record updated', { mauticId, mauticRecord })
-  }
+  const mauticRecord = await Mautic.createContact(userRecord).catch(e => {
+    logger.error('updateMauticRecord Create Mautic Record Failed', { e, errMessage: e.message, userRecord })
+    throw e
+  })
+  const mauticId = !userRecord.mauticId ? get(mauticRecord, 'contact.id', -1) : userRecord.mauticId
+  await UserDBPrivate.updateUser({ identifier: userRecord.identifier, mauticId })
+  logger.debug('updateMauticRecord user mautic record updated', { userRecord, mauticId, mauticRecord })
 
   return true
 }

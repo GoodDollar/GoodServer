@@ -221,16 +221,23 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
         if (verified === false) return
 
-        await storage.updateUser({
-          identifier: user.loggedInAs,
-          smsValidated: true,
-          mobile: hashedNewMobile,
-          'otp.mobile': undefined
-        })
+        let updIndexPromise
         if (currentMobile && currentMobile !== hashedNewMobile) {
-          gunPublic.removeUserFromIndex('mobile', currentMobile)
-          gunPublic.addUserToIndex('mobile', tempSavedMobile, user)
+          updIndexPromise = Promise.all([
+            gunPublic.removeUserFromIndex('mobile', currentMobile),
+            gunPublic.addUserToIndex('mobile', tempSavedMobile, user)
+          ])
         }
+        await Promise.all([
+          updIndexPromise,
+          user.mauticId && Mautic.updateContact(user.mauticId, { mobile: tempSavedMobile }),
+          storage.updateUser({
+            identifier: user.loggedInAs,
+            smsValidated: true,
+            mobile: hashedNewMobile,
+            'otp.mobile': undefined
+          })
+        ])
       }
 
       const signedMobile = await gunPublic.signClaim(user.profilePubkey, { hasMobile: tempSavedMobile })

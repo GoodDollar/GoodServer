@@ -66,7 +66,8 @@ export const Mautic = {
     tags.push(Config.version)
     const mauticRecord = await this.baseQuery('/contacts/new', this.baseHeaders, { ...user, tags })
 
-    const mauticId = get(mauticRecord, 'contact.fields.all.id', -1)
+    const mauticId = get(mauticRecord, 'contact.id', -1)
+    if (mauticId === -1) log.error('Mautic Error createContact failed', { user, tags, mauticRecord })
     await Mautic.deleteContactFromDNC({ mauticId })
 
     return mauticRecord

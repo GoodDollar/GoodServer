@@ -219,7 +219,7 @@ class UserPrivate {
   async hasTasksQueued(taskName: string, filters: object = {}): Promise<boolean> {
     const { taskModel } = this
 
-    return taskModel.exists({ taskName, ...filters })
+    return taskModel.exists({ ...filters, taskName })
   }
 
   /**
@@ -285,10 +285,10 @@ class UserPrivate {
    */
   async removeDelayedTasks(tasksIdentifiers: string[]): Promise<void> {
     const { taskModel, logger } = this
-    const { Running } = DelayedTaskStatus
+    const { Running, Complete } = DelayedTaskStatus
 
     try {
-      await taskModel.deleteMany({ status: Running, _id: { $in: tasksIdentifiers } })
+      await taskModel.deleteMany({ status: { $in: [Running, Complete] }, _id: { $in: tasksIdentifiers } })
     } catch (exception) {
       const { message: errMessage } = exception
       const logPayload = { e: exception, errMessage, tasksIdentifiers }

@@ -1,19 +1,61 @@
 /**
  * @jest-environment node
  */
-import UserDBPrivate from '../mongo/user-privat-provider'
+import storage from '../mongo/user-privat-provider'
 import mongoose from '../mongo-db'
-import _ from 'lodash'
+import { pick, keys } from 'lodash'
 
-const storage = UserDBPrivate
+import { DelayedTaskStatus } from '../mongo/models/delayed-task'
 
-const testUser = { identifier: '00', fullName: 'mongo_test', email: 'test@test.test', mobile: '123456789' }
+const testUserName = 'mongo_test'
+const testTaskName = 'mongo_test'
+const testTaskSubject = 'test_subject'
+const testUser = { identifier: '00', fullName: testUserName, email: 'test@test.test', mobile: '123456789' }
 
 jest.setTimeout(30000)
 
 describe('UserPrivate', () => {
+  const { model: userModel, taskModel } = storage
+
+  const testTasksExists = async isExists =>
+    expect(taskModel.exists({ taskName: testTaskName, subject: testTaskSubject })).resolves.toBe(isExists)
+
+  // check if result obtained from raw query is the same like from storage method
+  const testHasTasksQueued = async () =>
+    storage.hasTasksQueued(testTaskName, { subject: testTaskSubject }).then(testTasksExists)
+
+  const testTaskStatusSwitch = async status => {
+    const { _id } = await storage.enqueueTask(testTaskName, testTaskSubject)
+
+    await storage.fetchTasksForProcessing(testTaskName)
+
+    switch (status) {
+      case DelayedTaskStatus.Complete:
+        await storage.completeDelayedTasks([_id])
+        break
+      case DelayedTaskStatus.Failed:
+        await storage.failDelayedTasks([_id])
+        break
+      default:
+        break
+    }
+
+    await expect(taskModel.find({ taskName: testTaskName })).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          status,
+          lockId: null
+        })
+      ])
+    )
+  }
+
+  beforeEach(async () => {
+    await taskModel.deleteMany({ taskName: testTaskName })
+  })
+
   afterAll(async () => {
-    await storage.model.deleteMany({ fullName: new RegExp('mongo_test', 'i') })
+    await userModel.deleteMany({ fullName: new RegExp(testUserName, 'i') })
   })
 
   it('Should monogo connect', async () => {
@@ -32,7 +74,7 @@ describe('UserPrivate', () => {
     let user = await storage.getByIdentifier(testUser.identifier)
     expect(user).toBeTruthy()
 
-    const userDb = _.pick(user, _.keys(testUser))
+    const userDb = pick(user, keys(testUser))
 
     expect(user.jwt === 'test jwt').toBeTruthy()
     expect(userDb).toMatchObject(testUser)
@@ -45,13 +87,13 @@ describe('UserPrivate', () => {
 
   it('Should getByIdentifier user', async () => {
     let user = await storage.getByIdentifier(testUser.identifier)
-    const userDb = _.pick(user, _.keys(testUser))
+    const userDb = pick(user, keys(testUser))
     expect(userDb).toMatchObject(testUser)
   })
 
   it('Should getUser user', async () => {
     let user = await storage.getUser(testUser.identifier)
-    const userDb = _.pick(user, _.keys(testUser))
+    const userDb = pick(user, keys(testUser))
     expect(userDb).toMatchObject(testUser)
   })
 
@@ -108,7 +150,7 @@ describe('UserPrivate', () => {
   it('Should getUserByEmail', async () => {
     let user = await storage.getUserByEmail(testUser.email)
     expect(user).toBeTruthy()
-    const userDb = _.pick(user, _.keys(testUser))
+    const userDb = pick(user, keys(testUser))
     expect(userDb).toMatchObject(testUser)
   })
 
@@ -149,5 +191,111 @@ describe('UserPrivate', () => {
     let users = await storage.listUsers()
 
     expect(users.length >= listUsers.length).toBeTruthy()
+  })
+
+  it('Should add delayed task', async () => {
+    await testTasksExists(false)
+
+    const wrappedResponse = expect(storage.enqueueTask(testTaskName, testTaskSubject)).resolves
+
+    await wrappedResponse.toHaveProperty('_id')
+    await wrappedResponse.toHaveProperty('subject', testTaskSubject)
+    await wrappedResponse.toHaveProperty('taskName', testTaskName)
+    await testTasksExists(true)
+  })
+
+  it('Should check tasks for existence', async () => {
+    await expect(storage.hasTasksQueued(testTaskName, { subject: testTaskSubject })).resolves.toBeBoolean()
+
+    // check before add (both raw query and hasTasksQueued() should return false)
+    await testHasTasksQueued()
+
+    await storage.enqueueTask(testTaskName, testTaskSubject)
+    // check before add (both raw query and hasTasksQueued() should return true)
+    await testHasTasksQueued()
+  })
+
+  it('Should fetch tasks', async () => {
+    const { _id } = await storage.enqueueTask(testTaskName, testTaskSubject)
+
+    const wrappedResponse = expect(storage.fetchTasksForProcessing(testTaskName)).resolves
+
+    await wrappedResponse.toBeArrayOfSize(1)
+
+    await wrappedResponse.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          _id,
+          taskName: testTaskName,
+          subject: testTaskSubject
+        })
+      ])
+    )
+  })
+
+  it('Should lock tasks fetched', async () => {
+    await storage.enqueueTask(testTaskName, testTaskSubject)
+
+    // this call locks the tasks found and should set running status
+    await expect(storage.fetchTasksForProcessing(testTaskName)).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          status: DelayedTaskStatus.Running,
+          lockId: expect.anything()
+        })
+      ])
+    )
+
+    // so calling fetchTasksForProcessing() again should return empty list
+    await expect(storage.fetchTasksForProcessing(testTaskName)).resolves.toBeArrayOfSize(0)
+  })
+
+  it('Should complete or fail tasks', async () => {
+    await testTaskStatusSwitch(DelayedTaskStatus.Complete)
+    await taskModel.deleteMany({ taskName: testTaskName })
+    await testTaskStatusSwitch(DelayedTaskStatus.Failed)
+  })
+
+  it('Should unlock failed tasks', async () => {
+    const { _id } = await storage.enqueueTask(testTaskName, testTaskSubject)
+
+    await storage.fetchTasksForProcessing(testTaskName)
+    // this unlock running tasks
+    await storage.failDelayedTasks([_id])
+
+    // so the next fetchTasksForProcessing() call now should return tasks
+    await expect(storage.fetchTasksForProcessing(testTaskName)).resolves.toBeArrayOfSize(1)
+  })
+
+  it("Complete/fail shouldn't switch pending status", async () => {
+    const { Complete, Failed } = DelayedTaskStatus
+    const { _id } = await storage.enqueueTask(testTaskName, testTaskSubject)
+
+    // we sholdn't be able to update status for task aren't locked via fetchTasksForProcessing()
+    await storage.failDelayedTasks([_id])
+    await storage.completeDelayedTasks([_id])
+
+    // no complete/failed tasks should be found despite we've called corresponding storage methods
+    await expect(
+      taskModel.find({ taskName: testTaskName, status: { $in: [Complete, Failed] } })
+    ).resolves.toBeArrayOfSize(0)
+  })
+
+  it('Should remove delayed tasks', async () => {
+    const { _id } = await storage.enqueueTask(testTaskName, testTaskSubject)
+
+    await testTasksExists(true)
+    await storage.fetchTasksForProcessing(testTaskName)
+
+    await expect(storage.removeDelayedTasks([_id])).resolves.toBeUndefined()
+    await testTasksExists(false)
+  })
+
+  it("Shouldn't remove pending tasks", async () => {
+    const { _id } = await storage.enqueueTask(testTaskName, testTaskSubject)
+
+    await testTasksExists(true)
+    await storage.removeDelayedTasks([_id])
+    await testTasksExists(true)
   })
 })

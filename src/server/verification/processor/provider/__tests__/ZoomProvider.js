@@ -141,60 +141,29 @@ describe('ZoomProvider', () => {
       .onPost('/search')
       .networkErrorOnce()
 
-    await testEnrollmentServiceError('Request failed with status code 500')
+    await testEnrollmentServiceError(helper.serviceErrorMessage)
     await testEnrollmentServiceError('Network Error')
   })
 
-  test('enrollmentExists() checks existing enrollment', async () => {
-    zoomServiceMock.onGet(helper.enrollmentUri(enrollmentIdentifier)).reply(200, {
-      meta: {
-        ok: true,
-        code: 200,
-        mode: 'dev',
-        message: 'A FaceMap was found for that enrollmentIdentifier.'
-      },
-      data: {
-        enrollmentIdentifier,
-        createDate: '2017-01-01T00:00:00+00:00',
-        auditTrailImage: 'data:image/png:FaKEimagE==',
-        faceMap: Buffer.alloc(32).toString(),
-        faceMapType: 0
-      }
-    })
-
+  test('enrollmentExists() checks enrollment existence', async () => {
+    helper.mockEnrollmentFound(enrollmentIdentifier)
     await expect(ZoomProvider.enrollmentExists(enrollmentIdentifier)).resolves.toBe(true)
-  })
 
-  test('enrollmentExists() checks non-existing enrollment and not throws, just returns false', async () => {
-    zoomServiceMock.onGet(helper.enrollmentUri(enrollmentIdentifier)).reply(400, {
-      meta: {
-        ok: true,
-        code: 400,
-        mode: 'dev',
-        message: 'No entry found in the database for this enrollmentIdentifier.',
-        subCode: 'facemapNotFound'
-      }
-    })
-
+    helper.mockEnrollmentNotFound(enrollmentIdentifier)
     await expect(ZoomProvider.enrollmentExists(enrollmentIdentifier)).resolves.toBe(false)
   })
 
-  test('dispose() removes existing enrollment', async () => {
-    zoomServiceMock.onDelete(helper.enrollmentUri(enrollmentIdentifier)).reply(200, {
-      meta: {
-        ok: true,
-        code: 200,
-        mode: 'dev',
-        message: 'The entry in the database for this enrollmentIdentifier was successfully deleted.'
-      }
-    })
+  test("dispose() removes existing enrollment, doesn't throws for unexisting", async () => {
+    helper.mockEnrollmentFound(enrollmentIdentifier)
+    await expect(ZoomProvider.dispose(enrollmentIdentifier)).resolves.toBeUndefined()
 
+    helper.mockEnrollmentNotFound(enrollmentIdentifier)
     await expect(ZoomProvider.dispose(enrollmentIdentifier)).resolves.toBeUndefined()
   })
 
-  test('dispose() not throws trying to remove non-existing enrollment', async () => {
-    helper.mockFailedRemoval(enrollmentIdentifier)
+  test('dispose() throws on Zoom service error', async () => {
+    helper.mockServiceErrorHappenedWhileDisposing(enrollmentIdentifier)
 
-    await expect(ZoomProvider.dispose(enrollmentIdentifier)).resolves.toBeUndefined()
+    await expect(ZoomProvider.dispose(enrollmentIdentifier)).rejects.toThrow(helper.serviceErrorMessage)
   })
 })
