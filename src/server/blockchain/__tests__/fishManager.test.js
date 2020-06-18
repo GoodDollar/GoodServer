@@ -13,29 +13,29 @@ describe('fishManager', () => {
     await AdminWallet.ready
   })
 
-  test(`fishManager get next day should be in the future`, async () => {
+  test(`fishManager get next day should be in the future (need to run script simulateInterestDays.js in goodcontracts)`, async () => {
     const nextDay = await fishManager.getNextDay()
     expect(nextDay.isAfter()).toBeTruthy()
   })
 
-  test(`fishManager should find UBICalculated days`, async () => {
+  test(`fishManager should find UBICalculated days (need to run script simulateInterestDays.js in goodcontracts)`, async () => {
     const { searchStartDay, searchEndDay, maxInactiveDays } = await fishManager.getUBICalculatedDays()
     expect(maxInactiveDays).toBeGreaterThan(0)
     expect(searchStartDay.returnValues.blockNumber.toNumber()).toBeGreaterThan(0)
     expect(searchEndDay.returnValues.blockNumber.toNumber()).toBeGreaterThan(
       searchStartDay.returnValues.blockNumber.toNumber()
     )
-    expect(searchStartDay.returnValues.day.toNumber()).toEqual(1)
-    expect(searchEndDay.returnValues.day.toNumber()).toEqual(2)
+    expect(searchStartDay.returnValues.day.toNumber()).toBeGreaterThan(1)
+    expect(searchEndDay.returnValues.day.toNumber()).toEqual(searchStartDay.returnValues.day.toNumber() + 1)
   })
 
-  test(`fishManager should find inactive accounts in interval`, async () => {
+  test(`fishManager should find inactive accounts in interval (need to run script simulateInterestDays.js in goodcontracts)`, async () => {
     const inactiveAcounts = await fishManager.getInactiveAccounts()
     expect(inactiveAcounts.length).toEqual(1)
     expect(inactiveAcounts[0].length).toEqual(42) //eth address length
   })
 
-  test(`fishManager should fish account and return next run time`, async () => {
+  test(`fishManager should fish account and return next run time (need to run script simulateInterestDays.js in goodcontracts)`, async () => {
     const { result, cronTime, fishers } = await fishManager.run()
     expect(result).toBeTruthy() //success
     expect(cronTime.isAfter()).toBeTruthy() //crontime in future
@@ -49,6 +49,6 @@ describe('fishManager', () => {
       )
     )
     const dailyUbi = await fishManager.ubiContract.methods.dailyUbi.call().then(_ => _.toNumber())
-    balances.forEach(b => expect(b).toEqual(dailyUbi)) //fisher balance should have the daily claim
+    balances.forEach(b => expect(b).toBeGreaterThanOrEqual(dailyUbi)) //fisher balance should have the daily claim
   })
 })
