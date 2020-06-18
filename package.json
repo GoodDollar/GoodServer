@@ -4,7 +4,7 @@
   "description": "GoodDollar Server",
   "main": "src/server/index.js",
   "engines": {
-    "node": "10.15.*"
+    "node": "10.20.*"
   },
   "scripts": {
     "build": "webpack --mode production --config webpack.server.config.js",
@@ -43,7 +43,7 @@
   "homepage": "https://gooddollar.org",
   "dependencies": {
     "@babel/polyfill": "^7.4.4",
-    "@gooddollar/goodcontracts": "^2.0.0-beta.0",
+    "@gooddollar/goodcontracts": "^2.0.0-beta.1",
     "@sendgrid/mail": "^6.4.0",
     "apidoc": "^0.17.7",
     "apidoc-markdown": "^0.2.1",
