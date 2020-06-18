@@ -77,7 +77,11 @@ export class StakingModelManager {
         {},
         {}
       )
-      await Promise.all([tx1, tx2])
+      await Promise.all([tx1, tx2]).catch(e => {
+        log.warn('mockInterest dai approve and allocateTo failed', { e, msg: e.message })
+        throw e
+      })
+      log.info('mockInterest approved and allocated dai. minting cDai...')
       const tx3 = await AdminWallet.sendTransactionMainnet(
         this.cDai.methods.mint(toWei('100', 'ether')),
         {},
