@@ -18,7 +18,10 @@ const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
   let user = await UserDBPrivate.getUser(userRecord.identifier)
   const whiteList = get(user, 'isCompleted.whiteList', false)
   if (conf.disableFaceVerification && !whiteList) {
-    logger.debug('addUserToWhiteList whitelisting user...', { address: userRecord.gdAddress })
+    logger.debug('addUserToWhiteList whitelisting user...', {
+      address: userRecord.gdAddress,
+      profile: userRecord.profilePublickey
+    })
     return AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey)
       .then(async r => {
         await UserDBPrivate.completeStep(userRecord.identifier, 'whiteList')
