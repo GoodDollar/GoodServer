@@ -511,7 +511,7 @@ export class Wallet {
         gas ||
         (await tx
           .estimateGas()
-          .then(gas => gas + 50000) //buffer for proxy contract, reimburseGas?
+          .then(gas => gas + 200000) //buffer for proxy contract, reimburseGas?
           .catch(e => log.error('Failed to estimate gas for tx', { errMessage: e.message, e }))) ||
         defaultGas
 
