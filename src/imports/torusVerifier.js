@@ -1,5 +1,6 @@
 import FetchNodeDetails from '@toruslabs/fetch-node-details/dist/fetchNodeDetails-node.js'
 import TorusUtils from '@toruslabs/torus.js/dist/torusUtils-node.js'
+import moment from 'moment'
 import Config from '../server/server.config'
 import { recoverPublickey } from '../server/utils/eth'
 class TorusVerifier {
@@ -64,7 +65,7 @@ class TorusVerifier {
     return true
   }
   async verifyProof(signature, torusType, userRecord, nonce) {
-    if (Date.now() - nonce > 60000) {
+    if (moment().diff(moment(nonce), 'minutes') >= 1) {
       throw new Error('torus proof nonce invalid:' + nonce)
     }
     //TODO: use auth token to verify facebook users

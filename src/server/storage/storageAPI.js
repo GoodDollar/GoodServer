@@ -1,10 +1,9 @@
 // @flow
 import { Router } from 'express'
 import passport from 'passport'
-import get from 'lodash/get'
+import { defaults, get, omit } from 'lodash'
 import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync } from '../utils/helpers'
-import { defaults } from 'lodash'
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import addUserSteps from './addUserSteps'
@@ -33,18 +32,18 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       //if torus, then we first verify the user mobile/email by verifying it matches the torus public key
       //(torus maps identifier such as email and mobile to private/public key pairs)
-      if (body.user.torusProof) {
+      const { torusProof, torusProvider, torusProofNonce, email, mobile, ...bodyUser } = body.user || {}
+      if (torusProof) {
         const { emailVerified, mobileVerified } = await TorusVerifier.verifyProof(
-          body.user.torusProof,
-          body.user.torusProvider,
+          torusProof,
+          torusProvider,
           body.user,
-          body.user.torusProofNonce
+          torusProofNonce
         ).catch(e => {
           logger.warn('TorusVerifier failed:', { e, msg: e.message })
           return { emailVerified: false, mobileVerified: false }
         })
-        delete body.user.torusProof
-        delete body.user.torusProofNonce
+
         logger.info('TorusVerifier result:', { emailVerified, mobileVerified })
         userRecord.smsValidated |= mobileVerified
         userRecord.isEmailConfirmed |= emailVerified
@@ -62,8 +61,6 @@ const setup = (app: Router, storage: StorageAPI) => {
       if (!conf.allowDuplicateUserData && userRecord.createdDate) {
         throw new Error('You cannot create more than 1 account with the same credentials')
       }
-
-      const { email, mobile, ...bodyUser } = body.user
 
       const user: UserRecord = defaults(bodyUser, {
         identifier: userRecord.loggedInAs,
