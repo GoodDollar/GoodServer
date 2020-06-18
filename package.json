@@ -26,7 +26,16 @@
     "type": "git",
     "url": "https://github.com/GoodDollar/GoodServer.git"
   },
-  "keywords": ["UBI", "basic", "income", "gooddollar", "dapp", "ethereum", "smart", "contracts"],
+  "keywords": [
+    "UBI",
+    "basic",
+    "income",
+    "gooddollar",
+    "dapp",
+    "ethereum",
+    "smart",
+    "contracts"
+  ],
   "author": "GoodDollar Community <builders@gooddollar.org>",
   "license": "MIT",
   "bugs": {
@@ -153,6 +162,9 @@
     }
   },
   "lint-staged": {
-    "*.js": ["eslint --fix", "git add"]
+    "*.js": [
+      "eslint --fix",
+      "git add"
+    ]
   }
 }
