@@ -25,7 +25,7 @@ describe('fishManager', () => {
     expect(searchEndDay.returnValues.blockNumber.toNumber()).toBeGreaterThan(
       searchStartDay.returnValues.blockNumber.toNumber()
     )
-    expect(searchStartDay.returnValues.day.toNumber()).toBeGreaterThan(1)
+    expect(searchStartDay.returnValues.day.toNumber()).toBeGreaterThan(0)
     expect(searchEndDay.returnValues.day.toNumber()).toEqual(searchStartDay.returnValues.day.toNumber() + 1)
   })
 
