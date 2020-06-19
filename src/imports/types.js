@@ -44,6 +44,8 @@ export interface StorageAPI {
   updateUser(user: UserRecord): Promise<boolean>;
   deleteUser(user: UserRecord): Promise<boolean>;
   listUsers(cb: ({ [string]: UserRecord }) => void): void;
+  removeUserFromIndex(index: string, key: string): Promise<any>;
+  addUserToIndex(index: string, key: string, user: LoggedUser): Promise<any>;
 }
 
 export interface VerificationAPI {

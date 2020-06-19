@@ -4,7 +4,7 @@ import type { NextFunction } from 'express'
 import bodyParser from 'body-parser'
 import cors from 'cors'
 import addLoginMiddlewares from './login/login-middleware'
-import { setup as addGunMiddlewares } from './gun/gun-middleware'
+import { setup as addGunMiddlewares, GunDBPublic } from './gun/gun-middleware'
 import UserDBPrivate from './db/mongo/user-privat-provider'
 import CronTasksRunner from './cron/TaskRunner'
 import addStorageMiddlewares from './storage/storageAPI'
@@ -31,8 +31,8 @@ export default (app: Router, env: any) => {
   addCypressMiddleware(app)
   addLoginMiddlewares(app)
   addGunMiddlewares(app)
-  addStorageMiddlewares(app, UserDBPrivate)
-  addVerificationMiddlewares(app, VerificationAPI, UserDBPrivate)
+  addStorageMiddlewares(app, GunDBPublic, UserDBPrivate)
+  addVerificationMiddlewares(app, VerificationAPI, GunDBPublic, UserDBPrivate)
   addSendMiddlewares(app, UserDBPrivate)
   addClaimQueueMiddlewares(app, UserDBPrivate)
   addLoadTestMiddlewares(app)
