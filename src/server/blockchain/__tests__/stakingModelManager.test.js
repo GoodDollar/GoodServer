@@ -26,14 +26,18 @@ describe('stakingModelManager', () => {
 
   beforeAll(async () => {
     await AdminWallet.ready
-    await next_interval(100)
   })
 
-  afterAll(async () => {
-    await delay(5000) //TODO: this should be commented when not debugging
+  //run this first so next tests dont fail
+  test(`stakingModelManager should mock interest`, async () => {
+    const gains = await fundManager.getAvailableInterest()
+    await fundManager.mockInterest()
+    const gains2 = await fundManager.getAvailableInterest()
+    expect(gains2[0].toNumber()).toBeGreaterThan(gains[0].toNumber())
   })
 
   test(`stakingModelManager should know when to run`, async () => {
+    await next_interval(100)
     const canRun = await fundManager.canCollectFunds()
     expect(canRun).toBeTruthy()
   })
@@ -46,13 +50,6 @@ describe('stakingModelManager', () => {
   test(`stakingModelManager should see positive interest gains`, async () => {
     const gains = await fundManager.getAvailableInterest()
     expect(gains[0].toNumber()).toBeGreaterThan(0)
-  })
-
-  test(`stakingModelManager should mock interest`, async () => {
-    const gains = await fundManager.getAvailableInterest()
-    await fundManager.mockInterest()
-    const gains2 = await fundManager.getAvailableInterest()
-    expect(gains2[0].toNumber()).toBeGreaterThan(gains[0].toNumber())
   })
 
   let transferBlock, ubiAmount
