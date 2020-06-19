@@ -1,8 +1,10 @@
 //@flow
+import { sha3 } from 'web3-utils'
 import { v4 as uuidv4 } from 'uuid'
 import { get } from 'lodash'
 
 import UserPrivateModel from './models/user-private'
+import PropsModel from './models/props.js'
 import DelayedTaskModel, { DelayedTaskStatus } from './models/delayed-task'
 import logger from '../../../imports/logger'
 
