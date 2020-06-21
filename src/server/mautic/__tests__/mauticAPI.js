@@ -8,16 +8,23 @@ import conf from '../../server.config'
 describe('Send', () => {
   var mauticId = ''
   it('should add new contact', async () => {
-    const res = await Mautic.createContact({ firstname: 'h', lastname: 'r', email: 'hadar@gooddollar.org' })
+    const res = await Mautic.createContact({ firstname: 'h', lastname: 'r', email: 'hadartest@gooddollar.org' })
     mauticId = res.contact.fields.all.id
     expect(res.contact.fields.all).toEqual(
       expect.objectContaining({
         id: expect.any(Number),
-        email: 'hadar@gooddollar.org',
+        email: 'hadartest@gooddollar.org',
         firstname: 'h',
         lastname: 'r'
       })
     )
+  })
+
+  it('should add tag to contact', async () => {
+    const tagres = await Mautic.updateContact(mauticId, { tags: ['testtag'] })
+
+    const foundTag = tagres.contact.tags.find(t => t.tag === 'testtag')
+    expect(foundTag).toBeTruthy()
   })
 
   it('should add to dcn list ', async () => {
@@ -63,5 +70,24 @@ describe('Send', () => {
       'https://gooddapp.com/?magiclink=testmagiclink'
     )
     expect(res).toEqual({ success: true })
+  })
+
+  it('should add contact to segment', async () => {
+    const res = await Mautic.addContactsToSegment([mauticId], conf.mauticClaimQueueApprovedSegmentId)
+    expect(res.details[mauticId].success).toEqual(true)
+  })
+
+  it('should delete contact', async () => {
+    const res = await Mautic.deleteContact({
+      fullName: 'h r',
+      mauticId
+    })
+    expect(res.contact.fields.all).toEqual(
+      expect.objectContaining({
+        email: 'hadartest@gooddollar.org',
+        firstname: 'h',
+        lastname: 'r'
+      })
+    )
   })
 })

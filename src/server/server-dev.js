@@ -12,11 +12,11 @@ process.on('uncaughtException', (err, origin) => {
   console.log(err.stack)
   process.exit(-1)
 })
-
 process.on('unhandledRejection', (reason, promise) => {
   console.log('Unhandled Rejection at:', promise, 'reason:', reason)
   // Application specific logging, throwing an error, or other logic here
 })
+
 const compiler = webpack(config)
 // app.use(webpackDevMiddleware(compiler, {
 //   publicPath: config.output.publicPath

@@ -15,6 +15,8 @@ import addCypressMiddleware from './cypress/cypress-middleware'
 import { rollbar, addRequestLogger } from '../imports/logger'
 import VerificationAPI from './verification/verification'
 import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
+import addClaimQueueMiddlewares from './claimQueue/claimQueueAPI'
+
 export default (app: Router, env: any) => {
   // parse application/x-www-form-urlencoded
   // for easier testing with Postman or plain HTML forms
@@ -32,6 +34,7 @@ export default (app: Router, env: any) => {
   addStorageMiddlewares(app, UserDBPrivate)
   addVerificationMiddlewares(app, VerificationAPI, UserDBPrivate)
   addSendMiddlewares(app, UserDBPrivate)
+  addClaimQueueMiddlewares(app, UserDBPrivate)
   addLoadTestMiddlewares(app)
 
   if (rollbar) app.use(rollbar.errorHandler())
