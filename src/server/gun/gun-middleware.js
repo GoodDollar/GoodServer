@@ -145,7 +145,12 @@ class GunDB implements StorageAPI {
    * @param {string} name folder to store gundb
    * @param {S3Conf} [s3] optional S3 settings instead of local file storage
    */
-  init(server: typeof express | Array<string> | null, password: string, name: string, s3?: S3Conf): Promise<boolean> {
+  async init(
+    server: typeof express | Array<string> | null,
+    password: string,
+    name: string,
+    s3?: S3Conf
+  ): Promise<boolean> {
     //gun lib/les.js settings
     const gc_delay = conf.gunGCInterval || 1 * 60 * 1000 /*1min*/
     const memory = conf.gunGCMaxMemoryMB || 512
@@ -179,6 +184,8 @@ class GunDB implements StorageAPI {
     }
     this.user = this.gun.user()
     this.serverName = name
+    const gooddollarUser = await this.gun.get('~@gooddollarorg').onThen()
+    log.info('Existing gooddollarorg user:', { gooddollarUser })
     this.ready = new Promise((resolve, reject) => {
       this.user.create('gooddollarorg', password, createres => {
         log.info('Created gundb GoodDollar User', { name })
