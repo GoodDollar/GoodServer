@@ -18,10 +18,16 @@ class DBUpdates {
       await Promise.all([
         this.upgrade()
           .then(_ => logger.info('upgrade done'))
-          .catch(e => logger.error('upgrade failed', { err: e.message, e })),
+          .catch(e => {
+            logger.error('upgrade failed', { err: e.message, e })
+            throw e
+          }),
         this.upgradeGun()
           .then(_ => logger.info('gun upgrade done'))
-          .catch(e => logger.error('gun upgrade failed', { err: e.message, e }))
+          .catch(e => {
+            logger.error('gun upgrade failed', { err: e.message, e })
+            throw e
+          })
       ])
       await PropsModel.updateOne({ name: 'DATABASE_VERSION' }, { $set: { value: { version: 1 } } }, { upsert: true })
     }
