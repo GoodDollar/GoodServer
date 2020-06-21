@@ -31,6 +31,7 @@ export default class queueMongo {
     this.model.watch(filter, options).on('change', async data => {
       await this.run()
     })
+    this.log.info('queueMongo created')
   }
 
   /**

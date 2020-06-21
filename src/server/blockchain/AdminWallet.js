@@ -16,7 +16,7 @@ import { type TransactionReceipt } from './blockchain-types'
 import moment from 'moment'
 import get from 'lodash/get'
 
-import txManager, { getManager } from '../utils/tx-manager'
+import { getManager } from '../utils/tx-manager'
 import gdToWei from '../utils/gdToWei'
 
 import * as web3Utils from 'web3-utils'
@@ -65,6 +65,7 @@ export class Wallet {
     this.wallets = {}
     this.numberOfAdminWalletAccounts = conf.privateKey ? 1 : conf.numberOfAdminWalletAccounts
     this.network = conf.network
+    this.networkIdMainnet = conf.ethereumMainnet.network_id
     this.networkId = conf.ethereum.network_id
     this.ready = this.init()
   }
@@ -127,6 +128,7 @@ export class Wallet {
   async init() {
     log.debug('Initializing wallet:', { conf: conf.ethereum, mainnet: conf.ethereumMainnet })
     this.mainnetTxManager = getManager(conf.ethereumMainnet.network_id)
+    this.txManager = getManager(conf.ethereum.network_id)
     this.web3 = new Web3(this.getWeb3TransportProvider(), null, {
       defaultBlock: 'latest',
       defaultGasPrice,
@@ -172,9 +174,9 @@ export class Wallet {
       log.error('AdminWallet contract low funds')
       if (conf.env !== 'test') process.exit(-1)
     }
-    txManager.getTransactionCount = this.web3.eth.getTransactionCount
+    this.txManager.getTransactionCount = this.web3.eth.getTransactionCount
     this.mainnetTxManager.getTransactionCount = this.mainnetWeb3.eth.getTransactionCount
-    await txManager.createListIfNotExists(this.addresses)
+    await this.txManager.createListIfNotExists(this.addresses)
     await this.mainnetTxManager.createListIfNotExists(this.mainnetAddresses)
 
     for (let addr of this.addresses) {
@@ -289,7 +291,7 @@ export class Wallet {
     if (ubiEvents.length === 0) {
       return
     }
-    const { release, fail } = await txManager.lock(user.gdAddress, 0)
+    const { release, fail } = await this.txManager.lock(user.gdAddress, 0)
     const recheck = await storage.getUserField(user.identifier, 'hanukaBonus')
     if (recheck && recheck[dayField]) {
       release()
@@ -522,7 +524,7 @@ export class Wallet {
 
       const uuid = Crypto.randomBytes(5).toString('base64')
       log.debug('getting tx lock:', { uuid })
-      const { nonce, release, fail, address } = await txManager.lock(this.filledAddresses)
+      const { nonce, release, fail, address } = await this.txManager.lock(this.filledAddresses)
       log.debug('got tx lock:', { uuid, address })
 
       let balance = NaN
@@ -556,11 +558,11 @@ export class Wallet {
                 address,
                 newNonce: netNonce
               })
-              await txManager.unlock(address, netNonce)
+              await this.txManager.unlock(address, netNonce)
               try {
                 res(await this.sendTransaction(tx, txCallbacks, { gas, gasPrice }))
               } catch (e) {
-                await txManager.unlock(address)
+                await this.txManager.unlock(address)
                 rej(e)
               }
             } else {
@@ -571,7 +573,7 @@ export class Wallet {
           })
       })
     } catch (e) {
-      await txManager.unlock(currentAddress)
+      await this.txManager.unlock(currentAddress)
       throw new Error(e)
     }
   }
@@ -600,7 +602,7 @@ export class Wallet {
       gas = gas || defaultGas
       gasPrice = gasPrice || defaultGasPrice
 
-      const { nonce, release, fail, address } = await txManager.lock(this.filledAddresses)
+      const { nonce, release, fail, address } = await this.txManager.lock(this.filledAddresses)
       log.debug('sendNative', { nonce, gas, gasPrice })
       currentAddress = address
 
@@ -631,11 +633,11 @@ export class Wallet {
                 address,
                 newNonce: netNonce
               })
-              await txManager.unlock(address, netNonce)
+              await this.txManager.unlock(address, netNonce)
               try {
                 res(await this.sendNative(params, txCallbacks, { gas, gasPrice }))
               } catch (e) {
-                await txManager.unlock(address)
+                await this.txManager.unlock(address)
                 rej(e)
               }
             } else {
@@ -646,7 +648,7 @@ export class Wallet {
           })
       })
     } catch (e) {
-      await txManager.unlock(currentAddress)
+      await this.txManager.unlock(currentAddress)
       throw new Error(e)
     }
   }
@@ -697,7 +699,7 @@ export class Wallet {
       currentAddress = address
       log.debug(`sending tx from: ${address} | nonce: ${nonce}`, { uuid, balance, gas, gasPrice })
       return new Promise((res, rej) => {
-        tx.send({ gas, gasPrice, chainId: this.networkId, nonce, from: address })
+        tx.send({ gas, gasPrice, chainId: this.networkIdMainNet, nonce, from: address })
           .on('transactionHash', h => {
             release()
             log.debug('got tx hash:', { uuid })
