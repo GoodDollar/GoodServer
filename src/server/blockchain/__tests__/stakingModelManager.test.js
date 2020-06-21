@@ -12,7 +12,7 @@ const next_interval = async function(interval = 5760) {
     ps.push(AdminWallet.web3.currentProvider.send('evm_mine'))
     if (i % 100 === 0) {
       console.log('evm_mine', i)
-      await delay(500)
+      await delay(1000)
     }
   }
   return Promise.all(ps)
@@ -30,6 +30,7 @@ describe('stakingModelManager', () => {
 
   //run this first so next tests dont fail
   test(`stakingModelManager should mock interest`, async () => {
+    await next_interval(101)
     const gains = await fundManager.getAvailableInterest()
     await fundManager.mockInterest()
     const gains2 = await fundManager.getAvailableInterest()
@@ -37,7 +38,6 @@ describe('stakingModelManager', () => {
   })
 
   test(`stakingModelManager should know when to run`, async () => {
-    await next_interval(100)
     const canRun = await fundManager.canCollectFunds()
     expect(canRun).toBeTruthy()
   })
