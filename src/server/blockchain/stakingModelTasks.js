@@ -11,7 +11,6 @@ import delay from 'delay'
 import moment from 'moment'
 import { toWei } from 'web3-utils'
 import config from '../server.config'
-const log = logger.child({ from: 'StakingModelManager' })
 
 const BRIDGE_TRANSFER_TIMEOUT = 60 * 1000 * 5 //5 min
 /**
@@ -25,6 +24,7 @@ export class StakingModelManager {
   cDaiAddress = this.addresses['cDAI']
 
   constructor() {
+    this.log = logger.child({ from: 'StakingModelManager' })
     this.managerContract = AdminWallet.mainnetWeb3.eth.Contract(FundManagerABI.abi, this.managerAddress)
     this.stakingContract = AdminWallet.mainnetWeb3.eth.Contract(StakingABI.abi, this.stakingAddress)
     this.dai = AdminWallet.mainnetWeb3.eth.Contract(DaiABI.abi, this.daiAddress)
@@ -50,7 +50,7 @@ export class StakingModelManager {
       {}
     )
     const fundsEvent = get(fundsTX, 'events.FundsTransferred')
-    log.info('transferInterest result event', { fundsEvent })
+    this.log.info('transferInterest result event', { fundsEvent })
     return fundsEvent
   }
 
@@ -58,7 +58,7 @@ export class StakingModelManager {
     let canCollectFunds = await this.canCollectFunds()
     if (canCollectFunds === false) {
       const blocksForNextCollection = await this.blocksUntilNextCollection()
-      log.info('canRun result:', { canCollectFunds, blocksForNextCollection })
+      this.log.info('canRun result:', { canCollectFunds, blocksForNextCollection })
       return moment().add(blocksForNextCollection * 15, 'seconds')
     }
     return moment()
@@ -78,10 +78,10 @@ export class StakingModelManager {
         {}
       )
       await Promise.all([tx1, tx2]).catch(e => {
-        log.warn('mockInterest dai approve and allocateTo failed', { e, msg: e.message })
+        this.log.warn('mockInterest dai approve and allocateTo failed', { e, msg: e.message })
         throw e
       })
-      log.info('mockInterest approved and allocated dai. minting cDai...')
+      this.log.info('mockInterest approved and allocated dai. minting cDai...')
       const tx3 = await AdminWallet.sendTransactionMainnet(
         this.cDai.methods.mint(toWei('100', 'ether')),
         {},
@@ -94,7 +94,7 @@ export class StakingModelManager {
         .call()
         .then(_ => _.toString())
 
-      log.info('mockInterest minted fake cDai, transferring to staking contract...', { ownercDaiBalanceAfter })
+      this.log.info('mockInterest minted fake cDai, transferring to staking contract...', { ownercDaiBalanceAfter })
       await AdminWallet.sendTransactionMainnet(
         this.cDai.methods.transfer(this.stakingAddress, ownercDaiBalanceAfter),
         {},
@@ -107,37 +107,40 @@ export class StakingModelManager {
     try {
       const nextCollectionTime = await this.getNextCollectionTime()
       if (nextCollectionTime.isAfter()) {
-        log.info('waiting for collect interest time', { nextCollectionTime })
+        this.log.info('waiting for collect interest time', { nextCollectionTime })
         return { result: 'waiting', cronTime: nextCollectionTime }
       }
-      log.info('starting collect interest', { availableInterest, nextCollectionTime: nextCollectionTime.toString() })
-      await this.mockInterest()
       const availableInterest = await this.getAvailableInterest().then(_ => _.toString())
+      this.log.info('starting collect interest', {
+        availableInterest,
+        nextCollectionTime: nextCollectionTime.toString()
+      })
+      await this.mockInterest()
       const fundsEvent = await this.transferInterest()
       if (fundsEvent === undefined) {
         const cronTime = await this.getNextCollectionTime()
-        log.warn('No transfered funds event found. (interest was 0?)', { cronTime })
+        this.log.warn('No transfered funds event found. (interest was 0?)', { cronTime })
         return { result: 'no interest', cronTime }
       }
       const ubiTransfered = fundsEvent.gdUBI.toString()
       if (ubiTransfered === '0') {
-        log.warn('No UBI was transfered to bridge')
+        this.log.warn('No UBI was transfered to bridge')
       } else {
-        log.info('ubi interest collected. waiting for bridge...', { gdUBI: ubiTransfered })
+        this.log.info('ubi interest collected. waiting for bridge...', { gdUBI: ubiTransfered })
         //wait for funds to transfer via bridge
         const transferEvent = await this.waitForBridgeTransfer(fundsEvent.blockNumber, Date.now(), ubiTransfered)
-        log.info('ubi success: bridge transfer event found', {
+        this.log.info('ubi success: bridge transfer event found', {
           ubiGenerated: transferEvent.returnValues.value.toString()
         })
       }
       const cronTime = await this.getNextCollectionTime()
-      log.info('next run:', { cronTime })
+      this.log.info('next run:', { cronTime })
       return { result: true, cronTime }
     } catch (e) {
       const cronTime = await this.getNextCollectionTime()
       //make sure atleast one hour passes in case of an error
       if (cronTime.isBefore(moment().add(1, 'hour'))) cronTime.add(1, 'hour')
-      log.error('collecting interest failed.', { e, errMsg: e.message, cronTime })
+      this.log.error('collecting interest failed.', { e, errMsg: e.message, cronTime })
       return { result: false, cronTime }
     }
   }
@@ -158,7 +161,13 @@ export class StakingModelManager {
         value
       }
     })
-    log.info('waitforBirgdeTransfer events:', { fromBlock, start, res, bridge: this.homeBridge, ubi: this.ubiScheme })
+    this.log.info('waitforBirgdeTransfer events:', {
+      fromBlock,
+      start,
+      res,
+      bridge: this.homeBridge,
+      ubi: this.ubiScheme
+    })
     if (res && res.length > 0) {
       return res[0]
     }
@@ -180,6 +189,7 @@ class FishingManager {
   ubiScheme = get(ContractsAddress, `${AdminWallet.network}.UBIScheme`)
 
   constructor() {
+    this.log = logger.child({ from: 'FishingManager' })
     this.ubiContract = AdminWallet.mainnetWeb3.eth.Contract(UBISchemeABI.abi, this.ubiScheme)
   }
 
@@ -195,7 +205,7 @@ class FishingManager {
       .then(_ => moment(_.timestamp * 1000).startOf('hour'))
     const hoursDiff = blockchainNow.diff(startRef, 'hours')
     const hoursUntil = 24 - (hoursDiff % 24)
-    log.info('fishManager getNextDay', { startRef, blockchainNow, hoursUntil })
+    this.log.info('fishManager getNextDay', { startRef, blockchainNow, hoursUntil })
     return blockchainNow.add(hoursUntil, 'hours')
   }
 
@@ -210,18 +220,18 @@ class FishingManager {
     const daysagoBlocks = dayFuseBlocks * (maxInactiveDays + 1)
     const blocksAgo = Math.max((await AdminWallet.web3.eth.getBlockNumber()) - daysagoBlocks, 0)
     await AdminWallet.sendTransaction(this.ubiContract.methods.setDay(), {}).catch(e =>
-      log.warn('fishManager set day failed')
+      this.log.warn('fishManager set day failed')
     )
     const currentUBIDay = await this.ubiContract.methods.currentDay.call().then(_ => _.toNumber())
-    log.info('getInactiveAccounts', { daysagoBlocks, blocksAgo, currentUBIDay, maxInactiveDays })
+    this.log.info('getInactiveAccounts', { daysagoBlocks, blocksAgo, currentUBIDay, maxInactiveDays })
     //get claims that were done before inactive period days ago, these accounts has the potential to be inactive
     //first we get the starting block
     const ubiEvents = await this.ubiContract
       .getPastEvents('UBICalculated', { fromBlock: blocksAgo })
-      .catch(e => log.warn('fishManager getPastEvents failed'))
+      .catch(e => this.log.warn('fishManager getPastEvents failed'))
     const searchStartDay = ubiEvents.find(e => e.returnValues.day.toNumber() === currentUBIDay - maxInactiveDays)
     const searchEndDay = ubiEvents.find(e => e.returnValues.day.toNumber() === currentUBIDay - maxInactiveDays + 1)
-    log.info('getInactiveAccounts got UBICalculatedEvents:', {
+    this.log.info('getInactiveAccounts got UBICalculatedEvents:', {
       foundEvents: ubiEvents.length,
       startDay: searchStartDay.returnValues.day.toNumber(),
       endDay: searchEndDay.returnValues.day.toNumber(),
@@ -238,7 +248,7 @@ class FishingManager {
     const { searchStartDay, searchEndDay, maxInactiveDays } = await this.getUBICalculatedDays()
 
     if (searchStartDay === undefined) {
-      log.warn('No UBICalculated event found for inactive interval', { maxInactiveDays })
+      this.log.warn('No UBICalculated event found for inactive interval', { maxInactiveDays })
       return []
     }
     //now get accounts that claimed in that day
@@ -259,7 +269,7 @@ class FishingManager {
       })
     )).filter(_ => _)
 
-    log.info('getInactiveAccounts found UBIClaimed events', {
+    this.log.info('getInactiveAccounts found UBIClaimed events', {
       totalEvents: claimEvents.length,
       inactiveFound: inactiveAccounts.length
     })
@@ -273,7 +283,7 @@ class FishingManager {
     const fishTX = await AdminWallet.sendTransaction(this.ubiContract.methods.fishMulti(tofish), {}, { gas: 6000000 })
     const fishEvent = get(fishTX, 'events.TotalFished')
     const totalFished = fishEvent.returnValues.total.toNumber()
-    log.info('Fished accounts', { tofish, totalFished, fisherAccount: fishTX.from, fishEvents: fishTX.events })
+    this.log.info('Fished accounts', { tofish, totalFished, fisherAccount: fishTX.from, fishEvents: fishTX.events })
     return { totalFished, fisherAccount: fishTX.from }
   }
 
@@ -284,16 +294,16 @@ class FishingManager {
     let unfished = []
     for (let tofish of chunk(accounts, 50)) {
       try {
-        log.info('calling fishChunk', { tofish })
+        this.log.info('calling fishChunk', { tofish })
         const { totalFished, fisherAccount } = await this.fishChunk(tofish)
         unfished = unfished.concat(tofish.slice(totalFished))
         fishers.push(fisherAccount)
       } catch (e) {
-        log.error('Failed fishing chunk', { tofish, error: e.message, e })
+        this.log.error('Failed fishing chunk', { tofish, error: e.message, e })
       }
     }
     if (unfished.length > 0) {
-      log.info('Retrying unfished accounts', { unfished: unfished.length })
+      this.log.info('Retrying unfished accounts', { unfished: unfished.length })
       return await this.fish(unfished, fishers)
     }
     return fishers
@@ -306,7 +316,7 @@ class FishingManager {
       const cronTime = await this.getNextDay()
       return { result: true, cronTime, fishers }
     } catch (e) {
-      log.error('fishing task failed:', { e, errMsg: e.message })
+      this.log.error('fishing task failed:', { e, errMsg: e.message })
       const cronTime = await this.getNextDay()
       if (cronTime.isBefore(moment().add(1, 'hour'))) cronTime.add(1, 'hour')
       return { result: true, cronTime }
