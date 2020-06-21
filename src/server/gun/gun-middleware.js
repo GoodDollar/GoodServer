@@ -5,6 +5,7 @@ import SEA from 'gun/sea'
 import 'gun/lib/load'
 import { assign, identity, memoize, once } from 'lodash'
 import util from 'util'
+import delay from 'delay'
 // import les from 'gun/lib/les'
 import { wrapAsync } from '../utils/helpers'
 import { LoggedUser, type StorageAPI } from '../../imports/types'
@@ -19,6 +20,34 @@ assign(Gun.chain, {
     const promisifiedPut = util.promisify(nodeCompatiblePut)
 
     return promisifiedPut().then(callback)
+  },
+
+  async onThen(cb = identity, opts = {}) {
+    opts = Object.assign({ wait: 2000, default: undefined }, opts)
+    let gun = this
+    const onPromise = new Promise((res, rej) => {
+      gun.on((v, k, g, ev) => {
+        ev.off()
+
+        //timeout if value is undefined
+        if (v !== undefined) {
+          res(v)
+        }
+      })
+    })
+    let oncePromise = new Promise(function(res, rej) {
+      gun.once(
+        v => {
+          //timeout if value is undefined
+          if (v !== undefined) {
+            res(v)
+          }
+        },
+        { wait: opts.wait }
+      )
+    })
+    const res = Promise.race([onPromise, oncePromise, delay(opts.wait + 1000, opts.default)]).catch(_ => undefined)
+    return res.then(cb)
   }
 })
 
@@ -164,7 +193,7 @@ class GunDB implements StorageAPI {
           resolve(true)
         })
       })
-    }).then(this.initIndex)
+    }).then(() => this.initIndexes())
     return this.ready
   }
 
@@ -192,11 +221,12 @@ class GunDB implements StorageAPI {
   }
 
   async initIndexes() {
-    return Promise.all([
+    const indexesInitialized = await Promise.all([
       this.user.get(`users/byemail`).putAck({ init: true }),
       this.user.get(`users/bymobile`).putAck({ init: true }),
       this.user.get(`users/bywalletAddress`).putAck({ init: true })
     ])
+    log.debug('initIndexes', { indexesInitialized })
   }
 
   async addUserToIndex(index: string, value: String, user: LoggedUser) {
