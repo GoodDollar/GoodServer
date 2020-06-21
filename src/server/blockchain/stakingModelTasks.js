@@ -105,17 +105,18 @@ export class StakingModelManager {
   }
   run = async () => {
     try {
-      await this.mockInterest()
-      const availableInterest = await this.getAvailableInterest().then(_ => _.toString())
       const nextCollectionTime = await this.getNextCollectionTime()
-      log.info('starting collect interest', { availableInterest, nextCollectionTime: nextCollectionTime.toString() })
       if (nextCollectionTime.isAfter()) {
+        log.info('waiting for collect interest time', { nextCollectionTime })
         return { result: 'waiting', cronTime: nextCollectionTime }
       }
+      log.info('starting collect interest', { availableInterest, nextCollectionTime: nextCollectionTime.toString() })
+      await this.mockInterest()
+      const availableInterest = await this.getAvailableInterest().then(_ => _.toString())
       const fundsEvent = await this.transferInterest()
       if (fundsEvent === undefined) {
         const cronTime = await this.getNextCollectionTime()
-        log.warn('No transfered funds event found. (interest was 0?)')
+        log.warn('No transfered funds event found. (interest was 0?)', { cronTime })
         return { result: 'no interest', cronTime }
       }
       const ubiTransfered = fundsEvent.gdUBI.toString()
@@ -130,12 +131,13 @@ export class StakingModelManager {
         })
       }
       const cronTime = await this.getNextCollectionTime()
+      log.info('next run:', { cronTime })
       return { result: true, cronTime }
     } catch (e) {
-      log.error('collecting interest failed.', { e, errMsg: e.message })
       const cronTime = await this.getNextCollectionTime()
       //make sure atleast one hour passes in case of an error
       if (cronTime.isBefore(moment().add(1, 'hour'))) cronTime.add(1, 'hour')
+      log.error('collecting interest failed.', { e, errMsg: e.message, cronTime })
       return { result: false, cronTime }
     }
   }
@@ -340,7 +342,7 @@ class StakingModelTask {
 
 class CollectFundsTask extends StakingModelTask {
   get schedule() {
-    return '0 0 0 * * *'
+    return '0 * * * * *'
   }
 
   get name() {
@@ -354,7 +356,7 @@ class CollectFundsTask extends StakingModelTask {
 
 class FishInactiveTask extends StakingModelTask {
   get schedule() {
-    return '0 0 0 * * *'
+    return '0 * * * * *'
   }
 
   get name() {
