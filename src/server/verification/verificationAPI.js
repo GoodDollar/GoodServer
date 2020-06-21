@@ -3,6 +3,7 @@ import { Router } from 'express'
 import passport from 'passport'
 import { get, defaults } from 'lodash'
 import moment from 'moment'
+import { sha3 } from 'web3-utils'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
@@ -10,16 +11,14 @@ import requestRateLimiter from '../utils/requestRateLimiter'
 import fuseapi from '../utils/fuseapi'
 import { sendOTP, generateOTP } from '../../imports/otp'
 import conf from '../server.config'
-import { GunDBPublic } from '../gun/gun-middleware'
 import { Mautic } from '../mautic/mauticAPI'
 import W3Helper from '../utils/W3Helper'
 import gdToWei from '../utils/gdToWei'
 import txManager from '../utils/tx-manager'
-import addUserSteps from '../storage/addUserSteps'
 
 import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 
-const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
+const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, storage: StorageAPI) => {
   /**
    * @api {delete} /verify/face/:enrollmentIdentifier Enqueue users face for disposal since 24th
    * @apiName Dispose Face
@@ -156,17 +155,18 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       log.info('otp request:', { user, body })
 
       const mobile = body.user.mobile || user.otp.mobile
-
+      const hashedMobile = sha3(mobile)
       let userRec: UserRecord = defaults(body.user, user, { identifier: user.loggedInAs })
+
       const savedMobile = user.mobile
 
-      if (conf.allowDuplicateUserData === false && (await storage.isDupUserData({ mobile }))) {
+      if (conf.allowDuplicateUserData === false && (await storage.isDupUserData({ mobile: hashedMobile }))) {
         return res.json({ ok: 0, error: 'mobile_already_exists' })
       }
 
       log.debug('sending otp:', user.loggedInAs)
 
-      if (!userRec.smsValidated || mobile !== savedMobile) {
+      if (!userRec.smsValidated || hashedMobile !== savedMobile) {
         const [, code] = await sendOTP({ mobile })
         const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
         log.debug('otp sent:', user.loggedInAs, code)
@@ -205,11 +205,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { user, body } = req
       const verificationData: { otp: string } = body.verificationData
       const tempSavedMobile = user.otp && user.otp.mobile
+      const hashedNewMobile = sha3(tempSavedMobile)
       const currentMobile = user.mobile
 
       log.debug('mobile verified', { user, verificationData })
 
-      if (!user.smsValidated || currentMobile !== tempSavedMobile) {
+      if (!user.smsValidated || currentMobile !== hashedNewMobile) {
         let verified = await verifier.verifyMobile({ identifier: user.loggedInAs }, verificationData).catch(e => {
           log.warn('mobile verification failed:', { e })
 
@@ -220,13 +221,26 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
         if (verified === false) return
 
+        let updIndexPromise
+        if (currentMobile && currentMobile !== hashedNewMobile) {
+          updIndexPromise = Promise.all([
+            gunPublic.removeUserFromIndex('mobile', currentMobile),
+            gunPublic.addUserToIndex('mobile', tempSavedMobile, user)
+          ])
+        }
         await Promise.all([
+          updIndexPromise,
           user.mauticId && Mautic.updateContact(user.mauticId, { mobile: tempSavedMobile }),
-          storage.updateUser({ identifier: user.loggedInAs, smsValidated: true, mobile: tempSavedMobile })
+          storage.updateUser({
+            identifier: user.loggedInAs,
+            smsValidated: true,
+            mobile: hashedNewMobile,
+            'otp.mobile': undefined
+          })
         ])
       }
 
-      const signedMobile = await GunDBPublic.signClaim(user.profilePubkey, { hasMobile: tempSavedMobile })
+      const signedMobile = await gunPublic.signClaim(user.profilePubkey, { hasMobile: tempSavedMobile })
 
       res.json({ ok: 1, attestation: signedMobile })
     })
@@ -401,20 +415,22 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { user, body } = req
       const verificationData: { code: string } = body.verificationData
       const tempSavedEmail = user.otp && user.otp.email
+      const hashedNewEmail = sha3(tempSavedEmail)
       const tempSavedMauticId = user.otp && user.otp.tempMauticId
       const currentEmail = user.email
 
       log.debug('email verified', { user, body, verificationData, tempSavedMauticId, tempSavedEmail, currentEmail })
 
-      if (!user.isEmailConfirmed || currentEmail !== tempSavedEmail) {
+      if (!user.isEmailConfirmed || currentEmail !== hashedNewEmail) {
         await verifier.verifyEmail({ identifier: user.loggedInAs }, verificationData)
 
         const updateUserUbj = {
           identifier: user.loggedInAs,
           isEmailConfirmed: true,
-          email: tempSavedEmail,
+          email: hashedNewEmail,
           otp: {
             ...user.otp,
+            email: undefined,
             tempMauticId: undefined
           }
         }
@@ -431,9 +447,14 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         }
 
         await storage.updateUser(updateUserUbj)
+        //update indexes, if new user, indexes are set in /adduser
+        if (currentEmail && currentEmail !== tempSavedEmail) {
+          gunPublic.removeUserFromIndex('email', currentEmail)
+          gunPublic.addUserToIndex('email', tempSavedEmail, user)
+        }
       }
 
-      const signedEmail = await GunDBPublic.signClaim(req.user.profilePubkey, { hasEmail: tempSavedEmail })
+      const signedEmail = await gunPublic.signClaim(req.user.profilePubkey, { hasEmail: tempSavedEmail })
 
       res.json({ ok: 1, attestation: signedEmail })
     })
@@ -616,18 +637,22 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const logger = req.log
 
       if (conf.enableInvites === false) res.json({ ok: 0, message: 'invites disabled' })
-      const w3Record = await addUserSteps.updateW3Record(user, logger) //make sure w3 registration was done
-      let loginToken = w3Record.loginToken
 
-      if (!loginToken) {
-        const w3Data = await W3Helper.getLoginOrWalletToken(user)
+      //we no longer hold user email so can't call updateW3Record outside signup
+      //const w3Record = await addUserSteps.updateW3Record(user, logger) //make sure w3 registration was done
+      // let loginToken = w3Record.loginToken
+      let loginToken = user.loginToken
 
-        if (w3Data && w3Data.login_token) {
-          loginToken = w3Data.login_token
+      //we no longer hold user email so can't call getLoginOrWalletToken outside signup
+      // if (!loginToken) {
+      //   const w3Data = await W3Helper.getLoginOrWalletToken(user)
 
-          storage.updateUser({ ...user, loginToken })
-        }
-      }
+      //   if (w3Data && w3Data.login_token) {
+      //     loginToken = w3Data.login_token
+
+      //     storage.updateUser({ ...user, loginToken })
+      //   }
+      // }
 
       logger.info('loginToken', { loginToken })
 
@@ -676,6 +701,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       log.info('wallet token from user rec', { wallet_token })
 
+      /* we no longer hold user email, so we cant call getLoginOrWalletToken not in signup
       if (!wallet_token) {
         const w3Data = await W3Helper.getLoginOrWalletToken(currentUser)
 
@@ -687,7 +713,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
           storage.updateUser({ identifier: currentUser.loggedInAs, w3Token: w3Data.wallet_token })
         }
-      }
+      }*/
 
       if (!wallet_token) {
         return res.status(400).json({

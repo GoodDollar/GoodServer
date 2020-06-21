@@ -3,13 +3,24 @@ import express, { Router } from 'express'
 import Gun from 'gun'
 import SEA from 'gun/sea'
 import 'gun/lib/load'
-import { memoize } from 'lodash'
+import { assign, identity, memoize, once } from 'lodash'
+import util from 'util'
 // import les from 'gun/lib/les'
-import { type StorageAPI } from '../../imports/types'
+import { wrapAsync } from '../utils/helpers'
+import { LoggedUser, type StorageAPI } from '../../imports/types'
 import conf from '../server.config'
 import logger from '../../imports/logger'
-
+import { sha3 } from 'web3-utils'
 const log = logger.child({ from: 'GunDB-Middleware' })
+
+assign(Gun.chain, {
+  async putAck(data, callback = identity) {
+    const nodeCompatiblePut = cb => this.put(data, once(ack => cb(ack.err, ack)))
+    const promisifiedPut = util.promisify(nodeCompatiblePut)
+
+    return promisifiedPut().then(callback)
+  }
+})
 
 /**
  * @type
@@ -46,6 +57,24 @@ export type S3Conf = {
 const setup = (app: Router) => {
   if (conf.gundbServerMode) app.use(Gun.serve)
   global.Gun = Gun // / make global to `node --inspect` - debug only
+  //returns details about our gundb trusted indexes
+  app.get(
+    '/trust',
+    wrapAsync(async (req, res) => {
+      const goodDollarPublicKey = GunDBPublic.user.is.pub
+      const bymobile = await GunDBPublic.getIndexId('mobile')
+      const byemail = await GunDBPublic.getIndexId('email')
+      const bywalletAddress = await GunDBPublic.getIndexId('walletAddress')
+      res.json({
+        ok: 1,
+        goodDollarPublicKey,
+        bymobile,
+        byemail,
+        bywalletAddress
+      })
+    })
+  )
+
   log.info('Done setup GunDB middleware.')
 }
 
@@ -99,7 +128,7 @@ class GunDB implements StorageAPI {
     }
     if (this.serverMode === false) {
       log.info('Starting gun as client:', { peers: this.peers })
-      this.gun = Gun({ file: name, peers: this.peers, axe: true, multicast: false })
+      this.gun = Gun({ file: name, peers: this.peers })
     } else if (s3 && s3.secret) {
       log.info('Starting gun with S3:', { gc_delay, memory })
       this.gun = Gun({
@@ -115,7 +144,7 @@ class GunDB implements StorageAPI {
         multicast: false
       })
     } else {
-      this.gun = Gun({ web: server, file: name, gc_delay, memory, name, axe: true, multicast: false })
+      this.gun = Gun({ web: server, file: name, gc_delay, memory, name })
       log.info('Starting gun with radisk:', { gc_delay, memory })
       if (conf.env === 'production') log.error('Started production without S3')
     }
@@ -128,6 +157,7 @@ class GunDB implements StorageAPI {
           if (authres.err) {
             log.error('Failed authenticating gundb user:', { name, error: authres.err })
             if (conf.env !== 'test') return reject(authres.err)
+            resolve(false)
           }
           log.info('Authenticated GunDB user:', { name })
           this.usersCol = this.user.get('users')
@@ -159,6 +189,42 @@ class GunDB implements StorageAPI {
     let sig = await SEA.sign(attestation, this.user.pair())
     attestation.sig = sig
     return attestation
+  }
+
+  async addUserToIndex(index: string, value: String, user: LoggedUser) {
+    const updateP = this.user
+      .get(`users/by${index}`)
+      .get(sha3(value))
+      .putAck(user.profilePublickey)
+      .catch(e => {
+        log.error('failed updating user index', { index, value, user })
+        return false
+      })
+    return updateP
+  }
+  async removeUserFromIndex(index: string, hashedValue: String) {
+    const updateP = this.user
+      .get(`users/by${index}`)
+      .get(hashedValue)
+      .putAck('')
+      .catch(e => {
+        log.error('failed removing user from index', { index, hashedValue })
+        return false
+      })
+    return updateP
+  }
+
+  async getIndex(index: string) {
+    const res = await this.user.get(`users/by${index}`).then()
+    return res
+  }
+
+  async getIndexId(index: string) {
+    return this.user.get(`users/by${index}`).then(_ => Gun.node.soul(_))
+  }
+
+  async getPublicProfile() {
+    return this.user.is
   }
 }
 
