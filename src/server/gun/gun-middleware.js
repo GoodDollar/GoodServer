@@ -164,7 +164,7 @@ class GunDB implements StorageAPI {
           resolve(true)
         })
       })
-    })
+    }).then(this.initIndex)
     return this.ready
   }
 
@@ -189,6 +189,14 @@ class GunDB implements StorageAPI {
     let sig = await SEA.sign(attestation, this.user.pair())
     attestation.sig = sig
     return attestation
+  }
+
+  async initIndexes() {
+    return Promise.all([
+      this.user.get(`users/byemail`).putAck({ init: true }),
+      this.user.get(`users/bymobile`).putAck({ init: true }),
+      this.user.get(`users/bywalletAddress`).putAck({ init: true })
+    ])
   }
 
   async addUserToIndex(index: string, value: String, user: LoggedUser) {
