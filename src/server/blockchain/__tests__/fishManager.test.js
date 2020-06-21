@@ -4,6 +4,11 @@ import delay from 'delay'
 import { version } from '@gooddollar/goodcontracts/package.json'
 jest.setTimeout(20000)
 
+const setNextDay = async () => {
+  await AdminWallet.web3.currentProvider.send('evm_increaseTime', 60 * 60 * 24).catch(e => console.log(e))
+  await AdminWallet.web3.currentProvider.send('evm_mine').catch(e => console.log(e))
+}
+
 describe('fishManager', () => {
   if (version < '2.0.0') {
     test(`${version} skiping until v2.0.0`, () => {})
@@ -16,6 +21,9 @@ describe('fishManager', () => {
   test(`fishManager get next day should be in the future (need to run script simulateInterestDays.js in goodcontracts)`, async () => {
     const nextDay = await fishManager.getNextDay()
     expect(nextDay.isAfter()).toBeTruthy()
+    await setNextDay()
+    const nextDay2 = await fishManager.getNextDay()
+    expect(nextDay2.diff(nextDay, 'hours')).toEqual(24)
   })
 
   test(`fishManager should find UBICalculated days (need to run script simulateInterestDays.js in goodcontracts)`, async () => {
