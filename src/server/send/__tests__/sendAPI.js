@@ -72,7 +72,7 @@ describe('sendAPÏ', () => {
   //     .expect(200, { ok: 1, onlyInEnv: { current: 'test', onlyIn: ['production', 'staging'] } })
   // })
 
-  test('/verify/sendemail with creds', async () => {
+  test('/send/recoveryinstructions with creds', async () => {
     const token = await getToken(server)
 
     await request(server)
@@ -84,19 +84,7 @@ describe('sendAPÏ', () => {
       .expect(200, { ok: 1 })
   })
 
-  test('/send/magiclink with creds', async () => {
-    const token = await getToken(server)
-
-    await request(server)
-      .post('/send/magiclink')
-      .send({
-        magiclink: 'unit test magicLink'
-      })
-      .set('Authorization', `Bearer ${token}`)
-      .expect(200, { ok: 1 })
-  })
-
-  test('/verify/sendemail without required fields should fail', async () => {
+  test('/send/recoveryinstructions without required fields should fail', async () => {
     const token = await getToken(server)
     //make sure mauticid is unset which is required
 
