@@ -10,7 +10,7 @@ class TaskRunner {
   tasks = []
 
   constructor(lock, jobFactory, logger) {
-    const exitEvents = ['SIGINT', 'SIGTERM', 'exit']
+    const exitEvents = ['SIGINT', 'beforeExit']
 
     this.lock = lock
     this.logger = logger

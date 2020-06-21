@@ -13,6 +13,7 @@ import { toWei } from 'web3-utils'
 import config from '../server.config'
 
 const BRIDGE_TRANSFER_TIMEOUT = 60 * 1000 * 5 //5 min
+const FUSE_DAY_BLOCKS = (60 * 60 * 24) / 5
 /**
  * a manager to make sure we collect and transfer the interest from the staking contract
  */
@@ -110,19 +111,24 @@ export class StakingModelManager {
         this.log.info('waiting for collect interest time', { nextCollectionTime })
         return { result: 'waiting', cronTime: nextCollectionTime }
       }
-      const availableInterest = await this.getAvailableInterest().then(_ => _.toString())
+      const availableInterest = await this.getAvailableInterest()
       this.log.info('starting collect interest', {
         availableInterest,
         nextCollectionTime: nextCollectionTime.toString()
       })
-      await this.mockInterest()
-      const fundsEvent = await this.transferInterest()
+      await this.mockInterest().catch(e => {
+        this.log.warn('mockInterest failed, continuing...')
+      })
+      const fundsEvent = await this.transferInterest().catch(e => {
+        this.log.warn('transferInterest failed. stopping.')
+        throw e
+      })
       if (fundsEvent === undefined) {
         const cronTime = await this.getNextCollectionTime()
         this.log.warn('No transfered funds event found. (interest was 0?)', { cronTime })
         return { result: 'no interest', cronTime }
       }
-      const ubiTransfered = fundsEvent.gdUBI.toString()
+      const ubiTransfered = fundsEvent.returnValues.gdUBI.toString()
       if (ubiTransfered === '0') {
         this.log.warn('No UBI was transfered to bridge')
       } else {
@@ -190,7 +196,7 @@ class FishingManager {
 
   constructor() {
     this.log = logger.child({ from: 'FishingManager' })
-    this.ubiContract = AdminWallet.mainnetWeb3.eth.Contract(UBISchemeABI.abi, this.ubiScheme)
+    this.ubiContract = AdminWallet.web3.eth.Contract(UBISchemeABI.abi, this.ubiScheme)
   }
 
   /**
@@ -226,15 +232,17 @@ class FishingManager {
     this.log.info('getInactiveAccounts', { daysagoBlocks, blocksAgo, currentUBIDay, maxInactiveDays })
     //get claims that were done before inactive period days ago, these accounts has the potential to be inactive
     //first we get the starting block
-    const ubiEvents = await this.ubiContract
-      .getPastEvents('UBICalculated', { fromBlock: blocksAgo })
-      .catch(e => this.log.warn('fishManager getPastEvents failed'))
+    const ubiEvents = await this.ubiContract.getPastEvents('UBICalculated', { fromBlock: blocksAgo }).catch(e => {
+      this.log.warn('fishManager getPastEvents failed')
+      throw e
+    })
+    this.log.info('getUBICalculatedDays ubiEvents:', { ubiEvents })
     const searchStartDay = ubiEvents.find(e => e.returnValues.day.toNumber() === currentUBIDay - maxInactiveDays)
     const searchEndDay = ubiEvents.find(e => e.returnValues.day.toNumber() === currentUBIDay - maxInactiveDays + 1)
     this.log.info('getInactiveAccounts got UBICalculatedEvents:', {
       foundEvents: ubiEvents.length,
-      startDay: searchStartDay.returnValues.day.toNumber(),
-      endDay: searchEndDay.returnValues.day.toNumber(),
+      startDay: searchStartDay && searchStartDay.returnValues.day.toNumber(),
+      endDay: searchEndDay && searchEndDay.returnValues.day.toNumber(),
       searchStartDay: searchStartDay,
       searchEndDay: searchEndDay
     })
@@ -253,7 +261,8 @@ class FishingManager {
     }
     //now get accounts that claimed in that day
     const claimBlockStart = searchStartDay.returnValues.blockNumber.toNumber()
-    const claimBlockEnd = searchEndDay.returnValues.blockNumber.toNumber()
+    const claimBlockEnd =
+      (searchEndDay && searchEndDay.returnValues.blockNumber.toNumber()) || claimBlockStart + FUSE_DAY_BLOCKS
 
     //get candidates
     const claimEvents = await this.ubiContract.getPastEvents('UBIClaimed', {
@@ -352,7 +361,7 @@ class StakingModelTask {
 
 class CollectFundsTask extends StakingModelTask {
   get schedule() {
-    return '0 * * * * *'
+    return '0 0 * * * *'
   }
 
   get name() {
@@ -366,7 +375,7 @@ class CollectFundsTask extends StakingModelTask {
 
 class FishInactiveTask extends StakingModelTask {
   get schedule() {
-    return '0 * * * * *'
+    return '0 0 * * * *'
   }
 
   get name() {
