@@ -99,8 +99,12 @@ class DBUpdates {
         }
         return res
       })
-    const res = await UserPrivateModel.bulkWrite(ops)
-    logger.info('upgraded mongodb', res)
+    if (ops.length > 1) {
+      const res = await UserPrivateModel.bulkWrite(ops)
+      logger.info('upgraded mongodb', res)
+    } else {
+      logger.warn('upgrade mongodb. nothing to do')
+    }
   }
 }
 
