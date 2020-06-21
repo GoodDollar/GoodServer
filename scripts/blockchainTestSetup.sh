@@ -1,3 +1,4 @@
+#!/bin/bash
 pushd node_modules/@gooddollar/goodcontracts
 npm ci
 cd stakingModel
