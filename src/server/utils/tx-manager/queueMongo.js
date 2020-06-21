@@ -5,8 +5,8 @@ import moment from 'moment'
 
 const log = logger.child({ from: 'queueMongo' })
 export default class queueMongo {
-  constructor() {
-    this.networkId = String(conf.ethereum.network_id)
+  constructor(networkId) {
+    this.networkId = networkId
     this.model = WalletNonce
     this.queue = []
     this.nonce = null

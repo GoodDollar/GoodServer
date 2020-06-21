@@ -4,13 +4,14 @@
   "description": "GoodDollar Server",
   "main": "src/server/index.js",
   "engines": {
-    "node": "10.15.*"
+    "node": "10.20.*"
   },
   "scripts": {
     "build": "webpack --mode production --config webpack.server.config.js",
     "postbuild": "babel-node scripts/dbUpdates.js",
     "test": "jest --forceExit --detectOpenHandles --maxWorkers=1",
     "test:staging": "jest --forceExit --detectOpenHandles",
+    "test:setup": "./scripts/blockchainTestSetup.sh",
     "coverage": "jest --forceExit --detectOpenHandles --coverage --maxWorkers=1",
     "coveralls": "cat ./coverage/lcov.info | node node_modules/.bin/coveralls",
     "start": "node dist/server.js",
@@ -44,7 +45,7 @@
   "homepage": "https://gooddollar.org",
   "dependencies": {
     "@babel/polyfill": "^7.4.4",
-    "@gooddollar/goodcontracts": "^1.2.0",
+    "@gooddollar/goodcontracts": "^2.0.0-beta.5",
     "@sendgrid/mail": "^6.4.0",
     "apidoc": "^0.17.7",
     "apidoc-markdown": "^0.2.1",
