@@ -173,6 +173,7 @@ export class Wallet {
       if (conf.env !== 'test') process.exit(-1)
     }
     txManager.getTransactionCount = this.web3.eth.getTransactionCount
+    this.mainnetTxManager.getTransactionCount = this.mainnetWeb3.eth.getTransactionCount
     await txManager.createListIfNotExists(this.addresses)
     await this.mainnetTxManager.createListIfNotExists(this.mainnetAddresses)
 
