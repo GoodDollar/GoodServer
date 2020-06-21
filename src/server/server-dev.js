@@ -1,5 +1,4 @@
 /* eslint-disable import/no-extraneous-dependencies */
-import 'newrelic'
 import webpack from 'webpack'
 import webpackHotMiddleware from 'webpack-hot-middleware'
 import config from '../../webpack.dev.config'
