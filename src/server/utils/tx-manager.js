@@ -16,14 +16,16 @@ class TransactionRun {
   }
 }
 
+const managers = {}
 const getManager = networkId => {
-  let queueManager = null
-  if (config.enableMongoLock) {
-    queueManager = new queueMongo(networkId)
-  } else {
-    queueManager = new queueMutex()
+  if (managers[networkId] === undefined) {
+    if (config.enableMongoLock) {
+      managers[networkId] = new queueMongo(networkId)
+    } else {
+      managers[networkId] = new queueMutex()
+    }
   }
-  return queueManager
+  return managers[networkId]
 }
 
 export { getManager }
