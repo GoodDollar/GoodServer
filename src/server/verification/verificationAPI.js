@@ -234,9 +234,9 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           storage.updateUser({
             identifier: user.loggedInAs,
             smsValidated: true,
-            mobile: hashedNewMobile,
-            'otp.mobile': undefined
-          })
+            mobile: hashedNewMobile
+          }),
+          storage.model.updateOne({ identifier: user.loggedInAs }, { $unset: { 'otp.mobile': true } })
         ])
       }
 
@@ -427,12 +427,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         const updateUserUbj = {
           identifier: user.loggedInAs,
           isEmailConfirmed: true,
-          email: hashedNewEmail,
-          otp: {
-            ...user.otp,
-            email: undefined,
-            tempMauticId: undefined
-          }
+          email: hashedNewEmail
         }
 
         if (user.mauticId) {
@@ -446,17 +441,23 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           updateUserUbj.mauticId = tempSavedMauticId
         }
 
-        await storage.updateUser(updateUserUbj)
         //update indexes, if new user, indexes are set in /adduser
         if (currentEmail && currentEmail !== tempSavedEmail) {
           gunPublic.removeUserFromIndex('email', currentEmail)
           gunPublic.addUserToIndex('email', tempSavedEmail, user)
         }
+        const [, , signedEmail] = await Promise.all([
+          storage.model.updateOne(
+            { identifier: user.loggedInAs },
+            { $unset: { 'otp.email': 1, 'otp.tempMauticId': 1 } }
+          ),
+          storage.updateUser(updateUserUbj),
+          gunPublic.signClaim(req.user.profilePubkey, { hasEmail: hashedNewEmail })
+        ])
+
+        return res.json({ ok: 1, attestation: signedEmail })
       }
-
-      const signedEmail = await gunPublic.signClaim(req.user.profilePubkey, { hasEmail: tempSavedEmail })
-
-      res.json({ ok: 1, attestation: signedEmail })
+      return res.json({ ok: 0, error: 'nothing to do' })
     })
   )
 
