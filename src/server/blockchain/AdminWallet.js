@@ -139,7 +139,6 @@ export class Wallet {
 
     this.mainnetWeb3 = new Web3(this.getMainnetWeb3TransportProvider(), null, {
       defaultBlock: 'latest',
-      defaultGasPrice,
       transactionBlockTimeout: 5,
       transactionConfirmationBlocks: 1
     })
@@ -174,6 +173,7 @@ export class Wallet {
       log.error('AdminWallet contract low funds')
       if (conf.env !== 'test') process.exit(-1)
     }
+
     this.txManager.getTransactionCount = this.web3.eth.getTransactionCount
     this.mainnetTxManager.getTransactionCount = this.mainnetWeb3.eth.getTransactionCount
     await this.txManager.createListIfNotExists(this.addresses)
