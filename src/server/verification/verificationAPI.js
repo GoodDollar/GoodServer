@@ -356,7 +356,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           //otp might be undefined so we use spread operator instead of userRec.otp.tempId=
           userRec.otp = {
             ...userRec.otp,
-            tempMauticId: mauticContact.contact.fields.all.id
+            tempMauticId: mauticContact.contact.id
           }
           log.debug('created new user mautic contact', userRec)
         }
@@ -601,7 +601,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       if (w3User && w3User.email === email) {
         currentUser.email = w3User.email
         const mauticContact = await Mautic.createContact(currentUser)
-        const mauticId = mauticContact.contact.fields.all.id
+        const mauticId = mauticContact.contact.id
         await storage.updateUser({
           identifier: currentUser.loggedInAs,
           mauticId,

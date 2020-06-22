@@ -59,8 +59,8 @@ export const Mautic = {
   async createContact(user: UserRecord) {
     const tags = ['dappuser']
     if (user.email === undefined) {
-      log.warn('failed creating contact, no email.', { user })
-      return Promise.resolve()
+      log.error('failed creating contact, no email.', { user })
+      return Promise.reject('failed creating contact. no email.')
     }
     if (Config.isEtoro) tags.push('etorobeta')
     tags.push(Config.version)
@@ -68,6 +68,7 @@ export const Mautic = {
 
     const mauticId = get(mauticRecord, 'contact.id', -1)
     if (mauticId === -1) log.error('Mautic Error createContact failed', { user, tags, mauticRecord })
+    log.info('createContact result:', { mauticId, email: user.email })
     await Mautic.deleteContactFromDNC({ mauticId })
 
     return mauticRecord
