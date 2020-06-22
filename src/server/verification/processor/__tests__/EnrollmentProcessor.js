@@ -159,6 +159,14 @@ describe('EnrollmentProcessor', () => {
     )
   })
 
+  test('isEnqueuedForDisposal() checks is user being deleted', async () => {
+    hasTasksQueuedMock.mockReturnValueOnce(true)
+    await expect(enrollmentProcessor.isEnqueuedForDisposal(enrollmentIdentifier)).resolves.toBeTrue()
+
+    hasTasksQueuedMock.mockReturnValueOnce(false)
+    await expect(enrollmentProcessor.isEnqueuedForDisposal(enrollmentIdentifier)).resolves.toBeFalse()
+  })
+
   test("enroll() proxies provider's response, updates session and whitelists user on success", async () => {
     helper.mockEmptyResultsFaceSearch()
     helper.mockSuccessEnrollment(enrollmentIdentifier)

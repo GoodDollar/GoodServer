@@ -120,6 +120,13 @@ describe('verificationAPI', () => {
       expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), profilePublickey)
     }
 
+    const testDisposalState = async isDisposing => {
+      await request(server)
+        .get(enrollmentUri)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200, { success: true, isDisposing })
+    }
+
     beforeAll(async () => {
       GunDBPublic.session = getSessionRefMock
       AdminWallet.whitelistUser = whitelistUserMock
@@ -346,6 +353,21 @@ describe('verificationAPI', () => {
           success: false,
           error: 'Unable to enqueue enrollment disposal: SigUtil unable to recover the message signer'
         })
+    })
+
+    test("GET /verify/face/:enrollmentIdentifier returns isDisposing = false if face snapshot hasn't been enqueued yet for the disposal", async () => {
+      await testDisposalState(false)
+    })
+
+    test('GET /verify/face/:enrollmentIdentifier returns isDisposing = true if face snapshot has been enqueued for the disposal', async () => {
+      helper.mockEnrollmentFound(enrollmentIdentifier)
+
+      await request(server)
+        .delete(enrollmentUri)
+        .query({ signature })
+        .set('Authorization', `Bearer ${token}`)
+
+      await testDisposalState(true)
     })
   })
 
