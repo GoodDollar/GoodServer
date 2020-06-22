@@ -246,8 +246,11 @@ class GunDB implements StorageAPI {
     ]).catch(e => {
       log.error('initIndexes failed', { e, msg: e.message })
     })
-
-    log.debug('initIndexes', { indexesInitialized })
+    const goodDollarPublicKey = GunDBPublic.user.is.pub
+    const bymobile = await GunDBPublic.getIndexId('mobile')
+    const byemail = await GunDBPublic.getIndexId('email')
+    const bywalletAddress = await GunDBPublic.getIndexId('walletAddress')
+    log.debug('initIndexes', { indexesInitialized, goodDollarPublicKey, bymobile, byemail, bywalletAddress })
   }
 
   async addUserToIndex(index: string, value: String, user: LoggedUser) {
