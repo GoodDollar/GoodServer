@@ -202,7 +202,10 @@ class GunDB implements StorageAPI {
           resolve(true)
         })
       })
-    }).then(() => this.initIndexes())
+    }).then(_ => {
+      this.initIndexes()
+      return _
+    })
     return this.ready
   }
 
