@@ -23,7 +23,7 @@ assign(Gun.chain, {
   },
 
   async onThen(cb = identity, opts = {}) {
-    opts = Object.assign({ wait: 2000, default: undefined }, opts)
+    opts = Object.assign({ wait: 5000, default: undefined }, opts)
     let gun = this
     const onPromise = new Promise((res, rej) => {
       gun.on((v, k, g, ev) => {
