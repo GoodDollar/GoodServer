@@ -39,7 +39,7 @@ export default function start(workerId) {
   })
 
   Promise.race([
-    Timeout(10000, 'gun not initialized'),
+    Timeout(30000, 'gun not initialized'),
     GunDBPublic.init(server, conf.gundbPassword, `publicdb${workerId}`, conf.gunPublicS3)
   ]).catch(e => {
     console.log('gun failed... quiting', e)
