@@ -1,16 +1,16 @@
 // @flow
 import { Router } from 'express'
 import passport from 'passport'
-import get from 'lodash/get'
+import { defaults, get } from 'lodash'
 import { sha3 } from 'web3-utils'
 import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync } from '../utils/helpers'
-import { defaults } from 'lodash'
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import addUserSteps from './addUserSteps'
 import { generateMarketToken } from '../utils/market'
 import PropsModel from '../db/mongo/models/props'
+import TorusVerifier from '../../imports/torusVerifier'
 
 const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
   /**
@@ -30,28 +30,45 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
       const { body, user: userRecord } = req
       const logger = req.log
       logger.debug('new user request:', { data: body.user, userRecord })
+
+      //if torus, then we first verify the user mobile/email by verifying it matches the torus public key
+      //(torus maps identifier such as email and mobile to private/public key pairs)
+      const { torusProof, torusProvider, torusProofNonce, email, mobile, ...bodyUser } = body.user || {}
+      if (torusProof) {
+        const { emailVerified, mobileVerified } = await TorusVerifier.verifyProof(
+          torusProof,
+          torusProvider,
+          body.user,
+          torusProofNonce
+        ).catch(e => {
+          logger.warn('TorusVerifier failed:', { e, msg: e.message })
+          return { emailVerified: false, mobileVerified: false }
+        })
+
+        logger.info('TorusVerifier result:', { emailVerified, mobileVerified })
+        userRecord.smsValidated |= mobileVerified
+        userRecord.isEmailConfirmed |= emailVerified
+      }
+
       //check that user passed all min requirements
       if (
         ['production', 'staging'].includes(conf.env) &&
         (userRecord.smsValidated !== true ||
           (conf.skipEmailVerification === false && userRecord.isEmailConfirmed !== true))
-      )
+      ) {
         throw new Error('User email or mobile not verified!')
+      }
 
       if (userRecord.createdDate) {
         throw new Error('You cannot create more than 1 account with the same credentials')
       }
 
-      const { email, mobile, ...bodyUser } = body.user
-
       const user: UserRecord = defaults(bodyUser, {
         identifier: userRecord.loggedInAs,
-        regMethod: bodyUser.regMethod,
-        torusProvider: bodyUser.torusProvider,
         email: get(userRecord, 'otp.email', email), //for development/test use email from body
         mobile: get(userRecord, 'otp.mobile', mobile), //for development/test use mobile from body
-        isCompleted: bodyUser.isCompleted
-          ? bodyUser.isCompleted
+        isCompleted: userRecord.isCompleted
+          ? userRecord.isCompleted
           : {
               whiteList: false,
               w3Record: false,
