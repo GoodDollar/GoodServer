@@ -5,7 +5,7 @@ import logger from '../src/imports/logger'
 import { type UserRecord } from '../src/imports/types'
 import { GunDBPublic } from '../src/server/gun/gun-middleware'
 import conf from '../src/server/server.config'
-console.log(process.env, process.env.NODE_ENV, process.env.TRAVIS)
+console.log(conf, process.env.NODE_ENV, process.env.TRAVIS)
 if (process.env.NODE_ENV === 'test' || process.env.TRAVIS === 'true') process.exit(0)
 
 const UserPrivateModel = require('../src/server/db/mongo/models/user-private.js').default
@@ -18,10 +18,16 @@ class DBUpdates {
       await Promise.all([
         this.upgrade()
           .then(_ => logger.info('upgrade done'))
-          .catch(e => logger.error('upgrade failed', { err: e.message, e })),
+          .catch(e => {
+            logger.error('upgrade failed', { err: e.message, e })
+            throw e
+          }),
         this.upgradeGun()
           .then(_ => logger.info('gun upgrade done'))
-          .catch(e => logger.error('gun upgrade failed', { err: e.message, e }))
+          .catch(e => {
+            logger.error('gun upgrade failed', { err: e.message, e })
+            throw e
+          })
       ])
       await PropsModel.updateOne({ name: 'DATABASE_VERSION' }, { $set: { value: { version: 1 } } }, { upsert: true })
     }
@@ -75,13 +81,7 @@ class DBUpdates {
       { wait: 3000 }
     )
     return new Promise((res, rej) => {
-      delay(
-        () =>
-          Promise.all(ps)
-            .then(res)
-            .catch(rej),
-        5000
-      )
+      delay(() => Promise.all(ps).then(res).catch(rej), 5000)
     })
   }
 
@@ -99,13 +99,23 @@ class DBUpdates {
         }
         return res
       })
-    const res = await UserPrivateModel.bulkWrite(ops)
-    logger.info('upgraded mongodb', res)
+    if (ops.length > 1) {
+      const res = await UserPrivateModel.bulkWrite(ops)
+      logger.info('upgraded mongodb', res)
+    } else {
+      logger.warn('upgrade mongodb. nothing to do')
+    }
   }
 }
 
 const updater = new DBUpdates()
 updater
   .runUpgrades()
-  .then(_ => process.exit(0))
-  .catch(_ => process.exit(-1))
+  .then(_ => {
+    console.log('dbUpdates done')
+    process.exit(0)
+  })
+  .catch(e => {
+    console.log('dbUpdates failed:', { e })
+    process.exit(-1)
+  })

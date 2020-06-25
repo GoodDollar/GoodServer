@@ -133,7 +133,7 @@ export class Wallet {
     log.info(`AdminWallet contract balance`, { adminWalletContractBalance, adminWalletAddress })
     if (adminWalletContractBalance < adminMinBalance * this.addresses.length) {
       log.error('AdminWallet contract low funds')
-      if (conf.env !== 'test') process.exit(-1)
+      if (conf.env !== 'test' && conf.env !== 'development') process.exit(-1)
     }
     txManager.getTransactionCount = this.web3.eth.getTransactionCount
     await txManager.createListIfNotExists(this.addresses)
@@ -148,7 +148,7 @@ export class Wallet {
     }
     if (this.filledAddresses.length === 0) {
       log.error('no admin wallet with funds')
-      if (conf.env !== 'test') process.exit(-1)
+      if (conf.env !== 'test' && conf.env !== 'development') process.exit(-1)
     }
     this.address = this.filledAddresses[0]
 
@@ -190,7 +190,7 @@ export class Wallet {
       })
     } catch (e) {
       log.error('Error initializing wallet', { e, errMessage: e.message })
-      if (conf.env !== 'test') process.exit(-1)
+      if (conf.env !== 'test' && conf.env !== 'development') process.exit(-1)
     }
     return true
   }

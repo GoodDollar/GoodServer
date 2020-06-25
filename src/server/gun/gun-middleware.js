@@ -5,6 +5,7 @@ import SEA from 'gun/sea'
 import 'gun/lib/load'
 import { assign, identity, memoize, once } from 'lodash'
 import util from 'util'
+import delay from 'delay'
 // import les from 'gun/lib/les'
 import { wrapAsync } from '../utils/helpers'
 import { LoggedUser, type StorageAPI } from '../../imports/types'
@@ -19,6 +20,36 @@ assign(Gun.chain, {
     const promisifiedPut = util.promisify(nodeCompatiblePut)
 
     return promisifiedPut().then(callback)
+  },
+
+  async onThen(cb = identity, opts = {}) {
+    opts = Object.assign({ wait: 5000, default: undefined }, opts)
+    let gun = this
+    const onPromise = new Promise((res, rej) => {
+      gun.on((v, k, g, ev) => {
+        ev.off()
+
+        //timeout if value is undefined
+        if (v !== undefined) {
+          res(v)
+        }
+      })
+    })
+    let oncePromise = new Promise(function(res, rej) {
+      gun.once(
+        v => {
+          //timeout if value is undefined
+          if (v !== undefined) {
+            res(v)
+          }
+        },
+        { wait: opts.wait }
+      )
+    })
+    const res = Promise.race([onPromise, oncePromise, delay(opts.wait + 1000).then(_ => opts.default)]).catch(
+      _ => undefined
+    )
+    return res.then(cb)
   }
 })
 
@@ -116,7 +147,12 @@ class GunDB implements StorageAPI {
    * @param {string} name folder to store gundb
    * @param {S3Conf} [s3] optional S3 settings instead of local file storage
    */
-  init(server: typeof express | Array<string> | null, password: string, name: string, s3?: S3Conf): Promise<boolean> {
+  async init(
+    server: typeof express | Array<string> | null,
+    password: string,
+    name: string,
+    s3?: S3Conf
+  ): Promise<boolean> {
     //gun lib/les.js settings
     const gc_delay = conf.gunGCInterval || 1 * 60 * 1000 /*1min*/
     const memory = conf.gunGCMaxMemoryMB || 512
@@ -150,6 +186,8 @@ class GunDB implements StorageAPI {
     }
     this.user = this.gun.user()
     this.serverName = name
+    const gooddollarUser = await this.gun.get('~@gooddollarorg').onThen()
+    log.info('Existing gooddollarorg user:', { gooddollarUser })
     this.ready = new Promise((resolve, reject) => {
       this.user.create('gooddollarorg', password, createres => {
         log.info('Created gundb GoodDollar User', { name })
@@ -164,6 +202,9 @@ class GunDB implements StorageAPI {
           resolve(true)
         })
       })
+    }).then(_ => {
+      this.initIndexes()
+      return _
     })
     return this.ready
   }
@@ -189,6 +230,27 @@ class GunDB implements StorageAPI {
     let sig = await SEA.sign(attestation, this.user.pair())
     attestation.sig = sig
     return attestation
+  }
+
+  async initIndexes() {
+    const indexesInitialized = await Promise.all([
+      this.user
+        .get(`users/byemail`)
+        .onThen(_ => _ === undefined && this.user.get(`users/byemail`).putAck({ init: true })),
+      this.user
+        .get(`users/bymobile`)
+        .onThen(_ => _ === undefined && this.user.get(`users/bymobile`).putAck({ init: true })),
+      this.user
+        .get(`users/bywalletAddress`)
+        .onThen(_ => _ === undefined && this.user.get(`users/bywalletAddress`).putAck({ init: true }))
+    ]).catch(e => {
+      log.error('initIndexes failed', { e, msg: e.message })
+    })
+    const goodDollarPublicKey = GunDBPublic.user.is.pub
+    const bymobile = await GunDBPublic.getIndexId('mobile')
+    const byemail = await GunDBPublic.getIndexId('email')
+    const bywalletAddress = await GunDBPublic.getIndexId('walletAddress')
+    log.debug('initIndexes', { indexesInitialized, goodDollarPublicKey, bymobile, byemail, bywalletAddress })
   }
 
   async addUserToIndex(index: string, value: String, user: LoggedUser) {
