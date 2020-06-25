@@ -9,8 +9,7 @@ import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import addUserSteps from './addUserSteps'
 import { generateMarketToken } from '../utils/market'
-import PropsModel from '../db/mongo/models/props'
-import TorusVerifier from '../../imports/torusVerifier'
+import createUserVerifier from './verifier'
 
 const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
   /**
@@ -28,29 +27,37 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { body, user: userRecord } = req
+      const { user: userPayload } = body
       const logger = req.log
-      logger.debug('new user request:', { data: body.user, userRecord })
 
-      //if torus, then we first verify the user mobile/email by verifying it matches the torus public key
-      //(torus maps identifier such as email and mobile to private/public key pairs)
-      const { torusProof, torusProvider, torusProofNonce, email, mobile, ...bodyUser } = body.user || {}
-      if (torusProof) {
-        const { emailVerified, mobileVerified } = await TorusVerifier.verifyProof(
-          torusProof,
-          torusProvider,
-          body.user,
-          torusProofNonce
-        ).catch(e => {
-          logger.warn('TorusVerifier failed:', { e, msg: e.message })
-          return { emailVerified: false, mobileVerified: false }
-        })
+      logger.debug('new user request:', { data: userPayload, userRecord })
 
-        logger.info('TorusVerifier result:', { emailVerified, mobileVerified })
-        userRecord.smsValidated |= mobileVerified
-        userRecord.isEmailConfirmed |= emailVerified
+      const {
+        torusProof,
+        torusProvider,
+        torusProofNonce,
+        torusAccessToken,
+        torusIdToken,
+        email,
+        mobile,
+        ...payloadWithoutCreds
+      } = userPayload || {}
+
+      // if torus, then we first verify the user mobile/email by verifying it matches the torus public key
+      // (torus maps identifier such as email and mobile to private/public key pairs)
+      if (torusProof || torusAccessToken) {
+        const verifier = createUserVerifier(userRecord, userPayload, logger)
+
+        if (torusProvider == 'facebook') {
+          if (torusAccessToken) {
+            await verifier.verifyEmail(email, torusAccessToken)
+          }
+        } else if (torusProof) {
+          await verifier.verifyProof(torusProof, torusProvider, torusProofNonce)
+        }
       }
 
-      //check that user passed all min requirements
+      // check that user passed all min requirements
       if (
         ['production', 'staging'].includes(conf.env) &&
         (userRecord.smsValidated !== true ||
@@ -63,7 +70,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         throw new Error('You cannot create more than 1 account with the same credentials')
       }
 
-      const user: UserRecord = defaults(bodyUser, {
+      const user: UserRecord = defaults(payloadWithoutCreds, {
         identifier: userRecord.loggedInAs,
         email: get(userRecord, 'otp.email', email), //for development/test use email from body
         mobile: get(userRecord, 'otp.mobile', mobile), //for development/test use mobile from body
