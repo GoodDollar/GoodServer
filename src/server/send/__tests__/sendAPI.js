@@ -12,7 +12,7 @@ describe('sendAPÏ', () => {
   let server
   beforeAll(async done => {
     const res = await Mautic.createContact({ firstname: 'h', lastname: 'r', email: 'hadartest@gooddollar.org' })
-    const mauticId = res.contact.fields.all.id
+    const mauticId = res.contact.id
     //make sure fullname is set for user which is required for sending the recovery email
     await UserDBPrivate.updateUser({
       identifier: '0x7ac080f6607405705aed79675789701a48c76f55',

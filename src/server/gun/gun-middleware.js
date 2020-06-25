@@ -23,7 +23,7 @@ assign(Gun.chain, {
   },
 
   async onThen(cb = identity, opts = {}) {
-    opts = Object.assign({ wait: 2000, default: undefined }, opts)
+    opts = Object.assign({ wait: 5000, default: undefined }, opts)
     let gun = this
     const onPromise = new Promise((res, rej) => {
       gun.on((v, k, g, ev) => {
@@ -46,7 +46,9 @@ assign(Gun.chain, {
         { wait: opts.wait }
       )
     })
-    const res = Promise.race([onPromise, oncePromise, delay(opts.wait + 1000, opts.default)]).catch(_ => undefined)
+    const res = Promise.race([onPromise, oncePromise, delay(opts.wait + 1000).then(_ => opts.default)]).catch(
+      _ => undefined
+    )
     return res.then(cb)
   }
 })
@@ -232,11 +234,23 @@ class GunDB implements StorageAPI {
 
   async initIndexes() {
     const indexesInitialized = await Promise.all([
-      this.user.get(`users/byemail`).putAck({ init: true }),
-      this.user.get(`users/bymobile`).putAck({ init: true }),
-      this.user.get(`users/bywalletAddress`).putAck({ init: true })
-    ])
-    log.debug('initIndexes', { indexesInitialized })
+      this.user
+        .get(`users/byemail`)
+        .onThen(_ => _ === undefined && this.user.get(`users/byemail`).putAck({ init: true })),
+      this.user
+        .get(`users/bymobile`)
+        .onThen(_ => _ === undefined && this.user.get(`users/bymobile`).putAck({ init: true })),
+      this.user
+        .get(`users/bywalletAddress`)
+        .onThen(_ => _ === undefined && this.user.get(`users/bywalletAddress`).putAck({ init: true }))
+    ]).catch(e => {
+      log.error('initIndexes failed', { e, msg: e.message })
+    })
+    const goodDollarPublicKey = GunDBPublic.user.is.pub
+    const bymobile = await GunDBPublic.getIndexId('mobile')
+    const byemail = await GunDBPublic.getIndexId('email')
+    const bywalletAddress = await GunDBPublic.getIndexId('walletAddress')
+    log.debug('initIndexes', { indexesInitialized, goodDollarPublicKey, bymobile, byemail, bywalletAddress })
   }
 
   async addUserToIndex(index: string, value: String, user: LoggedUser) {

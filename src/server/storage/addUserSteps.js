@@ -42,7 +42,7 @@ const updateMauticRecord = async (userRecord: UserRecord, logger: any) => {
     logger.error('updateMauticRecord Create Mautic Record Failed', { e, errMessage: e.message, userRecord })
     throw e
   })
-  const mauticId = !userRecord.mauticId ? get(mauticRecord, 'contact.id', -1) : userRecord.mauticId
+  const mauticId = get(mauticRecord, 'contact.id', userRecord.mauticId)
   await UserDBPrivate.updateUser({ identifier: userRecord.identifier, mauticId })
   logger.debug('updateMauticRecord user mautic record updated', { userRecord, mauticId, mauticRecord })
 

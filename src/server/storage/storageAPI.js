@@ -1,16 +1,16 @@
 // @flow
 import { Router } from 'express'
 import passport from 'passport'
-import get from 'lodash/get'
+import { defaults, get } from 'lodash'
 import { sha3 } from 'web3-utils'
 import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync } from '../utils/helpers'
-import { defaults } from 'lodash'
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import addUserSteps from './addUserSteps'
 import { generateMarketToken } from '../utils/market'
 import PropsModel from '../db/mongo/models/props'
+import TorusVerifier from '../../imports/torusVerifier'
 
 const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
   /**
@@ -30,7 +30,25 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
       const { body, user: userRecord } = req
       const logger = req.log
       logger.debug('new user request:', { data: body.user, userRecord })
-      const { email, mobile, ...bodyUser } = body.user
+
+      //if torus, then we first verify the user mobile/email by verifying it matches the torus public key
+      //(torus maps identifier such as email and mobile to private/public key pairs)
+      const { torusProof, torusProvider, torusProofNonce, email, mobile, ...bodyUser } = body.user || {}
+      if (torusProof) {
+        const { emailVerified, mobileVerified } = await TorusVerifier.verifyProof(
+          torusProof,
+          torusProvider,
+          body.user,
+          torusProofNonce
+        ).catch(e => {
+          logger.warn('TorusVerifier failed:', { e, msg: e.message })
+          return { emailVerified: false, mobileVerified: false }
+        })
+
+        logger.info('TorusVerifier result:', { emailVerified, mobileVerified })
+        userRecord.smsValidated |= mobileVerified
+        userRecord.isEmailConfirmed |= emailVerified
+      }
 
       //check that user email/mobile sent is the same as the ones verified
       if (['production', 'staging'].includes(conf.env)) {
