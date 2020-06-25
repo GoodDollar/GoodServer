@@ -20,7 +20,7 @@ import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 
 const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, storage: StorageAPI) => {
   /**
-   * @api {delete} /verify/face/:enrollmentIdentifier Enqueue users face for disposal since 24th
+   * @api {delete} /verify/face/:enrollmentIdentifier Enqueue user's face snapshot for disposal since 24h
    * @apiName Dispose Face
    * @apiGroup Verification
    *
@@ -49,6 +49,35 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       }
 
       res.json({ success: true })
+    })
+  )
+
+  /**
+   * @api {get} /verify/face/:enrollmentIdentifier Checks is face snapshot enqueued enqueued for disposal. Return disposal state
+   * @apiName Check face disposal state
+   * @apiGroup Verification
+   *
+   * @apiParam {String} enrollmentIdentifier
+   *
+   * @ignore
+   */
+  app.get(
+    '/verify/face/:enrollmentIdentifier',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res) => {
+      const { params, log, user } = req
+      const { enrollmentIdentifier } = params
+
+      try {
+        const processor = createEnrollmentProcessor(storage)
+        const isDisposing = await processor.isEnqueuedForDisposal(enrollmentIdentifier, log)
+
+        res.json({ success: true, isDisposing })
+      } catch (exception) {
+        const { message } = exception
+        log.error('face record disposing check failed:', { message, exception, enrollmentIdentifier, user })
+        res.status(400).json({ success: false, error: message })
+      }
     })
   )
 

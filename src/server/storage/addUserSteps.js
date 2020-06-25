@@ -69,7 +69,11 @@ const updateW3Record = async (user: any, logger: any) => {
       logger.debug('updateW3Record got web3 user records', { web3Record })
     } else {
       logger.error('updateW3Record empty w3 response', { user })
-      throw new Error('empty w3 response')
+
+      // supress error while running locally
+      if (!conf.walletUrl.includes('localhost:')) {
+        throw new Error('empty w3 response')
+      }
     }
     return {
       loginToken: web3Record.login_token,
