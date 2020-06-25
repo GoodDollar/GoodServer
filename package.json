@@ -68,7 +68,7 @@
     "express-pino-logger": "^4.0.0",
     "express-rate-limit": "^5.0.0",
     "flow": "^0.2.3",
-    "gun": "^0.2019.915",
+    "gun": "^0.2019.1228",
     "hdkey": "^1.1.1",
     "heapdump": "^0.3.15",
     "i": "^0.3.6",
