@@ -99,7 +99,7 @@ export default class EnrollmentSession {
     const { sessionRef, user, storage, adminApi, queueApi, log } = this
     const { gdAddress, profilePublickey, loggedInAs } = user
 
-    log.info('Whitelistening user:', loggedInAs)
+    log.info('Whitelisting user:', loggedInAs)
 
     await Promise.all([
       queueApi.setWhitelisted(user, storage, log),
