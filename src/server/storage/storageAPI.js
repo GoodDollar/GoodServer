@@ -1,7 +1,7 @@
 // @flow
 import { Router } from 'express'
 import passport from 'passport'
-import { defaults, get } from 'lodash'
+import { defaults, omitBy } from 'lodash'
 import { sha3 } from 'web3-utils'
 import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync } from '../utils/helpers'
@@ -9,8 +9,7 @@ import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import addUserSteps from './addUserSteps'
 import { generateMarketToken } from '../utils/market'
-import PropsModel from '../db/mongo/models/props'
-import TorusVerifier from '../../imports/torusVerifier'
+import createUserVerifier from './verifier'
 
 const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
   /**
@@ -28,29 +27,20 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { body, user: userRecord } = req
+      const { user: userPayload = {} } = body
       const logger = req.log
-      logger.debug('new user request:', { data: body.user, userRecord })
 
-      //if torus, then we first verify the user mobile/email by verifying it matches the torus public key
-      //(torus maps identifier such as email and mobile to private/public key pairs)
-      const { torusProof, torusProvider, torusProofNonce, email, mobile, ...bodyUser } = body.user || {}
-      if (torusProof) {
-        const { emailVerified, mobileVerified } = await TorusVerifier.verifyProof(
-          torusProof,
-          torusProvider,
-          body.user,
-          torusProofNonce
-        ).catch(e => {
-          logger.warn('TorusVerifier failed:', { e, msg: e.message })
-          return { emailVerified: false, mobileVerified: false }
-        })
+      logger.debug('new user request:', { data: userPayload, userRecord })
 
-        logger.info('TorusVerifier result:', { emailVerified, mobileVerified })
-        userRecord.smsValidated |= mobileVerified
-        userRecord.isEmailConfirmed |= emailVerified
-      }
+      const { email, mobile, ...restPayload } = userPayload
 
-      //check that user email/mobile sent is the same as the ones verified
+      // if torus, then we first verify the user mobile/email by verifying it matches the torus public key
+      // (torus maps identifier such as email and mobile to private/public key pairs)
+      const verifier = createUserVerifier(userRecord, userPayload, logger)
+
+      await verifier.verifySignInIdentifiers()
+
+      // check that user email/mobile sent is the same as the ones verified
       if (['production', 'staging'].includes(conf.env)) {
         if (userRecord.smsValidated !== true || userRecord.mobile !== sha3(mobile)) {
           throw new Error('User mobile not verified!')
@@ -68,10 +58,13 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         throw new Error('You cannot create more than 1 account with the same credentials')
       }
 
-      const toUpdateUser: UserRecord = defaults(bodyUser, {
+      // removing creds, nonce, proof and crypto keys from user payload as they shouldn't be stored in the userRecord
+      const payloadWithoutCreds = omitBy(restPayload, (_, userProperty) => userProperty.startsWith('torus'))
+
+      const toUpdateUser: UserRecord = defaults(payloadWithoutCreds, {
         identifier: userRecord.loggedInAs,
-        regMethod: bodyUser.regMethod,
-        torusProvider: bodyUser.torusProvider,
+        regMethod: userPayload.regMethod,
+        torusProvider: userPayload.torusProvider,
         email: sha3(email),
         mobile: sha3(mobile),
         isCompleted: userRecord.isCompleted
