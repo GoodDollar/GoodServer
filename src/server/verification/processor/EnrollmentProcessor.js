@@ -60,19 +60,38 @@ class EnrollmentProcessor {
 
   async validate(user: any, enrollmentIdentifier: string, payload: any): Promise<void> {
     const { sessionId } = payload || {}
-    const { provider, storage } = this
+    const { provider } = this
 
     if (!user || !enrollmentIdentifier || !payload || !sessionId || !provider.isPayloadValid(payload)) {
       throw new Error('Invalid input')
     }
 
     // make sure user record is not being deleted at the moment
-    const hasDisposalTaskQueued = await storage.hasTasksQueued(DISPOSE_ENROLLMENTS_TASK, {
-      subject: enrollmentIdentifier
-    })
+    const hasDisposalTaskQueued = await this.isEnqueuedForDisposal(enrollmentIdentifier)
 
     if (hasDisposalTaskQueued) {
       throw new Error('Facemap record with same identifier is being deleted.')
+    }
+  }
+
+  async isEnqueuedForDisposal(enrollmentIdentifier: string, customLogger = null): Promise<boolean> {
+    const { storage, logger } = this
+    const log = customLogger || logger
+
+    log.info('Checking disposal state for enrollment', { enrollmentIdentifier })
+
+    try {
+      const isDisposing = await storage.hasTasksQueued(DISPOSE_ENROLLMENTS_TASK, {
+        subject: enrollmentIdentifier
+      })
+
+      log.info('Got disposal state for enrollment', { enrollmentIdentifier, isDisposing })
+      return isDisposing
+    } catch (exception) {
+      const error = exception.message
+
+      log.warn("Coundn't check disposal state for enrollment", { enrollmentIdentifier, error })
+      throw exception
     }
   }
 
