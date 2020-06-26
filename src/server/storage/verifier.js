@@ -83,4 +83,4 @@ class UserVerifier {
 
 UserVerifier.addStrategy('facebook', FacebookVerificationStrategy)
 
-export default (userRecord, requestPayload, logger) => new UserVerifier((userRecord, requestPayload, logger))
+export default (userRecord, requestPayload, logger) => new UserVerifier(userRecord, requestPayload, logger)
