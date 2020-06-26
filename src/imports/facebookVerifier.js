@@ -1,7 +1,7 @@
 // @flow
 
 import Axios from 'axios'
-import { isPlainObject } from 'lodash'
+import { isPlainObject, get } from 'lodash'
 
 import Config from '../server/server.config'
 
@@ -26,7 +26,7 @@ class FacebookVerifier {
 
     if (!('email' in userInfo)) {
       throw new Error(
-        "Couldn't verify email: user hasn't confirmed it on Facebook " + 'or has used mobile phone number for sign in.'
+        "Couldn't verify email: user hasn't confirmed it on Facebook or has used mobile phone number for sign in."
       )
     }
 
@@ -34,13 +34,14 @@ class FacebookVerifier {
   }
 
   _configureResponses() {
-    const { response } = this.http.interceptors
+    const { http, _transformResponse } = this
+    const { response } = http.interceptors
 
-    response.use(response => this._transformResponse(response), exception => this._exceptionInterceptor(exception))
+    response.use(_transformResponse, exception => this._exceptionInterceptor(exception))
   }
 
   _transformResponse(response) {
-    return response.data
+    return get(response, 'data', {})
   }
 
   _exceptionInterceptor(exception) {
@@ -48,7 +49,7 @@ class FacebookVerifier {
 
     if (response && isPlainObject(response.data)) {
       const graphResponse = this._transformResponse(response)
-      const { message: graphMessage } = graphResponse.error || {}
+      const { message: graphMessage } = get(graphResponse, 'error', {})
 
       exception.message = graphMessage || message
       exception.response = graphResponse

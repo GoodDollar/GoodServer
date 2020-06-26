@@ -1,7 +1,7 @@
 // @flow
 import { Router } from 'express'
 import passport from 'passport'
-import { defaults, get } from 'lodash'
+import { defaults, get, omitBy } from 'lodash'
 import { sha3 } from 'web3-utils'
 import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync } from '../utils/helpers'
@@ -32,30 +32,13 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
 
       logger.debug('new user request:', { data: userPayload, userRecord })
 
-      const {
-        torusProof,
-        torusProvider,
-        torusProofNonce,
-        torusAccessToken,
-        torusIdToken,
-        email,
-        mobile,
-        ...payloadWithoutCreds
-      } = userPayload || {}
+      const { email, mobile, ...restPayload } = userPayload || {}
 
       // if torus, then we first verify the user mobile/email by verifying it matches the torus public key
       // (torus maps identifier such as email and mobile to private/public key pairs)
-      if (torusProof || torusAccessToken) {
-        const verifier = createUserVerifier(userRecord, userPayload, logger)
+      const verifier = createUserVerifier(userRecord, userPayload, logger)
 
-        if (torusProvider == 'facebook') {
-          if (torusAccessToken) {
-            await verifier.verifyEmail(email, torusAccessToken)
-          }
-        } else if (torusProof) {
-          await verifier.verifyProof(torusProof, torusProvider, torusProofNonce)
-        }
-      }
+      await verifier.verifySignInIdentifiers()
 
       // check that user passed all min requirements
       if (
@@ -69,6 +52,9 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
       if (userRecord.createdDate) {
         throw new Error('You cannot create more than 1 account with the same credentials')
       }
+
+      // removing creds, nonce, proof and crypto keys from user payload as they shouldn't be stored in the userRecord
+      const payloadWithoutCreds = omitBy(restPayload, (_, userProperty) => !userProperty.startsWith('torus'))
 
       const user: UserRecord = defaults(payloadWithoutCreds, {
         identifier: userRecord.loggedInAs,
