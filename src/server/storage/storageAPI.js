@@ -54,7 +54,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
       }
 
       // removing creds, nonce, proof and crypto keys from user payload as they shouldn't be stored in the userRecord
-      const payloadWithoutCreds = omitBy(restPayload, (_, userProperty) => !userProperty.startsWith('torus'))
+      const payloadWithoutCreds = omitBy(restPayload, (_, userProperty) => userProperty.startsWith('torus'))
 
       const user: UserRecord = defaults(payloadWithoutCreds, {
         identifier: userRecord.loggedInAs,
