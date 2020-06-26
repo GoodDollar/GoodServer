@@ -27,12 +27,12 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { body, user: userRecord } = req
-      const { user: userPayload } = body
+      const { user: userPayload = {} } = body
       const logger = req.log
 
       logger.debug('new user request:', { data: userPayload, userRecord })
 
-      const { email, mobile, ...restPayload } = userPayload || {}
+      const { email, mobile, ...restPayload } = userPayload
 
       // if torus, then we first verify the user mobile/email by verifying it matches the torus public key
       // (torus maps identifier such as email and mobile to private/public key pairs)
