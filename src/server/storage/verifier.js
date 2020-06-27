@@ -54,11 +54,11 @@ class FacebookVerificationStrategy {
 
 class UserVerifier {
   static strategies = {
-    default: DefaultVerificationStrategy
+    default: new DefaultVerificationStrategy()
   }
 
   static addStrategy(provider, strategyClass) {
-    UserVerifier.strategies[provider] = strategyClass
+    UserVerifier.strategies[provider] = new strategyClass()
   }
 
   constructor(userRecord, requestPayload, logger) {
@@ -66,18 +66,12 @@ class UserVerifier {
   }
 
   async verifySignInIdentifiers() {
+    const { strategies } = UserVerifier
     const { userRecord, requestPayload, logger } = this
-    const strategy = this.verificationStrategyFactory()
+    const { torusProvider } = requestPayload
+    const strategy = strategies[torusProvider] || strategies.default
 
     await strategy.verify(requestPayload, userRecord, logger)
-  }
-
-  verificationStrategyFactory() {
-    const { strategies } = UserVerifier
-    const { torusProvider } = this.requestPayload
-    const strategyClass = strategies[torusProvider] || strategies.default
-
-    return new strategyClass()
   }
 }
 
