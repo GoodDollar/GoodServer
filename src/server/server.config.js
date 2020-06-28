@@ -418,6 +418,18 @@ const conf = convict({
     format: Number,
     env: 'CLAIM_QUEUE_ALLOWED',
     default: 0
+  },
+  fishTaskCron: {
+    doc: 'cron string for fishing task',
+    format: String,
+    env: 'FISH_TASK_CRON',
+    default: '0 0 * * * *'
+  },
+  stakeTaskCron: {
+    doc: 'cron string for fishing task',
+    format: String,
+    env: 'STAKE_TASK_CRON',
+    default: '0 0 * * * *'
   }
 })
 

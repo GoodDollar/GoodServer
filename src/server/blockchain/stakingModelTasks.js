@@ -361,7 +361,7 @@ class StakingModelTask {
 
 class CollectFundsTask extends StakingModelTask {
   get schedule() {
-    return '0 0 * * * *'
+    return config.stakeTaskCron
   }
 
   get name() {
@@ -375,7 +375,7 @@ class CollectFundsTask extends StakingModelTask {
 
 class FishInactiveTask extends StakingModelTask {
   get schedule() {
-    return '0 0 * * * *'
+    return config.fishTaskCron
   }
 
   get name() {
