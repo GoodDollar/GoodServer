@@ -123,6 +123,8 @@ export class StakingModelManager {
         this.log.warn('transferInterest failed. stopping.')
         throw e
       })
+      const sidechainCurBlock = await AdminWallet.web3.eth.getBlockNumber()
+
       if (fundsEvent === undefined) {
         const cronTime = await this.getNextCollectionTime()
         this.log.warn('No transfered funds event found. (interest was 0?)', { cronTime })
@@ -133,8 +135,8 @@ export class StakingModelManager {
         this.log.warn('No UBI was transfered to bridge')
       } else {
         this.log.info('ubi interest collected. waiting for bridge...', { gdUBI: ubiTransfered })
-        //wait for funds to transfer via bridge
-        const transferEvent = await this.waitForBridgeTransfer(fundsEvent.blockNumber, Date.now(), ubiTransfered)
+        //wait for funds on sidechain to transfer via bridge
+        const transferEvent = await this.waitForBridgeTransfer(sidechainCurBlock, Date.now(), ubiTransfered)
         this.log.info('ubi success: bridge transfer event found', {
           ubiGenerated: transferEvent.returnValues.value.toString()
         })
