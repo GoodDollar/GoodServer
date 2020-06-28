@@ -419,6 +419,12 @@ const conf = convict({
     env: 'CLAIM_QUEUE_ALLOWED',
     default: 0
   },
+  facebookGraphApiUrl: {
+    doc: 'Facebook GraphAPI base url',
+    format: '*',
+    env: 'FACEBOOK_GRAPH_API_URL',
+    default: 'https://graph.facebook.com'
+  },
   fishTaskCron: {
     doc: 'cron string for fishing task',
     format: String,
