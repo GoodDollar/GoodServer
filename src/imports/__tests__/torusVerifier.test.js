@@ -4,6 +4,8 @@
 
 import { recoverPublickey } from '../../server/utils/eth'
 import torusVerifier, { TorusVerifier } from '../torusVerifier'
+import { DefaultVerificationStrategy } from '../../server/storage/verifier'
+
 jest.setTimeout(20000)
 describe('Test torus email/mobile to address', () => {
   let mainnetVerifier
@@ -93,5 +95,19 @@ describe('Test torus email/mobile to address', () => {
         ]).toContain(response)
       })
     )
+  })
+
+  it('should modify userrecord if verified', async () => {
+    torusVerifier.verifyProof = jest.fn(() => ({ mobileVerified: true, emailVerified: false }))
+    const userVerifier = new DefaultVerificationStrategy()
+    const userRecord = {
+      smsValidated: false,
+      isEmailConfirmed: true
+    }
+    await userVerifier.verify({ torusProof: '0x0', torusProvider: 'google', torusProofNonce: 1 }, userRecord, console)
+    expect(userRecord).toEqual({
+      smsValidated: true,
+      isEmailConfirmed: true
+    })
   })
 })
