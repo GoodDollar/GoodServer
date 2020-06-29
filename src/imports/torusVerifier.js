@@ -41,7 +41,7 @@ class PasswordlessEmailStrategy {
 class PasswordlessSMSStrategy {
   getVerificationOptions(userRecord) {
     return {
-      verifier: 'google-auth0-gooddollar',
+      verifier: 'gooddollar-auth0-sms-passwordless',
       identifier: userRecord.mobile,
       emailVerified: false,
       mobileVerified: true

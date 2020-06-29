@@ -43,7 +43,7 @@ describe('Test torus email/mobile to address', () => {
     const { torusNodeEndpoints, torusNodePub } = await torusVerifier.fetchNodeDetails.getNodeDetails()
     await Promise.all(
       ['google', 'google-old', 'auth0-pwdless-sms', 'auth0-pwdless-email'].map(async torusType => {
-        const opts = torusVerifier.getVerificationOptions(torusType, { email: 'x@gmail.com', mobile: '+9720507319000' })
+        const opts = torusVerifier.getVerificationOptions(torusType, { email: 'x@gmail.com', mobile: '+972507319093' })
         const response = await torusVerifier.torus.getPublicAddress(
           torusNodeEndpoints,
           torusNodePub,
@@ -51,7 +51,7 @@ describe('Test torus email/mobile to address', () => {
           false
         )
         expect([
-          '0x59fFCACC9969441eB1514e984CF9430b720EF626',
+          '0xD97b62EC3266EbA1F8F90Ba264174c138b5d4C38',
           '0x2916342DA5cF53ac9CfcBCdc7c6AB0405Ea5F439',
           '0xB5AD204135Ad58856a49CdA7351026c7e4906181'
         ]).toContain(response)
