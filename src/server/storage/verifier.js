@@ -3,7 +3,7 @@ import { assign } from 'lodash'
 import TorusVerifier from '../../imports/torusVerifier'
 import FacebookVerifier from '../../imports/facebookVerifier'
 
-class DefaultVerificationStrategy {
+export class DefaultVerificationStrategy {
   async verify(requestPayload, userRecord, logger) {
     const { torusProof, torusProvider, torusProofNonce } = requestPayload
     let verificationResult = { emailVerified: false, mobileVerified: false }
@@ -24,8 +24,8 @@ class DefaultVerificationStrategy {
     const { emailVerified, mobileVerified } = verificationResult
 
     logger.info('TorusVerifier result:', verificationResult)
-    userRecord.smsValidated |= mobileVerified
-    userRecord.isEmailConfirmed |= emailVerified
+    userRecord.smsValidated = userRecord.smsValidated || mobileVerified
+    userRecord.isEmailConfirmed = userRecord.isEmailConfirmed || emailVerified
   }
 }
 
@@ -48,7 +48,7 @@ class FacebookVerificationStrategy {
     }
 
     logger.info('FacebookVerifier result:', { emailVerified })
-    userRecord.isEmailConfirmed |= emailVerified
+    userRecord.isEmailConfirmed = userRecord.isEmailConfirmed || emailVerified
   }
 }
 
