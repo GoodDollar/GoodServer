@@ -49,7 +49,7 @@ class PasswordlessSMSStrategy {
   }
 }
 
-class TorusVerifier {
+export class TorusVerifier {
   strategies = {}
 
   log = logger.child({ from: 'TorusVerifier' })
@@ -85,7 +85,7 @@ class TorusVerifier {
   }
 
   async verifyProof(signature, torusType, userRecord, nonce) {
-    if (moment().diff(moment(nonce), 'minutes') >= 1) {
+    if (moment().diff(moment(Number(nonce)), 'minutes') >= 1) {
       throw new Error('torus proof nonce invalid:' + nonce)
     }
     this.log.debug('verifyProof', { signature, torusType, userRecord, nonce })
@@ -104,14 +104,16 @@ class TorusVerifier {
   addStrategy(torusType, strategyClass) {
     this.strategies[torusType] = new strategyClass()
   }
+
+  initStrategies() {
+    this.addStrategy('google', GoogleStrategy)
+    this.addStrategy('google-old', GoogleLegacyStrategy)
+    this.addStrategy('auth0-pwdless-sms', PasswordlessSMSStrategy)
+    this.addStrategy('auth0-pwdless-email', PasswordlessEmailStrategy)
+  }
 }
 
 const verifierConfig = Config.env === 'production' ? [] : ['0x4023d2a0D330bF11426B12C6144Cfb96B7fa6183', 'ropsten'] // [contract, network]
 const verifier = Reflect.construct(TorusVerifier, verifierConfig)
-
-verifier.addStrategy('google', GoogleStrategy)
-verifier.addStrategy('google-old', GoogleLegacyStrategy)
-verifier.addStrategy('auth0-pwdless-sms', PasswordlessSMSStrategy)
-verifier.addStrategy('auth0-pwdless-email', PasswordlessEmailStrategy)
-
+verifier.initStrategies()
 export default verifier
