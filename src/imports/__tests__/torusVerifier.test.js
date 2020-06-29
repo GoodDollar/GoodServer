@@ -2,6 +2,7 @@
  * @jest-environment node
  */
 
+import { recoverPublickey } from '../../server/utils/eth'
 import torusVerifier, { TorusVerifier } from '../torusVerifier'
 jest.setTimeout(20000)
 describe('Test torus email/mobile to address', () => {
@@ -57,6 +58,18 @@ describe('Test torus email/mobile to address', () => {
         ]).toContain(response)
       })
     )
+  })
+
+  it('should recover signer correctly', async () => {
+    const signature =
+      '0xa7fb3a514469d038b0cda821977cd534eaed857f9cb7db5d4a6e843d55598bb80b66359ece24e626533b6cc9fea06abb95b7c152bef66a8b71a087f8e20987951c'
+    const nonce = '1593455827517'
+    const { verifier, identifier, emailVerified, mobileVerified } = torusVerifier.getVerificationOptions(
+      'auth0-pwdless-sms',
+      { email: 'x@d.com', mobile: '+972507319093' }
+    )
+    const signedPublicKey = recoverPublickey(signature, identifier, nonce)
+    expect(signedPublicKey).toEqual('0xD97b62EC3266EbA1F8F90Ba264174c138b5d4C38'.toLowerCase())
   })
 
   xit('should return public key for mainnet email/mobile', async () => {
