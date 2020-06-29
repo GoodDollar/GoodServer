@@ -49,7 +49,7 @@ class PasswordlessSMSStrategy {
   }
 }
 
-class TorusVerifier {
+export class TorusVerifier {
   strategies = {}
 
   log = logger.child({ from: 'TorusVerifier' })
@@ -85,7 +85,7 @@ class TorusVerifier {
   }
 
   async verifyProof(signature, torusType, userRecord, nonce) {
-    if (moment().diff(moment(nonce), 'minutes') >= 1) {
+    if (moment().diff(moment(Number(nonce)), 'minutes') >= 1) {
       throw new Error('torus proof nonce invalid:' + nonce)
     }
     this.log.debug('verifyProof', { signature, torusType, userRecord, nonce })
