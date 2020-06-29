@@ -104,14 +104,16 @@ export class TorusVerifier {
   addStrategy(torusType, strategyClass) {
     this.strategies[torusType] = new strategyClass()
   }
+
+  initStrategies() {
+    this.addStrategy('google', GoogleStrategy)
+    this.addStrategy('google-old', GoogleLegacyStrategy)
+    this.addStrategy('auth0-pwdless-sms', PasswordlessSMSStrategy)
+    this.addStrategy('auth0-pwdless-email', PasswordlessEmailStrategy)
+  }
 }
 
 const verifierConfig = Config.env === 'production' ? [] : ['0x4023d2a0D330bF11426B12C6144Cfb96B7fa6183', 'ropsten'] // [contract, network]
 const verifier = Reflect.construct(TorusVerifier, verifierConfig)
-
-verifier.addStrategy('google', GoogleStrategy)
-verifier.addStrategy('google-old', GoogleLegacyStrategy)
-verifier.addStrategy('auth0-pwdless-sms', PasswordlessSMSStrategy)
-verifier.addStrategy('auth0-pwdless-email', PasswordlessEmailStrategy)
-
+verifier.initStrategies()
 export default verifier
