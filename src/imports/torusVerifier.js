@@ -88,8 +88,8 @@ export class TorusVerifier {
     if (moment().diff(moment(Number(nonce)), 'minutes') >= 1) {
       throw new Error('torus proof nonce invalid:' + nonce)
     }
-    this.log.debug('verifyProof', { signature, torusType, userRecord, nonce })
     const { verifier, identifier, emailVerified, mobileVerified } = this.getVerificationOptions(torusType, userRecord)
+    this.log.debug('verifyProof', { signature, identifier, verifier, torusType, userRecord, nonce })
     const signedPublicKey = recoverPublickey(signature, identifier, nonce)
 
     const isOwner = await this.isIdentifierOwner(signedPublicKey, verifier, identifier)
