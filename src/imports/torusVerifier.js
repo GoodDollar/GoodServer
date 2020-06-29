@@ -3,6 +3,7 @@ import TorusUtils from '@toruslabs/torus.js/dist/torusUtils-node.js'
 import moment from 'moment'
 import Config from '../server/server.config'
 import { recoverPublickey } from '../server/utils/eth'
+import logger from '../imports/logger'
 
 class GoogleLegacyStrategy {
   getVerificationOptions(userRecord) {
@@ -51,6 +52,7 @@ class PasswordlessSMSStrategy {
 class TorusVerifier {
   strategies = {}
 
+  log = logger.child({ from: 'TorusVerifier' })
   constructor(proxyContract = null, network = null) {
     this.torus = new TorusUtils()
 
@@ -68,7 +70,7 @@ class TorusVerifier {
       { verifier, verifierId: identifier },
       false
     )
-
+    this.log.debug('isIdentifierOwner:', { identifier, response })
     return publicAddress.toLowerCase() === response.toLowerCase()
   }
 
@@ -86,11 +88,12 @@ class TorusVerifier {
     if (moment().diff(moment(nonce), 'minutes') >= 1) {
       throw new Error('torus proof nonce invalid:' + nonce)
     }
-
+    this.log.debug('verifyProof', { signature, torusType, userRecord, nonce })
     const { verifier, identifier, emailVerified, mobileVerified } = this.getVerificationOptions(torusType, userRecord)
     const signedPublicKey = recoverPublickey(signature, identifier, nonce)
-    const isOwner = await this.isIdentifierOwner(signedPublicKey, verifier, identifier)
 
+    const isOwner = await this.isIdentifierOwner(signedPublicKey, verifier, identifier)
+    this.log.info('verifyProof result:', { isOwner, signedPublicKey })
     if (isOwner) {
       return { emailVerified, mobileVerified }
     }

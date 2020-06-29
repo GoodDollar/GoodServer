@@ -4,8 +4,11 @@ import Axios from 'axios'
 import { isPlainObject, get } from 'lodash'
 
 import Config from '../server/server.config'
+import logger from '../imports/logger'
 
 class FacebookVerifier {
+  log = logger.child({ from: 'FacebookVerifier' })
+
   constructor(Config, httpFactory) {
     const { facebookGraphApiUrl } = Config
 
@@ -24,6 +27,7 @@ class FacebookVerifier {
     const params = { fields: 'email', access_token: accessToken }
     const userInfo = await this.http.get('/me', { params })
 
+    this.log.info('verifyEmail', { userInfo })
     if (!('email' in userInfo)) {
       throw new Error(
         "Couldn't verify email: user hasn't confirmed it on Facebook or has used mobile phone number for sign in."
