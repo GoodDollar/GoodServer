@@ -41,14 +41,15 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
       await verifier.verifySignInIdentifiers()
 
       // check that user email/mobile sent is the same as the ones verified
+      //in case email/mobile was verified using torus userRecord.mobile/email will be empty
       if (['production', 'staging'].includes(conf.env)) {
-        if (userRecord.smsValidated !== true || userRecord.mobile !== sha3(mobile)) {
+        if (userRecord.smsValidated !== true || (userRecord.mobile && userRecord.mobile !== sha3(mobile))) {
           throw new Error('User mobile not verified!')
         }
 
         if (
           conf.skipEmailVerification === false &&
-          (userRecord.isEmailConfirmed !== true || userRecord.email !== sha3(email))
+          (userRecord.isEmailConfirmed !== true || (userRecord.email && userRecord.email !== sha3(email)))
         ) {
           throw new Error('User email not verified!')
         }
