@@ -7,11 +7,10 @@ import Config from '../server/server.config'
 import logger from '../imports/logger'
 
 class FacebookVerifier {
-  log = logger.child({ from: 'FacebookVerifier' })
-
-  constructor(Config, httpFactory) {
+  constructor(Config, httpFactory, logger) {
     const { facebookGraphApiUrl } = Config
 
+    this.logger = logger
     this.http = httpFactory({
       baseURL: facebookGraphApiUrl,
       headers: {
@@ -24,10 +23,12 @@ class FacebookVerifier {
   }
 
   async verifyEmail(userEmail, accessToken) {
+    const { http, logger } = this
     const params = { fields: 'email', access_token: accessToken }
-    const userInfo = await this.http.get('/me', { params })
+    const userInfo = await http.get('/me', { params })
 
-    this.log.info('verifyEmail', { userInfo })
+    logger.info('verifyEmail', { userInfo })
+
     if (!('email' in userInfo)) {
       throw new Error(
         "Couldn't verify email: user hasn't confirmed it on Facebook or has used mobile phone number for sign in."
@@ -65,4 +66,4 @@ class FacebookVerifier {
   }
 }
 
-export default new FacebookVerifier(Config, Axios.create)
+export default new FacebookVerifier(Config, Axios.create, logger.child({ from: 'FacebookVerifier' }))
