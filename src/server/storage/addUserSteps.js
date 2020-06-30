@@ -7,34 +7,39 @@ import { Mautic } from '../mautic/mauticAPI'
 import get from 'lodash/get'
 import W3Helper from '../utils/W3Helper'
 import { generateMarketToken } from '../utils/market'
-
-const Timeout = (timeout: msec, msg: string) => {
-  return new Promise((res, rej) => {
-    setTimeout(rej, timeout, new Error(`Request Timeout: ${msg}`))
-  })
-}
+import requestTimeout from '../utils/timeout'
 
 const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
-  let user = await UserDBPrivate.getUser(userRecord.identifier)
+  const user = await UserDBPrivate.getUser(userRecord.identifier)
   const whiteList = get(user, 'isCompleted.whiteList', false)
-  if (conf.disableFaceVerification && !whiteList) {
-    logger.debug('addUserToWhiteList whitelisting user...', {
-      address: userRecord.gdAddress,
-      profile: userRecord.profilePublickey
-    })
-    return AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey)
-      .then(async r => {
-        await UserDBPrivate.completeStep(userRecord.identifier, 'whiteList')
-        logger.debug('addUserToWhiteList user whitelisted success', { address: userRecord.gdAddress })
-        return true
-      })
-      .catch(e => {
-        logger.error('addUserToWhiteList failed whitelisting', { e, errMessage: e.message, userRecord })
-        return false
-      })
+
+  if (whiteList) {
+    logger.debug('addUserToWhiteList user already whitelisted', { address: userRecord.gdAddress })
+    return true
   }
-  whiteList && logger.debug('addUserToWhiteList user already whitelisted', { address: userRecord.gdAddress })
-  return true
+
+  // removed disableFaceVerification check as
+  // a) it's already performed in storageAPI
+  // b) this method is used in storageAPI only
+  // c) it simplyfies checking are we running on cypress or not (no need to pass E2E flag)
+
+  logger.debug('addUserToWhiteList whitelisting user...', {
+    address: userRecord.gdAddress,
+    profile: userRecord.profilePublickey
+  })
+
+  try {
+    await AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey)
+    await UserDBPrivate.completeStep(userRecord.identifier, 'whiteList')
+
+    logger.debug('addUserToWhiteList user whitelisted success', { address: userRecord.gdAddress })
+    return true
+  } catch (exception) {
+    const { message: errMessage } = exception
+
+    logger.error('addUserToWhiteList failed whitelisting', { e: exception, errMessage, userRecord })
+    return false
+  }
 }
 
 const updateMauticRecord = async (userRecord: UserRecord, logger: any) => {
@@ -105,7 +110,7 @@ const topUserWallet = async (userRecord: UserRecord, logger: any) => {
   let user = await UserDBPrivate.getUser(userRecord.identifier)
   const topWallet = get(user, 'isCompleted.topWallet', false)
   if (!topWallet) {
-    return Promise.race([AdminWallet.topWallet(userRecord.gdAddress, null), Timeout(15000, 'topWallet')])
+    return Promise.race([AdminWallet.topWallet(userRecord.gdAddress, null), requestTimeout(15000, 'topWallet')])
       .then(r => {
         UserDBPrivate.completeStep(userRecord.identifier, 'topWallet')
         logger.debug('topUserWallet success', { address: userRecord.gdAddress })

@@ -2,13 +2,9 @@ import fetch from 'cross-fetch'
 import md5 from 'md5'
 import conf from '../server.config'
 import logger from '../../imports/logger'
+import requestTimeout from '../utils/timeout'
 
 const log = logger.child({ from: 'W3Helper' })
-const Timeout = timeout => {
-  return new Promise((res, rej) => {
-    setTimeout(rej, timeout, new Error('Request Timeout'))
-  })
-}
 
 export default {
   baseUrl: `${conf.web3SiteUrl}/api/wl/user`,
@@ -22,7 +18,7 @@ export default {
 
     log.debug('req options', { url, headers, body, method, options, timeout })
 
-    return Promise.race([Timeout(timeout), fetch(fullUrl, { method, body: stringBody, headers })])
+    return Promise.race([requestTimeout(timeout), fetch(fullUrl, { method, body: stringBody, headers })])
       .then(async res => {
         log.debug('request response', { res })
 
