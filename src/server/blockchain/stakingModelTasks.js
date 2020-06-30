@@ -5,7 +5,7 @@ import DaiABI from '@gooddollar/goodcontracts/build/contracts/DAIMock.min.json'
 import cDaiABI from '@gooddollar/goodcontracts/build/contracts/cDAIMock.min.json'
 import ContractsAddress from '@gooddollar/goodcontracts/stakingModel/releases/deployment.json'
 import AdminWallet from './AdminWallet'
-import { get, chunk } from 'lodash'
+import { get, chunk, result } from 'lodash'
 import logger from '../../imports/logger'
 import delay from 'delay'
 import moment from 'moment'
@@ -259,12 +259,15 @@ class FishingManager {
 
     if (searchStartDay === undefined) {
       this.log.warn('No UBICalculated event found for inactive interval', { maxInactiveDays })
-      return []
     }
     //now get accounts that claimed in that day
-    const claimBlockStart = searchStartDay.returnValues.blockNumber.toNumber()
-    const claimBlockEnd =
-      (searchEndDay && searchEndDay.returnValues.blockNumber.toNumber()) || claimBlockStart + FUSE_DAY_BLOCKS
+    const claimBlockStart = result(
+      searchStartDay,
+      'returnValues.blockNumber.toNumber',
+      (await AdminWallet.web.eth.getBlockNumber()) - maxInactiveDays * FUSE_DAY_BLOCKS
+    )
+
+    const claimBlockEnd = result(searchEndDay, 'returnValues.blockNumber.toNumber', claimBlockStart + FUSE_DAY_BLOCKS)
 
     //get candidates
     const claimEvents = await this.ubiContract.getPastEvents('UBIClaimed', {
