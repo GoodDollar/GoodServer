@@ -3,10 +3,63 @@ import TorusUtils from '@toruslabs/torus.js/dist/torusUtils-node.js'
 import moment from 'moment'
 import Config from '../server/server.config'
 import { recoverPublickey } from '../server/utils/eth'
-class TorusVerifier {
-  constructor(proxyContract, network) {
-    this.fetchNodeDetails = new FetchNodeDetails({ network, proxyAddress: proxyContract })
+import logger from '../imports/logger'
+
+class GoogleLegacyStrategy {
+  getVerificationOptions(userRecord) {
+    return {
+      verifier: 'google-gooddollar',
+      identifier: userRecord.email,
+      emailVerified: true,
+      mobileVerified: false
+    }
+  }
+}
+
+class GoogleStrategy {
+  getVerificationOptions(userRecord) {
+    return {
+      verifier: 'google-auth0-gooddollar',
+      identifier: userRecord.email,
+      emailVerified: true,
+      mobileVerified: false
+    }
+  }
+}
+
+class PasswordlessEmailStrategy {
+  getVerificationOptions(userRecord) {
+    return {
+      verifier: 'google-auth0-gooddollar',
+      identifier: userRecord.email,
+      emailVerified: true,
+      mobileVerified: false
+    }
+  }
+}
+
+class PasswordlessSMSStrategy {
+  getVerificationOptions(userRecord) {
+    return {
+      verifier: 'gooddollar-auth0-sms-passwordless',
+      identifier: userRecord.mobile,
+      emailVerified: false,
+      mobileVerified: true
+    }
+  }
+}
+
+export class TorusVerifier {
+  strategies = {}
+
+  log = logger.child({ from: 'TorusVerifier' })
+  constructor(proxyContract = null, network = null) {
     this.torus = new TorusUtils()
+
+    this.fetchNodeDetails = new FetchNodeDetails({
+      network,
+      proxyAddress: proxyContract
+    })
   }
 
   async isIdentifierOwner(publicAddress, verifier, identifier) {
@@ -17,75 +70,50 @@ class TorusVerifier {
       { verifier, verifierId: identifier },
       false
     )
+    this.log.debug('isIdentifierOwner:', { identifier, response })
     return publicAddress.toLowerCase() === response.toLowerCase()
   }
 
-  getVerifierAndIdentifier(torusType, userRecord) {
-    switch (torusType) {
-      case 'google-old':
-        return {
-          verifier: 'google-gooddollar',
-          identifier: userRecord.email,
-          emailVerified: true,
-          mobileVerified: false
-        }
-      case 'google':
-        return {
-          verifier: 'google-auth0-gooddollar',
-          identifier: userRecord.email,
-          emailVerified: true,
-          mobileVerified: false
-        }
-      case 'facebook':
-        return {
-          verifier: 'facebook-gooddollar',
-          identifier: userRecord.email,
-          emailVerified: true,
-          mobileVerified: false
-        }
-      case 'auth0-pwdless-email':
-        return {
-          verifier: 'google-auth0-gooddollar',
-          identifier: userRecord.email,
-          emailVerified: true,
-          mobileVerified: false
-        }
-      case 'auth0-pwdless-sms':
-        return {
-          verifier: 'google-auth0-gooddollar',
-          identifier: userRecord.mobile,
-          emailVerified: false,
-          mobileVerified: true
-        }
-      default:
-        throw new Error('unknown torus login type: ' + torusType)
-    }
-  }
-  async isFacebookEmail(token, email) {
-    return true
-  }
-  async verifyProof(signature, torusType, userRecord, nonce) {
-    if (moment().diff(moment(nonce), 'minutes') >= 1) {
-      throw new Error('torus proof nonce invalid:' + nonce)
-    }
-    //TODO: use auth token to verify facebook users
-    if (torusType === 'facebook') {
-      const isOwner = this.isFacebookEmail(signature, userRecord.email)
-      return { emailVerified: isOwner, mobileVerified: false }
+  getVerificationOptions(torusType, userRecord) {
+    const { strategies } = this
+
+    if (!torusType || !(torusType in strategies)) {
+      throw new Error('unknown torus login type: ' + torusType)
     }
 
-    const { verifier, identifier, emailVerified, mobileVerified } = this.getVerifierAndIdentifier(torusType, userRecord)
+    return strategies[torusType].getVerificationOptions(userRecord)
+  }
+
+  async verifyProof(signature, torusType, userRecord, nonce) {
+    if (moment().diff(moment(Number(nonce)), 'minutes') >= 1) {
+      throw new Error('torus proof nonce invalid:' + nonce)
+    }
+    const { verifier, identifier, emailVerified, mobileVerified } = this.getVerificationOptions(torusType, userRecord)
+    this.log.debug('verifyProof', { signature, identifier, verifier, torusType, userRecord, nonce })
     const signedPublicKey = recoverPublickey(signature, identifier, nonce)
+
     const isOwner = await this.isIdentifierOwner(signedPublicKey, verifier, identifier)
+    this.log.info('verifyProof result:', { isOwner, signedPublicKey })
     if (isOwner) {
       return { emailVerified, mobileVerified }
     }
+
     return { emailVerified: false, mobileVerified: false }
+  }
+
+  addStrategy(torusType, strategyClass) {
+    this.strategies[torusType] = new strategyClass()
+  }
+
+  initStrategies() {
+    this.addStrategy('google', GoogleStrategy)
+    this.addStrategy('google-old', GoogleLegacyStrategy)
+    this.addStrategy('auth0-pwdless-sms', PasswordlessSMSStrategy)
+    this.addStrategy('auth0-pwdless-email', PasswordlessEmailStrategy)
   }
 }
 
-const verifier =
-  Config.env === 'production'
-    ? new TorusVerifier()
-    : new TorusVerifier('0x4023d2a0D330bF11426B12C6144Cfb96B7fa6183', 'ropsten')
+const verifierConfig = Config.env === 'production' ? [] : ['0x4023d2a0D330bF11426B12C6144Cfb96B7fa6183', 'ropsten'] // [contract, network]
+const verifier = Reflect.construct(TorusVerifier, verifierConfig)
+verifier.initStrategies()
 export default verifier

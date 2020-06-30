@@ -1,7 +1,7 @@
 // @flow
 import { Router } from 'express'
 import passport from 'passport'
-import { defaults, get } from 'lodash'
+import { defaults, omitBy } from 'lodash'
 import { sha3 } from 'web3-utils'
 import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync } from '../utils/helpers'
@@ -9,8 +9,7 @@ import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import addUserSteps from './addUserSteps'
 import { generateMarketToken } from '../utils/market'
-import PropsModel from '../db/mongo/models/props'
-import TorusVerifier from '../../imports/torusVerifier'
+import createUserVerifier from './verifier'
 
 const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
   /**
@@ -28,45 +27,47 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { body, user: userRecord } = req
+      const { user: userPayload = {} } = body
       const logger = req.log
-      logger.debug('new user request:', { data: body.user, userRecord })
 
-      //if torus, then we first verify the user mobile/email by verifying it matches the torus public key
-      //(torus maps identifier such as email and mobile to private/public key pairs)
-      const { torusProof, torusProvider, torusProofNonce, email, mobile, ...bodyUser } = body.user || {}
-      if (torusProof) {
-        const { emailVerified, mobileVerified } = await TorusVerifier.verifyProof(
-          torusProof,
-          torusProvider,
-          body.user,
-          torusProofNonce
-        ).catch(e => {
-          logger.warn('TorusVerifier failed:', { e, msg: e.message })
-          return { emailVerified: false, mobileVerified: false }
-        })
+      logger.debug('new user request:', { data: userPayload, userRecord })
 
-        logger.info('TorusVerifier result:', { emailVerified, mobileVerified })
-        userRecord.smsValidated |= mobileVerified
-        userRecord.isEmailConfirmed |= emailVerified
-      }
+      const { email, mobile, ...restPayload } = userPayload
 
-      //check that user passed all min requirements
-      if (
-        ['production', 'staging'].includes(conf.env) &&
-        (userRecord.smsValidated !== true ||
-          (conf.skipEmailVerification === false && userRecord.isEmailConfirmed !== true))
-      ) {
-        throw new Error('User email or mobile not verified!')
+      // if torus, then we first verify the user mobile/email by verifying it matches the torus public key
+      // (torus maps identifier such as email and mobile to private/public key pairs)
+      const verifier = createUserVerifier(userRecord, userPayload, logger)
+
+      await verifier.verifySignInIdentifiers()
+
+      // check that user email/mobile sent is the same as the ones verified
+      //in case email/mobile was verified using torus userRecord.mobile/email will be empty
+      if (['production', 'staging'].includes(conf.env)) {
+        if (userRecord.smsValidated !== true || (userRecord.mobile && userRecord.mobile !== sha3(mobile))) {
+          throw new Error('User mobile not verified!')
+        }
+
+        if (
+          conf.skipEmailVerification === false &&
+          (userRecord.isEmailConfirmed !== true || (userRecord.email && userRecord.email !== sha3(email)))
+        ) {
+          throw new Error('User email not verified!')
+        }
       }
 
       if (userRecord.createdDate) {
         throw new Error('You cannot create more than 1 account with the same credentials')
       }
 
-      const user: UserRecord = defaults(bodyUser, {
+      // removing creds, nonce, proof and crypto keys from user payload as they shouldn't be stored in the userRecord
+      const payloadWithoutCreds = omitBy(restPayload, (_, userProperty) => userProperty.startsWith('torus'))
+
+      const toUpdateUser: UserRecord = defaults(payloadWithoutCreds, {
         identifier: userRecord.loggedInAs,
-        email: get(userRecord, 'otp.email', email), //for development/test use email from body
-        mobile: get(userRecord, 'otp.mobile', mobile), //for development/test use mobile from body
+        regMethod: userPayload.regMethod,
+        torusProvider: userPayload.torusProvider,
+        email: sha3(email),
+        mobile: sha3(mobile),
         isCompleted: userRecord.isCompleted
           ? userRecord.isCompleted
           : {
@@ -77,12 +78,13 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
             }
       })
 
+      const userRecordWithPII = { ...userRecord, email, mobile }
       const signUpPromises = []
       const p1 = storage
-        .updateUser(user)
-        .then(r => logger.debug('updated new user record', { user }))
+        .updateUser(toUpdateUser)
+        .then(r => logger.debug('updated new user record', { toUpdateUser }))
         .catch(e => {
-          logger.error('failed updating new user record', { e, errMessage: e.message, user })
+          logger.error('failed updating new user record', { e, errMessage: e.message, toUpdateUser })
           throw e
         })
       signUpPromises.push(p1)
@@ -102,35 +104,35 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
 
       if (process.env.NODE_ENV !== 'development') {
         const p3 = addUserSteps
-          .updateMauticRecord(userRecord, logger)
+          .updateMauticRecord(userRecordWithPII, logger)
           .then(r => logger.debug('updateMauticRecord success'))
           .catch(e => {
-            logger.error('updateMauticRecord failed', { e, errMessage: e.message, userRecord })
+            logger.error('updateMauticRecord failed', { e, errMessage: e.message, userRecordWithPII })
             throw e
           })
         signUpPromises.push(p3)
       }
 
       const web3RecordP = addUserSteps
-        .updateW3Record(user, logger)
+        .updateW3Record(userRecordWithPII, logger)
         .then(r => {
           logger.debug('updateW3Record success')
           return r
         })
         .catch(e => {
-          logger.error('updateW3Record failed', { e, errMessage: e.message, user })
+          logger.error('updateW3Record failed', { e, errMessage: e.message, userRecordWithPII })
           throw e
         })
       signUpPromises.push(web3RecordP)
 
       const marketTokenP = addUserSteps
-        .updateMarketToken(user, logger)
+        .updateMarketToken(userRecordWithPII, logger)
         .then(r => {
           logger.debug('updateMarketToken success')
           return r
         })
         .catch(e => {
-          logger.error('updateMarketToken failed', { e, errMessage: e.message, user })
+          logger.error('updateMarketToken failed', { e, errMessage: e.message, userRecordWithPII })
           throw e
         })
       signUpPromises.push(marketTokenP)
@@ -149,20 +151,23 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
       signUpPromises.push(p4)
 
       const p5 = Promise.all([
-        user.smsValidated && user.mobile && gunPublic.addUserToIndex('mobile', user.mobile, user),
-        user.email && user.isEmailConfirmed && gunPublic.addUserToIndex('email', user.email, user),
-        user.gdAddress && gunPublic.addUserToIndex('walletAddress', user.gdAddress, user)
+        userRecordWithPII.smsValidated &&
+          userRecordWithPII.mobile &&
+          gunPublic.addUserToIndex('mobile', userRecordWithPII.mobile, userRecordWithPII),
+        userRecordWithPII.email &&
+          userRecordWithPII.isEmailConfirmed &&
+          gunPublic.addUserToIndex('email', userRecordWithPII.email, userRecordWithPII),
+        userRecordWithPII.gdAddress &&
+          gunPublic.addUserToIndex('walletAddress', userRecordWithPII.gdAddress, userRecordWithPII)
       ])
 
       signUpPromises.push(p5)
       await Promise.all(signUpPromises)
-      logger.debug('signup stepss success. adding new user:', { user })
+      logger.debug('signup steps success. adding new user:', { toUpdateUser })
 
       await storage.updateUser({
         identifier: userRecord.loggedInAs,
         createdDate: new Date().toString(),
-        email: sha3(get(userRecord, 'otp.email', email)), //we keep email and mobile hashed after we are done with them
-        mobile: sha3(get(userRecord, 'otp.mobile', mobile)),
         otp: {} //delete trace of mobile,email
       })
       const web3Record = await web3RecordP
