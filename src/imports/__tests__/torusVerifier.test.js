@@ -16,7 +16,6 @@ describe('Test torus email/mobile to address', () => {
     const torusProxyContract = '0x638646503746d5456209e33a2ff5e3226d698bea'
 
     mainnetVerifier = new TorusVerifier({ torusNetwork, torusProxyContract }, { debug: noop, info: noop })
-    mainnetVerifier.initStrategies()
   })
 
   it('should get torus nodes', async () => {
