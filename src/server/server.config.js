@@ -429,7 +429,7 @@ const conf = convict({
     doc: 'Torus proxy contract address',
     format: '*',
     env: 'TORUS_PROXY_CONTRACT',
-    default: null
+    default: '0x4023d2a0D330bF11426B12C6144Cfb96B7fa6183'
   }
 })
 
