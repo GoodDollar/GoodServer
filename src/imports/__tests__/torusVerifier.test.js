@@ -1,6 +1,7 @@
 /**
  * @jest-environment node
  */
+import { noop } from 'lodash'
 
 import { recoverPublickey } from '../../server/utils/eth'
 import torusVerifier, { TorusVerifier } from '../torusVerifier'
@@ -9,8 +10,12 @@ import { DefaultVerificationStrategy } from '../../server/storage/verifier'
 jest.setTimeout(20000)
 describe('Test torus email/mobile to address', () => {
   let mainnetVerifier
+
   beforeAll(() => {
-    mainnetVerifier = new TorusVerifier('0x638646503746d5456209e33a2ff5e3226d698bea', 'mainnet')
+    const torusNetwork = 'mainnet'
+    const torusProxyContract = '0x638646503746d5456209e33a2ff5e3226d698bea'
+
+    mainnetVerifier = new TorusVerifier({ torusNetwork, torusProxyContract }, { debug: noop, info: noop })
     mainnetVerifier.initStrategies()
   })
 
