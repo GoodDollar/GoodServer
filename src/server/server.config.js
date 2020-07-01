@@ -1,10 +1,11 @@
-import networks from './networks'
+import convict from 'convict'
+import dotenv from 'dotenv'
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
+
+import networks from './networks'
 import { version } from '../../package.json'
 
-const envFile = process.env.NODE_ENV === 'test' ? `.env.test` : '.env'
-require('dotenv').config({ path: envFile })
-const convict = require('convict')
+dotenv.config({ path: process.env.NODE_ENV === 'test' ? `.env.test` : '.env' })
 
 // Define a schema
 const conf = convict({
@@ -417,26 +418,44 @@ const conf = convict({
     format: '*',
     env: 'FACEBOOK_GRAPH_API_URL',
     default: 'https://graph.facebook.com'
+  },
+  torusNetwork: {
+    doc: 'Torus network. Default: ropsten (mainnet, kovan, fuse, etoro, production, develop)',
+    format: ['mainnet', 'ropsten', 'kovan', 'fuse', 'etoro', 'production', 'develop'],
+    default: 'ropsten',
+    env: 'TORUS_NETWORK'
+  },
+  torusProxyContract: {
+    doc: 'Torus proxy contract address',
+    format: '*',
+    env: 'TORUS_PROXY_CONTRACT',
+    default: null
   }
 })
 
 // Load environment dependent configuration
 const network = conf.get('network')
 const networkId = ContractsAddress[network].networkId
-conf.set('ethereum', networks[networkId])
-//parse S3 details for gundb in format of key,secret,bucket
 const privateS3 = process.env.GUN_PRIVATE_S3
+const publicS3 = process.env.GUN_PUBLIC_S3
+
+conf.set('ethereum', networks[networkId])
+
+//parse S3 details for gundb in format of key,secret,bucket
 if (privateS3) {
   let s3Vals = privateS3.split(',')
   let s3Conf = { key: s3Vals[0], secret: s3Vals[1], bucket: s3Vals[2] }
+
   conf.set('gunPrivateS3', s3Conf)
 }
-const publicS3 = process.env.GUN_PUBLIC_S3
+
 if (publicS3) {
   let s3Vals = publicS3.split(',')
   let s3Conf = { key: s3Vals[0], secret: s3Vals[1], bucket: s3Vals[2] }
+
   conf.set('gunPublicS3', s3Conf)
 }
+
 // Perform validation
 conf.validate({ allowed: 'strict' })
 // eslint-disable-next-line
