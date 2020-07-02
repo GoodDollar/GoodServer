@@ -7,6 +7,7 @@ import torusVerifier, { TorusVerifier } from '../torusVerifier'
 import { DefaultVerificationStrategy } from '../../server/storage/verifier'
 
 jest.setTimeout(20000)
+
 describe('Test torus email/mobile to address', () => {
   let mainnetVerifier
   beforeAll(() => {
