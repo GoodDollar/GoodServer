@@ -106,6 +106,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         await enrollmentProcessor.validate(user, enrollmentIdentifier, payload)
 
         // if user is already verified, we're skipping enroillment logic
+        //TODO: or check if enrollment identifier already exists so we do only authentication
         if (user.isVerified || disableFaceVerification || isE2ERunning) {
           // creating enrollment session manually for this user
           const enrollmentSession = enrollmentProcessor.createEnrollmentSession(user, log)
@@ -122,23 +123,19 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           // he is no longer whitelisted there,
           // so we trust that we already whitelisted him in the past
           // and whitelist him again in the new contract
-          if (!disableFaceVerification) {
-            // checking for disableFaceVerification only
-            // because on automated tests runs user also should be whitelisted
-            try {
-              // in the session's lifecycle onEnrollmentCompleted() is called
-              // after enrollment was successfull
-              // it whitelists user in the wallet and updates Gun's session
-              // here we're calling it manually as we've skipped enroll()
-              await enrollmentSession.onEnrollmentCompleted()
-            } catch (exception) {
-              // also we should try...catch manually,
-              // on failure call call onEnrollmentFailed()
-              // for set non-whitelistened and error in the Gun's session
-              enrollmentSession.onEnrollmentFailed(exception)
-              // and rethrow exception for return { success: false } JSON response
-              throw exception
-            }
+          try {
+            // in the session's lifecycle onEnrollmentCompleted() is called
+            // after enrollment was successfull
+            // it whitelists user in the wallet and updates Gun's session
+            // here we're calling it manually as we've skipped enroll()
+            await enrollmentSession.onEnrollmentCompleted()
+          } catch (exception) {
+            // also we should try...catch manually,
+            // on failure call call onEnrollmentFailed()
+            // for set non-whitelistened and error in the Gun's session
+            enrollmentSession.onEnrollmentFailed(exception)
+            // and rethrow exception for return { success: false } JSON response
+            throw exception
           }
         } else {
           const isApprovedToClaim = ['approved', 'whitelisted'].includes(get(user, 'claimQueue.status'))
@@ -197,7 +194,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       if (!userRec.smsValidated || hashedMobile !== savedMobile) {
         let code
         if (['production', 'staging'].includes(conf.env)) {
-          ;[, code] = await sendOTP({ mobile })
+          code = await sendOTP({ mobile })
         }
         const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
         log.debug('otp sent:', user.loggedInAs, code)
