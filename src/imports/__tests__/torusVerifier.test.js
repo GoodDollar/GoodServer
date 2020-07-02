@@ -125,7 +125,7 @@ describe('Test torus email/mobile to address', () => {
       })
     })
 
-    it('should return public key for mainnet email/mobile', async () => {
+    xit('should return public key for mainnet email/mobile', async () => {
       const { torusNodeEndpoints, torusNodePub } = await mainnetVerifier.fetchNodeDetails.getNodeDetails()
 
       const opts = mainnetVerifier.getVerificationOptions('google', {
