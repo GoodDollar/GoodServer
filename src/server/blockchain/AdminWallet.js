@@ -189,7 +189,8 @@ export class Wallet {
         ContractsAddress: ContractsAddress[this.network]
       })
     } catch (e) {
-      log.error('Error initializing wallet', { e, errMessage: e.message })
+      log.error('Error initializing wallet', e.message, e)
+
       if (conf.env !== 'test' && conf.env !== 'development') process.exit(-1)
     }
     return true
@@ -269,7 +270,10 @@ export class Wallet {
         release()
       },
       onError: e => {
-        log.error('checkHanukaBonus redeem failed', e.message, e, user.identifier, user.gdAddress)
+        log.error('checkHanukaBonus redeem failed', e.message, e, {
+          identifier: user.identifier,
+          gdAddress: user.gdAddress
+        })
 
         fail()
       }
@@ -317,7 +321,7 @@ export class Wallet {
     }
     const tx: TransactionReceipt = await this.sendTransaction(this.proxyContract.methods.whitelist(address, did)).catch(
       e => {
-        log.error('Error whitelistUser', { e, errMessage: e.message, address, did })
+        log.error('Error whitelistUser', e.message, e, { address, did })
         throw e
       }
     )
@@ -334,7 +338,7 @@ export class Wallet {
     const tx: TransactionReceipt = await this.sendTransaction(
       this.identityContract.methods.addBlacklisted(address)
     ).catch(e => {
-      log.error('Error blackListUser', { e, errMessage: e.message, address })
+      log.error('Error blackListUser', e.message, e, { address })
       throw e
     })
 
@@ -350,7 +354,7 @@ export class Wallet {
     const tx: TransactionReceipt = await this.sendTransaction(
       this.proxyContract.methods.removeWhitelist(address)
     ).catch(e => {
-      log.error('Error removeWhitelisted', { e, errMessage: e.message, address })
+      log.error('Error removeWhitelisted', e.message, e, { address })
       throw e
     })
 
@@ -367,7 +371,7 @@ export class Wallet {
       .isWhitelisted(address)
       .call()
       .catch(e => {
-        log.error('Error isVerified', { e, errMessage: e.message })
+        log.error('Error isVerified', e.message, e)
         throw e
       })
     return tx
@@ -383,7 +387,7 @@ export class Wallet {
       .isAdmin(address)
       .call()
       .catch(e => {
-        log.error('Error isAdmin', { e, errMessage: e.message })
+        log.error('Error isAdmin', e.message, e)
         throw e
       })
     return tx
@@ -415,7 +419,7 @@ export class Wallet {
       log.debug('Topwallet result:', { address, res })
       return res
     } catch (e) {
-      log.error('Error topWallet', { errMessage: e.message, address, lastTopping, force })
+      log.error('Error topWallet', e.message, e, { address, lastTopping, force })
       throw e
     }
   }
@@ -432,7 +436,7 @@ export class Wallet {
     return this.getAddressBalance(this.address)
       .then(b => web3Utils.fromWei(b))
       .catch(e => {
-        log.error('Error getBalance', { e })
+        log.error('Error getBalance', e.message, e)
         throw e
       })
   }
@@ -463,7 +467,7 @@ export class Wallet {
         (await tx
           .estimateGas()
           .then(gas => gas + 50000) //buffer for proxy contract, reimburseGas?
-          .catch(e => log.error('Failed to estimate gas for tx', { errMessage: e.message, e }))) ||
+          .catch(e => log.error('Failed to estimate gas for tx', e.message, e))) ||
         defaultGas
 
       //adminwallet contract might give wrong gas estimates, so if its more than block gas limit reduce it to default
@@ -495,7 +499,7 @@ export class Wallet {
           })
           .on('confirmation', c => onConfirmation && onConfirmation(c))
           .on('error', async e => {
-            log.error('sendTransaction error:', { error: e.message, e, from: address, uuid })
+            log.error('sendTransaction error:', e.message, e, { from: address, uuid })
             if (isNonceError(e)) {
               let netNonce = parseInt(await this.web3.eth.getTransactionCount(address))
               log.warn('sendTransaciton nonce failure retry', {
@@ -569,11 +573,10 @@ export class Wallet {
             onConfirmation && onConfirmation(c)
           })
           .on('error', async e => {
-            log.error('sendNative failed', { errMessage: e.message, e })
+            log.error('sendNative failed', e.message, e)
             if (isNonceError(e)) {
               let netNonce = parseInt(await this.web3.eth.getTransactionCount(address))
-              log.error('sendNative nonce failure retry', {
-                errMessage: e.message,
+              log.error('sendNative nonce failure retry', e.message, e, {
                 params,
                 nonce,
                 gas,

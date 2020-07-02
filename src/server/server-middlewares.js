@@ -42,7 +42,8 @@ export default (app: Router, env: any) => {
 
   app.use((error, req, res, next: NextFunction) => {
     const log = req.log
-    log.error(error)
+    log.error('Something went wrong while performing request', error.message, error)
+
     res.status(400).json({ message: error.message })
   })
 

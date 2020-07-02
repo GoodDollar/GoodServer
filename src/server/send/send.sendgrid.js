@@ -23,7 +23,7 @@ export const sendLinkByEmail = (to: string, link: string) => {
   }
   return sgMail.send(msg).catch(error => {
     //Log friendly error
-    log.error(error.toString())
+    log.error('Failed to send link by email', error.message, error)
     throw error
   })
 }
@@ -71,7 +71,7 @@ export const sendRecoveryInstructionsByEmail = (to: string, name: string, key: s
 
   return sgMail.send(msg).catch(error => {
     // Log friendly error
-    log.error(error.toString())
+    log.error('Failed to send recovery instruction by email', error.message, error)
     throw error
   })
 }
@@ -114,7 +114,7 @@ export const sendEmailConfirmationLink = (user: UserRecord) => {
     .then(() => validationHash)
     .catch(error => {
       //Log friendly error
-      log.error(error.toString())
+      log.error('Failed to send email confirmation link', error.message, error)
       throw error
     })
 }

@@ -71,7 +71,7 @@ export default class queueMongo {
       }, conf.mongoQueueMaxLockTime * 1000)
       return wallet
     } catch (e) {
-      log.error('TX queueMongo (getWalletNonce)', { addresses, errMessage: e.message, e })
+      log.error('TX queueMongo (getWalletNonce)', e.message, e, { addresses })
       return false
     }
   }
@@ -118,7 +118,7 @@ export default class queueMongo {
       log.debug(`wallet initialized ${address} with nonce ${nonce} in mongo`)
       this.wallets[address] = true
     } catch (e) {
-      log.error('TX queueMongo (create)', { address, errMessage: e.message, e })
+      log.error('TX queueMongo (create)', e.message, e, { address })
     }
   }
 
@@ -147,7 +147,7 @@ export default class queueMongo {
         { returnNewDocument: true }
       )
     } catch (e) {
-      log.error('errorunlock', { address, errMessage: e.message, e })
+      log.error('errorunlock', e.message, e, { address })
     }
   }
 
@@ -206,7 +206,7 @@ export default class queueMongo {
         }
       }
     } catch (e) {
-      log.error('TX queueMongo (run)', { nextTr, walletNonce, errMessage: e.message, e })
+      log.error('TX queueMongo (run)', e.message, e, { nextTr, walletNonce })
     }
   }
 
