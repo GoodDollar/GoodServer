@@ -66,13 +66,11 @@ class TorusVerifier {
   constructor(Config, logger) {
     const { torusNetwork, torusProxyContract } = Config
 
-    console.log({ torusNetwork, torusProxyContract })
-
-    this.torus = new TorusUtils()
     this.logger = logger
+    this.torus = new TorusUtils()
 
     this.fetchNodeDetails = new FetchNodeDetails({
-      torusNetwork,
+      network: torusNetwork,
       proxyAddress: torusProxyContract
     })
   }
