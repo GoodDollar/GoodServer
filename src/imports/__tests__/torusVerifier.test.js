@@ -52,7 +52,7 @@ describe('Test torus email/mobile to address', () => {
     })
   })
 
-  it('should return public key for email/mobile', async () => {
+  xit('should return public key for email/mobile', async () => {
     const { torusNodeEndpoints, torusNodePub } = await torusVerifier.fetchNodeDetails.getNodeDetails()
     await Promise.all(
       strategies.map(async torusType => {
@@ -87,7 +87,7 @@ describe('Test torus email/mobile to address', () => {
     expect(signedPublicKey).toEqual('0xD97b62EC3266EbA1F8F90Ba264174c138b5d4C38'.toLowerCase())
   })
 
-  it('should return public key for mainnet email/mobile', async () => {
+  xit('should return public key for mainnet email/mobile', async () => {
     const { torusNodeEndpoints, torusNodePub } = await mainnetVerifier.fetchNodeDetails.getNodeDetails()
 
     const opts = mainnetVerifier.getVerificationOptions('google', {
