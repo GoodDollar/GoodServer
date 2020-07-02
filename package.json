@@ -46,6 +46,7 @@
     "@babel/polyfill": "^7.4.4",
     "@gooddollar/goodcontracts": "^1.2.0",
     "@sendgrid/mail": "^6.4.0",
+    "@sentry/node": "^5.19.0",
     "@toruslabs/fetch-node-details": "^2.2.4",
     "@toruslabs/torus.js": "^2.1.6",
     "apidoc": "^0.17.7",

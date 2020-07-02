@@ -1,17 +1,24 @@
+// libraries
 import winston from 'winston'
-import { omit, isPlainObject } from 'lodash'
-import conf from '../server/server.config'
+import { omit, isPlainObject, forEach } from 'lodash'
 import Rollbar from 'rollbar'
+import * as Sentry from '@sentry/node'
 import Crypto from 'crypto'
+
+// configs
+import conf from '../server/server.config'
 
 const { format } = winston
 const { combine, printf, timestamp } = format
 const colorizer = format.colorize()
 
+const { env, rollbarToken, sentryDSN, logLevel, version, network } = conf
+const logEnvAllowed = !['test', 'development'].includes(env)
+
 let rollbar
-if (conf.env !== 'development' && conf.rollbarToken)
+if (logEnvAllowed && rollbarToken)
   rollbar = new Rollbar({
-    accessToken: conf.rollbarToken,
+    accessToken: rollbarToken,
     captureUncaught: true,
     captureUnhandledRejections: true,
     payload: {
@@ -19,9 +26,22 @@ if (conf.env !== 'development' && conf.rollbarToken)
     }
   })
 
-const LOG_LEVEL = conf.logLevel
+let sentryInitialized = false
+if (logEnvAllowed && sentryDSN) {
+  Sentry.init({
+    dsn: sentryDSN,
+    environment: env
+  })
 
-console.log('Starting logger', { LOG_LEVEL, env: conf.env })
+  Sentry.configureScope(scope => {
+    scope.setTag('appVersion', version)
+    scope.setTag('networkUsed', network)
+  })
+
+  sentryInitialized = true
+}
+
+console.log('Starting logger', { logLevel, env })
 
 const levelConfigs = {
   levels: {
@@ -44,7 +64,7 @@ const levelConfigs = {
 
 const logger = winston.createLogger({
   levels: levelConfigs.levels,
-  level: LOG_LEVEL,
+  level: logLevel,
   format: combine(
     timestamp(),
     format.errors({ stack: true }),
@@ -57,7 +77,7 @@ const logger = winston.createLogger({
   ),
   transports: [
     new winston.transports.Console({
-      silent: LOG_LEVEL === 'silent'
+      silent: logLevel === 'silent'
     })
     // new winston.transports.File({ filename: 'somefile.log' })
   ]
@@ -67,8 +87,27 @@ winston.addColors(levelConfigs.colors)
 
 // patch error
 const error = logger.error
-logger.error = function() {
-  if (rollbar && conf.env !== 'test') rollbar.error.apply(rollbar, arguments)
+logger.error = function(...args) {
+  const [generalMessage, , errorObj] = args
+  let errorToPassIntoLog = errorObj
+
+  if (errorObj instanceof Error) {
+    errorToPassIntoLog.message = `${generalMessage}: ${errorObj.message}`
+  } else {
+    errorToPassIntoLog = new Error(generalMessage)
+  }
+
+  if (rollbar && env !== 'test') rollbar.error.apply(rollbar, arguments)
+
+  if (sentryInitialized) {
+    Sentry.configureScope(scope => {
+      forEach(arguments, (value, key) => {
+        scope.setExtra(key, value)
+      })
+    })
+
+    Sentry.captureException(errorToPassIntoLog)
+  }
 
   error.apply(this, arguments)
 }
@@ -111,6 +150,6 @@ const printMemory = () => {
   }
   logger.debug('Memory usage:', toPrint)
 }
-if (conf.env !== 'test') setInterval(printMemory, 30000)
+if (env !== 'test') setInterval(printMemory, 30000)
 
 export { rollbar, addRequestLogger, logger as default }

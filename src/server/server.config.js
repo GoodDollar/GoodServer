@@ -334,6 +334,12 @@ const conf = convict({
     env: 'ROLLBAR_TOKEN',
     default: undefined
   },
+  sentryDSN: {
+    doc: 'access token for sentry logging',
+    format: String,
+    env: 'SENTRY_DSN',
+    default: ''
+  },
   secure_key: {
     doc: 'Secure key word used to create secure hash by which server can communicate with web3',
     format: String,
