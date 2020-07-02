@@ -1,8 +1,9 @@
 import convict from 'convict'
 import dotenv from 'dotenv'
-import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
 
 import networks from './networks'
+import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
+
 import { version } from '../../package.json'
 
 dotenv.config({ path: process.env.NODE_ENV === 'test' ? `.env.test` : '.env' })
@@ -443,20 +444,19 @@ conf.set('ethereum', networks[networkId])
 
 //parse S3 details for gundb in format of key,secret,bucket
 if (privateS3) {
-  let s3Vals = privateS3.split(',')
-  let s3Conf = { key: s3Vals[0], secret: s3Vals[1], bucket: s3Vals[2] }
+  const [key, secret, bucket] = privateS3.split(',')
 
-  conf.set('gunPrivateS3', s3Conf)
+  conf.set('gunPrivateS3', { key, secret, bucket })
 }
 
 if (publicS3) {
-  let s3Vals = publicS3.split(',')
-  let s3Conf = { key: s3Vals[0], secret: s3Vals[1], bucket: s3Vals[2] }
+  const [key, secret, bucket] = publicS3.split(',')
 
-  conf.set('gunPublicS3', s3Conf)
+  conf.set('gunPublicS3', { key, secret, bucket })
 }
 
 // Perform validation
 conf.validate({ allowed: 'strict' })
+
 // eslint-disable-next-line
 export default conf.getProperties()

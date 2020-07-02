@@ -6,35 +6,18 @@ import { assign } from 'lodash'
 import conf from '../../server/server.config'
 import { recoverPublickey } from '../../server/utils/eth'
 import torusVerifier from '../torusVerifier'
-import { DefaultVerificationStrategy } from '../../server/storage/verifier'
+import createUserVerifier from '../../server/storage/verifier'
 
 jest.setTimeout(20000)
 describe('Test torus email/mobile to address', () => {
-  let mainnetVerifier
-  const strategies = ['google', 'google-old', 'auth0-pwdless-sms', 'auth0-pwdless-email']
-
-  beforeAll(() => {
-    const { torusNetwork, torusProxyContract } = conf
-
-    assign(conf, { torusNetwork: 'mainnet', torusProxyContract: '0x638646503746d5456209e33a2ff5e3226d698bea' })
-    mainnetVerifier = torusVerifier.constructor.factory()
-    assign(conf, { torusNetwork, torusProxyContract })
-  })
+  //const strategies = ['google', 'google-old', 'auth0-pwdless-sms', 'auth0-pwdless-email']
+  const strategies = ['auth0-pwdless-email']
 
   it('should get torus nodes', async () => {
     const nodes = await torusVerifier.fetchNodeDetails.getNodeDetails()
 
     expect(nodes).toMatchObject({
       nodeListAddress: '0x4023d2a0D330bF11426B12C6144Cfb96B7fa6183',
-      torusNodeEndpoints: expect.any(Array)
-    })
-  })
-
-  it('should get torus nodes from mainnet', async () => {
-    const nodes = await mainnetVerifier.fetchNodeDetails.getNodeDetails()
-
-    expect(nodes).toMatchObject({
-      nodeListAddress: '0x638646503746d5456209e33a2ff5e3226d698bea',
       torusNodeEndpoints: expect.any(Array)
     })
   })
@@ -52,11 +35,13 @@ describe('Test torus email/mobile to address', () => {
     })
   })
 
-  xit('should return public key for email/mobile', async () => {
+  it('should return public key for email/mobile', async () => {
     const { torusNodeEndpoints, torusNodePub } = await torusVerifier.fetchNodeDetails.getNodeDetails()
+
     await Promise.all(
       strategies.map(async torusType => {
         const opts = torusVerifier.getVerificationOptions(torusType, { email: 'x@gmail.com', mobile: '+972507319093' })
+
         const response = await torusVerifier.torus.getPublicAddress(
           torusNodeEndpoints,
           torusNodePub,
@@ -87,30 +72,7 @@ describe('Test torus email/mobile to address', () => {
     expect(signedPublicKey).toEqual('0xD97b62EC3266EbA1F8F90Ba264174c138b5d4C38'.toLowerCase())
   })
 
-  xit('should return public key for mainnet email/mobile', async () => {
-    const { torusNodeEndpoints, torusNodePub } = await mainnetVerifier.fetchNodeDetails.getNodeDetails()
-
-    const opts = mainnetVerifier.getVerificationOptions('google', {
-      email: 'x@gmail.com',
-      mobile: '+9720507319000'
-    })
-
-    const response = await mainnetVerifier.torus.getPublicAddress(
-      torusNodeEndpoints,
-      torusNodePub,
-      { verifier: opts.verifier, verifierId: opts.identifier },
-      false
-    )
-
-    expect([
-      '0x59fFCACC9969441eB1514e984CF9430b720EF626',
-      '0x2916342DA5cF53ac9CfcBCdc7c6AB0405Ea5F439',
-      '0xB5AD204135Ad58856a49CdA7351026c7e4906181'
-    ]).toContain(response)
-  })
-
   it('should modify userrecord if verified', async () => {
-    const userVerifier = new DefaultVerificationStrategy()
     const { verifyProof } = torusVerifier
 
     const userRecord = {
@@ -118,9 +80,21 @@ describe('Test torus email/mobile to address', () => {
       isEmailConfirmed: true
     }
 
+    const requestPayload = {
+      torusProof: '0x0',
+      torusProvider: 'google',
+      torusProofNonce: 1
+    }
+
+    const userVerifier = createUserVerifier(userRecord, requestPayload, console)
+
+    torusVerifier.verifyProof = jest.fn(() => ({
+      mobileVerified: true,
+      emailVerified: false
+    }))
+
     try {
-      torusVerifier.verifyProof = jest.fn(() => ({ mobileVerified: true, emailVerified: false }))
-      await userVerifier.verify({ torusProof: '0x0', torusProvider: 'google', torusProofNonce: 1 }, userRecord, console)
+      await userVerifier.verifySignInIdentifiers()
     } finally {
       assign(torusVerifier, { verifyProof })
     }
@@ -130,4 +104,48 @@ describe('Test torus email/mobile to address', () => {
       isEmailConfirmed: true
     })
   })
+
+  /*
+  describe('mainnet tests', () => {
+    let mainnetVerifier
+
+    beforeAll(() => {
+      const { torusNetwork, torusProxyContract } = conf
+
+      assign(conf, { torusNetwork: 'mainnet', torusProxyContract: '0x638646503746d5456209e33a2ff5e3226d698bea' })
+      mainnetVerifier = torusVerifier.constructor.factory()
+      assign(conf, { torusNetwork, torusProxyContract })
+    })
+
+    it('should get torus nodes from mainnet', async () => {
+      const nodes = await mainnetVerifier.fetchNodeDetails.getNodeDetails()
+
+      expect(nodes).toMatchObject({
+        nodeListAddress: '0x638646503746d5456209e33a2ff5e3226d698bea',
+        torusNodeEndpoints: expect.any(Array)
+      })
+    })
+
+    xit('should return public key for mainnet email/mobile', async () => {
+      const { torusNodeEndpoints, torusNodePub } = await mainnetVerifier.fetchNodeDetails.getNodeDetails()
+
+      const opts = mainnetVerifier.getVerificationOptions('google', {
+        email: 'x@gmail.com',
+        mobile: '+9720507319000'
+      })
+
+      const response = await mainnetVerifier.torus.getPublicAddress(
+        torusNodeEndpoints,
+        torusNodePub,
+        { verifier: opts.verifier, verifierId: opts.identifier },
+        false
+      )
+
+      expect([
+        '0x59fFCACC9969441eB1514e984CF9430b720EF626',
+        '0x2916342DA5cF53ac9CfcBCdc7c6AB0405Ea5F439',
+        '0xB5AD204135Ad58856a49CdA7351026c7e4906181'
+      ]).toContain(response)
+    })
+  })*/
 })
