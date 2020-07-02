@@ -49,7 +49,7 @@ class PasswordlessSMSStrategy {
   }
 }
 
-export class TorusVerifier {
+class TorusVerifier {
   strategies = {}
 
   static factory() {
