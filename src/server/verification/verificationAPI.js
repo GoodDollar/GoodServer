@@ -82,6 +82,32 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
   )
 
   /**
+   * @api {post} /verify/face/session Issues session token for a new enrollment session
+   * @apiName Issue enrollment session token
+   * @apiGroup Verification
+   *
+   * @ignore
+   */
+  app.post(
+    '/verify/face/session',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res) => {
+      const { log, user } = req
+
+      try {
+        const processor = createEnrollmentProcessor(storage)
+        const sessionToken = await processor.issueSessionToken(log)
+
+        res.json({ success: true, sessionToken })
+      } catch (exception) {
+        const { message } = exception
+        log.error('generating enrollment session token failed:', { message, exception, user })
+        res.status(400).json({ success: false, error: message })
+      }
+    })
+  )
+
+  /**
    * @api {put} /verify/:enrollmentIdentifier Verify users face
    * @apiName Face Verification
    * @apiGroup Verification
