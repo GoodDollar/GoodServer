@@ -25,6 +25,7 @@ module.exports = (env, argv) => {
       filename: "[name].js"
     },
     mode: argv.mode,
+    devtool: '#source-map',
     target: "node",
     node: {
       // Need this when working with express, otherwise the build fails
