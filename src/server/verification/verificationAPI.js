@@ -100,13 +100,13 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       let enrollmentResult
 
       try {
-        const { disableFaceVerification, claimQueueAllowed } = conf
+        const { disableFaceVerification, allowDuplicatedFaceRecords, claimQueueAllowed } = conf
         const enrollmentProcessor = createEnrollmentProcessor(storage)
 
         await enrollmentProcessor.validate(user, enrollmentIdentifier, payload)
 
         // if user is already verified, we're skipping enroillment logic
-        if (user.isVerified || disableFaceVerification || isE2ERunning) {
+        if (user.isVerified || disableFaceVerification || allowDuplicatedFaceRecords || isE2ERunning) {
           // creating enrollment session manually for this user
           const enrollmentSession = enrollmentProcessor.createEnrollmentSession(user, log)
           // to access user's session reference in the Gun
@@ -124,7 +124,9 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           // and whitelist him again in the new contract
           if (!disableFaceVerification) {
             // checking for disableFaceVerification only
-            // because on automated tests runs user also should be whitelisted
+            // because on automated tests runs or when duplicates are
+            // allowed but verification isn't disabled totally
+            // user also should be whitelisted
             try {
               // in the session's lifecycle onEnrollmentCompleted() is called
               // after enrollment was successfull

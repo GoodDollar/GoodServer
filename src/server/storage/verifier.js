@@ -1,9 +1,9 @@
-import { assign } from 'lodash'
+import { assign, isEmpty } from 'lodash'
 
 import TorusVerifier from '../../imports/torusVerifier'
 import FacebookVerifier from '../../imports/facebookVerifier'
 
-export class DefaultVerificationStrategy {
+class DefaultVerificationStrategy {
   async verify(requestPayload, userRecord, logger) {
     const { torusProof, torusProvider, torusProofNonce } = requestPayload
     let verificationResult = { emailVerified: false, mobileVerified: false }
@@ -53,12 +53,25 @@ class FacebookVerificationStrategy {
 }
 
 class UserVerifier {
-  static strategies = {
-    default: new DefaultVerificationStrategy()
+  static strategies = {}
+
+  // initialization incapsulated via factory pattern
+  static factory(userRecord, requestPayload, logger) {
+    // attaching strategies on first call
+    if (!UserVerifier.hasStrategiesAttached()) {
+      UserVerifier.addStrategy('default', DefaultVerificationStrategy)
+      UserVerifier.addStrategy('facebook', FacebookVerificationStrategy)
+    }
+
+    return new UserVerifier(userRecord, requestPayload, logger)
   }
 
   static addStrategy(provider, strategyClass) {
     UserVerifier.strategies[provider] = new strategyClass()
+  }
+
+  static hasStrategiesAttached() {
+    return !isEmpty(UserVerifier.strategies)
   }
 
   constructor(userRecord, requestPayload, logger) {
@@ -75,6 +88,4 @@ class UserVerifier {
   }
 }
 
-UserVerifier.addStrategy('facebook', FacebookVerificationStrategy)
-
-export default (userRecord, requestPayload, logger) => new UserVerifier(userRecord, requestPayload, logger)
+export default UserVerifier.factory
