@@ -1,23 +1,25 @@
-import Rollbar from 'rollbar'
+//import Rollbar from 'rollbar'
+
 import * as Sentry from '@sentry/node'
 import Transport from 'winston-transport'
 import { SPLAT } from 'triple-beam'
-import { forEach, values } from 'lodash'
+import { forEach } from 'lodash'
 import Config from '../../server/server.config'
 
-const { env, rollbarToken, sentryDSN, version, network } = Config
+const { env, sentryDSN, version, network } = Config
 const logEnvAllowed = !['test', 'development'].includes(env)
 
-let rollbar
-if (logEnvAllowed && rollbarToken)
-  rollbar = new Rollbar({
-    accessToken: rollbarToken,
-    captureUncaught: true,
-    captureUnhandledRejections: true,
-    payload: {
-      environment: process.env.NODE_ENV
-    }
-  })
+// let rollbar
+// if (logEnvAllowed && rollbarToken) {
+//   rollbar = new Rollbar({
+//     accessToken: rollbarToken,
+//     captureUncaught: true,
+//     captureUnhandledRejections: true,
+//     payload: {
+//       environment: process.env.NODE_ENV
+//     }
+//   })
+// }
 
 let sentryInitialized = false
 if (logEnvAllowed && sentryDSN) {
@@ -52,9 +54,9 @@ class CustomTransport extends Transport {
       errorToPassIntoLog = new Error(generalMessage)
     }
 
-    if (rollbar) {
-      rollbar.error.apply(rollbar, values(dataToPassIntoLog))
-    }
+    // if (rollbar) {
+    //   rollbar.error.apply(rollbar, values(dataToPassIntoLog))
+    // }
 
     if (sentryInitialized) {
       Sentry.configureScope(scope => {
@@ -68,4 +70,4 @@ class CustomTransport extends Transport {
   }
 }
 
-export { rollbar, CustomTransport as default }
+export { CustomTransport as default }

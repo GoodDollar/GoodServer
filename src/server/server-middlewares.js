@@ -13,7 +13,7 @@ import addSendMiddlewares from './send/sendAPI'
 import addLoadTestMiddlewares from './loadtest/loadtest-middleware'
 import addCypressMiddleware from './cypress/cypress-middleware'
 import { addRequestLogger } from '../imports/logger'
-import { rollbar } from '../imports/logger/ErrorsTransport'
+//import { rollbar } from '../imports/logger/ErrorsTransport'
 import VerificationAPI from './verification/verification'
 import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
 import addClaimQueueMiddlewares from './claimQueue/claimQueueAPI'
@@ -38,7 +38,7 @@ export default (app: Router, env: any) => {
   addClaimQueueMiddlewares(app, UserDBPrivate)
   addLoadTestMiddlewares(app)
 
-  if (rollbar) app.use(rollbar.errorHandler())
+  // if (rollbar) app.use(rollbar.errorHandler())
 
   app.use((error, req, res, next: NextFunction) => {
     const log = req.log
