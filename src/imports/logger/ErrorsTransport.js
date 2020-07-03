@@ -43,7 +43,7 @@ class CustomTransport extends Transport {
   }
 
   log(context) {
-    const { message: generalMessage, ...data } = context
+    const { message: generalMessage, userId, ...data } = context
     const [errorMessage, errorObj, extra = {}] = context[SPLAT]
     const dataToPassIntoLog = { generalMessage, errorMessage, errorObj, ...extra, ...data }
     let errorToPassIntoLog = errorObj
@@ -60,6 +60,10 @@ class CustomTransport extends Transport {
 
     if (sentryInitialized) {
       Sentry.configureScope(scope => {
+        scope.setUser({
+          userId
+        })
+
         forEach(dataToPassIntoLog, (value, key) => {
           scope.setExtra(key, value)
         })
