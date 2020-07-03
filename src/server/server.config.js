@@ -325,13 +325,13 @@ const conf = convict({
   disableFaceVerification: {
     doc: 'Whitelist user once they register, returns already enrolled with no Zoom API interaction',
     format: Boolean,
-    env: 'ALLOW_DUPLICATED_FACE_RECORDS',
+    env: 'DISABLE_FACE_VERIFICATION',
     default: false
   },
   allowDuplicatedFaceRecords: {
     doc: 'Skips duplicates / liveness check during Zoom API interaction',
     format: Boolean,
-    env: 'DISABLE_FACE_VERIFICATION',
+    env: 'ALLOW_DUPLICATED_FACE_RECORDS',
     default: false
   },
   rollbarToken: {
