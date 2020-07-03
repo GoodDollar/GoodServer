@@ -49,18 +49,12 @@ class PasswordlessSMSStrategy {
   }
 }
 
-export class TorusVerifier {
+class TorusVerifier {
   strategies = {}
 
   static factory() {
     // incapsulating verifier initialization using factory pattern
-    const ctorArgs = [logger.child({ from: 'TorusVerifier' })]
-
-    if (Config.env !== 'production') {
-      ctorArgs.push('0x4023d2a0D330bF11426B12C6144Cfb96B7fa6183', 'ropsten')
-    }
-
-    const verifier = Reflect.construct(TorusVerifier, ctorArgs)
+    const verifier = new TorusVerifier(Config, logger.child({ from: 'TorusVerifier' }))
 
     // Strategy pattern defines that strategies should be passed from outside
     // The main class shouldn't pass them to itself (expect probably some default/fallback strategy)
@@ -72,13 +66,15 @@ export class TorusVerifier {
     return verifier
   }
 
-  constructor(logger, proxyContract = null, network = null) {
+  constructor(Config, logger) {
+    const { torusNetwork, torusProxyContract } = Config
+
     this.logger = logger
     this.torus = new TorusUtils()
 
     this.fetchNodeDetails = new FetchNodeDetails({
-      network,
-      proxyAddress: proxyContract
+      network: torusNetwork,
+      proxyAddress: torusProxyContract
     })
   }
 
@@ -115,10 +111,12 @@ export class TorusVerifier {
     }
 
     const { verifier, identifier, emailVerified, mobileVerified } = this.getVerificationOptions(torusType, userRecord)
+
     logger.debug('verifyProof', { signature, identifier, verifier, torusType, userRecord, nonce })
 
     const signedPublicKey = recoverPublickey(signature, identifier, nonce)
     const isOwner = await this.isIdentifierOwner(signedPublicKey, verifier, identifier)
+
     logger.info('verifyProof result:', { isOwner, signedPublicKey })
 
     if (isOwner) {

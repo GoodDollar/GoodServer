@@ -3,7 +3,7 @@ import { assign, isEmpty } from 'lodash'
 import TorusVerifier from '../../imports/torusVerifier'
 import FacebookVerifier from '../../imports/facebookVerifier'
 
-export class DefaultVerificationStrategy {
+class DefaultVerificationStrategy {
   async verify(requestPayload, userRecord, logger) {
     const { torusProof, torusProvider, torusProofNonce } = requestPayload
     let verificationResult = { emailVerified: false, mobileVerified: false }
