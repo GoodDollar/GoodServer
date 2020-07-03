@@ -10,6 +10,10 @@ import { generateMarketToken } from '../utils/market'
 import requestTimeout from '../utils/timeout'
 
 const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
+  if (!conf.disableFaceVerification) {
+    return
+  }
+
   const user = await UserDBPrivate.getUser(userRecord.identifier)
   const whiteList = get(user, 'isCompleted.whiteList', false)
 
@@ -17,11 +21,6 @@ const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
     logger.debug('addUserToWhiteList user already whitelisted', { address: userRecord.gdAddress })
     return true
   }
-
-  // removed disableFaceVerification check as
-  // a) it's already performed in storageAPI
-  // b) this method is used in storageAPI only
-  // c) it simplyfies checking are we running on cypress or not (no need to pass E2E flag)
 
   logger.debug('addUserToWhiteList whitelisting user...', {
     address: userRecord.gdAddress,

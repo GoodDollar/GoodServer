@@ -308,6 +308,12 @@ const conf = convict({
     env: 'SKIP_EMAIL_VERIFICATION',
     default: false
   },
+  enableMongoLock: {
+    doc: 'Enable or disable transaction locks for mongo',
+    format: Boolean,
+    env: 'ENABLE_MONGO_LOCK',
+    default: false
+  },
   keepFaceVerificationRecords: {
     doc:
       'Time interval (in hours) to store face verification records after user deletes his account.' +
@@ -316,14 +322,14 @@ const conf = convict({
     env: 'KEEP_FACE_VERIFICATION_RECORDS',
     default: 24
   },
-  enableMongoLock: {
-    doc: 'Enable or disable transaction locks for mongo',
-    format: Boolean,
-    env: 'ENABLE_MONGO_LOCK',
-    default: false
-  },
   disableFaceVerification: {
     doc: 'Whitelist user once they register, returns already enrolled with no Zoom API interaction',
+    format: Boolean,
+    env: 'ALLOW_DUPLICATED_FACE_RECORDS',
+    default: false
+  },
+  allowDuplicatedFaceRecords: {
+    doc: 'Skips duplicates / liveness check during Zoom API interaction',
     format: Boolean,
     env: 'DISABLE_FACE_VERIFICATION',
     default: false

@@ -1,8 +1,12 @@
 // @flow
-import type { UserRecord } from '../../../imports/types'
+import { assign } from 'lodash'
+
+import config from '../../server.config'
 import UserDBPrivate from '../../db/mongo/user-privat-provider'
-import { getCreds } from '../../__util__'
+import type { UserRecord } from '../../../imports/types'
+
 import addUserSteps from '../addUserSteps'
+import { getCreds } from '../../__util__'
 
 jest.setTimeout(30000)
 
@@ -47,14 +51,40 @@ describe('storageAPI', () => {
     expect(mauticId).toBeTruthy()
   })
 
-  test('should addUserToWhiteList', async () => {
+  test('should not addUserToWhiteList when faceverification enabled', async () => {
+    const { disableFaceVerification } = config
+
     let userIsCompleted
     const creds = await getCreds(true)
     let userRecord = { ...creds, ...user, gdAddress: creds.address }
 
-    userRecord.profilePublickey = String(Math.random())
-    await addUserSteps.addUserToWhiteList(userRecord, console)
-    userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')
+    try {
+      config.disableFaceVerification = false
+      userRecord.profilePublickey = String(Math.random())
+      await addUserSteps.addUserToWhiteList(userRecord, console)
+      userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')
+    } finally {
+      assign(config, { disableFaceVerification })
+    }
+
+    expect(userIsCompleted.whiteList).toBeFalsy()
+  })
+
+  test('should addUserToWhiteList when faceverification disabled', async () => {
+    const { disableFaceVerification } = config
+
+    let userIsCompleted
+    const creds = await getCreds(true)
+    let userRecord = { ...creds, ...user, gdAddress: creds.address }
+
+    try {
+      config.disableFaceVerification = true
+      userRecord.profilePublickey = String(Math.random())
+      await addUserSteps.addUserToWhiteList(userRecord, console)
+      userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')
+    } finally {
+      assign(config, { disableFaceVerification })
+    }
 
     expect(userIsCompleted.whiteList).toBeTruthy()
   })

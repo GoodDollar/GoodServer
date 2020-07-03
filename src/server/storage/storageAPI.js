@@ -27,7 +27,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { env, skipEmailVerification, disableFaceVerification } = conf
-      const { body, user: userRecord, isE2ERunning } = req
+      const { body, user: userRecord } = req
       const { user: userPayload = {} } = body
       const logger = req.log
 
@@ -91,8 +91,8 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         })
       signUpPromises.push(p1)
 
-      // whitelisting user if FR is disabled or we're running cypress tests
-      if (disableFaceVerification || isE2ERunning) {
+      // whitelisting user if FR is disabled
+      if (disableFaceVerification) {
         const p2 = addUserSteps
           .addUserToWhiteList(userRecord, logger)
           .then(isWhitelisted => {
