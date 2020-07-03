@@ -53,8 +53,11 @@ class TorusVerifier {
   strategies = {}
 
   static factory() {
+    // incapsulating verifier initialization using factory pattern
     const verifier = new TorusVerifier(Config, logger.child({ from: 'TorusVerifier' }))
 
+    // Strategy pattern defines that strategies should be passed from outside
+    // The main class shouldn't pass them to itself (expect probably some default/fallback strategy)
     verifier.addStrategy('google', GoogleStrategy)
     verifier.addStrategy('google-old', GoogleLegacyStrategy)
     verifier.addStrategy('auth0-pwdless-sms', PasswordlessSMSStrategy)
@@ -76,8 +79,8 @@ class TorusVerifier {
   }
 
   async isIdentifierOwner(publicAddress, verifier, identifier) {
-    const { torus, logger } = this
-    const { torusNodeEndpoints, torusNodePub } = await this.fetchNodeDetails.getNodeDetails()
+    const { torus, logger, fetchNodeDetails } = this
+    const { torusNodeEndpoints, torusNodePub } = await fetchNodeDetails.getNodeDetails()
 
     const response = await torus.getPublicAddress(
       torusNodeEndpoints,
