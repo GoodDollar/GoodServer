@@ -1,11 +1,13 @@
 import { get } from 'lodash'
+import convict from 'convict'
+import dotenv from 'dotenv'
+
 import networks from './networks'
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
+
 import { version } from '../../package.json'
 
-const envFile = process.env.NODE_ENV === 'test' ? `.env.test` : '.env'
-require('dotenv').config({ path: envFile })
-const convict = require('convict')
+dotenv.config({ path: process.env.NODE_ENV === 'test' ? `.env.test` : '.env' })
 
 // Define a schema
 const conf = convict({
@@ -315,6 +317,12 @@ const conf = convict({
     env: 'SKIP_EMAIL_VERIFICATION',
     default: false
   },
+  enableMongoLock: {
+    doc: 'Enable or disable transaction locks for mongo',
+    format: Boolean,
+    env: 'ENABLE_MONGO_LOCK',
+    default: false
+  },
   keepFaceVerificationRecords: {
     doc:
       'Time interval (in hours) to store face verification records after user deletes his account.' +
@@ -323,16 +331,16 @@ const conf = convict({
     env: 'KEEP_FACE_VERIFICATION_RECORDS',
     default: 24
   },
-  enableMongoLock: {
-    doc: 'Enable or disable transaction locks for mongo',
-    format: Boolean,
-    env: 'ENABLE_MONGO_LOCK',
-    default: false
-  },
   disableFaceVerification: {
     doc: 'Whitelist user once they register, returns already enrolled with no Zoom API interaction',
     format: Boolean,
     env: 'DISABLE_FACE_VERIFICATION',
+    default: false
+  },
+  allowDuplicatedFaceRecords: {
+    doc: 'Skips duplicates / liveness check during Zoom API interaction',
+    format: Boolean,
+    env: 'ALLOW_DUPLICATED_FACE_RECORDS',
     default: false
   },
   rollbarToken: {
@@ -436,6 +444,18 @@ const conf = convict({
     format: String,
     env: 'STAKE_TASK_CRON',
     default: '0 0 * * * *'
+  },
+  torusNetwork: {
+    doc: 'Torus network. Default: ropsten (mainnet, kovan, fuse, etoro, production, develop)',
+    format: ['mainnet', 'ropsten', 'kovan', 'fuse', 'etoro', 'production', 'develop'],
+    default: 'ropsten',
+    env: 'TORUS_NETWORK'
+  },
+  torusProxyContract: {
+    doc: 'Torus proxy contract address',
+    format: '*',
+    env: 'TORUS_PROXY_CONTRACT',
+    default: '0x4023d2a0D330bF11426B12C6144Cfb96B7fa6183'
   }
 })
 
@@ -446,21 +466,26 @@ const mainNetworkId = get(ContractsAddress, `${network}-mainnet.networkId`, netw
 
 conf.set('ethereum', networks[networkId])
 conf.set('ethereumMainnet', networks[mainNetworkId])
+const privateS3 = process.env.GUN_PRIVATE_S3
+const publicS3 = process.env.GUN_PUBLIC_S3
+
+conf.set('ethereum', networks[networkId])
 
 //parse S3 details for gundb in format of key,secret,bucket
-const privateS3 = process.env.GUN_PRIVATE_S3
 if (privateS3) {
-  let s3Vals = privateS3.split(',')
-  let s3Conf = { key: s3Vals[0], secret: s3Vals[1], bucket: s3Vals[2] }
-  conf.set('gunPrivateS3', s3Conf)
+  const [key, secret, bucket] = privateS3.split(',')
+
+  conf.set('gunPrivateS3', { key, secret, bucket })
 }
-const publicS3 = process.env.GUN_PUBLIC_S3
+
 if (publicS3) {
-  let s3Vals = publicS3.split(',')
-  let s3Conf = { key: s3Vals[0], secret: s3Vals[1], bucket: s3Vals[2] }
-  conf.set('gunPublicS3', s3Conf)
+  const [key, secret, bucket] = publicS3.split(',')
+
+  conf.set('gunPublicS3', { key, secret, bucket })
 }
+
 // Perform validation
 conf.validate({ allowed: 'strict' })
+
 // eslint-disable-next-line
 export default conf.getProperties()
