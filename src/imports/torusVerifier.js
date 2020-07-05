@@ -3,6 +3,7 @@ import TorusUtils from '@toruslabs/torus.js/dist/torusUtils-node.js'
 import moment from 'moment'
 import Config from '../server/server.config'
 import { recoverPublickey } from '../server/utils/eth'
+import logger from '../imports/logger'
 
 class GoogleLegacyStrategy {
   getVerificationOptions(userRecord) {
@@ -40,7 +41,7 @@ class PasswordlessEmailStrategy {
 class PasswordlessSMSStrategy {
   getVerificationOptions(userRecord) {
     return {
-      verifier: 'google-auth0-gooddollar',
+      verifier: 'gooddollar-auth0-sms-passwordless',
       identifier: userRecord.mobile,
       emailVerified: false,
       mobileVerified: true
@@ -51,24 +52,44 @@ class PasswordlessSMSStrategy {
 class TorusVerifier {
   strategies = {}
 
-  constructor(proxyContract = null, network = null) {
+  static factory() {
+    // incapsulating verifier initialization using factory pattern
+    const verifier = new TorusVerifier(Config, logger.child({ from: 'TorusVerifier' }))
+
+    // Strategy pattern defines that strategies should be passed from outside
+    // The main class shouldn't pass them to itself (expect probably some default/fallback strategy)
+    verifier.addStrategy('google', GoogleStrategy)
+    verifier.addStrategy('google-old', GoogleLegacyStrategy)
+    verifier.addStrategy('auth0-pwdless-sms', PasswordlessSMSStrategy)
+    verifier.addStrategy('auth0-pwdless-email', PasswordlessEmailStrategy)
+
+    return verifier
+  }
+
+  constructor(Config, logger) {
+    const { torusNetwork, torusProxyContract } = Config
+
+    this.logger = logger
     this.torus = new TorusUtils()
 
     this.fetchNodeDetails = new FetchNodeDetails({
-      network,
-      proxyAddress: proxyContract
+      network: torusNetwork,
+      proxyAddress: torusProxyContract
     })
   }
 
   async isIdentifierOwner(publicAddress, verifier, identifier) {
-    const { torusNodeEndpoints, torusNodePub } = await this.fetchNodeDetails.getNodeDetails()
-    const response = await this.torus.getPublicAddress(
+    const { torus, logger, fetchNodeDetails } = this
+    const { torusNodeEndpoints, torusNodePub } = await fetchNodeDetails.getNodeDetails()
+
+    const response = await torus.getPublicAddress(
       torusNodeEndpoints,
       torusNodePub,
       { verifier, verifierId: identifier },
       false
     )
 
+    logger.debug('isIdentifierOwner:', { identifier, response })
     return publicAddress.toLowerCase() === response.toLowerCase()
   }
 
@@ -83,13 +104,20 @@ class TorusVerifier {
   }
 
   async verifyProof(signature, torusType, userRecord, nonce) {
-    if (moment().diff(moment(nonce), 'minutes') >= 1) {
+    const { logger } = this
+
+    if (moment().diff(moment(Number(nonce)), 'minutes') >= 1) {
       throw new Error('torus proof nonce invalid:' + nonce)
     }
 
     const { verifier, identifier, emailVerified, mobileVerified } = this.getVerificationOptions(torusType, userRecord)
+
+    logger.debug('verifyProof', { signature, identifier, verifier, torusType, userRecord, nonce })
+
     const signedPublicKey = recoverPublickey(signature, identifier, nonce)
     const isOwner = await this.isIdentifierOwner(signedPublicKey, verifier, identifier)
+
+    logger.info('verifyProof result:', { isOwner, signedPublicKey })
 
     if (isOwner) {
       return { emailVerified, mobileVerified }
@@ -103,12 +131,4 @@ class TorusVerifier {
   }
 }
 
-const verifierConfig = Config.env === 'production' ? [] : ['0x4023d2a0D330bF11426B12C6144Cfb96B7fa6183', 'ropsten'] // [contract, network]
-const verifier = Reflect.construct(TorusVerifier, verifierConfig)
-
-verifier.addStrategy('google', GoogleStrategy)
-verifier.addStrategy('google-old', GoogleLegacyStrategy)
-verifier.addStrategy('auth0-pwdless-sms', PasswordlessSMSStrategy)
-verifier.addStrategy('auth0-pwdless-email', PasswordlessEmailStrategy)
-
-export default verifier
+export default TorusVerifier.factory()

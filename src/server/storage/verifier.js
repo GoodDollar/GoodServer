@@ -1,4 +1,4 @@
-import { assign } from 'lodash'
+import { assign, isEmpty } from 'lodash'
 
 import TorusVerifier from '../../imports/torusVerifier'
 import FacebookVerifier from '../../imports/facebookVerifier'
@@ -24,8 +24,8 @@ class DefaultVerificationStrategy {
     const { emailVerified, mobileVerified } = verificationResult
 
     logger.info('TorusVerifier result:', verificationResult)
-    userRecord.smsValidated |= mobileVerified
-    userRecord.isEmailConfirmed |= emailVerified
+    userRecord.smsValidated = userRecord.smsValidated || mobileVerified
+    userRecord.isEmailConfirmed = userRecord.isEmailConfirmed || emailVerified
   }
 }
 
@@ -48,17 +48,30 @@ class FacebookVerificationStrategy {
     }
 
     logger.info('FacebookVerifier result:', { emailVerified })
-    userRecord.isEmailConfirmed |= emailVerified
+    userRecord.isEmailConfirmed = userRecord.isEmailConfirmed || emailVerified
   }
 }
 
 class UserVerifier {
-  static strategies = {
-    default: new DefaultVerificationStrategy()
+  static strategies = {}
+
+  // initialization incapsulated via factory pattern
+  static factory(userRecord, requestPayload, logger) {
+    // attaching strategies on first call
+    if (!UserVerifier.hasStrategiesAttached()) {
+      UserVerifier.addStrategy('default', DefaultVerificationStrategy)
+      UserVerifier.addStrategy('facebook', FacebookVerificationStrategy)
+    }
+
+    return new UserVerifier(userRecord, requestPayload, logger)
   }
 
   static addStrategy(provider, strategyClass) {
     UserVerifier.strategies[provider] = new strategyClass()
+  }
+
+  static hasStrategiesAttached() {
+    return !isEmpty(UserVerifier.strategies)
   }
 
   constructor(userRecord, requestPayload, logger) {
@@ -75,6 +88,4 @@ class UserVerifier {
   }
 }
 
-UserVerifier.addStrategy('facebook', FacebookVerificationStrategy)
-
-export default (userRecord, requestPayload, logger) => new UserVerifier(userRecord, requestPayload, logger)
+export default UserVerifier.factory

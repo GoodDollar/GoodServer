@@ -26,6 +26,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
     '/user/add',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
+      const { env, skipEmailVerification, disableFaceVerification } = conf
       const { body, user: userRecord } = req
       const { user: userPayload = {} } = body
       const logger = req.log
@@ -41,14 +42,15 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
       await verifier.verifySignInIdentifiers()
 
       // check that user email/mobile sent is the same as the ones verified
-      if (['production', 'staging'].includes(conf.env)) {
-        if (userRecord.smsValidated !== true || userRecord.mobile !== sha3(mobile)) {
+      //in case email/mobile was verified using torus userRecord.mobile/email will be empty
+      if (['production', 'staging'].includes(env)) {
+        if (userRecord.smsValidated !== true || (userRecord.mobile && userRecord.mobile !== sha3(mobile))) {
           throw new Error('User mobile not verified!')
         }
 
         if (
-          conf.skipEmailVerification === false &&
-          (userRecord.isEmailConfirmed !== true || userRecord.email !== sha3(email))
+          skipEmailVerification === false &&
+          (userRecord.isEmailConfirmed !== true || (userRecord.email && userRecord.email !== sha3(email)))
         ) {
           throw new Error('User email not verified!')
         }
@@ -79,6 +81,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
 
       const userRecordWithPII = { ...userRecord, email, mobile }
       const signUpPromises = []
+
       const p1 = storage
         .updateUser(toUpdateUser)
         .then(r => logger.debug('updated new user record', { toUpdateUser }))
@@ -87,7 +90,9 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           throw e
         })
       signUpPromises.push(p1)
-      if (conf.disableFaceVerification) {
+
+      // whitelisting user if FR is disabled
+      if (disableFaceVerification) {
         const p2 = addUserSteps
           .addUserToWhiteList(userRecord, logger)
           .then(isWhitelisted => {
@@ -146,7 +151,6 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           logger.error('topUserWallet failed', { e, errMessage: e.message, userRecord })
           throw e
         })
-
       signUpPromises.push(p4)
 
       const p5 = Promise.all([
@@ -159,8 +163,8 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         userRecordWithPII.gdAddress &&
           gunPublic.addUserToIndex('walletAddress', userRecordWithPII.gdAddress, userRecordWithPII)
       ])
-
       signUpPromises.push(p5)
+
       await Promise.all(signUpPromises)
       logger.debug('signup steps success. adding new user:', { toUpdateUser })
 
@@ -169,8 +173,10 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         createdDate: new Date().toString(),
         otp: {} //delete trace of mobile,email
       })
+
       const web3Record = await web3RecordP
       const marketToken = await marketTokenP
+
       res.json({
         ok: 1,
         loginToken: web3Record && web3Record.loginToken,

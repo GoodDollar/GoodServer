@@ -1,17 +1,13 @@
 // @flow
 import fetch from 'cross-fetch'
-import logger from '../../imports/logger'
+import { get } from 'lodash'
 
+import logger from '../../imports/logger'
 import { UserRecord } from '../../imports/types'
 import Config from '../server.config'
-import get from 'lodash/get'
+import requestTimeout from '../utils/timeout'
 
 const log = logger.child({ from: 'Mautic' })
-const Timeout = (timeout: msec) => {
-  return new Promise((res, rej) => {
-    setTimeout(rej, timeout, new Error('Request Timeout'))
-  })
-}
 
 export const Mautic = {
   baseUrl: Config.mauticURL,
@@ -23,7 +19,7 @@ export const Mautic = {
   baseQuery(url, headers, body, method = 'post', timeout = 15000) {
     const fullUrl = `${this.baseUrl}${url}`
 
-    return Promise.race([Timeout(timeout), fetch(fullUrl, { method, body: JSON.stringify(body), headers })])
+    return Promise.race([requestTimeout(timeout), fetch(fullUrl, { method, body: JSON.stringify(body), headers })])
       .then(async res => {
         log.debug(res)
         if (res.status >= 300) throw new Error(await res.text())

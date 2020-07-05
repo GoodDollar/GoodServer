@@ -4,11 +4,13 @@ import Axios from 'axios'
 import { isPlainObject, get } from 'lodash'
 
 import Config from '../server/server.config'
+import logger from '../imports/logger'
 
 class FacebookVerifier {
-  constructor(Config, httpFactory) {
+  constructor(Config, httpFactory, logger) {
     const { facebookGraphApiUrl } = Config
 
+    this.logger = logger
     this.http = httpFactory({
       baseURL: facebookGraphApiUrl,
       headers: {
@@ -21,8 +23,11 @@ class FacebookVerifier {
   }
 
   async verifyEmail(userEmail, accessToken) {
+    const { http, logger } = this
     const params = { fields: 'email', access_token: accessToken }
-    const userInfo = await this.http.get('/me', { params })
+    const userInfo = await http.get('/me', { params })
+
+    logger.info('verifyEmail', { userInfo })
 
     if (!('email' in userInfo)) {
       throw new Error(
@@ -61,4 +66,4 @@ class FacebookVerifier {
   }
 }
 
-export default new FacebookVerifier(Config, Axios.create)
+export default new FacebookVerifier(Config, Axios.create, logger.child({ from: 'FacebookVerifier' }))
