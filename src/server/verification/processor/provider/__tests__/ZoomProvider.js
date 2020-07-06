@@ -8,10 +8,11 @@ import createMockingHelper from '../../../api/__tests__/__util__'
 let helper
 let zoomServiceMock
 
+const sessionToken = 'fake-session-id'
 const enrollmentIdentifier = 'fake-enrollment-identifier'
 
 const payload = {
-  sessionId: 'fake-session-id',
+  sessionId: sessionToken,
   faceMap: Buffer.alloc(32),
   auditTrailImage: 'data:image/png:FaKEimagE==',
   lowQualityAuditTrailImage: 'data:image/png:FaKEimagE=='
@@ -39,6 +40,12 @@ describe('ZoomProvider', () => {
     zoomServiceMock.restore()
     zoomServiceMock = null
     helper = null
+  })
+
+  test('issueToken() should return session token', async () => {
+    helper.mockSuccessSessionToken(sessionToken)
+
+    await expect(ZoomProvider.issueToken()).resolves.toEqual(sessionToken)
   })
 
   test('isValid() validates payload if facemap and images are present', () => {
