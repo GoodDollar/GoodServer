@@ -1,17 +1,21 @@
 // @flow
 import express, { Router } from 'express'
+
+import { assign, identity, memoize, once } from 'lodash'
+import { sha3 } from 'web3-utils'
+import util from 'util'
+
 import Gun from 'gun'
 import SEA from 'gun/sea'
-import 'gun/lib/load'
-import { assign, identity, memoize, once } from 'lodash'
-import util from 'util'
-import delay from 'delay'
 // import les from 'gun/lib/les'
+import 'gun/lib/load'
+
+import { delay } from '../utils/timeout'
 import { wrapAsync } from '../utils/helpers'
 import { LoggedUser, type StorageAPI } from '../../imports/types'
 import conf from '../server.config'
 import logger from '../../imports/logger'
-import { sha3 } from 'web3-utils'
+
 const log = logger.child({ from: 'GunDB-Middleware' })
 
 assign(Gun.chain, {

@@ -1,7 +1,7 @@
 import request from 'supertest'
 import moment from 'moment'
-import delay from 'delay'
 import MockAdapter from 'axios-mock-adapter'
+
 import { assign, omit, invokeMap } from 'lodash'
 
 import Config from '../../server.config'
@@ -11,6 +11,8 @@ import AdminWallet from '../../blockchain/AdminWallet'
 import { GunDBPublic } from '../../gun/gun-middleware'
 
 import makeServer from '../../server-test'
+import { delay } from '../../utils/timeout'
+
 import createEnrollmentProcessor, { DISPOSE_ENROLLMENTS_TASK } from '../processor/EnrollmentProcessor'
 import { getToken, getCreds } from '../../__util__/'
 import createMockingHelper from '../api/__tests__/__util__'
