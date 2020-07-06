@@ -8,10 +8,12 @@ import createMockingHelper from './__util__'
 let helper
 let zoomServiceMock
 
+const sessionToken = 'fake-session-id'
+
 const enrollmentIdentifier = 'fake-enrollment-identifier'
 
 const payload = {
-  sessionId: 'fake-session-id',
+  sessionId: sessionToken,
   faceMap: Buffer.alloc(32),
   auditTrailImage: 'data:image/png:FaKEimagE=='
 }
@@ -67,6 +69,18 @@ describe('ZoomAPI', () => {
     zoomServiceMock.restore()
     zoomServiceMock = null
     helper = null
+  })
+
+  test('getSessionToken() should return session token', async () => {
+    helper.mockSuccessSessionToken(sessionToken)
+
+    await expect(ZoomAPI.getSessionToken()).resolves.toHaveProperty('sessionToken', sessionToken)
+  })
+
+  test('getSessionToken() should throws if no sessionToken found in the API response', async () => {
+    helper.mockFailedSessionToken()
+
+    await expect(ZoomAPI.getSessionToken()).rejects.toThrow('FaceTec API response is empty')
   })
 
   test('faceSearch() should return enrollments with match levels', async () => {

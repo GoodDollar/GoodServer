@@ -61,14 +61,17 @@ describe('verificationAPI', () => {
     const whitelistUserMock = jest.fn()
     const isVerifiedMock = jest.fn()
 
+    const sessionToken = 'fake-session-id'
     const enrollmentIdentifier = 'f0D7A688489Ab3079491d407A03BF16e5B027b2c'
     const signature =
       '0xff612279b69900493cec3e5f8707413ad4734aa1748483b61c856d3093bf0c88458e82722365f35dfedf88438ba1419774bbb67527057d9066eba9a548d4fc751b'
 
-    const enrollmentUri = '/verify/face/' + encodeURIComponent(enrollmentIdentifier)
+    const baseUri = '/verify/face'
+    const sessionUri = baseUri + '/session'
+    const enrollmentUri = baseUri + '/' + encodeURIComponent(enrollmentIdentifier)
 
     const payload = {
-      sessionId: 'fake-session-id',
+      sessionId: sessionToken,
       faceMap: Buffer.alloc(32),
       auditTrailImage: 'data:image/png:FaKEimagE==',
       lowQualityAuditTrailImage: 'data:image/png:FaKEimagE=='
@@ -166,10 +169,45 @@ describe('verificationAPI', () => {
       helper = null
     })
 
-    test('PUT /verify/face/:enrollmentIdentifier returns 401 without credentials', async () => {
+    test('Face verification endpoints returns 401 without credentials', async () => {
+      await request(server)
+        .post(sessionUri)
+        .expect(401)
       await request(server)
         .put(enrollmentUri)
         .expect(401)
+      await request(server)
+        .get(enrollmentUri)
+        .expect(401)
+      await request(server)
+        .delete(enrollmentUri)
+        .expect(401)
+    })
+
+    test('POST /verify/face/session returns 200, success: true and sessionToken', async () => {
+      helper.mockSuccessSessionToken(sessionToken)
+
+      await request(server)
+        .post(sessionUri)
+        .send({})
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200, {
+          success: true,
+          sessionToken
+        })
+    })
+
+    test('POST /verify/face/session returns 400, success: false if Zoom API fails', async () => {
+      helper.mockFailedSessionToken()
+
+      await request(server)
+        .post(sessionUri)
+        .send({})
+        .set('Authorization', `Bearer ${token}`)
+        .expect(400, {
+          success: false,
+          error: 'FaceTec API response is empty'
+        })
     })
 
     test('PUT /verify/face/:enrollmentIdentifier returns 400 when payload is invalid', async () => {
