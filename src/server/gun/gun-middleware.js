@@ -22,6 +22,13 @@ assign(Gun.chain, {
     return promisifiedPut().then(callback)
   },
 
+  async then(cb, opt) {
+    var gun = this,
+      p = new Promise(function(res, rej) {
+        gun.once(res, { wait: 200, ...opt })
+      })
+    return cb ? p.then(cb) : p
+  },
   async onThen(cb = identity, opts = {}) {
     opts = Object.assign({ wait: 5000, default: undefined }, opts)
     let gun = this
@@ -164,7 +171,7 @@ class GunDB implements StorageAPI {
     }
     if (this.serverMode === false) {
       log.info('Starting gun as client:', { peers: this.peers })
-      this.gun = Gun({ file: name, peers: this.peers })
+      this.gun = Gun({ file: name, peers: this.peers, axe: false })
     } else if (s3 && s3.secret) {
       log.info('Starting gun with S3:', { gc_delay, memory })
       this.gun = Gun({
@@ -257,7 +264,7 @@ class GunDB implements StorageAPI {
     const updateP = this.user
       .get(`users/by${index}`)
       .get(sha3(value))
-      .putAck(user.profilePublickey)
+      .putAck({ '#': '~' + user.profilePublickey })
       .catch(e => {
         log.error('failed updating user index', { index, value, user })
         return false

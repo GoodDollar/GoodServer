@@ -377,7 +377,7 @@ describe('verificationAPI', () => {
       .expect(401)
   })
 
-  test('/verify/sendotp without sms validation', async () => {
+  test('/verify/sendotp saves mobile', async () => {
     const token = await getToken(server)
     await storage.updateUser({
       identifier: userIdentifier,
@@ -387,16 +387,10 @@ describe('verificationAPI', () => {
 
     await request(server)
       .post('/verify/sendotp')
+      .send({ user: { mobile: '+972507311111' } })
       .set('Authorization', `Bearer ${token}`)
-      .expect(200, { ok: 1, onlyInEnv: { current: 'test', onlyIn: ['production', 'staging'] } })
-  })
-
-  test('/verify/sendotp with creds', async () => {
-    const token = await getToken(server)
-    await request(server)
-      .post('/verify/sendotp')
-      .set('Authorization', `Bearer ${token}`)
-      .expect(200, { ok: 1, onlyInEnv: { current: 'test', onlyIn: ['production', 'staging'] } })
+      .expect(200, { ok: 1 })
+    expect(await storage.getByIdentifier(userIdentifier)).toMatchObject({ otp: { mobile: '+972507311111' } })
   })
 
   test('/verify/sendotp should fail with 429 status - too many requests (rate limiter)', async () => {
