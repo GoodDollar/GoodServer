@@ -131,7 +131,7 @@ class DBUpdates {
     const gooddollarProfile = '~' + GunDBPublic.user.is.pub
     logger.info('GoodDollar profile id:', {
       gooddollarProfile,
-      bywalletIdx: await GunDBPublic.user.get('users/bywalletAddress').then(_ => _['_']['#'])
+      bywalletIdx: await GunDBPublic.user.get('users/bywalletAddress').then(Gun.node.soul)
     })
     if (gooddollarProfile.indexOf('~qBFt4jGXG') === 0) {
       await GunDBPublic.user.delete()
