@@ -51,9 +51,7 @@ const logger = winston.createLogger({
     new winston.transports.Console({
       silent: logLevel === 'silent'
     }),
-    new ErrorsTransport({
-      level: 'error'
-    })
+    ErrorsTransport.factory({ level: 'error' })
   ]
 })
 

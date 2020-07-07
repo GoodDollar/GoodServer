@@ -4,27 +4,29 @@ import { SPLAT } from 'triple-beam'
 import { forEach } from 'lodash'
 import Config from '../../server/server.config'
 
-const { env, sentryDSN, version, network, remoteLoggingAllowed } = Config
-
-let sentryInitialized = false
-if (remoteLoggingAllowed && sentryDSN) {
-  Sentry.init({
-    dsn: sentryDSN,
-    environment: env
-  })
-
-  Sentry.configureScope(scope => {
-    scope.setTag('appVersion', version)
-    scope.setTag('networkUsed', network)
-  })
-
-  sentryInitialized = true
-}
-
 export default class ErrorsTransport extends Transport {
-  // eslint-disable-next-line
-  constructor(opts) {
+  sentryInitialized = false
+
+  static factory = options => new ErrorsTransport(options, Config, Sentry)
+
+  constructor(opts, Config, Sentry) {
+    const { env, sentryDSN, version, network, remoteLoggingAllowed } = Config
+
     super(opts)
+
+    if (remoteLoggingAllowed && sentryDSN) {
+      Sentry.init({
+        dsn: sentryDSN,
+        environment: env
+      })
+
+      Sentry.configureScope(scope => {
+        scope.setTag('appVersion', version)
+        scope.setTag('networkUsed', network)
+      })
+
+      this.sentryInitialized = true
+    }
   }
 
   log(context) {
@@ -39,7 +41,7 @@ export default class ErrorsTransport extends Transport {
       errorToPassIntoLog = new Error(generalMessage)
     }
 
-    if (sentryInitialized) {
+    if (this.sentryInitialized) {
       Sentry.configureScope(scope => {
         scope.setUser({
           userId
