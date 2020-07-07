@@ -336,12 +336,6 @@ const conf = convict({
     env: 'ALLOW_DUPLICATED_FACE_RECORDS',
     default: false
   },
-  rollbarToken: {
-    doc: 'access token for rollbar logging',
-    format: '*',
-    env: 'ROLLBAR_TOKEN',
-    default: undefined
-  },
   sentryDSN: {
     doc: 'access token for sentry logging',
     format: String,
