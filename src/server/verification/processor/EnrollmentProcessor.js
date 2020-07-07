@@ -95,6 +95,12 @@ class EnrollmentProcessor {
     }
   }
 
+  async issueSessionToken(customLogger = null): Promise<any> {
+    const { provider } = this
+
+    return provider.issueToken(customLogger)
+  }
+
   async enroll(user: any, enrollmentIdentifier: string, payload: any, customLogger = null): Promise<any> {
     const session = this.createEnrollmentSession(user, customLogger)
 

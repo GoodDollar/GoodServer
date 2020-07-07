@@ -1,4 +1,5 @@
 //@flow
+import Gun from 'gun'
 import { sha3 } from 'web3-utils'
 import { get, delay } from 'lodash'
 import logger from '../src/imports/logger'
@@ -30,6 +31,15 @@ class DBUpdates {
           })
       ])
       await PropsModel.updateOne({ name: 'DATABASE_VERSION' }, { $set: { value: { version: 1 } } }, { upsert: true })
+    }
+    if (version >= 1 && version < 2) {
+      await this.fixGunTrustProfiles()
+        .then(_ => logger.info('gun fixGunTrustProfiles done', { results: _ }))
+        .catch(e => {
+          logger.error('gun fixGunTrustProfiles failed', { err: e.message, e })
+          throw e
+        })
+      await PropsModel.updateOne({ name: 'DATABASE_VERSION' }, { $set: { value: { version: 2 } } }, { upsert: true })
     }
   }
 
@@ -81,7 +91,13 @@ class DBUpdates {
       { wait: 3000 }
     )
     return new Promise((res, rej) => {
-      delay(() => Promise.all(ps).then(res).catch(rej), 5000)
+      delay(
+        () =>
+          Promise.all(ps)
+            .then(res)
+            .catch(rej),
+        5000
+      )
     })
   }
 
@@ -105,6 +121,80 @@ class DBUpdates {
     } else {
       logger.warn('upgrade mongodb. nothing to do')
     }
+  }
+
+  /**
+   * convert existing gun indexes to hash based, also add them to the trusted index under our profile
+   */
+  async fixGunTrustProfiles() {
+    await GunDBPublic.init(null, conf.gundbPassword, `publicdb0`, null)
+    const gooddollarProfile = '~' + GunDBPublic.user.is.pub
+    logger.info('GoodDollar profile id:', {
+      gooddollarProfile,
+      bywalletIdx: await GunDBPublic.user.get('users/bywalletAddress').then(Gun.node.soul)
+    })
+    if (gooddollarProfile.indexOf('~qBFt4jGXG') === 0) {
+      await GunDBPublic.user.delete()
+      return
+    }
+    let ps = []
+    GunDBPublic.user.get('users/bywalletAddress').onThen(
+      data => {
+        const keys = Object.keys(data || {})
+        logger.info('bywalletAddress records found:', { total: keys.length })
+        const updatedIndex = {}
+        keys.forEach(k => {
+          if (0 === k.indexOf('0x') && typeof data[k] === 'string') {
+            //fix: turn public key into node ref to public profile
+            updatedIndex[k] = { '#': '~' + data[k] }
+          }
+        })
+        logger.info(`writing ${Object.keys(updatedIndex).length} records to bywalletAddress`, { updatedIndex })
+        ps.push(GunDBPublic.user.get('users/bywalletAddress').putAck(updatedIndex))
+      },
+      { wait: 3000 }
+    )
+    GunDBPublic.user.get('users/bymobile').onThen(
+      data => {
+        const keys = Object.keys(data || {})
+        logger.info('bymobile records found:', { total: keys.length })
+        const updatedIndex = {}
+        keys.forEach(k => {
+          if (0 === k.indexOf('0x') && typeof data[k] === 'string') {
+            //fix: turn public key into node ref to public profile
+            updatedIndex[k] = { '#': '~' + data[k] }
+          }
+        })
+        logger.info(`writing ${Object.keys(updatedIndex).length} records to bymobile`, { updatedIndex })
+        ps.push(GunDBPublic.user.get('users/bymobile').putAck(updatedIndex))
+      },
+      { wait: 3000 }
+    )
+    GunDBPublic.user.get('users/byemail').onThen(
+      data => {
+        const keys = Object.keys(data || {})
+        logger.info('byemail records found:', { total: keys.length })
+        const updatedIndex = {}
+        keys.forEach(k => {
+          if (0 === k.indexOf('0x') && typeof data[k] === 'string') {
+            //fix: turn public key into node ref to public profile
+            updatedIndex[k] = { '#': '~' + data[k] }
+          }
+        })
+        logger.info(`writing ${Object.keys(updatedIndex).length} records to byemail`, { updatedIndex })
+        ps.push(GunDBPublic.user.get('users/byemail').putAck(updatedIndex))
+      },
+      { wait: 3000 }
+    )
+    return new Promise((res, rej) => {
+      delay(
+        () =>
+          Promise.all(ps)
+            .then(res)
+            .catch(rej),
+        5000
+      )
+    })
   }
 }
 

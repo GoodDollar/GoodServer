@@ -56,6 +56,11 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         }
       }
 
+      if ('development' === env) {
+        userRecord.isEmailConfirmed = true
+        userRecord.smsValidated = true
+      }
+
       if (userRecord.createdDate) {
         throw new Error('You cannot create more than 1 account with the same credentials')
       }

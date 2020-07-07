@@ -1,7 +1,8 @@
-import AdminWallet from '../AdminWallet'
-import txManager from '../../utils/tx-manager'
 import Web3 from 'web3'
-import delay from 'delay'
+import AdminWallet from '../AdminWallet'
+
+import txManager from '../../utils/tx-manager'
+import { delay } from '../../utils/timeout'
 
 const web3 = new Web3()
 const generateWalletAddress = () => web3.eth.accounts.create().address

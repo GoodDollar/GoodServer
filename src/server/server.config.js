@@ -364,7 +364,7 @@ const conf = convict({
     doc: 'Web3 site url',
     format: 'url',
     env: 'WEB3_SITE_URL',
-    default: 'https://w3.gooddollar.org'
+    default: 'https://inivtation.herokuapp.com'
   },
   marketPassword: {
     doc: 'password for market jwt',

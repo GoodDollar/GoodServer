@@ -23,7 +23,7 @@ export const generateOTP = (length: number = 0): string => {
  * @param {UserRecord} user - object with user's information
  * @returns {Promise<$TupleMap<*[], typeof $await>>}
  */
-export const sendOTP = (user: UserRecord): Promise<any> => {
+export const sendOTP = async (user: UserRecord): Promise<any> => {
   const { twilioAuthID, twilioAuthToken, twilioPhoneNumber } = conf
   const { mobile } = user
 
@@ -31,7 +31,8 @@ export const sendOTP = (user: UserRecord): Promise<any> => {
 
   const otp = generateOTP(conf.otpDigits)
   const msg = 'Your GoodDollar Verification Code Is: ' + otp
-  return Promise.all([client.messages.create({ to: mobile, from: twilioPhoneNumber, body: msg }), otp])
+  await client.messages.create({ to: mobile, from: twilioPhoneNumber, body: msg })
+  return otp
 }
 
 /**

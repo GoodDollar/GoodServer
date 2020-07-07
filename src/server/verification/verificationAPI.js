@@ -82,6 +82,32 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
   )
 
   /**
+   * @api {post} /verify/face/session Issues session token for a new enrollment session
+   * @apiName Issue enrollment session token
+   * @apiGroup Verification
+   *
+   * @ignore
+   */
+  app.post(
+    '/verify/face/session',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res) => {
+      const { log, user } = req
+
+      try {
+        const processor = createEnrollmentProcessor(storage)
+        const sessionToken = await processor.issueSessionToken(log)
+
+        res.json({ success: true, sessionToken })
+      } catch (exception) {
+        const { message } = exception
+        log.error('generating enrollment session token failed:', { message, exception, user })
+        res.status(400).json({ success: false, error: message })
+      }
+    })
+  )
+
+  /**
    * @api {put} /verify/:enrollmentIdentifier Verify users face
    * @apiName Face Verification
    * @apiGroup Verification
@@ -122,25 +148,19 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           // he is no longer whitelisted there,
           // so we trust that we already whitelisted him in the past
           // and whitelist him again in the new contract
-          if (!disableFaceVerification) {
-            // checking for disableFaceVerification only
-            // because on automated tests runs or when duplicates are
-            // allowed but verification isn't disabled totally
-            // user also should be whitelisted
-            try {
-              // in the session's lifecycle onEnrollmentCompleted() is called
-              // after enrollment was successfull
-              // it whitelists user in the wallet and updates Gun's session
-              // here we're calling it manually as we've skipped enroll()
-              await enrollmentSession.onEnrollmentCompleted()
-            } catch (exception) {
-              // also we should try...catch manually,
-              // on failure call call onEnrollmentFailed()
-              // for set non-whitelistened and error in the Gun's session
-              enrollmentSession.onEnrollmentFailed(exception)
-              // and rethrow exception for return { success: false } JSON response
-              throw exception
-            }
+          try {
+            // in the session's lifecycle onEnrollmentCompleted() is called
+            // after enrollment was successfull
+            // it whitelists user in the wallet and updates Gun's session
+            // here we're calling it manually as we've skipped enroll()
+            await enrollmentSession.onEnrollmentCompleted()
+          } catch (exception) {
+            // also we should try...catch manually,
+            // on failure call call onEnrollmentFailed()
+            // for set non-whitelistened and error in the Gun's session
+            enrollmentSession.onEnrollmentFailed(exception)
+            // and rethrow exception for return { success: false } JSON response
+            throw exception
           }
         } else {
           const isApprovedToClaim = ['approved', 'whitelisted'].includes(get(user, 'claimQueue.status'))
@@ -178,7 +198,6 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
     '/verify/sendotp',
     requestRateLimiter(),
     passport.authenticate('jwt', { session: false }),
-    onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res, next) => {
       const { user, body } = req
       const log = req.log
@@ -198,7 +217,10 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       log.debug('sending otp:', user.loggedInAs)
 
       if (!userRec.smsValidated || hashedMobile !== savedMobile) {
-        const [, code] = await sendOTP({ mobile })
+        let code
+        if (['production', 'staging'].includes(conf.env)) {
+          code = await sendOTP({ mobile })
+        }
         const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
         log.debug('otp sent:', user.loggedInAs, code)
         await storage.updateUser({
@@ -364,8 +386,8 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
     '/verify/sendemail',
     requestRateLimiter(),
     passport.authenticate('jwt', { session: false }),
-    onlyInEnv('production', 'staging', 'test'),
     wrapAsync(async (req, res, next) => {
+      let runInEnv = ['production', 'staging', 'test'].includes(conf.env)
       const log = req.log
 
       const { user, body } = req
@@ -380,7 +402,8 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         return res.json({ ok: 0, error: 'Email already exists, please use a different one' })
       }
 
-      if (conf.skipEmailVerification === false) {
+      let code
+      if (runInEnv === true && conf.skipEmailVerification === false) {
         if ((!user.mauticId && !tempMauticId) || (currentEmail && currentEmail !== email)) {
           const mauticContact = await Mautic.createContact(userRec)
 
@@ -392,7 +415,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           log.debug('created new user mautic contact', userRec)
         }
 
-        const code = generateOTP(6)
+        code = generateOTP(6)
         if (!user.isEmailConfirmed || email !== currentEmail) {
           try {
             await Mautic.sendVerificationEmail(
@@ -408,18 +431,17 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
             throw e
           }
         }
-
-        // updates/adds user with the emailVerificationCode to be used for verification later and with mauticId
-        await storage.updateUser({
-          identifier: user.identifier,
-          mauticId: userRec.mauticId,
-          emailVerificationCode: code,
-          otp: {
-            ...userRec.otp,
-            email
-          }
-        })
       }
+
+      // updates/adds user with the emailVerificationCode to be used for verification later and with mauticId
+      await storage.updateUser({
+        identifier: user.identifier,
+        emailVerificationCode: code,
+        otp: {
+          ...userRec.otp,
+          email
+        }
+      })
 
       res.json({ ok: 1 })
     })
@@ -440,8 +462,9 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
   app.post(
     '/verify/email',
     passport.authenticate('jwt', { session: false }),
-    onlyInEnv('production', 'staging', 'test'),
     wrapAsync(async (req, res, next) => {
+      let runInEnv = ['production', 'staging', 'test'].includes(conf.env)
+
       const log = req.log
       const { user, body } = req
       const verificationData: { code: string } = body.verificationData
@@ -453,7 +476,8 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       log.debug('email verified', { user, body, verificationData, tempSavedMauticId, tempSavedEmail, currentEmail })
 
       if (!user.isEmailConfirmed || currentEmail !== hashedNewEmail) {
-        await verifier.verifyEmail({ identifier: user.loggedInAs }, verificationData)
+        if (runInEnv && conf.skipEmailVerification === false)
+          await verifier.verifyEmail({ identifier: user.loggedInAs }, verificationData)
 
         const updateUserUbj = {
           identifier: user.loggedInAs,
@@ -488,6 +512,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
         return res.json({ ok: 1, attestation: signedEmail })
       }
+
       return res.json({ ok: 0, error: 'nothing to do' })
     })
   )

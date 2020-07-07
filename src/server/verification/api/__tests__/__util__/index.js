@@ -9,6 +9,27 @@ export default zoomServiceMock => {
 
   const enrollmentUri = enrollmentIdentifier => `/enrollment/${encodeURIComponent(enrollmentIdentifier)}`
 
+  const mockSuccessSessionToken = sessionToken =>
+    zoomServiceMock.onGet('/session-token').reply(200, {
+      meta: {
+        ok: true,
+        code: 200,
+        mode: 'dev'
+      },
+      data: {
+        sessionToken
+      }
+    })
+
+  const mockFailedSessionToken = () =>
+    zoomServiceMock.onGet('/session-token').reply(200, {
+      meta: {
+        ok: false,
+        code: 200,
+        mode: 'dev'
+      }
+    })
+
   const mockEmptyResultsFaceSearch = () =>
     zoomServiceMock.onPost('/search').reply(200, {
       meta: {
@@ -143,6 +164,9 @@ export default zoomServiceMock => {
   return {
     enrollmentUri,
     serviceErrorMessage,
+
+    mockSuccessSessionToken,
+    mockFailedSessionToken,
 
     mockEmptyResultsFaceSearch,
     mockDuplicateFound,
