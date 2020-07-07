@@ -1,17 +1,21 @@
 // @flow
 import express, { Router } from 'express'
+
+import { assign, identity, memoize, once } from 'lodash'
+import { sha3 } from 'web3-utils'
+import util from 'util'
+
 import Gun from 'gun'
 import SEA from 'gun/sea'
-import 'gun/lib/load'
-import { assign, identity, memoize, once } from 'lodash'
-import util from 'util'
-import delay from 'delay'
 // import les from 'gun/lib/les'
+import 'gun/lib/load'
+
+import { delay } from '../utils/timeout'
 import { wrapAsync } from '../utils/helpers'
 import { LoggedUser, type StorageAPI } from '../../imports/types'
 import conf from '../server.config'
 import logger from '../../imports/logger'
-import { sha3 } from 'web3-utils'
+
 const log = logger.child({ from: 'GunDB-Middleware' })
 
 assign(Gun.chain, {
@@ -22,6 +26,13 @@ assign(Gun.chain, {
     return promisifiedPut().then(callback)
   },
 
+  async then(cb, opt) {
+    var gun = this,
+      p = new Promise(function(res, rej) {
+        gun.once(res, { wait: 200, ...opt })
+      })
+    return cb ? p.then(cb) : p
+  },
   async onThen(cb = identity, opts = {}) {
     opts = Object.assign({ wait: 5000, default: undefined }, opts)
     let gun = this
@@ -164,7 +175,7 @@ class GunDB implements StorageAPI {
     }
     if (this.serverMode === false) {
       log.info('Starting gun as client:', { peers: this.peers })
-      this.gun = Gun({ file: name, peers: this.peers })
+      this.gun = Gun({ file: name, peers: this.peers, axe: false })
     } else if (s3 && s3.secret) {
       log.info('Starting gun with S3:', { gc_delay, memory })
       this.gun = Gun({
@@ -257,7 +268,7 @@ class GunDB implements StorageAPI {
     const updateP = this.user
       .get(`users/by${index}`)
       .get(sha3(value))
-      .putAck(user.profilePublickey)
+      .putAck({ '#': '~' + user.profilePublickey })
       .catch(e => {
         log.error('failed updating user index', { index, value, user })
         return false

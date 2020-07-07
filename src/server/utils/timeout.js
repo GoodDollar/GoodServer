@@ -10,6 +10,9 @@ export const timeout = async (millis, errorMessage = null) => {
   }
 }
 
+// eslint-disable-next-line require-await
+export const delay = async millis => timeout(millis)
+
 export default async function requestTimeout(millis, timeoutReason = null) {
   let errorMessage = 'Request timeout'
 
