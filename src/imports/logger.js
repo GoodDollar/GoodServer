@@ -4,8 +4,8 @@ import { omit, isPlainObject } from 'lodash'
 import Crypto from 'crypto'
 
 // configs
-import ErrorsTransport from '../logger/ErrorsTransport'
-import conf from '../../server/server.config'
+import ErrorsTransport from './loggerUtils/ErrorsTransport'
+import conf from '../server/server.config'
 
 const { format } = winston
 const { combine, printf, timestamp } = format
