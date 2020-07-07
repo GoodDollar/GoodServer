@@ -133,6 +133,7 @@ const setup = (app: Router) => {
     '/auth/ping',
     requestRateLimiter(500),
     wrapAsync(async (req, res) => {
+      req.log.error('first', 'second', new Error('third'), { extra: true, test: 'qwe' })
       res.json({ ping: new Date() })
       res.end()
     })

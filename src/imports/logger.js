@@ -2,9 +2,11 @@
 import winston from 'winston'
 import { omit, isPlainObject } from 'lodash'
 import Crypto from 'crypto'
+import { SPLAT } from 'triple-beam'
 
 // configs
 import ErrorsTransport from './loggerUtils/ErrorsTransport'
+import stringifyErrorReplacer from './loggerUtils/stringifyErrorReplacer'
 import conf from '../server/server.config'
 
 const { format } = winston
@@ -40,12 +42,20 @@ const logger = winston.createLogger({
   format: combine(
     timestamp(),
     format.errors({ stack: true }),
-    printf(({ level, timestamp, from, userId, ...rest }) =>
-      colorizer.colorize(
+    printf(({ level, timestamp, from, userId, ...rest }) => {
+      const context = rest[SPLAT]
+
+      return colorizer.colorize(
         level,
-        `${timestamp} - ${level}${from ? ` (FROM ${from} ${userId || ''})` : ''}:  ${JSON.stringify(rest)}`
+        `${timestamp} - ${level}${from ? ` (FROM ${from} ${userId || ''})` : ''}:  ${JSON.stringify(
+          {
+            context,
+            ...rest
+          },
+          stringifyErrorReplacer
+        )}`
       )
-    )
+    })
   ),
   transports: [
     new winston.transports.Console({
