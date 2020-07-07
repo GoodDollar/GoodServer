@@ -29,6 +29,12 @@ const conf = convict({
     default: 'debug',
     env: 'LOG_LEVEL'
   },
+  remoteLoggingAllowed: {
+    doc: 'allow log errors to the bug tracking systems (e.g. Sentry)',
+    format: Boolean,
+    default: true,
+    env: 'REMOTE_LOGGING_ALLOWED'
+  },
   ip: {
     doc: 'The IP address to bind.',
     format: 'ipaddress',

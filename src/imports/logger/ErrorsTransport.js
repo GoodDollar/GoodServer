@@ -4,11 +4,10 @@ import { SPLAT } from 'triple-beam'
 import { forEach } from 'lodash'
 import Config from '../../server/server.config'
 
-const { env, sentryDSN, version, network } = Config
-const logEnvAllowed = !['test', 'development'].includes(env)
+const { env, sentryDSN, version, network, remoteLoggingAllowed } = Config
 
 let sentryInitialized = false
-if (logEnvAllowed && sentryDSN) {
+if (remoteLoggingAllowed && sentryDSN) {
   Sentry.init({
     dsn: sentryDSN,
     environment: env
