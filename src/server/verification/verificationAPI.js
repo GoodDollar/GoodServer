@@ -199,7 +199,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       if (!userRec.smsValidated || hashedMobile !== savedMobile) {
         let code
         if (['production', 'staging'].includes(conf.env)) {
-          ;[, code] = await sendOTP({ mobile })
+          code = await sendOTP({ mobile })
         }
         const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
         log.debug('otp sent:', user.loggedInAs, code)
