@@ -264,7 +264,7 @@ class FishingManager {
     const claimBlockStart = result(
       searchStartDay,
       'returnValues.blockNumber.toNumber',
-      (await AdminWallet.web.eth.getBlockNumber()) - maxInactiveDays * FUSE_DAY_BLOCKS
+      (await AdminWallet.web3.eth.getBlockNumber()) - maxInactiveDays * FUSE_DAY_BLOCKS
     )
 
     const claimBlockEnd = result(searchEndDay, 'returnValues.blockNumber.toNumber', claimBlockStart + FUSE_DAY_BLOCKS)
