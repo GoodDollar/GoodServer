@@ -1,15 +1,68 @@
 // @flow
 import express, { Router } from 'express'
+
+import { assign, identity, memoize, once } from 'lodash'
+import { sha3 } from 'web3-utils'
+import util from 'util'
+
 import Gun from 'gun'
 import SEA from 'gun/sea'
-import 'gun/lib/load'
-import { memoize } from 'lodash'
 // import les from 'gun/lib/les'
-import { type StorageAPI } from '../../imports/types'
+import 'gun/lib/load'
+
+import { delay } from '../utils/timeout'
+import { wrapAsync } from '../utils/helpers'
+import { LoggedUser, type StorageAPI } from '../../imports/types'
 import conf from '../server.config'
 import logger from '../../imports/logger'
 
 const log = logger.child({ from: 'GunDB-Middleware' })
+
+assign(Gun.chain, {
+  async putAck(data, callback = identity) {
+    const nodeCompatiblePut = cb => this.put(data, once(ack => cb(ack.err, ack)))
+    const promisifiedPut = util.promisify(nodeCompatiblePut)
+
+    return promisifiedPut().then(callback)
+  },
+
+  async then(cb, opt) {
+    var gun = this,
+      p = new Promise(function(res, rej) {
+        gun.once(res, { wait: 200, ...opt })
+      })
+    return cb ? p.then(cb) : p
+  },
+  async onThen(cb = identity, opts = {}) {
+    opts = Object.assign({ wait: 5000, default: undefined }, opts)
+    let gun = this
+    const onPromise = new Promise((res, rej) => {
+      gun.on((v, k, g, ev) => {
+        ev.off()
+
+        //timeout if value is undefined
+        if (v !== undefined) {
+          res(v)
+        }
+      })
+    })
+    let oncePromise = new Promise(function(res, rej) {
+      gun.once(
+        v => {
+          //timeout if value is undefined
+          if (v !== undefined) {
+            res(v)
+          }
+        },
+        { wait: opts.wait }
+      )
+    })
+    const res = Promise.race([onPromise, oncePromise, delay(opts.wait + 1000).then(_ => opts.default)]).catch(
+      _ => undefined
+    )
+    return res.then(cb)
+  }
+})
 
 /**
  * @type
@@ -46,6 +99,24 @@ export type S3Conf = {
 const setup = (app: Router) => {
   if (conf.gundbServerMode) app.use(Gun.serve)
   global.Gun = Gun // / make global to `node --inspect` - debug only
+  //returns details about our gundb trusted indexes
+  app.get(
+    '/trust',
+    wrapAsync(async (req, res) => {
+      const goodDollarPublicKey = GunDBPublic.user.is.pub
+      const bymobile = await GunDBPublic.getIndexId('mobile')
+      const byemail = await GunDBPublic.getIndexId('email')
+      const bywalletAddress = await GunDBPublic.getIndexId('walletAddress')
+      res.json({
+        ok: 1,
+        goodDollarPublicKey,
+        bymobile,
+        byemail,
+        bywalletAddress
+      })
+    })
+  )
+
   log.info('Done setup GunDB middleware.')
 }
 
@@ -87,7 +158,12 @@ class GunDB implements StorageAPI {
    * @param {string} name folder to store gundb
    * @param {S3Conf} [s3] optional S3 settings instead of local file storage
    */
-  init(server: typeof express | Array<string> | null, password: string, name: string, s3?: S3Conf): Promise<boolean> {
+  async init(
+    server: typeof express | Array<string> | null,
+    password: string,
+    name: string,
+    s3?: S3Conf
+  ): Promise<boolean> {
     //gun lib/les.js settings
     const gc_delay = conf.gunGCInterval || 1 * 60 * 1000 /*1min*/
     const memory = conf.gunGCMaxMemoryMB || 512
@@ -99,7 +175,7 @@ class GunDB implements StorageAPI {
     }
     if (this.serverMode === false) {
       log.info('Starting gun as client:', { peers: this.peers })
-      this.gun = Gun({ file: name, peers: this.peers, axe: true, multicast: false })
+      this.gun = Gun({ file: name, peers: this.peers, axe: false })
     } else if (s3 && s3.secret) {
       log.info('Starting gun with S3:', { gc_delay, memory })
       this.gun = Gun({
@@ -115,12 +191,14 @@ class GunDB implements StorageAPI {
         multicast: false
       })
     } else {
-      this.gun = Gun({ web: server, file: name, gc_delay, memory, name, axe: true, multicast: false })
+      this.gun = Gun({ web: server, file: name, gc_delay, memory, name })
       log.info('Starting gun with radisk:', { gc_delay, memory })
       if (conf.env === 'production') log.error('Started production without S3')
     }
     this.user = this.gun.user()
     this.serverName = name
+    const gooddollarUser = await this.gun.get('~@gooddollarorg').onThen()
+    log.info('Existing gooddollarorg user:', { gooddollarUser })
     this.ready = new Promise((resolve, reject) => {
       this.user.create('gooddollarorg', password, createres => {
         log.info('Created gundb GoodDollar User', { name })
@@ -128,12 +206,16 @@ class GunDB implements StorageAPI {
           if (authres.err) {
             log.error('Failed authenticating gundb user:', { name, error: authres.err })
             if (conf.env !== 'test') return reject(authres.err)
+            resolve(false)
           }
           log.info('Authenticated GunDB user:', { name })
           this.usersCol = this.user.get('users')
           resolve(true)
         })
       })
+    }).then(_ => {
+      this.initIndexes()
+      return _
     })
     return this.ready
   }
@@ -159,6 +241,63 @@ class GunDB implements StorageAPI {
     let sig = await SEA.sign(attestation, this.user.pair())
     attestation.sig = sig
     return attestation
+  }
+
+  async initIndexes() {
+    const indexesInitialized = await Promise.all([
+      this.user
+        .get(`users/byemail`)
+        .onThen(_ => _ === undefined && this.user.get(`users/byemail`).putAck({ init: true })),
+      this.user
+        .get(`users/bymobile`)
+        .onThen(_ => _ === undefined && this.user.get(`users/bymobile`).putAck({ init: true })),
+      this.user
+        .get(`users/bywalletAddress`)
+        .onThen(_ => _ === undefined && this.user.get(`users/bywalletAddress`).putAck({ init: true }))
+    ]).catch(e => {
+      log.error('initIndexes failed', { e, msg: e.message })
+    })
+    const goodDollarPublicKey = GunDBPublic.user.is.pub
+    const bymobile = await GunDBPublic.getIndexId('mobile')
+    const byemail = await GunDBPublic.getIndexId('email')
+    const bywalletAddress = await GunDBPublic.getIndexId('walletAddress')
+    log.debug('initIndexes', { indexesInitialized, goodDollarPublicKey, bymobile, byemail, bywalletAddress })
+  }
+
+  async addUserToIndex(index: string, value: String, user: LoggedUser) {
+    const updateP = this.user
+      .get(`users/by${index}`)
+      .get(sha3(value))
+      .putAck({ '#': '~' + user.profilePublickey })
+      .catch(e => {
+        log.error('failed updating user index', { index, value, user })
+        return false
+      })
+    return updateP
+  }
+  async removeUserFromIndex(index: string, hashedValue: String) {
+    const updateP = this.user
+      .get(`users/by${index}`)
+      .get(hashedValue)
+      .putAck('')
+      .catch(e => {
+        log.error('failed removing user from index', { index, hashedValue })
+        return false
+      })
+    return updateP
+  }
+
+  async getIndex(index: string) {
+    const res = await this.user.get(`users/by${index}`).then()
+    return res
+  }
+
+  async getIndexId(index: string) {
+    return this.user.get(`users/by${index}`).then(_ => Gun.node.soul(_))
+  }
+
+  async getPublicProfile() {
+    return this.user.is
   }
 }
 

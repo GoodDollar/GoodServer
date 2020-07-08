@@ -3,13 +3,9 @@ import path from 'path'
 import express from 'express'
 import conf from './server.config'
 import { GunDBPublic } from './gun/gun-middleware'
+import requestTimeout from './utils/timeout'
 import app from './app'
 
-const Timeout = (timeout, err) => {
-  return new Promise((res, rej) => {
-    setTimeout(rej, timeout, new Error('Request Timeout:' + err))
-  })
-}
 export default function start(workerId) {
   console.log(`start workerId = ${workerId}`)
 
@@ -39,7 +35,7 @@ export default function start(workerId) {
   })
 
   Promise.race([
-    Timeout(3000, 'gun not initialized'),
+    requestTimeout(30000, 'gun not initialized'),
     GunDBPublic.init(server, conf.gundbPassword, `publicdb${workerId}`, conf.gunPublicS3)
   ]).catch(e => {
     console.log('gun failed... quiting', e)

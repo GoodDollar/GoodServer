@@ -9,7 +9,7 @@ describe('Send', () => {
   var mauticId = ''
   it('should add new contact', async () => {
     const res = await Mautic.createContact({ firstname: 'h', lastname: 'r', email: 'hadartest@gooddollar.org' })
-    mauticId = res.contact.fields.all.id
+    mauticId = res.contact.id
     expect(res.contact.fields.all).toEqual(
       expect.objectContaining({
         id: expect.any(Number),

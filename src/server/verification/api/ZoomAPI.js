@@ -1,7 +1,7 @@
 // @flow
 
 import Axios from 'axios'
-import { merge, pick, omit, isPlainObject, isArray, mapValues } from 'lodash'
+import { merge, get, pick, omit, isPlainObject, isArray, mapValues } from 'lodash'
 
 import Config from '../../server.config'
 import logger from '../../../imports/logger'
@@ -29,6 +29,16 @@ class ZoomAPI {
     this._configureRequests()
     this._configureResponses()
     this.defaultMinimalMatchLevel = Number(zoomMinimalMatchLevel)
+  }
+
+  async getSessionToken(customLogger = null) {
+    const response = await this.http.get('/session-token', { customLogger })
+
+    if (!get(response, 'sessionToken')) {
+      throw new Error('FaceTec API response is empty')
+    }
+
+    return response
   }
 
   async submitEnrollment(payload, customLogger = null) {

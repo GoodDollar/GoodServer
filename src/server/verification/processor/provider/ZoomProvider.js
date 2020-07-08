@@ -19,6 +19,12 @@ class ZoomProvider implements IEnrollmentProvider {
     return !['faceMap', 'lowQualityAuditTrailImage', 'auditTrailImage'].some(field => !payload[field])
   }
 
+  async issueToken(customLogger = null): Promise<string> {
+    const { sessionToken } = await this.api.getSessionToken(customLogger)
+
+    return sessionToken
+  }
+
   async enroll(
     enrollmentIdentifier: string,
     payload: any,

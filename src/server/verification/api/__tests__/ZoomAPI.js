@@ -165,13 +165,37 @@ describe('ZoomAPI', () => {
     await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow(enrollmentServiceError)
   })
 
-  test("disposeEnrollment() should throw error if enrollment isn't found", async () => {
-    helper.mockFailedRemoval(enrollmentIdentifier)
+  test("readEnrollment() should return enrollment if it's found", async () => {
+    helper.mockEnrollmentFound(enrollmentIdentifier)
 
-    const wrappedResponse = expect(ZoomAPI.disposeEnrollment(enrollmentIdentifier)).rejects
+    const wrappedResponse = expect(ZoomAPI.readEnrollment(enrollmentIdentifier)).resolves
 
-    await wrappedResponse.toThrow(helper.failedRemovalMessage)
-    await wrappedResponse.toHaveProperty('response.subCode', 'facemapNotFound')
+    await wrappedResponse.toHaveProperty('message', helper.enrollmentFoundMessage)
+    await wrappedResponse.toHaveProperty('enrollmentIdentifier', enrollmentIdentifier)
+  })
+
+  test("disposeEnrollment() should dispose enrollment if it's found", async () => {
+    helper.mockEnrollmentFound(enrollmentIdentifier)
+
+    await expect(ZoomAPI.disposeEnrollment(enrollmentIdentifier)).resolves.toHaveProperty(
+      'message',
+      helper.enrollmentDisposedMessage
+    )
+  })
+
+  test("readEnrollment() and disposeEnrollment() should throw error if enrollment isn't found", async () => {
+    helper.mockEnrollmentNotFound(enrollmentIdentifier)
+
+    await Promise.all(
+      [ZoomAPI.readEnrollment(enrollmentIdentifier), ZoomAPI.disposeEnrollment(enrollmentIdentifier)].map(
+        async promise => {
+          const wrappedResponse = expect(promise).rejects
+
+          await wrappedResponse.toThrow(helper.enrollmentNotFoundMessage)
+          await wrappedResponse.toHaveProperty('response.subCode', 'facemapNotFound')
+        }
+      )
+    )
   })
 
   test('API methods should throw on server / connection errors', async () => {
@@ -182,6 +206,6 @@ describe('ZoomAPI', () => {
       .replyOnce(500)
 
     await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow('Network Error')
-    await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow('Request failed with status code 500')
+    await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow(helper.serviceErrorMessage)
   })
 })
