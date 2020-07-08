@@ -236,7 +236,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
     wrapAsync(async (req, res, next) => {
       const { user, log } = req
       log.debug('new market token request:', { user })
-      const jwt = generateMarketToken(user)
+      const jwt = conf.marketPassword && generateMarketToken(user)
       log.debug('new market token result:', { jwt })
 
       res.json({ ok: 1, jwt })
