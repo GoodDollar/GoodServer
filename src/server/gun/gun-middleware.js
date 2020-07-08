@@ -199,7 +199,7 @@ class GunDB implements StorageAPI {
     this.serverName = name
     const gooddollarUser = await this.gun.get('~@gooddollarorg').onThen()
     log.info('Existing gooddollarorg user:', { gooddollarUser })
-    this.ready = new Promise((resolve, reject) => {
+    return (this.ready = new Promise((resolve, reject) => {
       this.user.create('gooddollarorg', password, createres => {
         log.info('Created gundb GoodDollar User', { name })
         this.user.auth('gooddollarorg', password, async authres => {
@@ -216,8 +216,7 @@ class GunDB implements StorageAPI {
     }).then(_ => {
       this.initIndexes()
       return _
-    })
-    return this.ready
+    }))
   }
 
   /**
