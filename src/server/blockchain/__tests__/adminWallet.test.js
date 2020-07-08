@@ -16,9 +16,9 @@ describe('adminwallet', () => {
   test(`adminWallet top wallet shouldn't throws an error when user is not whitelisted/verified`, async () => {
     const unverifiedAddress = generateWalletAddress()
     const tx = await AdminWallet.topWallet(unverifiedAddress, null).catch(e => false)
+    expect(tx).toBeTruthy()
     const balance = await AdminWallet.web3.eth.getBalance(unverifiedAddress)
     expect(balance).toEqual('1000000000000000')
-    expect(tx).toBeTruthy()
   })
 
   test('adminWallet constructor works', async () => {
@@ -63,8 +63,8 @@ describe('adminwallet', () => {
     }
     const res = await Promise.all(promises)
     const uniqueBlocks = new Set(res)
-    res.forEach(n => expect(n).toEqual(expect.any(Number))) //check it was excuted on one or two block
-    expect(uniqueBlocks.size).toBeLessThanOrEqual(2)
+    res.forEach(n => expect(n).toEqual(expect.any(Number))) //check it was excuted in 5 or les blocks, if ganache is set 1 sec per block it should be under 5. otherwise 5.
+    expect(uniqueBlocks.size).toBeLessThanOrEqual(5)
     expect(res).toBeTruthy()
   })
 

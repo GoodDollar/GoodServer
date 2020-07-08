@@ -106,7 +106,7 @@ describe('claimQueueAPI', () => {
       ok: 1,
       newAllowed: 3,
       //user should be approved in order
-      pendingUsers: expect.arrayContaining([
+      approvedUsers: expect.arrayContaining([
         expect.objectContaining({ mauticId: '1' }),
         expect.objectContaining({ mauticId: '2' })
       ]),

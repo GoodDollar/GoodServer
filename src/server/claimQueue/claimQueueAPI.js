@@ -42,7 +42,7 @@ const ClaimQueue = {
     })
     await storage.model.updateMany({ _id: { $in: approvedUsers } }, { $set: { 'claimQueue.status': 'approved' } })
     log.debug('claim queue updated', { pendingUsers, newAllowed, stillPending })
-    return { ok: 1, newAllowed, stillPending, pendingUsers }
+    return { ok: 1, newAllowed, stillPending, approvedUsers: pendingUsers }
   },
 
   async enqueue(user, storage, log) {

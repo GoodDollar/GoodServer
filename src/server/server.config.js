@@ -1,3 +1,4 @@
+import { get } from 'lodash'
 import convict from 'convict'
 import dotenv from 'dotenv'
 
@@ -102,6 +103,12 @@ const conf = convict({
     default: ''
   },
   ethereum: {
+    network_id: 42,
+    httpWeb3Provider: 'https://kovan.infura.io/v3/',
+    websocketWeb3Provider: 'wss://kovan.infura.io/ws',
+    web3Transport: 'HttpProvider'
+  },
+  ethereumMainnet: {
     network_id: 42,
     httpWeb3Provider: 'https://kovan.infura.io/v3/',
     websocketWeb3Provider: 'wss://kovan.infura.io/ws',
@@ -426,6 +433,18 @@ const conf = convict({
     env: 'FACEBOOK_GRAPH_API_URL',
     default: 'https://graph.facebook.com'
   },
+  fishTaskCron: {
+    doc: 'cron string for fishing task',
+    format: String,
+    env: 'FISH_TASK_CRON',
+    default: '0 0 * * * *'
+  },
+  stakeTaskCron: {
+    doc: 'cron string for fishing task',
+    format: String,
+    env: 'STAKE_TASK_CRON',
+    default: '0 0 * * * *'
+  },
   torusNetwork: {
     doc: 'Torus network. Default: ropsten (mainnet, kovan, fuse, etoro, production, develop)',
     format: ['mainnet', 'ropsten', 'kovan', 'fuse', 'etoro', 'production', 'develop'],
@@ -443,6 +462,10 @@ const conf = convict({
 // Load environment dependent configuration
 const network = conf.get('network')
 const networkId = ContractsAddress[network].networkId
+const mainNetworkId = get(ContractsAddress, `${network}-mainnet.networkId`, networkId)
+
+conf.set('ethereum', networks[networkId])
+conf.set('ethereumMainnet', networks[mainNetworkId])
 const privateS3 = process.env.GUN_PRIVATE_S3
 const publicS3 = process.env.GUN_PUBLIC_S3
 

@@ -16,7 +16,7 @@ import { type TransactionReceipt } from './blockchain-types'
 import moment from 'moment'
 import get from 'lodash/get'
 
-import txManager from '../utils/tx-manager'
+import { getManager } from '../utils/tx-manager'
 import gdToWei from '../utils/gdToWei'
 
 import * as web3Utils from 'web3-utils'
@@ -32,6 +32,8 @@ const adminMinBalance = web3Utils.toWei(String(conf.adminMinBalance), 'gwei')
  */
 export class Wallet {
   web3: Web3
+
+  mainnetWeb3: Web3
 
   wallet: HDWallet
 
@@ -59,8 +61,12 @@ export class Wallet {
     this.mnemonic = mnemonic
     this.addresses = []
     this.filledAddresses = []
+    this.mainnetAddresses = []
     this.wallets = {}
     this.numberOfAdminWalletAccounts = conf.privateKey ? 1 : conf.numberOfAdminWalletAccounts
+    this.network = conf.network
+    this.networkIdMainnet = conf.ethereumMainnet.network_id
+    this.networkId = conf.ethereum.network_id
     this.ready = this.init()
   }
 
@@ -92,13 +98,37 @@ export class Wallet {
   addWallet(account) {
     this.web3.eth.accounts.wallet.add(account)
     this.web3.eth.defaultAccount = account.address
+    this.mainnetWeb3.eth.accounts.wallet.add(account)
+    this.mainnetWeb3.eth.defaultAccount = account.address
     this.addresses.push(account.address)
     this.wallets[account.address] = account
   }
 
-  async init() {
-    log.debug('Initializing wallet:', { conf: conf.ethereum })
+  getMainnetWeb3TransportProvider(): HttpProvider | WebSocketProvider {
+    let provider
+    let web3Provider
+    let transport = conf.ethereumMainnet.web3Transport
+    switch (transport) {
+      case 'WebSocket':
+        provider = conf.ethereumMainnet.websocketWeb3Provider
+        web3Provider = new Web3.providers.WebsocketProvider(provider)
+        break
 
+      default:
+      case 'HttpProvider':
+        provider = conf.ethereumMainnet.httpWeb3Provider
+        web3Provider = new Web3.providers.HttpProvider(provider)
+        break
+    }
+    log.debug('mainnet', { web3Provider, provider })
+
+    return web3Provider
+  }
+
+  async init() {
+    log.debug('Initializing wallet:', { conf: conf.ethereum, mainnet: conf.ethereumMainnet })
+    this.mainnetTxManager = getManager(conf.ethereumMainnet.network_id)
+    this.txManager = getManager(conf.ethereum.network_id)
     this.web3 = new Web3(this.getWeb3TransportProvider(), null, {
       defaultBlock: 'latest',
       defaultGasPrice,
@@ -106,10 +136,20 @@ export class Wallet {
       transactionConfirmationBlocks: 1,
       transactionPollingTimeout: 20
     })
+
+    this.mainnetWeb3 = new Web3(this.getMainnetWeb3TransportProvider(), null, {
+      defaultBlock: 'latest',
+      transactionBlockTimeout: 5,
+      transactionConfirmationBlocks: 1
+    })
+
     if (conf.privateKey) {
       let account = this.web3.eth.accounts.privateKeyToAccount(conf.privateKey)
       this.web3.eth.accounts.wallet.add(account)
       this.web3.eth.defaultAccount = account.address
+      this.mainnetWeb3.eth.accounts.wallet.add(account)
+      this.mainnetWeb3.eth.defaultAccount = account.address
+
       this.address = account.address
       this.addWallet(account)
       log.info('Initialized by private key:', { address: account.address })
@@ -123,8 +163,6 @@ export class Wallet {
       }
       log.info('Initialized by mnemonic:', { address: this.addresses })
     }
-    this.network = conf.network
-    this.networkId = conf.ethereum.network_id
 
     const adminWalletAddress = get(ContractsAddress, `${this.network}.AdminWallet`)
     this.proxyContract = new this.web3.eth.Contract(ProxyContractABI.abi, adminWalletAddress)
@@ -135,21 +173,35 @@ export class Wallet {
       log.error('AdminWallet contract low funds')
       if (conf.env !== 'test' && conf.env !== 'development') process.exit(-1)
     }
-    txManager.getTransactionCount = this.web3.eth.getTransactionCount
-    await txManager.createListIfNotExists(this.addresses)
+
+    this.txManager.getTransactionCount = this.web3.eth.getTransactionCount
+    this.mainnetTxManager.getTransactionCount = this.mainnetWeb3.eth.getTransactionCount
+    await this.txManager.createListIfNotExists(this.addresses)
+    await this.mainnetTxManager.createListIfNotExists(this.mainnetAddresses)
 
     for (let addr of this.addresses) {
       const balance = await this.web3.eth.getBalance(addr)
+      const mainnetBalance = await this.mainnetWeb3.eth.getBalance(addr)
+
       const isAdminWallet = await this.isVerifiedAdmin(addr)
       if (isAdminWallet && parseInt(balance) > adminMinBalance) {
         log.info(`admin wallet ${addr} balance ${balance}`)
         this.filledAddresses.push(addr)
-      } else log.warn('Failed adding admin wallet', { addr, balance, isAdminWallet, adminMinBalance })
+      } else log.warn('Failed adding admin wallet', { addr, mainnetBalance, balance, isAdminWallet, adminMinBalance })
+      if (parseInt(mainnetBalance) > adminMinBalance) {
+        log.info(`admin wallet ${addr} mainnet balance ${mainnetBalance}`)
+        this.mainnetAddresses.push(addr)
+      } else log.warn('Failed adding mainnet admin wallet', { addr, mainnetBalance, adminMinBalance })
     }
     if (this.filledAddresses.length === 0) {
       log.error('no admin wallet with funds')
       if (conf.env !== 'test' && conf.env !== 'development') process.exit(-1)
     }
+    if (this.mainnetAddresses.length === 0) {
+      log.error('no admin wallet with funds for mainnet')
+      if (conf.env !== 'test') process.exit(-1)
+    }
+
     this.address = this.filledAddresses[0]
 
     if (conf.topAdminsOnStartup) {
@@ -239,7 +291,7 @@ export class Wallet {
     if (ubiEvents.length === 0) {
       return
     }
-    const { release, fail } = await txManager.lock(user.gdAddress, 0)
+    const { release, fail } = await this.txManager.lock(user.gdAddress, 0)
     const recheck = await storage.getUserField(user.identifier, 'hanukaBonus')
     if (recheck && recheck[dayField]) {
       release()
@@ -462,7 +514,7 @@ export class Wallet {
         gas ||
         (await tx
           .estimateGas()
-          .then(gas => gas + 50000) //buffer for proxy contract, reimburseGas?
+          .then(gas => gas + 200000) //buffer for proxy contract, reimburseGas?
           .catch(e => log.error('Failed to estimate gas for tx', { errMessage: e.message, e }))) ||
         defaultGas
 
@@ -472,7 +524,7 @@ export class Wallet {
 
       const uuid = Crypto.randomBytes(5).toString('base64')
       log.debug('getting tx lock:', { uuid })
-      const { nonce, release, fail, address } = await txManager.lock(this.filledAddresses)
+      const { nonce, release, fail, address } = await this.txManager.lock(this.filledAddresses)
       log.debug('got tx lock:', { uuid, address })
 
       let balance = NaN
@@ -506,11 +558,11 @@ export class Wallet {
                 address,
                 newNonce: netNonce
               })
-              await txManager.unlock(address, netNonce)
+              await this.txManager.unlock(address, netNonce)
               try {
                 res(await this.sendTransaction(tx, txCallbacks, { gas, gasPrice }))
               } catch (e) {
-                await txManager.unlock(address)
+                await this.txManager.unlock(address)
                 rej(e)
               }
             } else {
@@ -521,7 +573,7 @@ export class Wallet {
           })
       })
     } catch (e) {
-      await txManager.unlock(currentAddress)
+      await this.txManager.unlock(currentAddress)
       throw new Error(e)
     }
   }
@@ -550,7 +602,7 @@ export class Wallet {
       gas = gas || defaultGas
       gasPrice = gasPrice || defaultGasPrice
 
-      const { nonce, release, fail, address } = await txManager.lock(this.filledAddresses)
+      const { nonce, release, fail, address } = await this.txManager.lock(this.filledAddresses)
       log.debug('sendNative', { nonce, gas, gasPrice })
       currentAddress = address
 
@@ -581,11 +633,11 @@ export class Wallet {
                 address,
                 newNonce: netNonce
               })
-              await txManager.unlock(address, netNonce)
+              await this.txManager.unlock(address, netNonce)
               try {
                 res(await this.sendNative(params, txCallbacks, { gas, gasPrice }))
               } catch (e) {
-                await txManager.unlock(address)
+                await this.txManager.unlock(address)
                 rej(e)
               }
             } else {
@@ -596,7 +648,97 @@ export class Wallet {
           })
       })
     } catch (e) {
-      await txManager.unlock(currentAddress)
+      await this.txManager.unlock(currentAddress)
+      throw new Error(e)
+    }
+  }
+
+  /**
+   * Helper function to handle a tx Send call
+   * @param tx
+   * @param {object} promiEvents
+   * @param {function} promiEvents.onTransactionHash
+   * @param {function} promiEvents.onReceipt
+   * @param {function} promiEvents.onConfirmation
+   * @param {function} promiEvents.onError
+   * @param {object} gasValues
+   * @param {number} gasValues.gas
+   * @param {number} gasValues.gasPrice
+   * @returns {Promise<Promise|Q.Promise<any>|Promise<*>|Promise<*>|Promise<*>|*>}
+   */
+  async sendTransactionMainnet(
+    tx: any,
+    txCallbacks: PromiEvents = {},
+    { gas, gasPrice }: GasValues = { gas: undefined, gasPrice: undefined },
+    forceAddress: string
+  ) {
+    let currentAddress
+    try {
+      const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
+      gas =
+        gas ||
+        (await tx
+          .estimateGas()
+          .then(gas => gas + 200000) //buffer for proxy contract, reimburseGas?, and low gas unexpected failures
+          .catch(e => log.error('Failed to estimate gas for tx', { errMessage: e.message, e }))) ||
+        defaultGas
+
+      //adminwallet contract might give wrong gas estimates, so if its more than block gas limit reduce it to default
+      if (gas > 8000000) gas = defaultGas
+      gasPrice = gasPrice || (await this.mainnetWeb3.eth.getGasPrice())
+
+      const uuid = Crypto.randomBytes(5).toString('base64')
+      log.debug('getting tx lock:', { uuid })
+      const { nonce, release, fail, address } = await this.mainnetTxManager.lock(forceAddress || this.mainnetAddresses)
+      log.debug('got tx lock:', { uuid, address })
+
+      let balance = NaN
+      if (conf.env === 'development') {
+        balance = await this.mainnetWeb3.eth.getBalance(address)
+      }
+      currentAddress = address
+      log.debug(`sending tx from: ${address} | nonce: ${nonce}`, { uuid, balance, gas, gasPrice })
+      return new Promise((res, rej) => {
+        tx.send({ gas, gasPrice, chainId: this.networkIdMainNet, nonce, from: address })
+          .on('transactionHash', h => {
+            release()
+            log.debug('got tx hash:', { uuid })
+            onTransactionHash && onTransactionHash(h)
+          })
+          .on('receipt', r => {
+            log.debug('got tx receipt:', { uuid })
+            onReceipt && onReceipt(r)
+            res(r)
+          })
+          .on('confirmation', c => onConfirmation && onConfirmation(c))
+          .on('error', async e => {
+            log.error('sendTransaction error:', { error: e.message, e, from: address, uuid })
+            if (isNonceError(e)) {
+              let netNonce = parseInt(await this.mainnetWeb3.eth.getTransactionCount(address))
+              log.warn('sendTransaciton nonce failure retry', {
+                errMessage: e.message,
+                nonce,
+                gas,
+                gasPrice,
+                address,
+                newNonce: netNonce
+              })
+              await this.mainnetTxManager.unlock(address, netNonce)
+              try {
+                res(await this.sendTransactionMainnet(tx, txCallbacks, { gas, gasPrice }))
+              } catch (e) {
+                await this.mainnetTxManager.unlock(address)
+                rej(e)
+              }
+            } else {
+              fail()
+              onError && onError(e)
+              rej(e)
+            }
+          })
+      })
+    } catch (e) {
+      await this.mainnetTxManager.unlock(currentAddress)
       throw new Error(e)
     }
   }

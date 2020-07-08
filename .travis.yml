@@ -18,12 +18,7 @@ env:
 # - npm install -g ganache-cli truffle webpack
 
 before_script:
-  - pushd node_modules/@gooddollar/goodcontracts
-  - npm ci
-  - npm run ganache &
-  - npm run wait
-  - npm run deploy
-  - popd
+  - npm run test:setup
 
 script:
   - export MNEMONIC=$ADMIN_MNEMONIC

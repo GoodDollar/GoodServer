@@ -1,5 +1,5 @@
 import AsyncLock from 'async-lock'
-import { CronJob } from 'cron'
+import { CronJob, CronTime } from 'cron'
 import { invokeMap, map, filter } from 'lodash'
 
 import logger from '../../imports/logger'
@@ -10,7 +10,7 @@ class TaskRunner {
   tasks = []
 
   constructor(lock, jobFactory, logger) {
-    const exitEvents = ['SIGINT', 'SIGTERM', 'exit']
+    const exitEvents = ['SIGINT', 'beforeExit']
 
     this.lock = lock
     this.logger = logger
@@ -24,20 +24,38 @@ class TaskRunner {
     const { schedule, name } = task
     const taskIdentifier = name || tasks.length
 
-    tasks.push(
-      new jobFactory(schedule, async () => {
-        logger.info('Running cron task', { taskIdentifier })
+    const taskJob = new jobFactory(schedule, async () => {
+      logger.info('Running cron task', { taskIdentifier })
 
-        try {
-          await lock.acquire(taskIdentifier, async () => task.execute())
-          logger.info('Cron task completed', { taskIdentifier })
-        } catch (exception) {
-          const { message: errMessage } = exception
+      try {
+        const taskResult = await lock.acquire(taskIdentifier, async () =>
+          task.execute({
+            // an context object we're passing to the task to let it manipilate its execution & schedule
+            // let task whould decide to stop or to set new schedule by themselves during execution
+            // let's make this feedback more clear
+            setTime: time => {
+              logger.info('Cron task setting new schedule', { taskName: name, schedule: time })
 
-          logger.error('Cron task failed', { e: exception, errMessage, taskIdentifier })
-        }
-      })
-    )
+              taskJob.setTime(time instanceof CronTime ? time : new CronTime(time))
+              taskJob.start()
+            },
+
+            stop: () => {
+              logger.info('Cron task has stopped itself', { taskName: name })
+              taskJob.stop()
+            }
+          })
+        )
+
+        logger.info('Cron task completed', { taskIdentifier, taskResult })
+      } catch (exception) {
+        const { message: errMessage } = exception
+
+        logger.error('Cron task failed', { e: exception, errMessage, taskIdentifier })
+      }
+    })
+
+    tasks.push(taskJob)
   }
 
   startTasks() {
