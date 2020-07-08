@@ -70,7 +70,7 @@ const updateW3Record = async (user: any, logger: any) => {
         w3Token: web3Record.wallet_token,
         'isCompleted.w3Record': true
       })
-      logger.debug('updateW3Record got web3 user records', { web3Record })
+      logger.debug('updateW3Record got web3 user records', { web3Record, user })
     } else {
       logger.error('updateW3Record empty w3 response', { user })
 
