@@ -33,7 +33,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
 
       logger.debug('new user request:', { data: userPayload, userRecord })
 
-      const { email, mobile, ...restPayload } = userPayload
+      const { email, mobile, inviteCode, ...restPayload } = userPayload
 
       // if torus, then we first verify the user mobile/email by verifying it matches the torus public key
       // (torus maps identifier such as email and mobile to private/public key pairs)
@@ -84,7 +84,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
             }
       })
 
-      const userRecordWithPII = { ...userRecord, email, mobile }
+      const userRecordWithPII = { ...userRecord, inviteCode, email, mobile }
       const signUpPromises = []
 
       const p1 = storage
