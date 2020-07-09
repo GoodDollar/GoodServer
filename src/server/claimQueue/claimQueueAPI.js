@@ -64,7 +64,7 @@ const ClaimQueue = {
         Mautic.updateContact(user.mauticId, { tags: ['claimqueue_in'] }).catch(e => {
           log.error('Failed Mautic tagging  user inqueue', { errMessage: e.message, e, mauticId: user.mauticId })
         })
-        Mautic.addContactsToSegment([user.mauticId], conf.mauticClaimQueueSegment).catch(e => {
+        Mautic.addContactsToSegment([user.mauticId], conf.mauticClaimQueueSegmentId).catch(e => {
           log.error('Failed Mautic adding user to claim queue segment', {
             errMessage: e.message,
             e,
