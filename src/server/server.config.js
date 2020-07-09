@@ -221,7 +221,7 @@ const conf = convict({
     doc: 'mautic basic auth token',
     format: String,
     env: 'MAUTIC_BASIC_TOKEN',
-    default: null
+    default: ''
   },
   mauticRecoveryEmailId: {
     doc: 'id of email template',
