@@ -456,6 +456,30 @@ const conf = convict({
     format: '*',
     env: 'TORUS_PROXY_CONTRACT',
     default: '0x4023d2a0D330bF11426B12C6144Cfb96B7fa6183'
+  },
+  torusGoogle: {
+    doc: 'torus google verifier',
+    format: String,
+    default: 'google-gooddollar',
+    env: 'TORUS_GOOGLE'
+  },
+  torusFacebook: {
+    doc: 'torus facebook verifier',
+    format: String,
+    default: 'facebook-gooddollar',
+    env: 'TORUS_FACEBOOK'
+  },
+  torusGoogleAuth0: {
+    doc: 'torus google-auth0 verifier',
+    format: String,
+    default: 'google-auth0-gooddollar',
+    env: 'TORUS_GOOGLEAUTH0'
+  },
+  torusAuth0SMS: {
+    doc: 'torus auth0 sms verifier',
+    format: String,
+    default: 'gooddollar-auth0-sms-passwordless',
+    env: 'TORUS_AUTH0SMS'
   }
 })
 
