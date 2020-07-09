@@ -2,7 +2,7 @@ import { get } from 'lodash'
 import convict from 'convict'
 import dotenv from 'dotenv'
 
-import networks from './networks'
+import getNetworks from './networks'
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
 
 import { version } from '../../package.json'
@@ -460,18 +460,21 @@ const conf = convict({
 })
 
 // Load environment dependent configuration
+
+// network options
+const networks = getNetworks()
 const network = conf.get('network')
 const networkId = ContractsAddress[network].networkId
 const mainNetworkId = get(ContractsAddress, `${network}-mainnet.networkId`, networkId)
 
-conf.set('ethereum', networks[networkId])
 conf.set('ethereumMainnet', networks[mainNetworkId])
+conf.set('ethereum', networks[networkId])
+
+// GUN S3 options
 const privateS3 = process.env.GUN_PRIVATE_S3
 const publicS3 = process.env.GUN_PUBLIC_S3
 
-conf.set('ethereum', networks[networkId])
-
-//parse S3 details for gundb in format of key,secret,bucket
+// parse S3 details for gundb in format of key,secret,bucket
 if (privateS3) {
   const [key, secret, bucket] = privateS3.split(',')
 
