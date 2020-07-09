@@ -8,7 +8,7 @@ import logger from '../imports/logger'
 class GoogleLegacyStrategy {
   getVerificationOptions(userRecord) {
     return {
-      verifier: 'google-gooddollar',
+      verifier: Config.env === 'production' ? 'gooddollar-google' : 'google-gooddollar',
       identifier: userRecord.email,
       emailVerified: true,
       mobileVerified: false
@@ -19,7 +19,7 @@ class GoogleLegacyStrategy {
 class GoogleStrategy {
   getVerificationOptions(userRecord) {
     return {
-      verifier: 'google-auth0-gooddollar',
+      verifier: Config.env === 'production' ? 'gooddollar-google-auth0' : 'google-auth0-gooddollar',
       identifier: userRecord.email,
       emailVerified: true,
       mobileVerified: false
@@ -30,7 +30,7 @@ class GoogleStrategy {
 class PasswordlessEmailStrategy {
   getVerificationOptions(userRecord) {
     return {
-      verifier: 'google-auth0-gooddollar',
+      verifier: Config.env === 'production' ? 'gooddollar-google-auth0' : 'google-auth0-gooddollar',
       identifier: userRecord.email,
       emailVerified: true,
       mobileVerified: false
