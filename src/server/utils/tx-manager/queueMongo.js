@@ -3,10 +3,11 @@ import logger from '../../../imports/logger'
 import conf from '../../server.config'
 import moment from 'moment'
 
-const log = logger.child({ from: 'queueMongo' })
 export default class queueMongo {
-  constructor() {
-    this.networkId = String(conf.ethereum.network_id)
+  constructor(networkId) {
+    this.log = logger.child({ from: 'queueMongo-' + networkId })
+
+    this.networkId = networkId
     this.model = WalletNonce
     this.queue = []
     this.nonce = null
@@ -30,6 +31,7 @@ export default class queueMongo {
     this.model.watch(filter, options).on('change', async data => {
       await this.run()
     })
+    this.log.info('queueMongo created')
   }
 
   /**
@@ -56,12 +58,12 @@ export default class queueMongo {
         ]
       }
       const update = { isLock: true, lockedAt: +new Date() }
-      log.debug('getting free address', { addresses, expired })
+      this.log.debug('getting free address', { addresses, expired })
       let wallet = await this.model.findOneAndUpdate(filter, update, {
         sort: { lockedAt: 1 }, //get least recently used
         returnNewDocument: true
       })
-      log.debug('got free address', { addresses, expired, wallet })
+      this.log.debug('got free address', { addresses, expired, wallet })
 
       if (this.reRunQueue) {
         clearTimeout(this.reRunQueue)
@@ -71,7 +73,7 @@ export default class queueMongo {
       }, conf.mongoQueueMaxLockTime * 1000)
       return wallet
     } catch (e) {
-      log.error('TX queueMongo (getWalletNonce)', e.message, e, { addresses })
+      this.log.error('TX queueMongo (getWalletNonce)', e.message, e, { addresses })
       return false
     }
   }
@@ -102,7 +104,7 @@ export default class queueMongo {
     }
     try {
       const nonce = await this.getTransactionCount(address)
-      log.debug(`init wallet ${address} with nonce ${nonce} in mongo`)
+      this.log.debug(`init wallet ${address} with nonce ${nonce} in mongo`)
       await this.model.findOneAndUpdate(
         { address, networkId: this.networkId },
         {
@@ -115,10 +117,10 @@ export default class queueMongo {
         },
         { upsert: true }
       )
-      log.debug(`wallet initialized ${address} with nonce ${nonce} in mongo`)
+      this.log.debug(`wallet initialized ${address} with nonce ${nonce} in mongo`)
       this.wallets[address] = true
     } catch (e) {
-      log.error('TX queueMongo (create)', e.message, e, { address })
+      this.log.error('TX queueMongo (create)', e.message, e, { address })
     }
   }
 
@@ -147,7 +149,7 @@ export default class queueMongo {
         { returnNewDocument: true }
       )
     } catch (e) {
-      log.error('errorunlock', e.message, e, { address })
+      this.log.error('errorunlock', e.message, e, { address })
     }
   }
 
@@ -206,7 +208,7 @@ export default class queueMongo {
         }
       }
     } catch (e) {
-      log.error('TX queueMongo (run)', e.message, e, { nextTr, walletNonce })
+      this.log.error('TX queueMongo (run)', e.message, e, { nextTr, walletNonce })
     }
   }
 
@@ -221,6 +223,6 @@ export default class queueMongo {
     const wallet = await this.model.findOne({ address, networkId: this.networkId })
     const expired = moment().subtract(conf.mongoQueueMaxLockTime, 'seconds')
     const lockNotExpired = wallet && wallet.lockedAt && expired.isBefore(wallet.lockedAt)
-    return Boolean(wallet && (wallet.isLock && lockNotExpired))
+    return Boolean(wallet && wallet.isLock && lockNotExpired)
   }
 }

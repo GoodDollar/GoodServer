@@ -4,13 +4,14 @@
   "description": "GoodDollar Server",
   "main": "src/server/index.js",
   "engines": {
-    "node": "10.15.*"
+    "node": "10.21.0"
   },
   "scripts": {
     "build": "webpack --mode production --config webpack.server.config.js",
     "postbuild": "babel-node scripts/dbUpdates.js",
     "test": "jest --forceExit --detectOpenHandles --maxWorkers=1",
     "test:staging": "jest --forceExit --detectOpenHandles",
+    "test:setup": "./scripts/blockchainTestSetup.sh",
     "coverage": "jest --forceExit --detectOpenHandles --coverage --maxWorkers=1",
     "coveralls": "cat ./coverage/lcov.info | node node_modules/.bin/coveralls",
     "start": "node dist/server.js",
@@ -44,7 +45,7 @@
   "homepage": "https://gooddollar.org",
   "dependencies": {
     "@babel/polyfill": "^7.4.4",
-    "@gooddollar/goodcontracts": "^1.2.0",
+    "@gooddollar/goodcontracts": "^2.0.0-beta.5",
     "@sendgrid/mail": "^6.4.0",
     "@sentry/node": "^5.19.0",
     "@toruslabs/fetch-node-details": "^2.2.4",
@@ -63,6 +64,7 @@
     "cors": "^2.8.5",
     "cron": "^1.8.2",
     "cross-fetch": "^3.0.3",
+    "delay": "^4.3.0",
     "dotenv": "^6.2.0",
     "express": "^4.17.1",
     "express-pino-logger": "^4.0.0",
@@ -117,7 +119,6 @@
     "concurrently": "^4.0.0",
     "coveralls": "^3.0.3",
     "css-loader": "^1.0.0",
-    "delay": "^4.2.0",
     "documentation": "9.3.1",
     "enzyme": "^3.9.0",
     "enzyme-adapter-react-16": "^1.13.2",

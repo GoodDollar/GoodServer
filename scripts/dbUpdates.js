@@ -59,6 +59,7 @@ class DBUpdates {
           updatedIndex[sha3(k)] = data[k]
         })
         logger.info(`writing ${Object.keys(updatedIndex).length} records to bywalletAddress`)
+        if (Object.keys(updatedIndex).length === 0) return
         ps.push(GunDBPublic.gun.get('users/bywalletAddress').putAck(updatedIndex))
         ps.push(GunDBPublic.user.get('users/bywalletAddress').putAck(updatedIndex))
       },
@@ -72,6 +73,7 @@ class DBUpdates {
           updatedIndex[sha3(k)] = data[k]
         })
         logger.info(`writing ${Object.keys(updatedIndex).length} records to bymobile`)
+        if (Object.keys(updatedIndex).length === 0) return
         ps.push(GunDBPublic.gun.get('users/bymobile').putAck(updatedIndex))
         ps.push(GunDBPublic.user.get('users/bymobile').putAck(updatedIndex))
       },
@@ -85,6 +87,7 @@ class DBUpdates {
           updatedIndex[sha3(k)] = data[k]
         })
         logger.info(`writing ${Object.keys(updatedIndex).length} records to byemail`)
+        if (Object.keys(updatedIndex).length === 0) return
         ps.push(GunDBPublic.gun.get('users/byemail').putAck(updatedIndex))
         ps.push(GunDBPublic.user.get('users/byemail').putAck(updatedIndex))
       },
