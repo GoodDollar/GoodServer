@@ -63,7 +63,7 @@ const ClaimQueue = {
     // if user was added to queue tag him in mautic
     if (!['test', 'development'].includes(conf.env) && user.mauticId && status === 'pending') {
       try {
-        await Mautic.addContactsToSegment([user.mauticId], conf.mauticClaimQueueSegment)
+        await Mautic.addContactsToSegment([user.mauticId], conf.mauticClaimQueueSegmentId)
       } catch (e) {
         log.error('Failed Mautic adding user to claim queue segment', { errMessage: e.message, e })
       }
