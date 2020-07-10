@@ -2,7 +2,7 @@ import { get } from 'lodash'
 import convict from 'convict'
 import dotenv from 'dotenv'
 
-import networks from './networks'
+import getNetworks from './networks'
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
 
 import { version } from '../../package.json'
@@ -462,22 +462,49 @@ const conf = convict({
     format: '*',
     env: 'TORUS_PROXY_CONTRACT',
     default: '0x4023d2a0D330bF11426B12C6144Cfb96B7fa6183'
+  },
+  torusGoogle: {
+    doc: 'torus google verifier',
+    format: String,
+    default: 'google-gooddollar',
+    env: 'TORUS_GOOGLE'
+  },
+  torusFacebook: {
+    doc: 'torus facebook verifier',
+    format: String,
+    default: 'facebook-gooddollar',
+    env: 'TORUS_FACEBOOK'
+  },
+  torusGoogleAuth0: {
+    doc: 'torus google-auth0 verifier',
+    format: String,
+    default: 'google-auth0-gooddollar',
+    env: 'TORUS_GOOGLEAUTH0'
+  },
+  torusAuth0SMS: {
+    doc: 'torus auth0 sms verifier',
+    format: String,
+    default: 'gooddollar-auth0-sms-passwordless',
+    env: 'TORUS_AUTH0SMS'
   }
 })
 
 // Load environment dependent configuration
+
+// network options
+const networks = getNetworks()
 const network = conf.get('network')
 const networkId = ContractsAddress[network].networkId
 const mainNetworkId = get(ContractsAddress, `${network}-mainnet.networkId`, networkId)
 
-conf.set('ethereum', networks[networkId])
 conf.set('ethereumMainnet', networks[mainNetworkId])
+conf.set('ethereum', networks[networkId])
+
+// GUN S3 options
 const privateS3 = process.env.GUN_PRIVATE_S3
 const publicS3 = process.env.GUN_PUBLIC_S3
 
-conf.set('ethereum', networks[networkId])
-
-//parse S3 details for gundb in format of key,secret,bucket
+// parse S3 details for gundb in format of key,secret,bucket
 if (privateS3) {
   const [key, secret, bucket] = privateS3.split(',')
 

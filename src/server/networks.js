@@ -1,4 +1,6 @@
-const networks = {
+import { once } from 'lodash'
+
+export default once(() => ({
   1: {
     network_id: 1,
     web3Transport: 'HttpProvider',
@@ -35,6 +37,4 @@ const networks = {
     httpWeb3Provider: 'https://rpc.fuse.io/',
     websocketWeb3Provider: 'wss://rpc.fuse.io/ws'
   }
-}
-
-export default networks
+}))
