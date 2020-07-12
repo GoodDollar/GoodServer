@@ -112,7 +112,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       }
 
       log.debug('claimqueue: skip', { claimQueueAllowed, isE2ERunning })
-      res.json({ ok: 0, queue: { status: 'verified' } })
+      res.json({ ok: 1, queue: { status: 'verified' } })
     })
   )
 }
