@@ -49,15 +49,20 @@ const ClaimQueue = {
   },
 
   async enqueue(user, storage, log) {
-    log.debug('claimqueue:', { allowed: conf.claimQueueAllowe, queue: user.claimQueue })
-    //if queue not enabled, user already in queue or user already whitelisted we skip adding to queue
-    if (conf.claimQueueAllowed <= 0 || user.claimQueue) {
-      return { ok: 0, queue: user.claimQueue || { status: 'verified' } }
-    }
-    const totalQueued = await storage.model.count({ 'claimQueue.status': { $exists: true } })
-    const openSpaces = conf.claimQueueAllowed - totalQueued
+    const { claimQueueAllowed } = conf
+    const { claimQueue } = user
 
+    log.debug('claimqueue:', { allowed: claimQueueAllowed, queue: claimQueue })
+
+    // if user already in queue or user already whitelisted we skip adding to queue
+    if (claimQueue) {
+      return { ok: 0, queue: claimQueue }
+    }
+
+    const totalQueued = await storage.model.count({ 'claimQueue.status': { $exists: true } })
+    const openSpaces = claimQueueAllowed - totalQueued
     let status = openSpaces > 0 ? 'approved' : 'pending'
+
     //if user was added to queue tag him in mautic
     if (['test', 'development'].includes(conf.env) === false && user.mauticId) {
       if (status === 'pending') {
@@ -77,7 +82,9 @@ const ClaimQueue = {
         })
       }
     }
+
     storage.updateUser({ identifier: user.identifier, claimQueue: { status, date: Date.now() } })
+
     return { ok: 1, queue: { status, date: Date.now() } }
   }
 }
@@ -106,11 +113,20 @@ const setup = (app: Router, storage: StorageAPI) => {
   app.post(
     '/user/enqueue',
     passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res, next) => {
-      const { user, log, body } = req
+    wrapAsync(async (req, res) => {
+      const { user, log, isE2ERunning } = req
+      const { claimQueueAllowed } = conf
 
-      const result = await ClaimQueue.enqueue(user, storage, log)
-      res.json(result)
+      // if queue is enabled and we're not running cypress tests, enqueueing user
+      if (claimQueueAllowed > 0 && !isE2ERunning) {
+        const queueStatus = await ClaimQueue.enqueue(user, storage, log)
+
+        res.json(queueStatus)
+        return
+      }
+
+      log.debug('claimqueue: skip', { claimQueueAllowed, isE2ERunning })
+      res.json({ ok: 1, queue: { status: 'verified' } })
     })
   )
 }
