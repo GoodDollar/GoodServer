@@ -1,6 +1,7 @@
 // @flow
 
 import Axios from 'axios'
+import { URL } from 'url'
 import { merge, get, pick, omit, isPlainObject, isArray, mapValues } from 'lodash'
 
 import Config from '../../server.config'
@@ -15,20 +16,14 @@ class ZoomAPI {
   defaultMinimalMatchLevel = null
 
   constructor(Config, httpFactory) {
-    const { zoomLicenseKey, zoomServerBaseUrl, zoomMinimalMatchLevel } = Config
+    const { zoomMinimalMatchLevel } = Config
+    const httpClientOptions = this._configureClient(Config)
 
-    this.http = httpFactory({
-      baseURL: zoomServerBaseUrl,
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest',
-        'Content-Type': 'application/json',
-        'X-Device-License-Key': zoomLicenseKey
-      }
-    })
+    this.http = httpFactory(httpClientOptions)
+    this.defaultMinimalMatchLevel = Number(zoomMinimalMatchLevel)
 
     this._configureRequests()
     this._configureResponses()
-    this.defaultMinimalMatchLevel = Number(zoomMinimalMatchLevel)
   }
 
   async getSessionToken(customLogger = null) {
@@ -112,6 +107,41 @@ class ZoomAPI {
 
   checkLivenessStatus(response) {
     return LIVENESS_PASSED === response.livenessStatus
+  }
+
+  _configureClient(Config) {
+    const { zoomLicenseKey, zoomServerBaseUrl } = Config
+    const serverURL = new URL(zoomServerBaseUrl)
+    const { username, password } = serverURL
+
+    let httpClientOptions = {
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Content-Type': 'application/json',
+        'X-Device-License-Key': zoomLicenseKey
+      }
+    }
+
+    // passing basic auth via url isn't recommended
+    // so we're removing them from the url string
+    // and passing via Authorization headers
+    if (username || password) {
+      httpClientOptions = {
+        ...httpClientOptions,
+        auth: { username, password }
+      }
+
+      serverURL.username = ''
+      serverURL.password = ''
+    }
+
+    httpClientOptions = {
+      ...httpClientOptions,
+      baseURL: serverURL.toString()
+    }
+
+    log.debug('Initialized Zoom API client with the options:', httpClientOptions)
+    return httpClientOptions
   }
 
   _configureRequests() {
