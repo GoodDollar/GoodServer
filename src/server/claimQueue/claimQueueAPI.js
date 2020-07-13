@@ -11,6 +11,9 @@ const ClaimQueue = {
     //if user has passed, then we mark that in claim queue and tag the user
     return Promise.all([
       user.claimQueue && storage.updateUser({ identifier: user.identifier, 'claimQueue.status': 'whitelisted' }),
+      Mautic.updateContact(user.mauticId, { tags: ['claimqueue_claimed'] }).catch(e => {
+        log.error('Failed Mautic tagging  user claimed', { errMessage: e.message, e, mauticId: user.mauticId })
+      }),
       Mautic.addContactsToSegment([user.mauticId], conf.mauticClaimQueueWhitelistedSegmentId).catch(e => {
         log && log.error('Failed Mautic adding user to claim queue whitelisted segment', { errMessage: e.message, e })
       })
@@ -60,12 +63,23 @@ const ClaimQueue = {
     const openSpaces = claimQueueAllowed - totalQueued
     let status = openSpaces > 0 ? 'approved' : 'pending'
 
-    // if user was added to queue tag him in mautic
-    if (!['test', 'development'].includes(conf.env) && user.mauticId && status === 'pending') {
-      try {
-        await Mautic.addContactsToSegment([user.mauticId], conf.mauticClaimQueueSegmentId)
-      } catch (e) {
-        log.error('Failed Mautic adding user to claim queue segment', { errMessage: e.message, e })
+    //if user was added to queue tag him in mautic
+    if (['test', 'development'].includes(conf.env) === false && user.mauticId) {
+      if (status === 'pending') {
+        Mautic.updateContact(user.mauticId, { tags: ['claimqueue_in'] }).catch(e => {
+          log.error('Failed Mautic tagging  user inqueue', { errMessage: e.message, e, mauticId: user.mauticId })
+        })
+        Mautic.addContactsToSegment([user.mauticId], conf.mauticClaimQueueSegmentId).catch(e => {
+          log.error('Failed Mautic adding user to claim queue segment', {
+            errMessage: e.message,
+            e,
+            mauticId: user.mauticId
+          })
+        })
+      } else {
+        Mautic.updateContact(user.mauticId, { tags: ['claimqueue_autoapproved'] }).catch(e => {
+          log.error('Failed Mautic tagging  user autoapproved', { errMessage: e.message, e, mauticId: user.mauticId })
+        })
       }
     }
 

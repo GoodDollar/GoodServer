@@ -84,7 +84,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
             }
       })
 
-      const userRecordWithPII = { ...userRecord, inviteCode, email, mobile }
+      const userRecordWithPII = { ...userRecord, ...payloadWithoutCreds, inviteCode, email, mobile }
       const signUpPromises = []
 
       const p1 = storage
