@@ -10,7 +10,7 @@ export default class ErrorsTransport extends Transport {
   static factory = options => new ErrorsTransport(options, Config, Sentry)
 
   constructor(opts, Config, Sentry) {
-    const { env, sentryDSN, version, network, remoteLoggingAllowed, release } = Config
+    const { env, sentryDSN, version, network, remoteLoggingAllowed } = Config
 
     super(opts)
 
@@ -18,7 +18,7 @@ export default class ErrorsTransport extends Transport {
       Sentry.init({
         dsn: sentryDSN,
         environment: env,
-        release
+        release: version
       })
 
       Sentry.configureScope(scope => {

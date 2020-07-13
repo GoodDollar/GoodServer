@@ -24,12 +24,6 @@ const conf = convict({
     default: version,
     env: 'VERSION'
   },
-  release: {
-    doc: 'The stage of running instance',
-    format: String,
-    default: 'dev',
-    env: 'RELEASE'
-  },
   logLevel: {
     doc: 'Log level',
     format: ['error', 'warn', 'info', 'debug', 'silent'],

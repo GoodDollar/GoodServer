@@ -11,6 +11,8 @@ const nodeExternals = require('webpack-node-externals')
 const NodemonPlugin = require('nodemon-webpack-plugin')
 const SentryCliPlugin = require('@sentry/webpack-plugin')
 const webpack = require('webpack')
+import { version } from '../../package.json'
+
 module.exports = (env, argv) => {
   const SERVER_PATH = argv.mode === 'production' ? './src/server/index-prod.js' : './src/server/server-dev.js'
 
@@ -42,7 +44,7 @@ module.exports = (env, argv) => {
         include: '.',
         ignoreFile: '.gitignore',
         ignore: ['node_modules', 'webpack.dev.config.js', 'webpack.server.config.js'],
-        release: process.env.RELEASE,
+        release: process.env.VERSION || version,
       })
     ],
     module: {
