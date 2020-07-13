@@ -42,6 +42,7 @@ module.exports = (env, argv) => {
         include: '.',
         ignoreFile: '.gitignore',
         ignore: ['node_modules', 'webpack.dev.config.js', 'webpack.server.config.js'],
+        release: process.env.RELEASE,
       })
     ],
     module: {

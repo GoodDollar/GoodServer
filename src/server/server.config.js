@@ -12,17 +12,23 @@ dotenv.config({ path: process.env.NODE_ENV === 'test' ? `.env.test` : '.env' })
 // Define a schema
 const conf = convict({
   env: {
-    doc: 'The applicaton environment.',
+    doc: 'The application environment.',
     format: ['production', 'development', 'staging', 'test'],
     default: 'development',
     arg: 'nodeEnv',
     env: 'NODE_ENV'
   },
   version: {
-    doc: 'The applicaton version from package.json.',
+    doc: 'The application version from package.json.',
     format: String,
     default: version,
     env: 'VERSION'
+  },
+  release: {
+    doc: 'The stage of running instance',
+    format: String,
+    default: 'dev',
+    env: 'RELEASE'
   },
   logLevel: {
     doc: 'Log level',
@@ -156,7 +162,6 @@ const conf = convict({
     env: 'TWILIO_PHONE_NUMBER',
     default: ''
   },
-
   otpDigits: {
     doc: 'Amount of digits for the OTP',
     format: '*',
