@@ -267,7 +267,7 @@ const conf = convict({
   mauticClaimQueueWhitelistedSegmentId: {
     doc: 'id of segment',
     format: '*',
-    env: 'MAUTIC_CLAIM_QUEUE_APPROVED_SEG_ID',
+    env: 'MAUTIC_CLAIM_QUEUE_WHITELISTED_SEG_ID',
     default: '54'
   },
   zoomMinimalMatchLevel: {
