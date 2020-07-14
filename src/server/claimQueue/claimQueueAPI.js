@@ -114,18 +114,18 @@ const setup = (app: Router, storage: StorageAPI) => {
     '/user/enqueue',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
-      const { user, log, isE2ERunning } = req
+      const { user, log } = req
       const { claimQueueAllowed } = conf
 
-      // if queue is enabled and we're not running cypress tests, enqueueing user
-      if (claimQueueAllowed > 0 && !isE2ERunning) {
+      // if queue is enabled, enqueueing user
+      if (claimQueueAllowed > 0) {
         const queueStatus = await ClaimQueue.enqueue(user, storage, log)
 
         res.json(queueStatus)
         return
       }
 
-      log.debug('claimqueue: skip', { claimQueueAllowed, isE2ERunning })
+      log.debug('claimqueue: skip', { claimQueueAllowed })
       res.json({ ok: 1, queue: { status: 'verified' } })
     })
   )
