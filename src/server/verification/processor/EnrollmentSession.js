@@ -55,7 +55,7 @@ export default class EnrollmentSession {
         result.enrollmentResult = response
       }
 
-      log.info('Enrollment session failed with exception:', result)
+      log.error('Enrollment session failed with exception:', { result, exception })
 
       this.onEnrollmentFailed(exception)
     } finally {
