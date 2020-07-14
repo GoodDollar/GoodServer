@@ -96,7 +96,7 @@ class ZoomAPI {
     }
 
     if (minMatchLevel) {
-      const { results } = response
+      const { results = [] } = response
       minMatchLevel = Number(minMatchLevel)
 
       response.results = results.filter(({ matchLevel }) => Number(matchLevel) >= minMatchLevel)
