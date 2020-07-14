@@ -1,7 +1,9 @@
 import * as Sentry from '@sentry/node'
+import { RewriteFrames } from '@sentry/integrations'
 import Transport from 'winston-transport'
 import { SPLAT } from 'triple-beam'
 import { forEach } from 'lodash'
+
 import Config from '../../server/server.config'
 
 export default class ErrorsTransport extends Transport {
@@ -18,7 +20,8 @@ export default class ErrorsTransport extends Transport {
       Sentry.init({
         dsn: sentryDSN,
         environment: env,
-        release: version
+        release: version,
+        integrations: [new RewriteFrames()]
       })
 
       Sentry.configureScope(scope => {

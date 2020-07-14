@@ -11,22 +11,23 @@ const nodeExternals = require('webpack-node-externals')
 const NodemonPlugin = require('nodemon-webpack-plugin')
 const SentryCliPlugin = require('@sentry/webpack-plugin')
 const webpack = require('webpack')
-import { version } from '../../package.json'
+const { version } = require('./package.json')
 
-module.exports = (env, argv) => {
+module.exports = (_, argv) => {
   const SERVER_PATH = argv.mode === 'production' ? './src/server/index-prod.js' : './src/server/server-dev.js'
+  const { VERSION, NODE_ENV } = process.env
 
   return {
     entry: {
       server: ['@babel/polyfill', SERVER_PATH]
     },
     output: {
-      path: path.join(__dirname, 'dist'),
       publicPath: '/',
-      filename: '[name].js'
+      filename: '[name].js',
+      path: path.join(__dirname, 'dist'),
     },
+    devtool: 'source-map',
     mode: argv.mode,
-    devtool: '#source-map',
     target: 'node',
     node: {
       // Need this when working with express, otherwise the build fails
@@ -41,10 +42,14 @@ module.exports = (env, argv) => {
       new webpack.DefinePlugin({}),
       new NodemonPlugin(),
       new SentryCliPlugin({
-        include: '.',
+        rewrite: true,
+        release: VERSION || version,
+        deploy: { env: NODE_ENV || 'development' },
+        configFile: './sentry.properties',
+
+        include: ['./dist'],
         ignoreFile: '.gitignore',
-        ignore: ['node_modules', 'webpack.dev.config.js', 'webpack.server.config.js'],
-        release: process.env.VERSION || version,
+        ignore: ['node_modules', 'webpack.*.config.js'],
       })
     ],
     module: {

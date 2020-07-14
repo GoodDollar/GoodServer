@@ -9,9 +9,9 @@ radata/
 yarn.lock
 secrets.json
 openSubjects.txt
-publicdb
-privatedb
-testdb
+publicdb*
+privatedb*
+testdb*
 config/*/*
 test/jest-envs/*
 uploads/*

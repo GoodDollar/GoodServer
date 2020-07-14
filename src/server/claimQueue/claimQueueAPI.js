@@ -88,12 +88,24 @@ const ClaimQueue = {
 const setup = (app: Router, storage: StorageAPI) => {
   app.post(
     '/admin/queue',
-    wrapAsync(async (req, res, next) => {
+    wrapAsync(async (req, res) => {
       const { body, log } = req
-      if (body.password !== conf.gundbPassword) return res.json({ ok: 0 })
-      const toAdd = body.allow
-      const result = await ClaimQueue.updateAllowed(toAdd, storage, log)
-      res.json(result)
+      const { allow, password } = body
+
+      try {
+        if (password !== conf.gundbPassword) {
+          throw new Error("GunDB password doesn't match.")
+        }
+
+        const result = await ClaimQueue.updateAllowed(allow, storage, log)
+
+        res.json(result)
+      } catch (exception) {
+        const { message } = exception
+
+        log.error('Error processing claim queue:', message, exception)
+        res.json({ ok: 0, error: message })
+      }
     })
   )
 

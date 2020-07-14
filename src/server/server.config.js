@@ -352,7 +352,7 @@ const conf = convict({
     doc: 'access token for sentry logging',
     format: String,
     env: 'SENTRY_DSN',
-    default: ''
+    default: false
   },
   secure_key: {
     doc: 'Secure key word used to create secure hash by which server can communicate with web3',
