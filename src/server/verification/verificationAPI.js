@@ -43,7 +43,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         await processor.enqueueDisposal(user, enrollmentIdentifier, signature, log)
       } catch (exception) {
         const { message } = exception
-        log.error('delete face record failed:', { message, exception, enrollmentIdentifier, user })
+        log.error('delete face record failed:', message, exception, { enrollmentIdentifier, user })
         res.status(400).json({ success: false, error: message })
         return
       }
@@ -75,7 +75,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         res.json({ success: true, isDisposing })
       } catch (exception) {
         const { message } = exception
-        log.error('face record disposing check failed:', { message, exception, enrollmentIdentifier, user })
+        log.error('face record disposing check failed:', message, exception, { enrollmentIdentifier, user })
         res.status(400).json({ success: false, error: message })
       }
     })
@@ -175,7 +175,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       } catch (exception) {
         const { message } = exception
 
-        log.error('Face verification error:', { message, exception, enrollmentIdentifier })
+        log.error('Face verification error:', message, exception, { enrollmentIdentifier })
         res.status(400).json({ success: false, error: message })
         return
       }
@@ -340,7 +340,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         })
         isUserSendEtherOutOfSystem = result.some(r => Number(r.value) > 0)
       } catch (e) {
-        log.error('Check user transactions error', { error: e.message, e })
+        log.error('Check user transactions error', e.message, e)
       }
 
       if (isUserSendEtherOutOfSystem) {
@@ -360,7 +360,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           return { ok: 1 }
         })
         .catch(async e => {
-          log.error('Failed top wallet tx', { error: e.message, e })
+          log.error('Failed top wallet tx', e.message, e)
           //restore last top wallet in case of error
           await storage.updateUser({ identifier: user.loggedInAs, lastTopWallet: user.lastTopWallet })
 
@@ -427,7 +427,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
             )
             log.debug('sent new user email validation code', code)
           } catch (e) {
-            log.error('failed sending email verification to user:', { error: e.message, e, userRec, code })
+            log.error('failed sending email verification to user:', e.message, e, { userRec, code })
             throw e
           }
         }
@@ -573,7 +573,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       AdminWallet.redeemBonuses(user.gdAddress, bonusInWei, {
         onTransactionHash: hash => {
           if (res.headersSent) {
-            log.error('checkHanukaBonus got tx hash but headers already sent', { hash, user })
+            log.error('checkHanukaBonus got tx hash but headers already sent', '', null, { hash, user })
             return
           }
           return res.status(200).json({
@@ -595,7 +595,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           release()
         },
         onError: e => {
-          log.error('Bonuses charge failed', { errMessage: e.message, e, user })
+          log.error('Bonuses charge failed', e.message, e, { user })
 
           fail()
 
@@ -646,7 +646,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       try {
         w3User = await W3Helper.getUser(token)
       } catch (e) {
-        log.error('Fetch web3 user error', { errMessage: e.message, e })
+        log.error('Fetch web3 user error', e.message, e)
       }
 
       let status = 422
@@ -750,9 +750,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         })
       }
 
-      AdminWallet.checkHanukaBonus(currentUser, storage).catch(e =>
-        log.error('checkHnukaBonus failed', { error: e.message, e })
-      )
+      AdminWallet.checkHanukaBonus(currentUser, storage).catch(e => log.error('checkHnukaBonus failed', e.message, e))
 
       let wallet_token = currentUser.w3Token
 
@@ -794,7 +792,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       const { release, fail } = await txManager.lock(currentUser.gdAddress, 0)
 
       const w3User = await W3Helper.getUser(wallet_token).catch(e => {
-        log.error('failed fetching w3 user', { errMessage: e.message, e, wallet_token, currentUser })
+        log.error('failed fetching w3 user', e.message, e, { wallet_token, currentUser })
         return false
       })
 
@@ -841,7 +839,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           release()
         },
         onError: e => {
-          log.error('Bonuses charge failed', { errMessage: e.message, e, currentUser })
+          log.error('Bonuses charge failed', e.message, e, { currentUser })
 
           fail()
 

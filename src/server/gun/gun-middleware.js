@@ -199,7 +199,7 @@ class GunDB implements StorageAPI {
         log.info('Created gundb GoodDollar User', { name })
         this.user.auth('gooddollarorg', password, async authres => {
           if (authres.err) {
-            log.error('Failed authenticating gundb user:', { name, error: authres.err })
+            log.error('Failed authenticating gundb user:', '', authres.err, { name })
             if (conf.env !== 'test') return reject(authres.err)
             resolve(false)
           }
@@ -250,7 +250,7 @@ class GunDB implements StorageAPI {
         .get(`users/bywalletAddress`)
         .onThen(_ => _ === undefined && this.user.get(`users/bywalletAddress`).putAck({ init: true }))
     ]).catch(e => {
-      log.error('initIndexes failed', { e, msg: e.message })
+      log.error('initIndexes failed', e.message, e)
     })
 
     const indexes = await this.getIndexes()
@@ -279,7 +279,7 @@ class GunDB implements StorageAPI {
       .get(sha3(value))
       .putAck({ '#': '~' + user.profilePublickey })
       .catch(e => {
-        log.error('failed updating user index', { index, value, user })
+        log.error('failed updating user index', e.message, e, { index, value, user })
         return false
       })
     return updateP
@@ -290,7 +290,7 @@ class GunDB implements StorageAPI {
       .get(hashedValue)
       .putAck('')
       .catch(e => {
-        log.error('failed removing user from index', { index, hashedValue })
+        log.error('failed removing user from index', e.message, e, { index, hashedValue })
         return false
       })
     return updateP

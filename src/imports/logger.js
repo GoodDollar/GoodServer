@@ -1,27 +1,20 @@
+// libraries
 import winston from 'winston'
-import { omit, isPlainObject } from 'lodash'
-import conf from '../server/server.config'
-import Rollbar from 'rollbar'
+import { omit, isPlainObject, isError, mapKeys } from 'lodash'
 import Crypto from 'crypto'
+import { SPLAT } from 'triple-beam'
+
+// configs
+import ErrorsTransport from './loggerUtils/ErrorsTransport'
+import conf from '../server/server.config'
 
 const { format } = winston
 const { combine, printf, timestamp } = format
 const colorizer = format.colorize()
 
-let rollbar
-if (conf.env !== 'development' && conf.rollbarToken)
-  rollbar = new Rollbar({
-    accessToken: conf.rollbarToken,
-    captureUncaught: true,
-    captureUnhandledRejections: true,
-    payload: {
-      environment: process.env.NODE_ENV
-    }
-  })
+const { env, logLevel } = conf
 
-const LOG_LEVEL = conf.logLevel
-
-console.log('Starting logger', { LOG_LEVEL, env: conf.env })
+console.log('Starting logger', { logLevel, env })
 
 const levelConfigs = {
   levels: {
@@ -42,36 +35,41 @@ const levelConfigs = {
   }
 }
 
+const formatLogValue = value => {
+  if (!isError(value)) {
+    return value
+  }
+
+  const { name, message, stack } = value
+
+  return `${name}: ${message}\n${stack}`
+}
+
 const logger = winston.createLogger({
   levels: levelConfigs.levels,
-  level: LOG_LEVEL,
+  level: logLevel,
   format: combine(
     timestamp(),
     format.errors({ stack: true }),
-    printf(({ level, timestamp, from, userId, ...rest }) =>
-      colorizer.colorize(
+    printf(({ level, timestamp, from, userId, ...rest }) => {
+      const logPayload = mapKeys(rest, (_, key) => (key === SPLAT ? 'context' : key))
+      const stringifiedPayload = JSON.stringify(logPayload, (_, logValue) => formatLogValue(logValue))
+
+      return colorizer.colorize(
         level,
-        `${timestamp} - ${level}${from ? ` (FROM ${from} ${userId || ''})` : ''}:  ${JSON.stringify(rest)}`
+        `${timestamp} - ${level}${from ? ` (FROM ${from} ${userId || ''})` : ''}: ${stringifiedPayload}`
       )
-    )
+    })
   ),
   transports: [
     new winston.transports.Console({
-      silent: LOG_LEVEL === 'silent'
-    })
-    // new winston.transports.File({ filename: 'somefile.log' })
+      silent: logLevel === 'silent'
+    }),
+    ErrorsTransport.factory({ level: 'error' })
   ]
 })
 
 winston.addColors(levelConfigs.colors)
-
-// patch error
-const error = logger.error
-logger.error = function() {
-  if (rollbar && conf.env !== 'test') rollbar.error.apply(rollbar, arguments)
-
-  error.apply(this, arguments)
-}
 
 // set log middleware
 const addRequestLogger = (req, res, next) => {
@@ -111,6 +109,6 @@ const printMemory = () => {
   }
   logger.debug('Memory usage:', toPrint)
 }
-if (conf.env !== 'test') setInterval(printMemory, 30000)
+if (env !== 'test') setInterval(printMemory, 30000)
 
-export { rollbar, addRequestLogger, logger as default }
+export { addRequestLogger, logger as default }

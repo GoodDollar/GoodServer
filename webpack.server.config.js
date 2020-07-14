@@ -6,38 +6,52 @@
  *
  * Note: that prod and dev mode are set in npm scripts.
  */
-const path = require("path")
-const nodeExternals = require("webpack-node-externals")
-const NodemonPlugin = require("nodemon-webpack-plugin")
-const webpack = require("webpack")
-module.exports = (env, argv) => {
-  const SERVER_PATH = (argv.mode === "production")
-    ? "./src/server/index-prod.js"
-    : "./src/server/server-dev.js"
+const path = require('path')
+const nodeExternals = require('webpack-node-externals')
+const NodemonPlugin = require('nodemon-webpack-plugin')
+const SentryCliPlugin = require('@sentry/webpack-plugin')
+const webpack = require('webpack')
+const { version } = require('./package.json')
 
-  return ({
+module.exports = (_, argv) => {
+  const SERVER_PATH = argv.mode === 'production' ? './src/server/index-prod.js' : './src/server/server-dev.js'
+  const { VERSION, NODE_ENV } = process.env
+
+  return {
     entry: {
-      server: ["@babel/polyfill",SERVER_PATH]
+      server: ['@babel/polyfill', SERVER_PATH]
     },
     output: {
-      path: path.join(__dirname, "dist"),
-      publicPath: "/",
-      filename: "[name].js"
+      publicPath: '/',
+      filename: '[name].js',
+      path: path.join(__dirname, 'dist'),
     },
+    devtool: 'source-map',
     mode: argv.mode,
-    target: "node",
+    target: 'node',
     node: {
       // Need this when working with express, otherwise the build fails
       __dirname: false, // if you don't put this is, __dirname
-      __filename: false, // and __filename return blank or /
+      __filename: false // and __filename return blank or /
     },
     optimization: {
-    nodeEnv: false
-  },
+      nodeEnv: false
+    },
     externals: [nodeExternals()], // Need this to avoid error when working with Express
     plugins: [
-       new webpack.DefinePlugin({}),
-      new NodemonPlugin()],
+      new webpack.DefinePlugin({}),
+      new NodemonPlugin(),
+      new SentryCliPlugin({
+        rewrite: true,
+        release: VERSION || version,
+        deploy: { env: NODE_ENV || 'development' },
+        configFile: './sentry.properties',
+
+        include: ['./dist'],
+        ignoreFile: '.gitignore',
+        ignore: ['node_modules', 'webpack.*.config.js'],
+      })
+    ],
     module: {
       rules: [
         {
@@ -45,12 +59,12 @@ module.exports = (env, argv) => {
           test: /\.js$/,
           exclude: /node_modules/,
           use: {
-            loader: "babel-loader"
+            loader: 'babel-loader'
           }
         }
       ]
     }
-  })
+  }
 }
 
 // Webpack 4 basic tutorial:

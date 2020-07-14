@@ -174,16 +174,16 @@ describe('verificationAPI', () => {
         .post(sessionUri)
         .send({})
         .expect(401)
-      
+
       await request(server)
         .put(enrollmentUri)
         .send(payload)
         .expect(401)
-      
+
       await request(server)
         .get(enrollmentUri)
         .expect(401)
-      
+
       await request(server)
         .delete(enrollmentUri)
         .expect(401)

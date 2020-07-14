@@ -51,7 +51,7 @@ class TaskRunner {
       } catch (exception) {
         const { message: errMessage } = exception
 
-        logger.error('Cron task failed', { e: exception, errMessage, taskIdentifier })
+        logger.error('Cron task failed', errMessage, exception, { taskIdentifier })
       }
     })
 

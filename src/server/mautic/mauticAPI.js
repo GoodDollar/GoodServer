@@ -27,7 +27,7 @@ export const Mautic = {
       })
       .catch(e => {
         delete body['mnemonic'] //hide confidential information
-        log.error('Mautic Error:', { url, errMessage: e.message, body })
+        log.error('Mautic Error:', e.message, e, { url, body })
 
         throw e
       })
@@ -55,7 +55,7 @@ export const Mautic = {
   async createContact(user: UserRecord) {
     const tags = [Config.newuserTag]
     if (user.email === undefined) {
-      log.error('failed creating contact, no email.', { user })
+      log.error('failed creating contact, no email.', 'Email is required', new Error('Email is required'), { user })
       return Promise.reject('failed creating contact. no email.')
     }
     if (Config.isEtoro) tags.push('etorobeta')
@@ -63,7 +63,7 @@ export const Mautic = {
     const mauticRecord = await this.baseQuery('/contacts/new', this.baseHeaders, { ...user, tags })
 
     const mauticId = get(mauticRecord, 'contact.id', -1)
-    if (mauticId === -1) log.error('Mautic Error createContact failed', { user, tags, mauticRecord })
+    if (mauticId === -1) log.error('Mautic Error createContact failed', '', null, { user, tags, mauticRecord })
     log.info('createContact result:', { mauticId, email: user.email })
     await Mautic.deleteContactFromDNC({ mauticId })
 

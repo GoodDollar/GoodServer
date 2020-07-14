@@ -91,7 +91,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         .updateUser(toUpdateUser)
         .then(r => logger.debug('updated new user record', { toUpdateUser }))
         .catch(e => {
-          logger.error('failed updating new user record', { e, errMessage: e.message, toUpdateUser })
+          logger.error('failed updating new user record', e.message, e, { toUpdateUser })
           throw e
         })
       signUpPromises.push(p1)
@@ -105,7 +105,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
             if (isWhitelisted === false) throw new Error('Failed whitelisting user')
           })
           .catch(e => {
-            logger.error('addUserToWhiteList failed', { e, errMessage: e.message, userRecord })
+            logger.error('addUserToWhiteList failed', e.message, e, { userRecord })
             throw e
           })
         signUpPromises.push(p2)
@@ -116,7 +116,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           .updateMauticRecord(userRecordWithPII, logger)
           .then(r => logger.debug('updateMauticRecord success'))
           .catch(e => {
-            logger.error('updateMauticRecord failed', { e, errMessage: e.message, userRecordWithPII })
+            logger.error('updateMauticRecord failed', e.message, e, { userRecordWithPII })
             throw e
           })
         signUpPromises.push(p3)
@@ -129,7 +129,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           return r
         })
         .catch(e => {
-          logger.error('updateW3Record failed', { e, errMessage: e.message, userRecordWithPII })
+          logger.error('updateW3Record failed', e.message, e, { userRecordWithPII })
           throw e
         })
       signUpPromises.push(web3RecordP)
@@ -141,7 +141,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           return r
         })
         .catch(e => {
-          logger.error('updateMarketToken failed', { e, errMessage: e.message, userRecordWithPII })
+          logger.error('updateMarketToken failed', e.message, e, { userRecordWithPII })
           throw e
         })
       signUpPromises.push(marketTokenP)
@@ -153,7 +153,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           logger.debug('topUserWallet success')
         })
         .catch(e => {
-          logger.error('topUserWallet failed', { e, errMessage: e.message, userRecord })
+          logger.error('topUserWallet failed', e.message, e, { userRecord })
           throw e
         })
       signUpPromises.push(p4)

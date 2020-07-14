@@ -12,14 +12,14 @@ dotenv.config({ path: process.env.NODE_ENV === 'test' ? `.env.test` : '.env' })
 // Define a schema
 const conf = convict({
   env: {
-    doc: 'The applicaton environment.',
+    doc: 'The application environment.',
     format: ['production', 'development', 'staging', 'test'],
     default: 'development',
     arg: 'nodeEnv',
     env: 'NODE_ENV'
   },
   version: {
-    doc: 'The applicaton version from package.json.',
+    doc: 'The application version from package.json.',
     format: String,
     default: version,
     env: 'VERSION'
@@ -29,6 +29,12 @@ const conf = convict({
     format: ['error', 'warn', 'info', 'debug', 'silent'],
     default: 'debug',
     env: 'LOG_LEVEL'
+  },
+  remoteLoggingAllowed: {
+    doc: 'allow log errors to the bug tracking systems (e.g. Sentry)',
+    format: Boolean,
+    default: true,
+    env: 'REMOTE_LOGGING_ALLOWED'
   },
   ip: {
     doc: 'The IP address to bind.',
@@ -150,7 +156,6 @@ const conf = convict({
     env: 'TWILIO_PHONE_NUMBER',
     default: ''
   },
-
   otpDigits: {
     doc: 'Amount of digits for the OTP',
     format: '*',
@@ -343,11 +348,11 @@ const conf = convict({
     env: 'ALLOW_DUPLICATED_FACE_RECORDS',
     default: false
   },
-  rollbarToken: {
-    doc: 'access token for rollbar logging',
-    format: '*',
-    env: 'ROLLBAR_TOKEN',
-    default: undefined
+  sentryDSN: {
+    doc: 'access token for sentry logging',
+    format: String,
+    env: 'SENTRY_DSN',
+    default: false
   },
   secure_key: {
     doc: 'Secure key word used to create secure hash by which server can communicate with web3',

@@ -35,9 +35,8 @@ class DisposeEnrollmentsTask {
 
     if (exception) {
       const { message: errMessage } = exception
-      const logPayload = { e: exception, errMessage, identifier }
 
-      logger.error(`Couldn't dispose enrollment for ID '${identifier}'`, logPayload)
+      logger.error(`Couldn't dispose enrollment for ID '${identifier}'`, errMessage, exception, { identifier })
       return
     }
 

@@ -13,7 +13,7 @@ import addVerificationMiddlewares from './verification/verificationAPI'
 import addSendMiddlewares from './send/sendAPI'
 import addLoadTestMiddlewares from './loadtest/loadtest-middleware'
 import addCypressMiddleware from './cypress/cypress-middleware'
-import { rollbar, addRequestLogger } from '../imports/logger'
+import { addRequestLogger } from '../imports/logger'
 import VerificationAPI from './verification/verification'
 import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
 import addClaimQueueMiddlewares from './claimQueue/claimQueueAPI'
@@ -38,11 +38,10 @@ export default (app: Router, env: any) => {
   addClaimQueueMiddlewares(app, UserDBPrivate)
   addLoadTestMiddlewares(app)
 
-  if (rollbar) app.use(rollbar.errorHandler())
-
   app.use((error, req, res, next: NextFunction) => {
     const log = req.log
-    log.error(error)
+    log.error('Something went wrong while performing request', error.message, error)
+
     res.status(400).json({ message: error.message })
   })
 

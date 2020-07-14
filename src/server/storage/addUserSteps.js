@@ -36,14 +36,14 @@ const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
   } catch (exception) {
     const { message: errMessage } = exception
 
-    logger.error('addUserToWhiteList failed whitelisting', { e: exception, errMessage, userRecord })
+    logger.error('addUserToWhiteList failed whitelisting', errMessage, exception, { userRecord })
     return false
   }
 }
 
 const updateMauticRecord = async (userRecord: UserRecord, logger: any) => {
   const mauticRecord = await Mautic.createContact(userRecord).catch(e => {
-    logger.error('updateMauticRecord Create Mautic Record Failed', { e, errMessage: e.message, userRecord })
+    logger.error('updateMauticRecord Create Mautic Record Failed', e.message, e, { userRecord })
     throw e
   })
   const mauticId = get(mauticRecord, 'contact.id', userRecord.mauticId)
@@ -61,7 +61,7 @@ const updateW3Record = async (user: any, logger: any) => {
   const w3Record = get(userDB, 'isCompleted.w3Record', false)
   if (!w3Record) {
     const web3Record = await W3Helper.registerUser(user).catch(e => {
-      logger.error('updateW3Record error registering user to w3', { e, errMessage: e.message, user })
+      logger.error('updateW3Record error registering user to w3', e.message, e, { user })
     })
     if (web3Record && web3Record.login_token && web3Record.wallet_token) {
       await UserDBPrivate.updateUser({
@@ -72,7 +72,7 @@ const updateW3Record = async (user: any, logger: any) => {
       })
       logger.debug('updateW3Record got web3 user records', { web3Record, user })
     } else {
-      logger.error('updateW3Record empty w3 response', { user })
+      logger.error('updateW3Record empty w3 response', '', null, { user })
 
       // supress error while running locally
       if (!conf.walletUrl.includes('localhost:')) {
@@ -116,7 +116,7 @@ const topUserWallet = async (userRecord: UserRecord, logger: any) => {
         return true
       })
       .catch(e => {
-        logger.error('New user topping failed', { errMessage: e.message, userRecord })
+        logger.error('New user topping failed', e.message, e, { userRecord })
         return false
       })
   }
