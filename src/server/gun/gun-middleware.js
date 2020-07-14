@@ -103,17 +103,11 @@ const setup = (app: Router) => {
   app.get(
     '/trust',
     wrapAsync(async (_, res) => {
-      const goodDollarPublicKey = get(GunDBPublic, 'user.is.pub', null)
-      const bymobile = await GunDBPublic.getIndexId('mobile')
-      const byemail = await GunDBPublic.getIndexId('email')
-      const bywalletAddress = await GunDBPublic.getIndexId('walletAddress')
+      const indexes = await GunDBPublic.getIndexes()
 
       res.json({
         ok: 1,
-        goodDollarPublicKey,
-        bymobile,
-        byemail,
-        bywalletAddress
+        ...indexes
       })
     })
   )
@@ -258,11 +252,25 @@ class GunDB implements StorageAPI {
     ]).catch(e => {
       log.error('initIndexes failed', { e, msg: e.message })
     })
-    const goodDollarPublicKey = GunDBPublic.user.is.pub
-    const bymobile = await GunDBPublic.getIndexId('mobile')
-    const byemail = await GunDBPublic.getIndexId('email')
-    const bywalletAddress = await GunDBPublic.getIndexId('walletAddress')
-    log.debug('initIndexes', { indexesInitialized, goodDollarPublicKey, bymobile, byemail, bywalletAddress })
+
+    const indexes = await this.getIndexes()
+
+    log.debug('initIndexes', { indexesInitialized, ...indexes })
+  }
+
+  async getIndexes() {
+    const goodDollarPublicKey = get(this, 'user.is.pub')
+    const indexes = { goodDollarPublicKey }
+
+    await Promise.all(
+      ['mobile', 'email', 'walletAddress'].map(async field => {
+        const indexId = await this.getIndexId(field)
+
+        indexes['by' + field] = indexId
+      })
+    )
+
+    return indexes
   }
 
   async addUserToIndex(index: string, value: String, user: LoggedUser) {
