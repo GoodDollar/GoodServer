@@ -1,12 +1,11 @@
 // libraries
 import winston from 'winston'
-import { omit, isPlainObject } from 'lodash'
+import { omit, isPlainObject, isError, mapKeys } from 'lodash'
 import Crypto from 'crypto'
 import { SPLAT } from 'triple-beam'
 
 // configs
 import ErrorsTransport from './loggerUtils/ErrorsTransport'
-import stringifyErrorReplacer from './loggerUtils/stringifyErrorReplacer'
 import conf from '../server/server.config'
 
 const { format } = winston
@@ -36,6 +35,16 @@ const levelConfigs = {
   }
 }
 
+const formatLogValue = value => {
+  if (!isError(value)) {
+    return value
+  }
+
+  const { name, message, stack } = value
+
+  return `${name}: ${message}\n${stack}`
+}
+
 const logger = winston.createLogger({
   levels: levelConfigs.levels,
   level: logLevel,
@@ -43,17 +52,12 @@ const logger = winston.createLogger({
     timestamp(),
     format.errors({ stack: true }),
     printf(({ level, timestamp, from, userId, ...rest }) => {
-      const context = rest[SPLAT]
+      const logPayload = mapKeys(rest, (_, key) => (key === SPLAT ? 'context' : key))
+      const stringifiedPayload = JSON.stringify(logPayload, (_, logValue) => formatLogValue(logValue))
 
       return colorizer.colorize(
         level,
-        `${timestamp} - ${level}${from ? ` (FROM ${from} ${userId || ''})` : ''}:  ${JSON.stringify(
-          {
-            context,
-            ...rest
-          },
-          stringifyErrorReplacer
-        )}`
+        `${timestamp} - ${level}${from ? ` (FROM ${from} ${userId || ''})` : ''}: ${stringifiedPayload}`
       )
     })
   ),
