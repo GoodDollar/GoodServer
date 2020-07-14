@@ -53,7 +53,7 @@ export const Mautic = {
   },
 
   async createContact(user: UserRecord) {
-    const tags = ['dappuser']
+    const tags = [Config.newuserTag]
     if (user.email === undefined) {
       log.error('failed creating contact, no email.', { user })
       return Promise.reject('failed creating contact. no email.')
