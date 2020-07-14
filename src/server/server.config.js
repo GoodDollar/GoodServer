@@ -485,6 +485,12 @@ const conf = convict({
     format: String,
     default: 'gooddollar-auth0-sms-passwordless',
     env: 'TORUS_AUTH0SMS'
+  },
+  newuserTag: {
+    doc: 'mautic tag for new user. incremented by phases',
+    format: String,
+    default: 'dappuser',
+    env: 'MAUTIC_NEWUSER_TAG'
   }
 })
 
