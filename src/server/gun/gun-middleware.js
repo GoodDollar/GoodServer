@@ -1,7 +1,7 @@
 // @flow
 import express, { Router } from 'express'
 
-import { assign, identity, memoize, once } from 'lodash'
+import { get, assign, identity, memoize, once } from 'lodash'
 import { sha3 } from 'web3-utils'
 import util from 'util'
 
@@ -102,11 +102,12 @@ const setup = (app: Router) => {
   //returns details about our gundb trusted indexes
   app.get(
     '/trust',
-    wrapAsync(async (req, res) => {
-      const goodDollarPublicKey = GunDBPublic.user.is.pub
+    wrapAsync(async (_, res) => {
+      const goodDollarPublicKey = get(GunDBPublic, 'user.is.pub', null)
       const bymobile = await GunDBPublic.getIndexId('mobile')
       const byemail = await GunDBPublic.getIndexId('email')
       const bywalletAddress = await GunDBPublic.getIndexId('walletAddress')
+
       res.json({
         ok: 1,
         goodDollarPublicKey,
