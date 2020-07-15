@@ -1,6 +1,7 @@
 export default zoomServiceMock => {
   const serviceErrorMessage = 'Request failed with status code 500'
   const failedEnrollmentMessage = 'The FaceMap was not enrolled because Liveness could not be determined.'
+  const failedLivenessMessage = '3D FaceMaps that are used with Search APIs must have had Liveness Proven.'
   const enrollmentDisposedMessage = 'The entry in the database for this enrollmentIdentifier was successfully deleted'
   const enrollmentFoundMessage = 'A FaceMap was found for that enrollmentIdentifier.'
   const enrollmentNotFoundMessage = 'No entry found in the database for this enrollmentIdentifier.'
@@ -62,6 +63,21 @@ export default zoomServiceMock => {
             auditTrailImage: 'data:image/png:FaKEimagE=='
           }
         ]
+      }
+    })
+
+  const mockLivenessError = () =>
+    zoomServiceMock.onPost('/search').reply(400, {
+      meta: {
+        code: 400,
+        ok: false,
+        m: { zb: 2256, st: 1594565626.252231, bt: null, bp: null, zw: 2545, zp: 2528 },
+        subCode: 'unableToProcess',
+        mode: 'dev',
+        message: '3D FaceMaps that are used with Search APIs must have had Liveness Proven.'
+      },
+      data: {
+        isLive: false
       }
     })
 
@@ -175,7 +191,9 @@ export default zoomServiceMock => {
 
     mockSuccessEnrollment,
     mockFailedEnrollment,
+    mockLivenessError,
     failedEnrollmentMessage,
+    failedLivenessMessage,
 
     mockEnrollmentFound,
     mockEnrollmentNotFound,
