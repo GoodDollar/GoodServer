@@ -52,15 +52,36 @@ class ZoomProvider implements IEnrollmentProvider {
     }
 
     // 1. checking for duplicates
-    // we don't need to catch specific cases so
-    // we don't wrapping call to try catch
-    // any unexpected errors will be automatically rethrown
+    let duplicate
+    let faceSearchResponse
     const { defaultMinimalMatchLevel } = api
-    const { results, response } = await api.faceSearch(payload, defaultMinimalMatchLevel, customLogger)
-    // excluding own enrollmentIdentifier
-    let duplicate = results.find(
-      ({ enrollmentIdentifier: matchId }) => matchId.toLowerCase() !== enrollmentIdentifier.toLowerCase()
-    )
+
+    try {
+      const { results, ...response } = await api.faceSearch(payload, defaultMinimalMatchLevel, customLogger)
+
+      faceSearchResponse = response
+      // excluding own enrollmentIdentifier
+      duplicate = results.find(
+        ({ enrollmentIdentifier: matchId }) => matchId.toLowerCase() !== enrollmentIdentifier.toLowerCase()
+      )
+    } catch (exception) {
+      const { subCode, message } = exception.response || {}
+
+      // if liveness issues were detected
+      if ('unableToProcess' === subCode && message.toLowerCase().includes('liveness')) {
+        const isLive = false
+
+        // notifying about liveness check failed
+        await notifyProcessor({ isLive })
+        log.warn(message, { enrollmentIdentifier })
+
+        throwCustomException(message, { isLive }, faceSearchResponse)
+      }
+
+      // otherwisw just re-throw exception and stop processing
+      throw exception
+    }
+
     // if there're at least one record left - we have a duplicate
     const isDuplicate = !!duplicate
 
@@ -74,7 +95,7 @@ class ZoomProvider implements IEnrollmentProvider {
       duplicate = omit(duplicate, 'auditTrailImage')
       log.warn(duplicateFoundMessage, { duplicate, enrollmentIdentifier })
 
-      throwCustomException(duplicateFoundMessage, { isDuplicate }, response)
+      throwCustomException(duplicateFoundMessage, { isDuplicate }, faceSearchResponse)
     }
 
     let enrollmentStatus
