@@ -124,7 +124,21 @@ describe('ZoomProvider', () => {
     expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isDuplicate: true })
   })
 
-  test('enroll() throws if liveness check fails', async () => {
+  test('enroll() throws if liveness check fails during duplicates search', async () => {
+    helper.mockFailedSearch()
+
+    const onEnrollmentProcessing = jest.fn()
+    const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
+
+    await wrappedResponse.toThrow(helper.failedSearchMessage)
+    await wrappedResponse.toHaveProperty('response')
+    await wrappedResponse.toHaveProperty('response.isLive', false)
+    await wrappedResponse.toHaveProperty('response.isVerified', false)
+
+    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: false })
+  })
+
+  test('enroll() throws if liveness check fails during enroll', async () => {
     helper.mockEmptyResultsFaceSearch()
     helper.mockFailedEnrollment(enrollmentIdentifier)
 
@@ -139,20 +153,6 @@ describe('ZoomProvider', () => {
 
     expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isDuplicate: false })
     expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(2, { isEnrolled: false, isLive: false })
-  })
-
-  test('enroll() throws 3D Facemap liveness error', async () => {
-    helper.mockEmptyResultsFaceSearch()
-    helper.mockLivenessError()
-
-    const onEnrollmentProcessing = jest.fn()
-    const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
-
-    await wrappedResponse.toThrow(helper.failedLivenessMessage)
-    await wrappedResponse.toHaveProperty('response')
-    await wrappedResponse.toHaveProperty('response.isLive', false)
-
-    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: false })
   })
 
   test('enroll() throws on any Zoom service error and terminates without returning any response or calling callback', async () => {
