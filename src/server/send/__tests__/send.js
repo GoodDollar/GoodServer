@@ -27,7 +27,7 @@ describe('Send', () => {
       try {
         await sendLinkByEmail('fake', 'http://example.com/address')
       } catch (e) {
-        expect(e.message).toEqual('Bad Request')
+        expect(e.message).toEqual(expect.stringContaining('Bad Request'))
         expect(e instanceof Error).toBeTruthy()
       }
     })

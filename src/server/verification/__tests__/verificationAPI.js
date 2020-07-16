@@ -601,13 +601,13 @@ describe('verificationAPI', () => {
     })
   })
 
-  test('/verify/hanuka-bonus witout auth creds', async () => {
+  xtest('/verify/hanuka-bonus witout auth creds', async () => {
     let res = await request(server).get('/verify/hanuka-bonus')
 
     expect(res.status).toBe(401)
   })
 
-  test('/verify/hanuka-bonus with wrong dates', async () => {
+  xtest('/verify/hanuka-bonus with wrong dates', async () => {
     Config.hanukaStartDate = moment('01/01/2018').format('DD/MM/YYYY')
     Config.hanukaEndDate = moment('01/02/2018').format('DD/MM/YYYY')
 
@@ -625,7 +625,7 @@ describe('verificationAPI', () => {
     })
   })
 
-  test('/verify/hanuka-bonus errored with trying to get bonus 2 times per day', async () => {
+  xtest('/verify/hanuka-bonus errored with trying to get bonus 2 times per day', async () => {
     Config.hanukaStartDate = moment()
       .subtract(1, 'day')
       .format('DD/MM/YYYY')
@@ -658,7 +658,7 @@ describe('verificationAPI', () => {
     })
   })
 
-  test('/verify/hanuka-bonus with correct dates', async () => {
+  xtest('/verify/hanuka-bonus with correct dates', async () => {
     Config.hanukaStartDate = moment()
       .subtract(1, 'day')
       .format('DD/MM/YYYY')

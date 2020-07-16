@@ -70,7 +70,8 @@ describe('stakingModelManager', () => {
   test(`stakingModelManager should succeed to transfer interest when no interest created`, async () => {
     await next_interval(100)
     const event = await fundManager.transferInterest()
-    expect(event).toBeUndefined()
+    expect(event.returnValues.gdInterest.toNumber()).toEqual(0)
+    expect(event.returnValues.gdUBI.toNumber()).toBeGreaterThan(0)
   })
 
   test(`stakingModelManager should fail to transfer interest if interval not passed yet`, async () => {
