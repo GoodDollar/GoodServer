@@ -1,11 +1,12 @@
 // libraries
 import winston from 'winston'
-import { omit, isPlainObject, isError, mapKeys } from 'lodash'
+import errorSerializer from 'pino-std-serializers/lib/err'
+import { omit, isPlainObject, isError } from 'lodash'
 import Crypto from 'crypto'
 import { SPLAT } from 'triple-beam'
 
 // configs
-import ErrorsTransport from './loggerUtils/ErrorsTransport'
+import ErrorsTransport from './logger/ErrorsTransport'
 import conf from '../server/server.config'
 
 const { format } = winston
@@ -35,16 +36,6 @@ const levelConfigs = {
   }
 }
 
-const formatLogValue = value => {
-  if (!isError(value)) {
-    return value
-  }
-
-  const { name, message, stack } = value
-
-  return `${name}: ${message}\n${stack}`
-}
-
 const logger = winston.createLogger({
   levels: levelConfigs.levels,
   level: logLevel,
@@ -52,8 +43,10 @@ const logger = winston.createLogger({
     timestamp(),
     format.errors({ stack: true }),
     printf(({ level, timestamp, from, userId, ...rest }) => {
-      const logPayload = mapKeys(rest, (_, key) => (key === SPLAT ? 'context' : key))
-      const stringifiedPayload = JSON.stringify(logPayload, (_, logValue) => formatLogValue(logValue))
+      const logPayload = { ...rest, context: rest[SPLAT] }
+      const stringifiedPayload = JSON.stringify(logPayload, (_, value) =>
+        isError(value) ? errorSerializer(value) : value
+      )
 
       return colorizer.colorize(
         level,
