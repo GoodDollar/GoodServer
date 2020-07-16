@@ -1,11 +1,11 @@
 // libraries
 import winston from 'winston'
-import { omit, isPlainObject, isError, mapKeys } from 'lodash'
+import { omit, isPlainObject, isError, fromPairs } from 'lodash'
 import Crypto from 'crypto'
 import { SPLAT } from 'triple-beam'
 
 // configs
-import ErrorsTransport from './loggerUtils/ErrorsTransport'
+import ErrorsTransport from './logger/ErrorsTransport'
 import conf from '../server/server.config'
 
 const { format } = winston
@@ -35,20 +35,6 @@ const levelConfigs = {
   }
 }
 
-const formatLogValue = value => {
-  if (!isError(value)) {
-    return value
-  }
-
-  const error = {}
-
-  Object.getOwnPropertyNames(value).forEach(key => {
-    error[key] = value[key]
-  })
-
-  return error
-}
-
 const logger = winston.createLogger({
   levels: levelConfigs.levels,
   level: logLevel,
@@ -56,8 +42,14 @@ const logger = winston.createLogger({
     timestamp(),
     format.errors({ stack: true }),
     printf(({ level, timestamp, from, userId, ...rest }) => {
-      const context = rest[SPLAT]
-      const stringifiedPayload = JSON.stringify({ ...rest, context }, (_, logValue) => formatLogValue(logValue))
+      const logPayload = { ...rest, context: rest[SPLAT] }
+      const stringifiedPayload = JSON.stringify(logPayload, (_, value) => {
+        if (!isError(value)) {
+          return value
+        }
+
+        return fromPairs(Object.getOwnPropertyNames(value).map(property => [property, value[property]]))
+      })
 
       return colorizer.colorize(
         level,
