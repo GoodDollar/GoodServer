@@ -40,9 +40,13 @@ const formatLogValue = value => {
     return value
   }
 
-  const { name, message, stack } = value
+  const error = {}
 
-  return `${name}: ${message}\n${stack}`
+  Object.getOwnPropertyNames(value).forEach(key => {
+    error[key] = value[key]
+  })
+
+  return error
 }
 
 const logger = winston.createLogger({
@@ -52,8 +56,8 @@ const logger = winston.createLogger({
     timestamp(),
     format.errors({ stack: true }),
     printf(({ level, timestamp, from, userId, ...rest }) => {
-      const logPayload = mapKeys(rest, (_, key) => (key === SPLAT ? 'context' : key))
-      const stringifiedPayload = JSON.stringify(logPayload, (_, logValue) => formatLogValue(logValue))
+      const context = rest[SPLAT]
+      const stringifiedPayload = JSON.stringify({ ...rest, context }, (_, logValue) => formatLogValue(logValue))
 
       return colorizer.colorize(
         level,
