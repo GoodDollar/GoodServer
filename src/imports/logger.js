@@ -1,7 +1,7 @@
 // libraries
 import winston from 'winston'
 import errorSerializer from 'pino-std-serializers/lib/err'
-import { get, omit, isPlainObject, isError } from 'lodash'
+import { omit, isPlainObject, isError } from 'lodash'
 import Crypto from 'crypto'
 import { SPLAT } from 'triple-beam'
 
