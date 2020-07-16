@@ -1,6 +1,6 @@
 // libraries
 import winston from 'winston'
-import { omit, isPlainObject, isError, fromPairs } from 'lodash'
+import { get, omit, isPlainObject, isError, fromPairs } from 'lodash'
 import Crypto from 'crypto'
 import { SPLAT } from 'triple-beam'
 
@@ -48,7 +48,7 @@ const logger = winston.createLogger({
           return value
         }
 
-        return fromPairs(Object.getOwnPropertyNames(value).map(property => [property, value[property]]))
+        return fromPairs(Object.getOwnPropertyNames(value).map(property => [property, get(value, property)]))
       })
 
       return colorizer.colorize(
