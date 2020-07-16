@@ -99,7 +99,8 @@ const setup = (app: Router) => {
       const msg = 'Login to GoodDAPP'
       const recovered = recoverPublickey(signature, msg, nonce)
       const gdPublicAddress = recoverPublickey(gdSignature, msg, nonce)
-      const profileVerified = await SEA.verify(profileSignature, profileReqPublickey)
+      const profileVerified =
+        profileReqPublickey != null ? (await SEA.verify(profileSignature, profileReqPublickey)) === msg + nonce : true
       log.debug('/auth/eth', {
         message: 'Recovered public key',
         recovered,
@@ -108,7 +109,7 @@ const setup = (app: Router) => {
         profileReqPublickey
       })
 
-      if (recovered && gdPublicAddress && profileVerified && profileVerified === msg + nonce) {
+      if (recovered && gdPublicAddress && profileVerified) {
         log.info(`SigUtil Successfully verified signer as ${recovered}`)
 
         const token = jwt.sign(

@@ -222,6 +222,27 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
   )
 
   /**
+   * @api {get} /user/exists return true  if user finished registration
+   * @apiName Delete
+   * @apiGroup Storage
+   *
+   * @apiSuccess {Number} ok
+   * @apiSuccess {Boolean} exists
+   * @apiSuccess {String} fullName
+
+   * @ignore
+   */
+  app.get(
+    '/user/exists',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res, next) => {
+      const { user } = req
+
+      res.json({ ok: 1, exists: user.createdDate != null, fullName: user.fullName })
+    })
+  )
+
+  /**
    * @api {post} /user/market generate user market login token
    * @apiName Market Token
    * @apiGroup Storage
