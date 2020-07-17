@@ -8,7 +8,7 @@ import util from 'util'
 import Gun from 'gun'
 import SEA from 'gun/sea'
 // import les from 'gun/lib/les'
-import 'gun/lib/load'
+// import 'gun/lib/load'
 
 import { delay } from '../utils/timeout'
 import { wrapAsync } from '../utils/helpers'
@@ -170,7 +170,7 @@ class GunDB implements StorageAPI {
     }
     if (this.serverMode === false) {
       log.info('Starting gun as client:', { peers: this.peers })
-      this.gun = Gun({ file: name, peers: this.peers, axe: false })
+      this.gun = Gun(this.peers[0])
     } else if (s3 && s3.secret) {
       log.info('Starting gun with S3:', { gc_delay, memory })
       this.gun = Gun({
