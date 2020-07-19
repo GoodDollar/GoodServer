@@ -5,9 +5,9 @@ import { get, assign, identity, memoize, once } from 'lodash'
 import { sha3 } from 'web3-utils'
 import util from 'util'
 
-import Gun from 'gun'
-import SEA from 'gun/sea'
-// import les from 'gun/lib/les'
+import Gun from '@gooddollar/gun'
+import SEA from '@gooddollar/gun/sea'
+// import les from '@gooddollar/gun/lib/les'
 // import 'gun/lib/load'
 
 import { delay } from '../utils/timeout'
@@ -192,7 +192,7 @@ class GunDB implements StorageAPI {
     }
     this.user = this.gun.user()
     this.serverName = name
-    const gooddollarUser = await this.gun.get('~@gooddollarorg').onThen()
+    const gooddollarUser = await this.gun.get('~@gooddollarorg').then(null, { wait: 3000 })
     log.info('Existing gooddollarorg user:', { gooddollarUser })
     this.ready = new Promise((resolve, reject) => {
       this.user.create('gooddollarorg', password, createres => {

@@ -1,5 +1,5 @@
 //@flow
-import Gun from 'gun'
+import Gun from '@gooddollar/gun'
 import { sha3 } from 'web3-utils'
 import { get, delay } from 'lodash'
 import logger from '../src/imports/logger'
@@ -15,6 +15,7 @@ class DBUpdates {
   async runUpgrades() {
     const dbversion = await PropsModel.findOne({ name: 'DATABASE_VERSION' })
     const version = get(dbversion, 'value.version', 0)
+    await this.testWrite()
     if (version < 1) {
       await Promise.all([
         this.upgrade()
@@ -43,6 +44,10 @@ class DBUpdates {
     }
   }
 
+  async testWrite() {
+    await GunDBPublic.init(null, conf.gundbPassword, `publicdb0`, null)
+    await GunDBPublic.gun.get('users/bywalletAddress').putAck({ version: Date.now() })
+  }
   /**
    * convert existing gun indexes to hash based, also add them to the trusted index under our profile
    */

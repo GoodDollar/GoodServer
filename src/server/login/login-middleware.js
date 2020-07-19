@@ -7,7 +7,7 @@ import { get, defaults } from 'lodash'
 import logger from '../../imports/logger'
 import { wrapAsync } from '../utils/helpers'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
-import SEA from 'gun/sea'
+import SEA from '@gooddollar/gun/sea'
 import Config from '../server.config.js'
 import { recoverPublickey } from '../utils/eth'
 import requestRateLimiter from '../utils/requestRateLimiter'
@@ -113,7 +113,12 @@ const setup = (app: Router) => {
         log.info(`SigUtil Successfully verified signer as ${recovered}`)
 
         const token = jwt.sign(
-          { method: method, loggedInAs: recovered, gdAddress: gdPublicAddress, profilePublickey: profileReqPublickey },
+          {
+            method: method,
+            loggedInAs: recovered,
+            gdAddress: gdPublicAddress,
+            profilePublickey: profileReqPublickey
+          },
           Config.jwtPassword
         )
 
@@ -124,7 +129,9 @@ const setup = (app: Router) => {
         res.json({ token })
         res.end()
       } else {
-        log.warn('/auth/eth', { message: 'SigUtil unable to recover the message signer' })
+        log.warn('/auth/eth', {
+          message: 'SigUtil unable to recover the message signer'
+        })
         throw new Error('Unable to verify credentials')
       }
     })

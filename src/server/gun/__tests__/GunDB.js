@@ -2,8 +2,8 @@
  * @jest-environment node
  */
 import { GunDBPublic as storage } from '../gun-middleware'
-import Gun from 'gun'
-import SEA from 'gun/sea'
+import Gun from '@gooddollar/gun'
+import SEA from '@gooddollar/gun/sea'
 import { sha3 } from 'web3-utils'
 import request from 'supertest'
 import makeServer from '../../server-test'
@@ -44,7 +44,10 @@ describe('GunDB', () => {
     expect(res).toMatchObject({
       sig: expect.anything(),
       claim: { passedTest: true },
-      issuer: { '@did': 'did:gooddollar:' + storage.user.is.pub, publicKey: storage.user.is.pub },
+      issuer: {
+        '@did': 'did:gooddollar:' + storage.user.is.pub,
+        publicKey: storage.user.is.pub
+      },
       subject: {
         '@did': 'did:gooddollar:dummykey',
         publicKey: 'dummykey'
@@ -56,7 +59,9 @@ describe('GunDB', () => {
   })
 
   it('should add user profile to index by mobile hash', async () => {
-    await storage.addUserToIndex('mobile', '972507315555', { profilePublickey: 'ABCDE' })
+    await storage.addUserToIndex('mobile', '972507315555', {
+      profilePublickey: 'ABCDE'
+    })
     const indexid = await storage.getIndexId('mobile')
     const index = await storage.getIndex('mobile')
     expect(index['_']['#']).toEqual(indexid)
@@ -66,7 +71,9 @@ describe('GunDB', () => {
   })
 
   it('should add user profile to index by email hash', async () => {
-    await storage.addUserToIndex('email', 'hr@blah.com', { profilePublickey: 'ABCDE' })
+    await storage.addUserToIndex('email', 'hr@blah.com', {
+      profilePublickey: 'ABCDE'
+    })
     const indexid = await storage.getIndexId('email')
     const index = await storage.gun.get(indexid).then()
     expect(index).toBeTruthy()
@@ -75,7 +82,9 @@ describe('GunDB', () => {
   })
 
   it('should add user profile to index by walletAddress hash', async () => {
-    await storage.addUserToIndex('walletAddress', '0x05', { profilePublickey: 'ABCDE' })
+    await storage.addUserToIndex('walletAddress', '0x05', {
+      profilePublickey: 'ABCDE'
+    })
     const indexid = await storage.getIndexId('walletAddress')
     const index = await storage.gun.get(indexid).then()
     expect(index).toBeTruthy()

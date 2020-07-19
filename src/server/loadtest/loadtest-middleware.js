@@ -5,8 +5,8 @@ import { wrapAsync, onlyInEnv } from '../utils/helpers'
 import { recoverPublickey } from '../utils/eth'
 import AdminWallet from '../blockchain/AdminWallet'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
-import Gun from 'gun'
-import 'gun/sea'
+import Gun from '@gooddollar/gun'
+import '@gooddollar/gun/sea'
 import './gundb-extend'
 const setup = (app: Router) => {
   /**
@@ -37,7 +37,10 @@ const setup = (app: Router) => {
     wrapAsync(async (req, res, next) => {
       const gun = Gun('https://etorogun-prod.herokuapp.com/gun')
 
-      const users = await UserDBPrivate.listUsers({ magiclink: 1, mnemonic: 1 })
+      const users = await UserDBPrivate.listUsers({
+        magiclink: 1,
+        mnemonic: 1
+      })
       let i
       console.log('total users:', users.length)
       for (i in users) {
@@ -63,7 +66,10 @@ const setup = (app: Router) => {
               .get('value')
               .decrypt()
             if (mnemonic && typeof mnemonic === 'string' && mnemonic.split(' ').length === 12) {
-              await UserDBPrivate.updateUser({ identifier: u.identifier, mnemonic })
+              await UserDBPrivate.updateUser({
+                identifier: u.identifier,
+                mnemonic
+              })
               console.log('updated:', u)
             } else console.log('Bad mnemonic', u.email, mnemonic, raw)
             res(r)
