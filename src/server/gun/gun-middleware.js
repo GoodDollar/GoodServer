@@ -8,7 +8,7 @@ import util from 'util'
 import Gun from '@gooddollar/gun'
 import SEA from '@gooddollar/gun/sea'
 // import les from '@gooddollar/gun/lib/les'
-// import 'gun/lib/load'
+// import '@gooddollar/gun/lib/load'
 
 import { delay } from '../utils/timeout'
 import { wrapAsync } from '../utils/helpers'
