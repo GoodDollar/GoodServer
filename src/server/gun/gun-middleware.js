@@ -103,7 +103,7 @@ const setup = (app: Router) => {
   app.get(
     '/trust',
     wrapAsync(async (_, res) => {
-      const indexes = await GunDBPublic.getIndexes()
+      const indexes = GunDBPublic.trust
 
       res.json({
         ok: 1,
@@ -145,6 +145,9 @@ class GunDB implements StorageAPI {
   ready: Promise<boolean>
 
   session = memoize(sid => this.gun.get(sid))
+
+  //managed user indexes
+  trust: {}
 
   /**
    *
@@ -253,9 +256,9 @@ class GunDB implements StorageAPI {
       log.error('initIndexes failed', e.message, e)
     })
 
-    const indexes = await this.getIndexes()
+    this.trust = await this.getIndexes()
 
-    log.debug('initIndexes', { indexesInitialized, ...indexes })
+    log.debug('initIndexes', { indexesInitialized, ...this.trust })
   }
 
   async getIndexes() {
