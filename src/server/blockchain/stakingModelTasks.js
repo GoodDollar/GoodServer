@@ -11,13 +11,14 @@ import delay from 'delay'
 import moment from 'moment'
 import { toWei } from 'web3-utils'
 import config from '../server.config'
-
+import fetch from 'cross-fetch'
 const BRIDGE_TRANSFER_TIMEOUT = 60 * 1000 * 5 //5 min
 const FUSE_DAY_BLOCKS = (60 * 60 * 24) / 5
 /**
  * a manager to make sure we collect and transfer the interest from the staking contract
  */
 export class StakingModelManager {
+  lastRopstenTopping = moment()
   addresses = get(ContractsAddress, `${AdminWallet.network}-mainnet`) || get(ContractsAddress, `${AdminWallet.network}`)
   managerAddress = this.addresses['FundManager']
   stakingAddress = this.addresses['DAIStaking']
@@ -67,6 +68,13 @@ export class StakingModelManager {
 
   mockInterest = async () => {
     if (config.ethereumMainnet.network_id !== 1) {
+      //top ropsten wallet
+      if (moment().diff(this.lastRopstenTopping, 'days') > 0) {
+        fetch('https://faucet.metamask.io', { method: 'POST', body: AdminWallet.mainnetAddresses[0] }).catch(e => {
+          this.log.error('failed calling ropsten faucet', e)
+        })
+        this.lastRopstenTopping = moment()
+      }
       const tx1 = AdminWallet.sendTransactionMainnet(
         this.dai.methods.approve(this.cDai.address, toWei('100', 'ether')),
         {},
