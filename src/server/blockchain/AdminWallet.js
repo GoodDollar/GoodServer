@@ -368,15 +368,23 @@ export class Wallet {
    */
   async whitelistUser(address: string, did: string): Promise<TransactionReceipt | boolean> {
     const isVerified = await this.isVerified(address)
+    let tx
+
     if (isVerified) {
       return { status: true }
     }
-    const tx: TransactionReceipt = await this.sendTransaction(this.proxyContract.methods.whitelist(address, did)).catch(
-      e => {
-        log.error('Error whitelistUser', e.message, e, { address, did })
-        throw e
-      }
-    )
+
+    try {
+      const transaction = this.proxyContract.methods.whitelist(address, did)
+
+      tx = await this.sendTransaction(transaction)
+    } catch (exception) {
+      const { message } = exception
+
+      log.error('Error whitelistUser', message, exception, { address, did })
+      throw exception
+    }
+
     log.info('Whitelisted user', { address, did, tx })
     return tx
   }
