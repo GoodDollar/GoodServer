@@ -4,6 +4,7 @@ import passport from 'passport'
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import PropsModel from '../db/mongo/models/props'
+
 import { wrapAsync } from '../utils/helpers'
 
 const ClaimQueue = {
@@ -18,6 +19,25 @@ const ClaimQueue = {
         log && log.error('Failed Mautic adding user to claim queue whitelisted segment', e.message, e)
       })
     ])
+  },
+
+  async getStatistics(storage) {
+    var agg = [
+      {
+        $match: {
+          'claimQueue.status': { $exists: 1 }
+        }
+      },
+      {
+        $group: {
+          _id: '$claimQueue.status',
+          total: { $sum: 1 }
+        }
+      }
+    ]
+
+    const stats = await storage.model.aggregate(agg).map(pair => ({ [pair._id]: pair.total }))
+    return stats
   },
 
   async updateAllowed(toAdd, storage, log) {
@@ -104,6 +124,24 @@ const setup = (app: Router, storage: StorageAPI) => {
         const { message } = exception
 
         log.error('Error processing claim queue:', message, exception)
+        res.json({ ok: 0, error: message })
+      }
+    })
+  )
+
+  app.get(
+    '/admin/queue',
+    wrapAsync(async (req, res) => {
+      const { log } = req
+
+      try {
+        const result = await ClaimQueue.getStatistics(storage)
+
+        res.json(result)
+      } catch (exception) {
+        const { message } = exception
+
+        log.error('Error processing claim queue statistics:', message, exception)
         res.json({ ok: 0, error: message })
       }
     })
