@@ -36,8 +36,8 @@ const ClaimQueue = {
       }
     ]
 
-    const stats = await storage.model.aggregate(agg).map(pair => ({ [pair._id]: pair.total }))
-    return stats
+    const stats = await storage.model.aggregate(agg)
+    return stats.map(pair => ({ [pair._id]: pair.total }))
   },
 
   async updateAllowed(toAdd, storage, log) {
