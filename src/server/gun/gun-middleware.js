@@ -7,6 +7,7 @@ import util from 'util'
 
 import Gun from '@gooddollar/gun'
 import SEA from '@gooddollar/gun/sea'
+import '@gooddollar/gun/nts'
 // import les from '@gooddollar/gun/lib/les'
 // import '@gooddollar/gun/lib/load'
 
