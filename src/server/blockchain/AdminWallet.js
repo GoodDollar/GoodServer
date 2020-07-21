@@ -530,7 +530,7 @@ export class Wallet {
           .catch(e => log.error('Failed to estimate gas for tx', e.message, e))) ||
         defaultGas
 
-      //adminwallet contract might give wrong gas estimates, so if its more than block gas limit reduce it to default
+      // adminwallet contract might give wrong gas estimates, so if its more than block gas limit reduce it to default
       if (gas > 8000000) gas = defaultGas
       gasPrice = gasPrice || defaultGasPrice
 
@@ -545,7 +545,7 @@ export class Wallet {
       }
       currentAddress = address
       log.debug(`sending tx from: ${address} | nonce: ${nonce}`, { uuid, balance, gas, gasPrice })
-      return new Promise((res, rej) => {
+      return await new Promise((res, rej) => {
         tx.send({ gas, gasPrice, chainId: this.networkId, nonce, from: address })
           .on('transactionHash', h => {
             release()
