@@ -16,7 +16,6 @@ const colorizer = format.colorize()
 const { env, logLevel } = conf
 
 console.log('Starting logger', { logLevel, env })
-
 const levelConfigs = {
   levels: {
     error: 0,
@@ -47,10 +46,11 @@ const logger = winston.createLogger({
       const stringifiedPayload = JSON.stringify(logPayload, (_, value) =>
         isError(value) ? errorSerializer(value) : value
       )
-
       return colorizer.colorize(
         level,
-        `${timestamp} - ${level}${from ? ` (FROM ${from} ${userId || ''})` : ''}: ${stringifiedPayload}`
+        `${timestamp} - workerId:${global.workerId} - ${level}${
+          from ? ` (FROM ${from} ${userId || ''})` : ''
+        }: ${stringifiedPayload}`
       )
     })
   ),
