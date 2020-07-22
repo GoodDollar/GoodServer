@@ -1,6 +1,7 @@
 /**
  * @jest-environment node
  */
+import delay from 'delay'
 import { GunDBPublic as storage } from '../gun-middleware'
 import Gun from '@gooddollar/gun'
 import SEA from '@gooddollar/gun/sea'
@@ -36,6 +37,7 @@ describe('GunDB', () => {
   })
 
   it('Should init correctly without s3', async () => {
+    await delay(2000)
     expect(storage.ready).resolves.toBe(true)
   })
 
