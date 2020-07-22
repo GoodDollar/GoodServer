@@ -4,7 +4,7 @@ import webpackHotMiddleware from 'webpack-hot-middleware'
 import config from '../../webpack.dev.config'
 import conf from './server.config'
 import { GunDBPublic } from './gun/gun-middleware'
-import app from './app'
+import startApp from './app'
 
 process.on('uncaughtException', (err, origin) => {
   console.log(`Caught exception: ${err}\nException origin: ${origin}`)
@@ -20,6 +20,7 @@ const compiler = webpack(config)
 // app.use(webpackDevMiddleware(compiler, {
 //   publicPath: config.output.publicPath
 // }))
+const app = startApp()
 
 app.use(webpackHotMiddleware(compiler))
 

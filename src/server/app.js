@@ -1,8 +1,11 @@
 import express from 'express'
 import middlewares from './server-middlewares'
-const app = express()
+const startApp = () => {
+  const app = express()
 
-app.use(express.static('public'))
-middlewares(app, 'prod')
+  app.use(express.static('public'))
+  middlewares(app, 'prod')
+  return app
+}
 
-export default app
+export default startApp
