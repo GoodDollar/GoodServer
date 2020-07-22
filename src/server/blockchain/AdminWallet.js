@@ -170,7 +170,7 @@ export class Wallet {
     const adminWalletContractBalance = await this.web3.eth.getBalance(adminWalletAddress)
     log.info(`AdminWallet contract balance`, { adminWalletContractBalance, adminWalletAddress })
     if (adminWalletContractBalance < adminMinBalance * this.addresses.length) {
-      log.error('AdminWallet contract low funds')
+      log.error('AdminWallet contract low funds', {})
       if (conf.env !== 'test' && conf.env !== 'development') process.exit(-1)
     }
 
