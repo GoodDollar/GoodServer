@@ -1,6 +1,7 @@
 /**
  * @jest-environment node
  */
+import delay from 'delay'
 import { GunDBPublic as storage } from '../gun-middleware'
 import Gun from '@gooddollar/gun'
 import SEA from '@gooddollar/gun/sea'
@@ -15,6 +16,7 @@ describe('GunDB', () => {
     // storage.init(null, 'test', 'testdb')
     // await storage.ready
     server = makeServer(done)
+    await delay(2000)
   })
 
   afterAll(done => {
