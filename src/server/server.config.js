@@ -491,6 +491,12 @@ const conf = convict({
     format: String,
     default: 'dappuser',
     env: 'MAUTIC_NEWUSER_TAG'
+  },
+  slackAlertsWebhook: {
+    doc: 'secret url for sending alerts to some channel',
+    format: 'url',
+    default: null,
+    env: 'SLACK_ALERTS_WEBHOOK'
   }
 })
 
