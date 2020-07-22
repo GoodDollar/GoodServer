@@ -11,14 +11,14 @@ import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json
 
 import conf from '../server.config'
 import logger from '../../imports/logger'
-import { isNonceError } from '../utils/eth'
+import { isNonceError, isFundsError } from '../utils/eth'
 import { type TransactionReceipt } from './blockchain-types'
 import moment from 'moment'
 import get from 'lodash/get'
 
 import { getManager } from '../utils/tx-manager'
 import gdToWei from '../utils/gdToWei'
-
+import { sendSlackAlert } from '../../imports/slack'
 import * as web3Utils from 'web3-utils'
 
 const log = logger.child({ from: 'AdminWallet' })
@@ -171,6 +171,7 @@ export class Wallet {
     log.info(`AdminWallet contract balance`, { adminWalletContractBalance, adminWalletAddress })
     if (adminWalletContractBalance < adminMinBalance * this.addresses.length) {
       log.error('AdminWallet contract low funds', {})
+      sendSlackAlert({ msg: 'AdminWallet contract low funds', adminWalletAddress, adminWalletContractBalance })
       if (conf.env !== 'test' && conf.env !== 'development') process.exit(-1)
     }
 
@@ -195,9 +196,15 @@ export class Wallet {
     }
     if (this.filledAddresses.length === 0) {
       log.error('no admin wallet with funds')
+      sendSlackAlert({
+        msg: 'critical: no fuse admin wallet with funds'
+      })
       if (conf.env !== 'test' && conf.env !== 'development') process.exit(-1)
     }
     if (this.mainnetAddresses.length === 0) {
+      sendSlackAlert({
+        msg: 'critical: no mainnet admin wallet with funds'
+      })
       log.error('no admin wallet with funds for mainnet')
       if (conf.env !== 'test') process.exit(-1)
     }
@@ -560,7 +567,23 @@ export class Wallet {
           .on('confirmation', c => onConfirmation && onConfirmation(c))
           .on('error', async e => {
             log.error('sendTransaction error:', e.message, e, { from: address, uuid })
-            if (isNonceError(e)) {
+            if (isFundsError(e)) {
+              log.warn('sendTransaciton funds issue retry', {
+                errMessage: e.message,
+                nonce,
+                gas,
+                gasPrice,
+                address
+              })
+              sendSlackAlert({ msg: 'admin account funds low', address })
+              await this.txManager.unlock(address)
+              try {
+                res(await this.sendTransaction(tx, txCallbacks, { gas, gasPrice }))
+              } catch (e) {
+                await this.txManager.unlock(address)
+                rej(e)
+              }
+            } else if (isNonceError(e)) {
               let netNonce = parseInt(await this.web3.eth.getTransactionCount(address))
               log.warn('sendTransaciton nonce failure retry', {
                 errMessage: e.message,
@@ -724,7 +747,23 @@ export class Wallet {
           .on('confirmation', c => onConfirmation && onConfirmation(c))
           .on('error', async e => {
             log.error('sendTransaction error:', { error: e.message, e, from: address, uuid })
-            if (isNonceError(e)) {
+            if (isFundsError(e)) {
+              log.warn('sendTransaciton funds issue retry', {
+                errMessage: e.message,
+                nonce,
+                gas,
+                gasPrice,
+                address
+              })
+              sendSlackAlert({ msg: 'admin account funds low', address })
+              await this.txManager.unlock(address)
+              try {
+                res(await this.sendTransaction(tx, txCallbacks, { gas, gasPrice }))
+              } catch (e) {
+                await this.txManager.unlock(address)
+                rej(e)
+              }
+            } else if (isNonceError(e)) {
               let netNonce = parseInt(await this.mainnetWeb3.eth.getTransactionCount(address))
               log.warn('sendTransaciton nonce failure retry', {
                 errMessage: e.message,
