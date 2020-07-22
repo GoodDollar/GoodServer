@@ -16,7 +16,6 @@ describe('GunDB', () => {
     // storage.init(null, 'test', 'testdb')
     // await storage.ready
     server = makeServer(done)
-    await delay(2000)
   })
 
   afterAll(done => {
@@ -38,6 +37,7 @@ describe('GunDB', () => {
   })
 
   it('Should init correctly without s3', async () => {
+    await delay(2000)
     expect(storage.ready).resolves.toBe(true)
   })
 
