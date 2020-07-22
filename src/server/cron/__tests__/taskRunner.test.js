@@ -35,12 +35,12 @@ describe('TaskRunner', () => {
 
   test('it should run task', async () => {
     TaskRunner.startTasks()
-    await delay(3000)
+    await delay(3500)
     expect(executeSpy).toHaveBeenCalled()
   })
 
   test('it should run task again with rescheduled time', async () => {
-    await delay(3000)
+    await delay(3500)
     TaskRunner.stopTasks()
     expect(executeSpy).toHaveBeenCalledTimes(2)
   })
@@ -48,7 +48,7 @@ describe('TaskRunner', () => {
   test('it should run cron syntax multiple times', async () => {
     TaskRunner.registerTask(testCronTask)
     TaskRunner.startTasks()
-    await delay(2000)
+    await delay(2500)
     TaskRunner.stopTasks()
     expect(executeCronSpy).toHaveBeenCalledTimes(2)
   })
