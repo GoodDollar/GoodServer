@@ -494,8 +494,8 @@ const conf = convict({
   },
   slackAlertsWebhook: {
     doc: 'secret url for sending alerts to some channel',
-    format: 'url',
-    default: null,
+    format: String,
+    default: '',
     env: 'SLACK_ALERTS_WEBHOOK'
   }
 })
