@@ -63,6 +63,9 @@ export const UserPrivateSchema = new mongoose.Schema({
   mnemonic: {
     type: String
   },
+  profilePublickey: {
+    type: String
+  },
   hanukaBonus: {
     type: mongoose.Schema.Types.Mixed,
     default: {}
