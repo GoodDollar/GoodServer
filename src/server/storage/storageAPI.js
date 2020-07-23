@@ -74,6 +74,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         torusProvider: userPayload.torusProvider,
         email: sha3(email),
         mobile: sha3(mobile),
+        profilePublickey: userRecord.profilePublickey,
         isCompleted: userRecord.isCompleted
           ? userRecord.isCompleted
           : {
@@ -84,7 +85,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
             }
       })
 
-      const userRecordWithPII = { ...userRecord, ...payloadWithoutCreds, inviteCode, email, mobile }
+      const userRecordWithPII = { ...payloadWithoutCreds, ...userRecord, inviteCode, email, mobile }
       const signUpPromises = []
 
       const p1 = storage

@@ -12,26 +12,26 @@ import Config from '../server.config.js'
 import { recoverPublickey } from '../utils/eth'
 import requestRateLimiter from '../utils/requestRateLimiter'
 
-// const ExtractJwt = passportJWT.ExtractJwt
-// const JwtStrategy = passportJWT.Strategy
+const log = logger.child({ from: 'login-middleware' })
 
-const jwtOptions = {}
-jwtOptions.jwtFromRequest = ExtractJwt.fromAuthHeaderAsBearerToken()
-jwtOptions.secretOrKey = Config.jwtPassword
-// jwtOptions.issuer = 'accounts.examplesoft.com';
-// jwtOptions.audience = 'yoursite.net';
+const jwtOptions = {
+  jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+  secretOrKey: Config.jwtPassword
+}
+
 export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
-  const log = logger.child({ from: 'login-middleware' })
-  // usually this would be a database call:
-  let user = await UserDBPrivate.getUser(jwtPayload.loggedInAs)
-  log.debug('payload received', { jwtPayload, user })
-  //if user is empty make sure we have something
-  user = defaults(user, jwtPayload, { identifier: jwtPayload.loggedInAs })
-  if (get(jwtPayload, 'loggedInAs')) {
-    next(null, user)
-  } else {
-    next(null, false)
+  const { loggedInAs: identifier } = jwtPayload
+  let user = false
+
+  if (identifier) {
+    user = await UserDBPrivate.getUser(identifier) // usually this would be a database call
+
+    log.debug('payload received', { jwtPayload, user })
+    // if user is empty make sure we have something
+    user = defaults(jwtPayload, user, { identifier })
   }
+
+  next(null, user)
 })
 
 const setup = (app: Router) => {
@@ -158,7 +158,7 @@ const setup = (app: Router) => {
     })
   )
 
-  logger.child({ from: 'login-middleware' }).info('Done setup login middleware.')
+  log.info('Done setup login middleware.')
 }
 
 export default setup

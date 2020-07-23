@@ -170,7 +170,7 @@ export class Wallet {
     const adminWalletContractBalance = await this.web3.eth.getBalance(adminWalletAddress)
     log.info(`AdminWallet contract balance`, { adminWalletContractBalance, adminWalletAddress })
     if (adminWalletContractBalance < adminMinBalance * this.addresses.length) {
-      log.error('AdminWallet contract low funds', {})
+      log.error('AdminWallet contract low funds')
       if (conf.env !== 'test' && conf.env !== 'development') process.exit(-1)
     }
 
@@ -368,15 +368,23 @@ export class Wallet {
    */
   async whitelistUser(address: string, did: string): Promise<TransactionReceipt | boolean> {
     const isVerified = await this.isVerified(address)
+    let tx
+
     if (isVerified) {
       return { status: true }
     }
-    const tx: TransactionReceipt = await this.sendTransaction(this.proxyContract.methods.whitelist(address, did)).catch(
-      e => {
-        log.error('Error whitelistUser', e.message, e, { address, did })
-        throw e
-      }
-    )
+
+    try {
+      const transaction = this.proxyContract.methods.whitelist(address, did)
+
+      tx = await this.sendTransaction(transaction)
+    } catch (exception) {
+      const { message } = exception
+
+      log.error('Error whitelistUser', message, exception, { address, did })
+      throw exception
+    }
+
     log.info('Whitelisted user', { address, did, tx })
     return tx
   }
@@ -522,7 +530,7 @@ export class Wallet {
           .catch(e => log.error('Failed to estimate gas for tx', e.message, e))) ||
         defaultGas
 
-      //adminwallet contract might give wrong gas estimates, so if its more than block gas limit reduce it to default
+      // adminwallet contract might give wrong gas estimates, so if its more than block gas limit reduce it to default
       if (gas > 8000000) gas = defaultGas
       gasPrice = gasPrice || defaultGasPrice
 
@@ -537,7 +545,7 @@ export class Wallet {
       }
       currentAddress = address
       log.debug(`sending tx from: ${address} | nonce: ${nonce}`, { uuid, balance, gas, gasPrice })
-      return new Promise((res, rej) => {
+      return await new Promise((res, rej) => {
         tx.send({ gas, gasPrice, chainId: this.networkId, nonce, from: address })
           .on('transactionHash', h => {
             release()
@@ -683,7 +691,7 @@ export class Wallet {
         (await tx
           .estimateGas()
           .then(gas => gas + 200000) //buffer for proxy contract, reimburseGas?, and low gas unexpected failures
-          .catch(e => log.error('Failed to estimate gas for tx', { errMessage: e.message, e }))) ||
+          .catch(e => log.error('Failed to estimate gas for tx', e.message, e))) ||
         defaultGas
 
       //adminwallet contract might give wrong gas estimates, so if its more than block gas limit reduce it to default
@@ -715,7 +723,7 @@ export class Wallet {
           })
           .on('confirmation', c => onConfirmation && onConfirmation(c))
           .on('error', async e => {
-            log.error('sendTransaction error:', { error: e.message, e, from: address, uuid })
+            log.error('sendTransaction error:', e.message, e, { from: address, uuid })
             if (isNonceError(e)) {
               let netNonce = parseInt(await this.mainnetWeb3.eth.getTransactionCount(address))
               log.warn('sendTransaciton nonce failure retry', {

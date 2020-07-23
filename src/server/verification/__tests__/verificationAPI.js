@@ -261,7 +261,9 @@ describe('verificationAPI', () => {
           error: helper.duplicateFoundMessage,
           enrollmentResult: {
             isVerified: false,
-            isDuplicate: true
+            isDuplicate: true,
+            code: 200,
+            message: 'The search request was processed successfully.'
           }
         })
 
