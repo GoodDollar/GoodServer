@@ -1,8 +1,8 @@
-import initTaskRunner from '../TaskRunner'
+import { startTaskRunner } from '../TaskRunner'
 import moment from 'moment'
 import delay from 'delay'
 
-const TaskRunner = initTaskRunner()
+const TaskRunner = startTaskRunner()
 jest.setTimeout(10000)
 describe('TaskRunner', () => {
   const testTask = {
