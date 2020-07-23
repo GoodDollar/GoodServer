@@ -245,5 +245,4 @@ class ZoomAPI {
   }
 }
 
-const initZoomAPI = () => new ZoomAPI(Config, Axios.create)
-export default initZoomAPI
+export default new ZoomAPI(Config, Axios.create)

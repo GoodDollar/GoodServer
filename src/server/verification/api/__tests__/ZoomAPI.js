@@ -2,10 +2,9 @@
 
 import MockAdapter from 'axios-mock-adapter'
 
-import initZoomAPI from '../ZoomAPI'
+import ZoomAPI from '../ZoomAPI'
 import createMockingHelper from './__util__'
 
-const ZoomAPI = initZoomAPI()
 let helper
 let zoomServiceMock
 
