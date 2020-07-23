@@ -4,6 +4,7 @@ import UBISchemeABI from '@gooddollar/goodcontracts/stakingModel/build/contracts
 import DaiABI from '@gooddollar/goodcontracts/build/contracts/DAIMock.min.json'
 import cDaiABI from '@gooddollar/goodcontracts/build/contracts/cDAIMock.min.json'
 import ContractsAddress from '@gooddollar/goodcontracts/stakingModel/releases/deployment.json'
+import fetch from 'cross-fetch'
 import AdminWallet from './AdminWallet'
 import { get, chunk, result } from 'lodash'
 import logger from '../../imports/logger'
@@ -11,7 +12,7 @@ import delay from 'delay'
 import moment from 'moment'
 import { toWei } from 'web3-utils'
 import config from '../server.config'
-import fetch from 'cross-fetch'
+import { sendSlackAlert } from '../../imports/slack'
 const BRIDGE_TRANSFER_TIMEOUT = 60 * 1000 * 5 //5 min
 const FUSE_DAY_BLOCKS = (60 * 60 * 24) / 5
 /**
@@ -126,9 +127,11 @@ export class StakingModelManager {
       })
       await this.mockInterest().catch(e => {
         this.log.warn('mockInterest failed, continuing...')
+        sendSlackAlert({ msg: 'failure: mockInterest failed', error: e.message })
       })
       const fundsEvent = await this.transferInterest().catch(e => {
         this.log.warn('transferInterest failed. stopping.')
+        sendSlackAlert({ msg: 'failure: transferInterest failed', error: e.message })
         throw e
       })
       const sidechainCurBlock = await AdminWallet.web3.eth.getBlockNumber()
@@ -136,6 +139,7 @@ export class StakingModelManager {
       if (fundsEvent === undefined) {
         const cronTime = await this.getNextCollectionTime()
         this.log.warn('No transfered funds event found. (interest was 0?)', { cronTime })
+        sendSlackAlert({ msg: 'warning: no transfer funds event found' })
         return { result: 'no interest', cronTime }
       }
       const ubiTransfered = fundsEvent.returnValues.gdUBI.toString()
@@ -149,6 +153,8 @@ export class StakingModelManager {
           ubiGenerated: transferEvent.returnValues.value.toString()
         })
       }
+      sendSlackAlert({ msg: 'success: UBI transfered', ubiTransfered })
+
       const cronTime = await this.getNextCollectionTime()
       this.log.info('next run:', { cronTime })
       return { result: true, cronTime }
@@ -157,6 +163,8 @@ export class StakingModelManager {
       //make sure atleast one hour passes in case of an error
       if (cronTime.isBefore(moment().add(1, 'hour'))) cronTime.add(1, 'hour')
       this.log.error('collecting interest failed.', e.message, e, { cronTime })
+      sendSlackAlert({ msg: 'failure: collecting interest failed.', error: e.message })
+
       return { result: false, cronTime }
     }
   }
@@ -314,6 +322,7 @@ class FishingManager {
    */
   fish = async (accounts, fishers = []) => {
     let unfished = []
+    let failed = 0
     for (let tofish of chunk(accounts, 50)) {
       try {
         this.log.info('calling fishChunk', { tofish })
@@ -321,9 +330,12 @@ class FishingManager {
         unfished = unfished.concat(tofish.slice(totalFished))
         fishers.push(fisherAccount)
       } catch (e) {
+        failed += tofish.length
         this.log.error('Failed fishing chunk', e.message, e, { tofish })
       }
     }
+    sendSlackAlert({ msg: 'info: fishing done', unfished: unfished.length, failed, outof: accounts.length })
+
     if (unfished.length > 0) {
       this.log.info('Retrying unfished accounts', { unfished: unfished.length })
       return await this.fish(unfished, fishers)
@@ -339,6 +351,8 @@ class FishingManager {
       return { result: true, cronTime, fishers }
     } catch (e) {
       this.log.error('fishing task failed:', e.message, e)
+      sendSlackAlert({ msg: 'failure: fishing failed', error: e.message })
+
       const cronTime = await this.getNextDay()
       if (cronTime.isBefore(moment().add(1, 'hour'))) cronTime.add(1, 'hour')
       return { result: true, cronTime }
