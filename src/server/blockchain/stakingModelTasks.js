@@ -71,7 +71,7 @@ export class StakingModelManager {
       //top ropsten wallet
       if (moment().diff(this.lastRopstenTopping, 'days') > 0) {
         fetch('https://faucet.metamask.io', { method: 'POST', body: AdminWallet.mainnetAddresses[0] }).catch(e => {
-          this.log.error('failed calling ropsten faucet', e)
+          this.log.error('failed calling ropsten faucet', e.message, e)
         })
         this.lastRopstenTopping = moment()
       }
@@ -156,7 +156,7 @@ export class StakingModelManager {
       const cronTime = await this.getNextCollectionTime()
       //make sure atleast one hour passes in case of an error
       if (cronTime.isBefore(moment().add(1, 'hour'))) cronTime.add(1, 'hour')
-      this.log.error('collecting interest failed.', { e, errMsg: e.message, cronTime })
+      this.log.error('collecting interest failed.', e.message, e, { cronTime })
       return { result: false, cronTime }
     }
   }
@@ -321,7 +321,7 @@ class FishingManager {
         unfished = unfished.concat(tofish.slice(totalFished))
         fishers.push(fisherAccount)
       } catch (e) {
-        this.log.error('Failed fishing chunk', { tofish, error: e.message, e })
+        this.log.error('Failed fishing chunk', e.message, e, { tofish })
       }
     }
     if (unfished.length > 0) {
@@ -338,7 +338,7 @@ class FishingManager {
       const cronTime = await this.getNextDay()
       return { result: true, cronTime, fishers }
     } catch (e) {
-      this.log.error('fishing task failed:', { e, errMsg: e.message })
+      this.log.error('fishing task failed:', e.message, e)
       const cronTime = await this.getNextDay()
       if (cronTime.isBefore(moment().add(1, 'hour'))) cronTime.add(1, 'hour')
       return { result: true, cronTime }

@@ -170,7 +170,7 @@ export class Wallet {
     const adminWalletContractBalance = await this.web3.eth.getBalance(adminWalletAddress)
     log.info(`AdminWallet contract balance`, { adminWalletContractBalance, adminWalletAddress })
     if (adminWalletContractBalance < adminMinBalance * this.addresses.length) {
-      log.error('AdminWallet contract low funds', {})
+      log.error('AdminWallet contract low funds')
       if (conf.env !== 'test' && conf.env !== 'development') process.exit(-1)
     }
 
@@ -691,7 +691,7 @@ export class Wallet {
         (await tx
           .estimateGas()
           .then(gas => gas + 200000) //buffer for proxy contract, reimburseGas?, and low gas unexpected failures
-          .catch(e => log.error('Failed to estimate gas for tx', { errMessage: e.message, e }))) ||
+          .catch(e => log.error('Failed to estimate gas for tx', e.message, e))) ||
         defaultGas
 
       //adminwallet contract might give wrong gas estimates, so if its more than block gas limit reduce it to default
@@ -723,7 +723,7 @@ export class Wallet {
           })
           .on('confirmation', c => onConfirmation && onConfirmation(c))
           .on('error', async e => {
-            log.error('sendTransaction error:', { error: e.message, e, from: address, uuid })
+            log.error('sendTransaction error:', e.message, e, { from: address, uuid })
             if (isNonceError(e)) {
               let netNonce = parseInt(await this.mainnetWeb3.eth.getTransactionCount(address))
               log.warn('sendTransaciton nonce failure retry', {
