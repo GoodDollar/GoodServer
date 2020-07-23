@@ -77,6 +77,4 @@ class TaskRunner {
   }
 }
 
-export const startTaskRunner = once(
-  () => new TaskRunner(new MongoLock('tasksRunner'), CronJob, logger.child({ from: 'TaskRunner' }))
-)
+export default once(() => new TaskRunner(new MongoLock('tasksRunner'), CronJob, logger.child({ from: 'TaskRunner' })))

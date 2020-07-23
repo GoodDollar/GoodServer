@@ -188,5 +188,4 @@ class ZoomProvider implements IEnrollmentProvider {
   }
 }
 
-const initZoomProvider = once(() => new ZoomProvider(initZoomAPI(), logger.child({ from: 'ZoomProvider' })))
-export default initZoomProvider
+export default once(() => new ZoomProvider(initZoomAPI(), logger.child({ from: 'ZoomProvider' })))
