@@ -1,7 +1,7 @@
 // @flow
-import { pick, omit } from 'lodash'
+import { pick, omit, once } from 'lodash'
 
-import ZoomAPI from '../../api/ZoomAPI.js'
+import initZoomAPI from '../../api/ZoomAPI.js'
 import logger from '../../../../imports/logger'
 
 import { type IEnrollmentProvider } from '../typings'
@@ -188,4 +188,5 @@ class ZoomProvider implements IEnrollmentProvider {
   }
 }
 
-export default new ZoomProvider(ZoomAPI, logger.child({ from: 'ZoomProvider' }))
+const initZoomProvider = once(() => new ZoomProvider(initZoomAPI(), logger.child({ from: 'ZoomProvider' })))
+export default initZoomProvider
