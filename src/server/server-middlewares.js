@@ -7,7 +7,7 @@ import { version as contractsVersion } from '@gooddollar/goodcontracts/package.j
 import addLoginMiddlewares from './login/login-middleware'
 import { setup as addGunMiddlewares, GunDBPublic } from './gun/gun-middleware'
 import UserDBPrivate from './db/mongo/user-privat-provider'
-import startTasksRunner from './cron/TaskRunner'
+import CronTasksRunner from './cron/TaskRunner'
 import addStorageMiddlewares from './storage/storageAPI'
 import addVerificationMiddlewares from './verification/verificationAPI'
 import addSendMiddlewares from './send/sendAPI'
@@ -46,7 +46,7 @@ export default (app: Router, env: any) => {
   })
 
   const disposeEnrollmentsTask = createDisposeEnrollmentsTask(UserDBPrivate)
-  const CronTasksRunner = startTasksRunner()
+
   CronTasksRunner.registerTask(disposeEnrollmentsTask)
 
   if (contractsVersion >= '2.0.0') {
