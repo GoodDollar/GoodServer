@@ -117,7 +117,7 @@ const setup = (app: Router, storage: StorageAPI) => {
           throw new Error("GunDB password doesn't match.")
         }
 
-        const result = await ClaimQueue.updateAllowed(allow, storage, log)
+        const result = await ClaimQueue.updateAllowed(Number(allow), storage, log)
 
         res.json(result)
       } catch (exception) {
