@@ -7,7 +7,7 @@ import { version as contractsVersion } from '@gooddollar/goodcontracts/package.j
 import addLoginMiddlewares from './login/login-middleware'
 import { setup as addGunMiddlewares, GunDBPublic } from './gun/gun-middleware'
 import UserDBPrivate from './db/mongo/user-privat-provider'
-import CronTasksRunner from './cron/TaskRunner'
+import getTasksRunner from './cron/TaskRunner'
 import addStorageMiddlewares from './storage/storageAPI'
 import addVerificationMiddlewares from './verification/verificationAPI'
 import addSendMiddlewares from './send/sendAPI'
@@ -45,6 +45,7 @@ export default (app: Router, env: any) => {
     res.status(400).json({ message: error.message })
   })
 
+  const CronTasksRunner = getTasksRunner()
   const disposeEnrollmentsTask = createDisposeEnrollmentsTask(UserDBPrivate)
 
   CronTasksRunner.registerTask(disposeEnrollmentsTask)

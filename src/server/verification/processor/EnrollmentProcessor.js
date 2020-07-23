@@ -13,7 +13,7 @@ import { type IEnrollmentProvider } from './typings'
 import { type DelayedTaskRecord } from '../../../imports/types'
 
 import EnrollmentSession from './EnrollmentSession'
-import ZoomProvider from './provider/ZoomProvider'
+import getZoomProvider from './provider/ZoomProvider'
 
 export const DISPOSE_ENROLLMENTS_TASK = 'verification/dispose_enrollments'
 
@@ -259,7 +259,7 @@ export default storage => {
     const log = logger.child({ from: 'EnrollmentProcessor' })
     const enrollmentProcessor = new EnrollmentProcessor(Config, storage, AdminWallet, ClaimQueue, GunDBPublic, log)
 
-    enrollmentProcessor.registerProvier(ZoomProvider)
+    enrollmentProcessor.registerProvier(getZoomProvider())
     enrollmentProcessors.set(storage, enrollmentProcessor)
   }
 

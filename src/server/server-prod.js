@@ -3,7 +3,7 @@ import express from 'express'
 import conf from './server.config'
 import { GunDBPublic } from './gun/gun-middleware'
 import requestTimeout from './utils/timeout'
-import app from './app'
+import startApp from './app'
 
 export default function start(workerId) {
   global.workerId = workerId
@@ -21,7 +21,7 @@ export default function start(workerId) {
   const DIST_DIR = __dirname
 
   const HTML_FILE = path.join(DIST_DIR, 'index.html')
-
+  const app = startApp()
   app.use(express.static(DIST_DIR))
 
   app.get('*', (req, res) => {

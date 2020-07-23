@@ -2,7 +2,7 @@
 
 import Axios from 'axios'
 import { URL } from 'url'
-import { merge, get, pick, omit, isPlainObject, isArray, mapValues } from 'lodash'
+import { merge, get, pick, omit, isPlainObject, isArray, mapValues, once } from 'lodash'
 
 import Config from '../../server.config'
 import logger from '../../../imports/logger'
@@ -245,4 +245,4 @@ class ZoomAPI {
   }
 }
 
-export default new ZoomAPI(Config, Axios.create)
+export default once(() => new ZoomAPI(Config, Axios.create))

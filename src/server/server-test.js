@@ -8,11 +8,12 @@ import conf from './server.config'
 import { GunDBPublic } from './gun/gun-middleware'
 // import AdminWallet from './blockchain/AdminWallet'
 import mongoose from './db/mongo-db'
-import app from './app'
+import startApp from './app'
 
 const PORT = conf.port || 4000
 
 const makeServer = done => {
+  const app = startApp()
   let server
   let serverPromise = new Promise((res, rej) => {
     server = app.listen(PORT, err => {

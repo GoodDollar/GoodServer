@@ -1,6 +1,6 @@
-import AsyncLock from 'async-lock'
+import MongoLock from '../utils/tx-manager/queueMongo'
 import { CronJob, CronTime } from 'cron'
-import { invokeMap, map, filter } from 'lodash'
+import { invokeMap, map, filter, once } from 'lodash'
 
 import logger from '../../imports/logger'
 
@@ -27,31 +27,35 @@ class TaskRunner {
     const taskJob = new jobFactory(schedule, async () => {
       logger.info('Running cron task', { taskIdentifier })
 
+      // we don't need re-queue in the cron. just lock -> run -> release (despite success/failed)
+      const { address, release } = await lock.lock(taskIdentifier)
+      logger.info('Obtained mutex for exclusive run:', { address, taskIdentifier })
+
       try {
-        const taskResult = await lock.acquire(taskIdentifier, async () =>
-          task.execute({
-            // an context object we're passing to the task to let it manipilate its execution & schedule
-            // let task whould decide to stop or to set new schedule by themselves during execution
-            // let's make this feedback more clear
-            setTime: time => {
-              logger.info('Cron task setting new schedule', { taskName: name, schedule: time })
+        const taskResult = await task.execute({
+          // an context object we're passing to the task to let it manipilate its execution & schedule
+          // let task whould decide to stop or to set new schedule by themselves during execution
+          // let's make this feedback more clear
+          setTime: time => {
+            logger.info('Cron task setting new schedule', { taskName: name, schedule: time })
 
-              taskJob.setTime(time instanceof CronTime ? time : new CronTime(time))
-              taskJob.start()
-            },
+            taskJob.setTime(time instanceof CronTime ? time : new CronTime(time))
+            taskJob.start()
+          },
 
-            stop: () => {
-              logger.info('Cron task has stopped itself', { taskName: name })
-              taskJob.stop()
-            }
-          })
-        )
+          stop: () => {
+            logger.info('Cron task has stopped itself', { taskName: name })
+            taskJob.stop()
+          }
+        })
 
         logger.info('Cron task completed', { taskIdentifier, taskResult })
       } catch (exception) {
         const { message: errMessage } = exception
 
         logger.error('Cron task failed', errMessage, exception, { taskIdentifier })
+      } finally {
+        release()
       }
     })
 
@@ -73,4 +77,4 @@ class TaskRunner {
   }
 }
 
-export default new TaskRunner(new AsyncLock(), CronJob, logger.child({ from: 'TaskRunner' }))
+export default once(() => new TaskRunner(new MongoLock('tasksRunner'), CronJob, logger.child({ from: 'TaskRunner' })))
