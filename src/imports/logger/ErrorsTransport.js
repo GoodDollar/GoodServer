@@ -35,7 +35,10 @@ export default class ErrorsTransport extends Transport {
 
   log(context) {
     const { message: generalMessage, userId, ...data } = context
-    const [errorMessage, errorObj, extra = {}] = context[SPLAT]
+
+    // context[SPLAT] could be undefined in case if just one argument passed to the error log
+    // i.e log.error('some error message')
+    const [errorMessage, errorObj, extra = {}] = context[SPLAT] || []
     const dataToPassIntoLog = { generalMessage, errorMessage, errorObj, ...extra, ...data }
     let errorToPassIntoLog = errorObj
 

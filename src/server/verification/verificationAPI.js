@@ -101,7 +101,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         res.json({ success: true, sessionToken })
       } catch (exception) {
         const { message } = exception
-        log.error('generating enrollment session token failed:', { message, exception, user })
+        log.error('generating enrollment session token failed:', message, exception, { user })
         res.status(400).json({ success: false, error: message })
       }
     })
