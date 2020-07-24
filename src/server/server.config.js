@@ -517,20 +517,6 @@ const mainNetworkId = get(ContractsAddress, `${network}-mainnet.networkId`, netw
 conf.set('ethereumMainnet', networks[mainNetworkId])
 conf.set('ethereum', networks[networkId])
 
-// phase options
-const phase = conf.get('phase')
-const phaseProperties = {}
-
-if (phase < 0) {
-  // compatibility with old phase env vars (PHASE_ZERO, PHASE_ONE)
-  const detectPhase = 'true' === process.env.PHASE_ONE ? 1 : 0
-
-  conf.set('phase', detectPhase)
-  phaseProperties.isPhaseZero = 0 === detectPhase
-  phaseProperties.isPhaseOne = 1 === detectPhase
-  phaseProperties.isPhaseTwo = 2 === detectPhase
-}
-
 // GUN S3 options
 const privateS3 = process.env.GUN_PRIVATE_S3
 const publicS3 = process.env.GUN_PUBLIC_S3
@@ -552,7 +538,4 @@ if (publicS3) {
 conf.validate({ allowed: 'strict' })
 
 // eslint-disable-next-line
-export default {
-  ...phaseProperties,
-  ...conf.getProperties()
-}
+export default conf.getProperties()
