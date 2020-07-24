@@ -558,6 +558,14 @@ describe('verificationAPI', () => {
     })
   })
 
+  test('/verify/phase', async () => {
+    const res = await request(server).get('/verify/phase')
+    const { success, phase } = res.body || {}
+
+    expect(success).toBe(true)
+    expect(phase).toBe(0)
+  })
+
   test('/verify/hanuka-bonus witout auth creds', async () => {
     let res = await request(server).get('/verify/hanuka-bonus')
 
