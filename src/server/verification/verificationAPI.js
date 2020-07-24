@@ -868,14 +868,10 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
    * @apiSuccess {Boolean} success
    * @ignore
    */
-  app.get(
-    '/verify/phase',
-    passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res, next) => {
-      res.json({ success: true, phase: conf.phase })
-      res.end()
-    })
-  )
+  app.get('/verify/phase', (req, res, next) => {
+    res.json({ success: true, phase: conf.phase })
+    res.end()
+  })
 }
 
 export default setup
