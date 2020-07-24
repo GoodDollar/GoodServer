@@ -517,11 +517,12 @@ const mainNetworkId = get(ContractsAddress, `${network}-mainnet.networkId`, netw
 conf.set('ethereumMainnet', networks[mainNetworkId])
 conf.set('ethereum', networks[networkId])
 
-// phase options - compatibility with old phase env vars (PHASE_ZERO, PHASE_ONE)
+// phase options
 const phase = conf.get('phase')
 const phaseProperties = {}
 
 if (phase < 0) {
+  // compatibility with old phase env vars (PHASE_ZERO, PHASE_ONE)
   const detectPhase = 'true' === process.env.PHASE_ONE ? 1 : 0
 
   conf.set('phase', detectPhase)
