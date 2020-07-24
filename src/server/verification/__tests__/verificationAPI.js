@@ -604,11 +604,11 @@ describe('verificationAPI', () => {
   })
 
   test('/verify/phase', async () => {
-    const res = await request(server).get('/verify/phase')
-    const { success, phase } = res.body || {}
-
-    expect(success).toBe(true)
-    expect(phase).toBe(0)
+    const { phase } = Config
+    
+    await request(server)
+      .get('/verify/phase')
+      .expect(200, { success: true, phase })
   })
 
   xtest('/verify/hanuka-bonus witout auth creds', async () => {

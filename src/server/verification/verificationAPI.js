@@ -866,8 +866,10 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
    * @apiSuccess {Boolean} success
    * @ignore
    */
-  app.get('/verify/phase', (req, res, next) => {
-    res.json({ success: true, phase: conf.phase })
+  app.get('/verify/phase', (_, res) => {
+    const { phase } = conf
+    
+    res.json({ success: true, phase })
     res.end()
   })
 }
