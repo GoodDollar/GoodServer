@@ -3,6 +3,7 @@ import { RewriteFrames } from '@sentry/integrations'
 import Transport from 'winston-transport'
 import { SPLAT } from 'triple-beam'
 import { forEach } from 'lodash'
+import { cloneError } from '../../server/utils/helpers'
 
 import Config from '../../server/server.config'
 
@@ -40,7 +41,10 @@ export default class ErrorsTransport extends Transport {
     // i.e log.error('some error message')
     const [errorMessage, errorObj, extra = {}] = context[SPLAT] || []
     const dataToPassIntoLog = { generalMessage, errorMessage, errorObj, ...extra, ...data }
-    let errorToPassIntoLog = errorObj
+
+    // we cannot modify the origin errorObj - need to clone it
+    // otherwise modification in this fn will cause some unexpected behavior in place from where it was called
+    let errorToPassIntoLog = cloneError(errorObj)
 
     if (errorObj instanceof Error) {
       errorToPassIntoLog.message = `${generalMessage}: ${errorObj.message}`
