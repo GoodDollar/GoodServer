@@ -519,14 +519,15 @@ conf.set('ethereum', networks[networkId])
 
 // phase options - compatibility with old phase env vars (PHASE_ZERO, PHASE_ONE)
 const phase = conf.get('phase')
+const phaseProperties = {}
 
 if (phase < 0) {
   const detectPhase = 'true' === process.env.PHASE_ONE ? 1 : 0
 
   conf.set('phase', detectPhase)
-  conf.set('isPhaseZero', 0 === detectPhase)
-  conf.set('isPhaseOne', 1 === detectPhase)
-  conf.set('isPhaseTwo', 2 === detectPhase)
+  phaseProperties.isPhaseZero = 0 === detectPhase
+  phaseProperties.isPhaseOne = 1 === detectPhase
+  phaseProperties.isPhaseTwo = 2 === detectPhase
 }
 
 // GUN S3 options
@@ -550,4 +551,7 @@ if (publicS3) {
 conf.validate({ allowed: 'strict' })
 
 // eslint-disable-next-line
-export default conf.getProperties()
+export default {
+  ...phaseProperties,
+  ...conf.getProperties()
+}
