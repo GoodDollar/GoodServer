@@ -3,7 +3,7 @@ import { RewriteFrames } from '@sentry/integrations'
 import Transport from 'winston-transport'
 import { SPLAT } from 'triple-beam'
 import { forEach } from 'lodash'
-import cloneError from '../../server/utils/cloneError'
+import { cloneError } from '../../server/utils/helpers'
 
 import Config from '../../server/server.config'
 
