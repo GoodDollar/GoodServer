@@ -1,4 +1,5 @@
 // @flow
+
 import { Router } from 'express'
 import passport from 'passport'
 import { get, defaults } from 'lodash'
@@ -855,6 +856,24 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       return res.status(200).json({
         ok: 1
       })
+    })
+  )
+
+  /**
+   * @api {get} /verify/phase get release/phase version number
+   * @apiName Get Phase VErsion Number
+   * @apiGroup Verification
+   *
+   * @apiSuccess {Number} phase
+   * @apiSuccess {Boolean} success
+   * @ignore
+   */
+  app.get(
+    '/verify/phase',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res, next) => {
+      res.json({ success: true, phase: conf.phase })
+      res.end()
     })
   )
 }
