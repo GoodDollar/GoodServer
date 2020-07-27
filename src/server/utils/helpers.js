@@ -2,7 +2,6 @@
 
 import type { $Request, $Response, NextFunction } from 'express'
 import conf from '../server.config'
-import { assign, omit } from 'lodash'
 
 /**
  * Make sure to `.catch()` any errors and pass them along to the `next()`
@@ -45,22 +44,4 @@ const onlyInEnv = (...environments: Array<string>) => {
   }
 }
 
-/**
- * Create a copy of received error object
- * @param {Error} sourceError
- *
- * @return Error
- */
-const cloneError = sourceError => {
-  const { message, name, code, stack } = sourceError
-  const error = new Error(message)
-  let stackDescriptor = Object.getOwnPropertyDescriptor(error, 'stack')
-
-  assign(error, { name, code })
-  stackDescriptor = omit(stackDescriptor, 'value', 'writable')
-  Object.defineProperty(error, 'stack', { ...stackDescriptor, get: () => stack })
-
-  return error
-}
-
-export { wrapAsync, onlyInEnv, lightLogs, cloneError }
+export { wrapAsync, onlyInEnv, lightLogs }

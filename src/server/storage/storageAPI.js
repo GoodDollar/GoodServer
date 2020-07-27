@@ -26,7 +26,8 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
     '/user/add',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
-      const { env, skipEmailVerification, disableFaceVerification } = conf
+      const { env, skipEmailVerification, disableFaceVerification, mauticBasicToken, mauticToken } = conf
+      const isNonDevelopMode = process.env.NODE_ENV !== 'development'
       const { body, user: userRecord } = req
       const { user: userPayload = {} } = body
       const logger = req.log
@@ -112,7 +113,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         signUpPromises.push(p2)
       }
 
-      if (process.env.NODE_ENV !== 'development') {
+      if (isNonDevelopMode || mauticBasicToken || mauticToken) {
         const p3 = addUserSteps
           .updateMauticRecord(userRecordWithPII, logger)
           .then(r => logger.debug('updateMauticRecord success'))

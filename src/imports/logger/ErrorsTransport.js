@@ -2,8 +2,7 @@ import * as Sentry from '@sentry/node'
 import { RewriteFrames } from '@sentry/integrations'
 import Transport from 'winston-transport'
 import { SPLAT } from 'triple-beam'
-import { forEach } from 'lodash'
-import { cloneError } from '../../server/utils/helpers'
+import { assign, forEach } from 'lodash'
 
 import Config from '../../server/server.config'
 
@@ -34,36 +33,31 @@ export default class ErrorsTransport extends Transport {
     }
   }
 
-  log(context) {
+  async log(context) {
+    if (!this.sentryInitialized) {
+      return
+    }
+
     const { message: generalMessage, userId, ...data } = context
 
     // context[SPLAT] could be undefined in case if just one argument passed to the error log
     // i.e log.error('some error message')
-    const [errorMessage, errorObj, extra = {}] = context[SPLAT] || []
+    const [errorMessage, errorObj = new Error(), extra = {}] = context[SPLAT] || []
     const dataToPassIntoLog = { generalMessage, errorMessage, errorObj, ...extra, ...data }
+    const { message } = errorObj
 
-    // we cannot modify the origin errorObj - need to clone it
-    // otherwise modification in this fn will cause some unexpected behavior in place from where it was called
-    let errorToPassIntoLog = cloneError(errorObj)
-
-    if (errorObj instanceof Error) {
-      errorToPassIntoLog.message = `${generalMessage}: ${errorObj.message}`
-    } else {
-      errorToPassIntoLog = new Error(generalMessage)
-    }
-
-    if (this.sentryInitialized) {
-      Sentry.configureScope(scope => {
-        scope.setUser({
-          userId
-        })
-
-        forEach(dataToPassIntoLog, (value, key) => {
-          scope.setExtra(key, value)
-        })
+    Sentry.configureScope(scope => {
+      scope.setUser({
+        userId
       })
 
-      Sentry.captureException(errorToPassIntoLog)
-    }
+      forEach(dataToPassIntoLog, (value, key) => {
+        scope.setExtra(key, value)
+      })
+    })
+
+    errorObj.message = `${generalMessage}: ${message}`
+    Sentry.captureException(errorObj)
+    await Sentry.flush().finally(() => assign(errorObj, { message }))
   }
 }
