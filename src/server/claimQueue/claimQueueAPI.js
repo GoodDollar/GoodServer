@@ -1,5 +1,6 @@
 //@flow
 import { Router } from 'express'
+import { body } from 'express-validator'
 import passport from 'passport'
 import { map } from 'lodash'
 
@@ -121,6 +122,9 @@ const ClaimQueue = {
 const setup = (app: Router, storage: StorageAPI) => {
   app.post(
     '/admin/queue',
+    body('allow')
+      .isInt()
+      .toInt(), // check is 'allow' an integer, explicitly cast if not
     wrapAsync(async (req, res) => {
       const { body, log } = req
       const { allow, password } = body
