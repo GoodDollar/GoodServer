@@ -1,4 +1,5 @@
 // @flow
+import { pick, get } from 'lodash'
 import conf from '../server.config'
 import AdminWallet from '../blockchain/AdminWallet'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
@@ -42,13 +43,25 @@ const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
 }
 
 const updateMauticRecord = async (userRecord: UserRecord, logger: any) => {
-  const mauticRecord = await Mautic.createContact(userRecord).catch(e => {
-    logger.error('updateMauticRecord Create Mautic Record Failed', e.message, e, { userRecord })
+  const fieldsForMautic = pick(userRecord, [
+    'fullName',
+    'mobile',
+    'email',
+    'identifier',
+    'profilePublickey',
+    'regMethod',
+    'torusProvider'
+  ])
+  const nameParts = get(userRecord, 'fullName', '').split(' ')
+  fieldsForMautic.firstName = nameParts[0]
+  fieldsForMautic.lastName = nameParts.length > 1 && nameParts.pop()
+  const mauticRecord = await Mautic.createContact(fieldsForMautic).catch(e => {
+    logger.error('updateMauticRecord Create Mautic Record Failed', e.message, e, { fieldsForMautic, userRecord })
     throw e
   })
   const mauticId = get(mauticRecord, 'contact.id', userRecord.mauticId)
   await UserDBPrivate.updateUser({ identifier: userRecord.identifier, mauticId })
-  logger.debug('updateMauticRecord user mautic record updated', { userRecord, mauticId, mauticRecord })
+  logger.debug('updateMauticRecord user mautic record updated', { fieldsForMautic, userRecord, mauticId, mauticRecord })
 
   return true
 }

@@ -118,7 +118,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           .then(r => logger.debug('updateMauticRecord success'))
           .catch(e => {
             logger.error('updateMauticRecord failed', e.message, e, { userRecordWithPII })
-            throw e
+            throw new Error('Failed adding user to mautic')
           })
         signUpPromises.push(p3)
       }
@@ -131,7 +131,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         })
         .catch(e => {
           logger.error('updateW3Record failed', e.message, e, { userRecordWithPII })
-          throw e
+          throw new Error('Failed adding user to w3')
         })
       signUpPromises.push(web3RecordP)
 
@@ -155,7 +155,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         })
         .catch(e => {
           logger.error('topUserWallet failed', e.message, e, { userRecord })
-          throw e
+          throw new Error('Failed topping user wallet')
         })
       signUpPromises.push(p4)
 
