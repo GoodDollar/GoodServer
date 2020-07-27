@@ -1,3 +1,4 @@
+import conf from '../../../server.config'
 import mongoose, { Schema, Types } from '../../mongo-db.js'
 import { MODEL_PROPERTIES } from './constants'
 
@@ -25,7 +26,7 @@ export const ClaimQueueProps = PropsModel.discriminator(
     {
       value: {
         type: Number,
-        default: 0
+        default: conf.claimQueueAllowed
       }
     },
     schemaOptions
