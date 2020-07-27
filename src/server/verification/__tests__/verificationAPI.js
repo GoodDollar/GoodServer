@@ -603,6 +603,14 @@ describe('verificationAPI', () => {
     })
   })
 
+  test('/verify/phase', async () => {
+    const { phase } = Config
+    
+    await request(server)
+      .get('/verify/phase')
+      .expect(200, { success: true, phase })
+  })
+
   xtest('/verify/hanuka-bonus witout auth creds', async () => {
     let res = await request(server).get('/verify/hanuka-bonus')
 

@@ -1,4 +1,5 @@
 // @flow
+
 import { Router } from 'express'
 import passport from 'passport'
 import { get, defaults } from 'lodash'
@@ -855,6 +856,22 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       })
     })
   )
+
+  /**
+   * @api {get} /verify/phase get release/phase version number
+   * @apiName Get Phase VErsion Number
+   * @apiGroup Verification
+   *
+   * @apiSuccess {Number} phase
+   * @apiSuccess {Boolean} success
+   * @ignore
+   */
+  app.get('/verify/phase', (_, res) => {
+    const { phase } = conf
+    
+    res.json({ success: true, phase })
+    res.end()
+  })
 }
 
 export default setup

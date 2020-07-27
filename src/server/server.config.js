@@ -24,6 +24,12 @@ const conf = convict({
     default: version,
     env: 'VERSION'
   },
+  phase: {
+    doc: 'The application release/phase version',
+    format: Number,
+    default: 0,
+    env: 'RELEASE_PHASE'
+  },
   logLevel: {
     doc: 'Log level',
     format: ['error', 'warn', 'info', 'debug', 'silent'],
