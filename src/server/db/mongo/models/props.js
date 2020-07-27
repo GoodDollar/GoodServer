@@ -1,12 +1,51 @@
-import mongoose from '../../mongo-db.js'
+import conf from '../../../server.config'
+import mongoose, { Schema, Types } from '../../mongo-db.js'
 import { MODEL_PROPERTIES } from './constants'
 
-export const PropsSchema = new mongoose.Schema({
-  name: {
-    type: String
+const schemaOptions = { discriminatorKey: 'name' }
+
+const PropsSchema = new Schema(
+  {
+    name: {
+      type: String
+    },
+    value: {
+      type: Types.Mixed
+    }
   },
-  value: {}
-})
+  schemaOptions
+)
+
 PropsSchema.index({ name: 1 }, { unique: true }) // schema level
 
-export default mongoose.model(MODEL_PROPERTIES, PropsSchema)
+const PropsModel = mongoose.model(MODEL_PROPERTIES, PropsSchema)
+
+export const ClaimQueueProps = PropsModel.discriminator(
+  'claimQueueAllowed',
+  new Schema(
+    {
+      value: {
+        type: Number,
+        default: conf.claimQueueAllowed
+      }
+    },
+    schemaOptions
+  )
+)
+
+export const DatabaseVersion = PropsModel.discriminator(
+  'DATABASE_VERSION',
+  new Schema(
+    {
+      value: {
+        default: {},
+        type: new Schema({
+          version: Number
+        })
+      }
+    },
+    schemaOptions
+  )
+)
+
+export default PropsModel

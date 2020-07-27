@@ -1,10 +1,13 @@
 //@flow
 import { Router } from 'express'
+import { body } from 'express-validator'
 import passport from 'passport'
-import { Mautic } from '../mautic/mauticAPI'
-import conf from '../server.config'
-import PropsModel from '../db/mongo/models/props'
+import { map } from 'lodash'
 
+import { Mautic } from '../mautic/mauticAPI'
+import { ClaimQueueProps } from '../db/mongo/models/props'
+
+import conf from '../server.config'
 import { wrapAsync } from '../utils/helpers'
 
 const ClaimQueue = {
@@ -41,13 +44,20 @@ const ClaimQueue = {
   },
 
   async updateAllowed(toAdd, storage, log) {
-    const fromDB = await PropsModel.findOne({ name: 'claimQueueAllowed' })
-    const prevAllowed = fromDB || { value: conf.claimQueueAllowed }
-    const newAllowed = prevAllowed.value + toAdd
-    await PropsModel.updateOne({ name: 'claimQueueAllowed' }, { $set: { value: newAllowed } }, { upsert: true })
+    const { claimQueueAllowed } = conf
+    let queueProps = await ClaimQueueProps.findOne({})
 
+    if (!queueProps) {
+      queueProps = new ClaimQueueProps({ value: claimQueueAllowed })
+    }
+
+    queueProps.value += toAdd
+    await queueProps.save()
+
+    const newAllowed = queueProps.value
     const totalPending = await storage.model.count({ 'claimQueue.status': 'pending' })
     const stillPending = totalPending - toAdd
+
     const pendingUsers = await storage.model
       .find(
         { 'claimQueue.status': 'pending' },
@@ -58,12 +68,16 @@ const ClaimQueue = {
         }
       )
       .lean()
-    const approvedUsers = pendingUsers.map(_ => _._id)
-    const mauticIds = pendingUsers.map(_ => _.mauticId)
+
+    const approvedUsers = map(pendingUsers, '_id')
+    const mauticIds = map(pendingUsers, 'mauticId')
+
     Mautic.addContactsToSegment(mauticIds, conf.mauticClaimQueueApprovedSegmentId).catch(e => {
       log.error('Failed Mautic adding user to claim queue approved segment', e.message, e)
     })
+
     await storage.model.updateMany({ _id: { $in: approvedUsers } }, { $set: { 'claimQueue.status': 'approved' } })
+
     log.debug('claim queue updated', { pendingUsers, newAllowed, stillPending })
     return { ok: 1, newAllowed, stillPending, approvedUsers: pendingUsers }
   },
@@ -108,6 +122,9 @@ const ClaimQueue = {
 const setup = (app: Router, storage: StorageAPI) => {
   app.post(
     '/admin/queue',
+    body('allow')
+      .isInt()
+      .toInt(), // check is 'allow' an integer, explicitly cast if not
     wrapAsync(async (req, res) => {
       const { body, log } = req
       const { allow, password } = body
@@ -117,7 +134,7 @@ const setup = (app: Router, storage: StorageAPI) => {
           throw new Error("GunDB password doesn't match.")
         }
 
-        const result = await ClaimQueue.updateAllowed(Number(allow), storage, log)
+        const result = await ClaimQueue.updateAllowed(allow, storage, log)
 
         res.json(result)
       } catch (exception) {

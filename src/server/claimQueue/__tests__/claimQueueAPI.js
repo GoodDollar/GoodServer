@@ -3,21 +3,29 @@
  */
 
 import request from 'supertest'
+import conf from '../../server.config'
 import makeServer from '../../server-test'
 import { getToken, getCreds } from '../../__util__'
 import UserDBPrivate from '../../db/mongo/user-privat-provider'
-import PropsModel from '../../db/mongo/models/props'
+import { ClaimQueueProps } from '../../db/mongo/models/props'
 
 describe('claimQueueAPI', () => {
   let server, creds, token
+  const { claimQueueAllowed } = conf
+
   beforeAll(async done => {
+    conf.claimQueueAllowed = 1
+
     await UserDBPrivate.model.deleteMany({ claimQueue: { $exists: true } })
-    await PropsModel.deleteMany({})
+    await ClaimQueueProps.deleteMany({})
+
     jest.setTimeout(30000)
     server = makeServer(done)
   })
 
   afterAll(done => {
+    Object.assign(conf, { claimQueueAllowed })
+
     server.close(err => {
       console.log({ err })
       done()
@@ -25,7 +33,7 @@ describe('claimQueueAPI', () => {
   })
 
   test('/user/enqueue let user in when available places', async () => {
-    //1 person is allowed in CLAIM_QUEUE_ALLOWED
+    // 1 person is allowed in CLAIM_QUEUE_ALLOWED
     const approvedCreds = await getCreds(true)
     const approvedToken = await getToken(server, approvedCreds)
 
@@ -39,6 +47,7 @@ describe('claimQueueAPI', () => {
       .post('/user/enqueue')
       .set('Authorization', `Bearer ${approvedToken}`)
       .send()
+
     expect(res.body).toEqual({ ok: 1, queue: { status: 'approved', date: expect.anything() } })
   })
 
@@ -57,6 +66,7 @@ describe('claimQueueAPI', () => {
       .post('/user/enqueue')
       .set('Authorization', `Bearer ${token}`)
       .send()
+
     expect(res.body).toEqual({ ok: 1, queue: { status: 'pending', date: expect.anything() } })
   })
 
@@ -65,6 +75,7 @@ describe('claimQueueAPI', () => {
       .post('/user/enqueue')
       .set('Authorization', `Bearer ${token}`)
       .send()
+
     expect(res.body).toEqual({ ok: 0, queue: { status: 'pending', date: expect.any(String) } })
   })
 
@@ -102,19 +113,21 @@ describe('claimQueueAPI', () => {
     const res = await request(server)
       .post('/admin/queue')
       .send({ allow: 2, password: process.env.GUNDB_PASS })
+
     expect(res.body).toMatchObject({
       ok: 1,
       newAllowed: 3,
-      //user should be approved in order
+      // user should be approved in order
       approvedUsers: expect.arrayContaining([
         expect.objectContaining({ mauticId: '1' }),
         expect.objectContaining({ mauticId: '2' })
       ]),
       stillPending: 1
     })
+
     expect(res.body.pendingUsers).not.toEqual(expect.arrayContaining([{ mauticId: '3' }]))
 
-    const updated = await PropsModel.findOne({ name: 'claimQueueAllowed' })
+    const updated = await ClaimQueueProps.findOne({})
     expect(updated.value).toEqual(3)
 
     const stillPending = await UserDBPrivate.model.count({ 'claimQueue.status': 'pending' })

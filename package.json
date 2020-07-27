@@ -72,6 +72,7 @@
     "express": "^4.17.1",
     "express-pino-logger": "^4.0.0",
     "express-rate-limit": "^5.0.0",
+    "express-validator": "^6.6.0",
     "flow": "^0.2.3",
     "hdkey": "^1.1.1",
     "heapdump": "^0.3.15",

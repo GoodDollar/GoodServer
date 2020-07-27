@@ -1,21 +1,29 @@
 //@flow
 import Gun from '@gooddollar/gun'
 import { sha3 } from 'web3-utils'
-import { get, delay } from 'lodash'
+import { delay } from 'lodash'
 import logger from '../src/imports/logger'
 import { type UserRecord } from '../src/imports/types'
 import { GunDBPublic } from '../src/server/gun/gun-middleware'
 import conf from '../src/server/server.config'
+
 console.log(conf, process.env.NODE_ENV, process.env.TRAVIS)
 if (process.env.NODE_ENV === 'test' || process.env.TRAVIS === 'true') process.exit(0)
 
-const UserPrivateModel = require('../src/server/db/mongo/models/user-private.js').default
-const PropsModel = require('../src/server/db/mongo/models/props.js').default
+const { default: UserPrivateModel } = require('../src/server/db/mongo/models/user-private')
+const { DatabaseVersion } = require('../src/server/db/mongo/models/props')
+
 class DBUpdates {
   async runUpgrades() {
-    const dbversion = await PropsModel.findOne({ name: 'DATABASE_VERSION' })
-    const version = get(dbversion, 'value.version', 0)
+    let dbversion = await DatabaseVersion.findOne({})
+
+    if (!dbversion) {
+      dbversion = new DatabaseVersion({ value: { version: 0 }})
+    }
+
+    const { version } = dbversion.value
     await this.testWrite()
+
     if (version < 1) {
       await Promise.all([
         this.upgrade()
@@ -31,8 +39,11 @@ class DBUpdates {
             throw e
           })
       ])
-      await PropsModel.updateOne({ name: 'DATABASE_VERSION' }, { $set: { value: { version: 1 } } }, { upsert: true })
+
+      dbversion.value.version = 1
+      await dbversion.save()
     }
+
     if (version >= 1 && version < 2) {
       await this.fixGunTrustProfiles()
         .then(_ => logger.info('gun fixGunTrustProfiles done', { results: _ }))
@@ -40,7 +51,9 @@ class DBUpdates {
           logger.error('gun fixGunTrustProfiles failed', { err: e.message, e })
           throw e
         })
-      await PropsModel.updateOne({ name: 'DATABASE_VERSION' }, { $set: { value: { version: 2 } } }, { upsert: true })
+
+        dbversion.value.version = 2
+        await dbversion.save()
     }
   }
 
