@@ -112,16 +112,16 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         signUpPromises.push(p2)
       }
 
-      if (process.env.NODE_ENV !== 'development') {
-        const p3 = addUserSteps
-          .updateMauticRecord(userRecordWithPII, logger)
-          .then(r => logger.debug('updateMauticRecord success'))
-          .catch(e => {
-            logger.error('updateMauticRecord failed', e.message, e, { userRecordWithPII })
-            throw new Error('Failed adding user to mautic')
-          })
-        signUpPromises.push(p3)
-      }
+      //if (process.env.NODE_ENV !== 'development') {
+      const p3 = addUserSteps
+        .updateMauticRecord(userRecordWithPII, logger)
+        .then(r => logger.debug('updateMauticRecord success'))
+        .catch(e => {
+          logger.error('updateMauticRecord failed', e.message, e, { userRecordWithPII })
+          throw new Error('Failed adding user to mautic')
+        })
+      signUpPromises.push(p3)
+      //}
 
       const web3RecordP = addUserSteps
         .updateW3Record(userRecordWithPII, logger)
