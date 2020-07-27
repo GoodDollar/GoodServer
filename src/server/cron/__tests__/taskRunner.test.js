@@ -1,4 +1,4 @@
-import { startTaskRunner } from '../TaskRunner'
+import startTaskRunner from '../TaskRunner'
 import moment from 'moment'
 import delay from 'delay'
 

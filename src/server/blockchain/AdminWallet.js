@@ -534,8 +534,10 @@ export class Wallet {
         (await tx
           .estimateGas()
           .then(gas => gas + 200000) //buffer for proxy contract, reimburseGas?
-          .catch(e => log.error('Failed to estimate gas for tx', e.message, e))) ||
-        defaultGas
+          .catch(e => {
+            log.error('Failed to estimate gas for tx', e.message, e)
+            return defaultGas
+          }))
 
       // adminwallet contract might give wrong gas estimates, so if its more than block gas limit reduce it to default
       if (gas > 8000000) gas = defaultGas
@@ -714,8 +716,10 @@ export class Wallet {
         (await tx
           .estimateGas()
           .then(gas => gas + 200000) //buffer for proxy contract, reimburseGas?, and low gas unexpected failures
-          .catch(e => log.error('Failed to estimate gas for tx', e.message, e))) ||
-        defaultGas
+          .catch(e => {
+            log.error('Failed to estimate gas for tx', e.message, e)
+            return defaultGas
+          }))
 
       //adminwallet contract might give wrong gas estimates, so if its more than block gas limit reduce it to default
       if (gas > 8000000) gas = defaultGas
