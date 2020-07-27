@@ -9,11 +9,12 @@ import conf from '../src/server/server.config'
 console.log(conf, process.env.NODE_ENV, process.env.TRAVIS)
 if (process.env.NODE_ENV === 'test' || process.env.TRAVIS === 'true') process.exit(0)
 
-const UserPrivateModel = require('../src/server/db/mongo/models/user-private.js').default
-const PropsModel = require('../src/server/db/mongo/models/props.js').default
+const { default: UserPrivateModel } = require('../src/server/db/mongo/models/user-private.js')
+const { DatabaseVersion } = require('../src/server/db/mongo/models/props.js')
+
 class DBUpdates {
   async runUpgrades() {
-    const dbversion = await PropsModel.findOne({ name: 'DATABASE_VERSION' })
+    const dbversion = await DatabaseVersion.findOne({})
     const version = get(dbversion, 'value.version', 0)
     await this.testWrite()
     if (version < 1) {
@@ -31,7 +32,8 @@ class DBUpdates {
             throw e
           })
       ])
-      await PropsModel.updateOne({ name: 'DATABASE_VERSION' }, { $set: { value: { version: 1 } } }, { upsert: true })
+
+      await DatabaseVersion.updateOne({}, { $set: { value: { version: 1 } } }, { upsert: true })
     }
     if (version >= 1 && version < 2) {
       await this.fixGunTrustProfiles()
@@ -40,7 +42,8 @@ class DBUpdates {
           logger.error('gun fixGunTrustProfiles failed', { err: e.message, e })
           throw e
         })
-      await PropsModel.updateOne({ name: 'DATABASE_VERSION' }, { $set: { value: { version: 2 } } }, { upsert: true })
+
+      await DatabaseVersion.updateOne({}, { $set: { value: { version: 2 } } }, { upsert: true })
     }
   }
 

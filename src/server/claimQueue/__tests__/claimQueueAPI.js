@@ -6,13 +6,13 @@ import request from 'supertest'
 import makeServer from '../../server-test'
 import { getToken, getCreds } from '../../__util__'
 import UserDBPrivate from '../../db/mongo/user-privat-provider'
-import PropsModel from '../../db/mongo/models/props'
+import { ClaimQueueProps } from '../../db/mongo/models/props'
 
 describe('claimQueueAPI', () => {
   let server, creds, token
   beforeAll(async done => {
     await UserDBPrivate.model.deleteMany({ claimQueue: { $exists: true } })
-    await PropsModel.deleteMany({})
+    await ClaimQueueProps.deleteMany({})
     jest.setTimeout(30000)
     server = makeServer(done)
   })
@@ -114,7 +114,7 @@ describe('claimQueueAPI', () => {
     })
     expect(res.body.pendingUsers).not.toEqual(expect.arrayContaining([{ mauticId: '3' }]))
 
-    const updated = await PropsModel.findOne({ name: 'claimQueueAllowed' })
+    const updated = await ClaimQueueProps.findOne({})
     expect(updated.value).toEqual(3)
 
     const stillPending = await UserDBPrivate.model.count({ 'claimQueue.status': 'pending' })

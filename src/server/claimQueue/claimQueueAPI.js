@@ -3,7 +3,7 @@ import { Router } from 'express'
 import passport from 'passport'
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
-import PropsModel from '../db/mongo/models/props'
+import { ClaimQueueProps } from '../db/mongo/models/props'
 
 import { wrapAsync } from '../utils/helpers'
 
@@ -41,10 +41,11 @@ const ClaimQueue = {
   },
 
   async updateAllowed(toAdd, storage, log) {
-    const fromDB = await PropsModel.findOne({ name: 'claimQueueAllowed' })
+    const fromDB = await ClaimQueueProps.findOne()
     const prevAllowed = fromDB || { value: conf.claimQueueAllowed }
     const newAllowed = prevAllowed.value + toAdd
-    await PropsModel.updateOne({ name: 'claimQueueAllowed' }, { $set: { value: newAllowed } }, { upsert: true })
+
+    await ClaimQueueProps.updateOne({ $set: { value: newAllowed } }, { upsert: true })
 
     const totalPending = await storage.model.count({ 'claimQueue.status': 'pending' })
     const stillPending = totalPending - toAdd
@@ -117,7 +118,7 @@ const setup = (app: Router, storage: StorageAPI) => {
           throw new Error("GunDB password doesn't match.")
         }
 
-        const result = await ClaimQueue.updateAllowed(Number(allow), storage, log)
+        const result = await ClaimQueue.updateAllowed(allow, storage, log)
 
         res.json(result)
       } catch (exception) {
