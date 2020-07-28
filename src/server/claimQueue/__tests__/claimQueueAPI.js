@@ -3,12 +3,14 @@
  */
 
 import request from 'supertest'
+import { sha3 } from 'web3-utils'
 import conf from '../../server.config'
 import makeServer from '../../server-test'
 import { getToken, getCreds } from '../../__util__'
 import UserDBPrivate from '../../db/mongo/user-privat-provider'
 import { ClaimQueueProps } from '../../db/mongo/models/props'
 
+jest.setTimeout(10000)
 describe('claimQueueAPI', () => {
   let server, creds, token
   const { claimQueueAllowed } = conf
@@ -132,5 +134,71 @@ describe('claimQueueAPI', () => {
 
     const stillPending = await UserDBPrivate.model.count({ 'claimQueue.status': 'pending' })
     expect(stillPending).toEqual(1)
+  })
+
+  describe('/admin/queue approve users by email', () => {
+    let token, creds
+    beforeAll(async () => {
+      await UserDBPrivate.model.deleteMany({})
+      creds = await getCreds(true)
+      token = await getToken(server, creds)
+
+      await UserDBPrivate.addUser({
+        identifier: creds.address,
+        mauticId: 10,
+        smsValidated: false,
+        fullName: 'test_user_queue2',
+        email: sha3('test1@gmail.com')
+      })
+
+      await request(server)
+        .post('/user/enqueue')
+        .set('Authorization', `Bearer ${token}`)
+        .send()
+
+      creds = await getCreds(true)
+      token = await getToken(server, creds)
+
+      await UserDBPrivate.addUser({
+        identifier: creds.address,
+        mauticId: 11,
+        smsValidated: false,
+        fullName: 'test_user_queue3',
+        email: sha3('test2@gmail.com')
+      })
+    })
+
+    test('users are approved by email', async () => {
+      const res = await request(server)
+        .post('/admin/queue')
+        .send({ emails: ['test1@gmail.com', 'test2@gmail.com'], password: process.env.GUNDB_PASS })
+
+      expect(res.body).toMatchObject({
+        ok: 1,
+        // user should be approved in order
+        approvedUsers: expect.arrayContaining([
+          expect.objectContaining({ mauticId: '10' }),
+          expect.objectContaining({ mauticId: '11' })
+        ])
+      })
+
+      expect(res.body.approvedUsers.length).toEqual(2)
+
+      const approved = await UserDBPrivate.model.count({ 'claimQueue.status': 'approved' })
+      expect(approved).toEqual(2)
+    })
+
+    test('user should be preapproved by email', async () => {
+      //now we test pre approved user
+      const enqueueResult = await request(server)
+        .post('/user/enqueue')
+        .set('Authorization', `Bearer ${token}`)
+        .send()
+
+      expect(enqueueResult.body).toMatchObject({
+        ok: 0,
+        queue: { status: 'approved' }
+      })
+    })
   })
 })

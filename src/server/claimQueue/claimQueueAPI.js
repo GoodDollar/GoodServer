@@ -2,8 +2,8 @@
 import { Router } from 'express'
 import { body } from 'express-validator'
 import passport from 'passport'
-import { map } from 'lodash'
-
+import { map, get } from 'lodash'
+import { sha3 } from 'web3-utils'
 import { Mautic } from '../mautic/mauticAPI'
 import { ClaimQueueProps } from '../db/mongo/models/props'
 
@@ -82,8 +82,40 @@ const ClaimQueue = {
     return { ok: 1, newAllowed, stillPending, approvedUsers: pendingUsers }
   },
 
+  async updateAllowedEmails(emailsToApprove: Array<string>, storage, log) {
+    const { claimQueueAllowed } = conf
+    const emailsHashes = map(emailsToApprove, sha3)
+    const approvedUsers = await storage.model
+      .find(
+        { email: { $in: emailsHashes }, 'claimQueue.status': { $nin: ['approved', 'whitelisted'] } },
+        { mauticId: 1, identifier: 1 }
+      )
+      .lean()
+
+    //update the global allowed so approved by email users dont take existing open spots
+    let queueProps = await ClaimQueueProps.findOne({})
+    if (!queueProps) {
+      queueProps = new ClaimQueueProps({ value: claimQueueAllowed })
+    }
+    queueProps.value += approvedUsers.length
+    await queueProps.save()
+
+    const userIds = map(approvedUsers, '_id')
+    const mauticIds = map(approvedUsers, 'mauticId')
+
+    Mautic.addContactsToSegment(mauticIds, conf.mauticClaimQueueApprovedSegmentId).catch(e => {
+      log.error('Failed Mautic adding user to claim queue approved segment', e.message, e)
+    })
+
+    await storage.model.updateMany({ _id: { $in: userIds } }, { $set: { 'claimQueue.status': 'approved' } })
+
+    log.debug('claim queue updated', { approvedUsers })
+    return { ok: 1, approvedUsers }
+  },
+
   async enqueue(user, storage, log) {
     const { claimQueueAllowed } = conf
+
     const { claimQueue } = user
 
     log.debug('claimqueue:', { allowed: claimQueueAllowed, queue: claimQueue })
@@ -127,14 +159,19 @@ const setup = (app: Router, storage: StorageAPI) => {
       .toInt(), // check is 'allow' an integer, explicitly cast if not
     wrapAsync(async (req, res) => {
       const { body, log } = req
-      const { allow, password } = body
+      const { allow, password, emails } = body
 
       try {
         if (password !== conf.gundbPassword) {
           throw new Error("GunDB password doesn't match.")
         }
 
-        const result = await ClaimQueue.updateAllowed(allow, storage, log)
+        let result
+        if (emails) {
+          result = await ClaimQueue.updateAllowedEmails(emails, storage, log)
+        } else {
+          result = await ClaimQueue.updateAllowed(allow, storage, log)
+        }
 
         res.json(result)
       } catch (exception) {
@@ -189,7 +226,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       }
 
       log.debug('claimqueue: skip', { claimQueueAllowed })
-      res.json({ ok: 1, queue: { status: 'verified' } })
+      res.json({ ok: 1, queue: { status: 'whitelisted' } })
     })
   )
 }
