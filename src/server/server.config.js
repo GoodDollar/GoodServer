@@ -23,6 +23,12 @@ const conf = convict({
     default: version,
     env: 'VERSION'
   },
+  phase: {
+    doc: 'The application release/phase version',
+    format: Number,
+    default: 0,
+    env: 'RELEASE_PHASE'
+  },
   logLevel: {
     doc: 'Log level',
     format: ['error', 'warn', 'info', 'debug', 'silent'],
@@ -249,7 +255,7 @@ const conf = convict({
   mauticClaimQueueWhitelistedSegmentId: {
     doc: 'id of segment',
     format: '*',
-    env: 'MAUTIC_CLAIM_QUEUE_APPROVED_SEG_ID',
+    env: 'MAUTIC_CLAIM_QUEUE_WHITELISTED_SEG_ID',
     default: '54'
   },
   zoomMinimalMatchLevel: {
@@ -443,6 +449,8 @@ const conf = convict({
 // Load environment dependent configuration
 const network = conf.get('network')
 const networkId = ContractsAddress[network].networkId
+
+// GUN S3 options
 const privateS3 = process.env.GUN_PRIVATE_S3
 const publicS3 = process.env.GUN_PUBLIC_S3
 
