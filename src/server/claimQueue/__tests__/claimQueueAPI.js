@@ -139,7 +139,7 @@ describe('claimQueueAPI', () => {
   describe('/admin/queue approve users by email', () => {
     let token, creds
     beforeAll(async () => {
-      await UserDBPrivate.model.deleteMany({})
+      new ClaimQueueProps({ value: 0 }).save() //make sure no user is preapproved
       creds = await getCreds(true)
       token = await getToken(server, creds)
 
