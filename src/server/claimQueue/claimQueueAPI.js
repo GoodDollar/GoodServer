@@ -87,7 +87,13 @@ const ClaimQueue = {
     const emailsHashes = map(emailsToApprove, sha3)
     const approvedUsers = await storage.model
       .find(
-        { email: { $in: emailsHashes }, 'claimQueue.status': { $nin: ['approved', 'whitelisted'] } },
+        {
+          email: { $in: emailsHashes },
+          $or: [
+            { 'claimQueue.status': { $nin: ['approved', 'whitelisted'] } },
+            { 'claimQueue.status': { $exists: false } }
+          ]
+        },
         { mauticId: 1, identifier: 1 }
       )
       .lean()
@@ -114,8 +120,10 @@ const ClaimQueue = {
   },
 
   async enqueue(user, storage, log) {
-    const { claimQueueAllowed } = conf
+    const { claimQueueAllowed: claimQueueAllowedDefault } = conf
 
+    let queueProps = await ClaimQueueProps.findOne({})
+    const claimQueueAllowed = get(queueProps, 'value', claimQueueAllowedDefault)
     const { claimQueue } = user
 
     log.debug('claimqueue:', { allowed: claimQueueAllowed, queue: claimQueue })
