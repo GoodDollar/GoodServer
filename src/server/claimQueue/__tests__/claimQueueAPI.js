@@ -139,7 +139,10 @@ describe('claimQueueAPI', () => {
   describe('/admin/queue approve users by email', () => {
     let token, creds
     beforeAll(async () => {
-      new ClaimQueueProps({ value: 0 }).save() //make sure no user is preapproved
+      await UserDBPrivate.model.deleteMany({})
+      let queueProps = await ClaimQueueProps.findOne({})
+      queueProps.value = 0
+      queueProps.save() //make sure no user is preapproved
       creds = await getCreds(true)
       token = await getToken(server, creds)
 
@@ -147,7 +150,7 @@ describe('claimQueueAPI', () => {
         identifier: creds.address,
         mauticId: 10,
         smsValidated: false,
-        fullName: 'test_user_queue2',
+        fullName: 'test_user_queue10',
         email: sha3('test1@gmail.com')
       })
 
@@ -163,7 +166,7 @@ describe('claimQueueAPI', () => {
         identifier: creds.address,
         mauticId: 11,
         smsValidated: false,
-        fullName: 'test_user_queue3',
+        fullName: 'test_user_queue11',
         email: sha3('test2@gmail.com')
       })
     })

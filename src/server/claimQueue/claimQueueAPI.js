@@ -228,7 +228,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       // if queue is enabled, enqueueing user
       if (claimQueueAllowed > 0) {
         const queueStatus = await ClaimQueue.enqueue(user, storage, log)
-
+        log.debug('enqueue user result:', { queueStatus, user })
         res.json(queueStatus)
         return
       }
