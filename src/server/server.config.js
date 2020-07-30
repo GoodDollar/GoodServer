@@ -370,7 +370,7 @@ const conf = convict({
     doc: 'password for market jwt',
     format: String,
     env: 'MARKET_PASSWORD',
-    default: null
+    default: ''
   },
   rateLimitMinutes: {
     doc: 'Amount of minutes used for request rate limiter',

@@ -9,7 +9,7 @@ radata/
 yarn.lock
 secrets.json
 openSubjects.txt
-publicdb
+publicdb*
 privatedb
 testdb
 config/*/*
