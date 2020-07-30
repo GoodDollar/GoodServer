@@ -10,7 +10,7 @@ class DisposeEnrollmentsTask {
   logger = null
 
   get schedule() {
-    return '0 0 * * * *' //once an hour
+    return '0 0 * * * *' // once an hour
   }
 
   get name() {

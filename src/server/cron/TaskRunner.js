@@ -1,13 +1,14 @@
-import MongoLock from '../utils/tx-manager/queueMongo'
 import { CronJob, CronTime } from 'cron'
-import { invokeMap, map, filter, once } from 'lodash'
+import { invokeMap, keys, once } from 'lodash'
+import { v4 as uuidv4 } from 'uuid'
 
+import MongoLock from '../utils/tx-manager/queueMongo'
 import logger from '../../imports/logger'
 
 class TaskRunner {
   lock = null
   jobFactory = null
-  tasks = []
+  tasks = {}
 
   constructor(lock, jobFactory, logger) {
     const exitEvents = ['SIGINT', 'beforeExit']
@@ -22,14 +23,14 @@ class TaskRunner {
   registerTask(task) {
     const { logger, tasks, lock, jobFactory } = this
     const { schedule, name } = task
-    const taskIdentifier = name || tasks.length
+    const taskName = name || `task/${uuidv4()}`
 
     const taskJob = new jobFactory(schedule, async () => {
-      logger.info('Running cron task', { taskIdentifier })
+      logger.info('Running cron task', { taskName })
 
       // we don't need re-queue in the cron. just lock -> run -> release (despite success/failed)
-      const { address, release } = await lock.lock(taskIdentifier)
-      logger.info('Obtained mutex for exclusive run:', { address, taskIdentifier })
+      const { address, release } = await lock.lock(taskName)
+      logger.info('Obtained mutex for exclusive run:', { address, taskName })
 
       try {
         const taskResult = await task.execute({
@@ -37,42 +38,43 @@ class TaskRunner {
           // let task whould decide to stop or to set new schedule by themselves during execution
           // let's make this feedback more clear
           setTime: time => {
-            logger.info('Cron task setting new schedule', { taskName: name, schedule: time })
+            logger.info('Cron task setting new schedule', { taskName, schedule: time })
 
             taskJob.setTime(time instanceof CronTime ? time : new CronTime(time))
             taskJob.start()
           },
 
           stop: () => {
-            logger.info('Cron task has stopped itself', { taskName: name })
+            logger.info('Cron task has stopped itself', { taskName })
             taskJob.stop()
           }
         })
 
-        logger.info('Cron task completed', { taskIdentifier, taskResult })
+        logger.info('Cron task completed', { taskName, taskResult })
       } catch (exception) {
         const { message: errMessage } = exception
 
-        logger.error('Cron task failed', errMessage, exception, { taskIdentifier })
+        logger.error('Cron task failed', errMessage, exception, { taskName })
       } finally {
         release()
       }
     })
 
-    tasks.push(taskJob)
+    logger.info('Cron task registered', { taskName, schedule })
+    tasks[taskName] = taskJob
   }
 
   startTasks() {
     const { logger, tasks } = this
 
-    logger.info('Starting cron tasks', filter(map(tasks, 'name')))
+    logger.info('Starting cron tasks', keys(tasks))
     invokeMap(tasks, 'start')
   }
 
   stopTasks() {
     const { logger, tasks } = this
 
-    logger.info('Stopping cron tasks')
+    logger.info('Stopping cron tasks', keys(tasks))
     invokeMap(tasks, 'stop')
   }
 }

@@ -186,11 +186,17 @@ class EnrollmentProcessor {
     try {
       const enqueuedDisposalTasks = await storage.fetchTasksForProcessing(DISPOSE_ENROLLMENTS_TASK, enqueuedAtFilters)
       const enqueuedTasksCount = enqueuedDisposalTasks.length
+
+      if (enqueuedTasksCount <= 0) {
+        log.info('No enqueued disposal tasks ready to processing found, skipping')
+        return
+      }
+
       const approximatedBatchSize = Math.round(enqueuedTasksCount / DISPOSE_BATCH_AMOUNT, 0)
       const disposeBatchSize = Math.min(DISPOSE_BATCH_MAXIMAL, Math.max(DISPOSE_BATCH_MINIMAL, approximatedBatchSize))
       const chunkedDisposalTasks = chunk(enqueuedDisposalTasks, disposeBatchSize)
 
-      log.info('Enqueued disposal task fetched and ready to processing', {
+      log.info('Enqueued disposal tasks fetched and ready to processing', {
         enqueuedTasksCount,
         disposeBatchSize
       })
