@@ -3,22 +3,24 @@
 import { bindAll } from 'lodash'
 
 import logger from '../../../imports/logger'
+import Config from '../../server.config'
+
 import createEnrollmentProcessor, { DISPOSE_ENROLLMENTS_TASK } from '../processor/EnrollmentProcessor'
 
 class DisposeEnrollmentsTask {
+  schedule = null
   processor = null
   logger = null
-
-  get schedule() {
-    return '0 0 * * * *' // once an hour
-  }
 
   get name() {
     return DISPOSE_ENROLLMENTS_TASK
   }
 
-  constructor(enrollmentProcessor, logger) {
+  constructor(Config, enrollmentProcessor, logger) {
+    const { faceVerificationCron } = Config
+
     this.logger = logger
+    this.schedule = faceVerificationCron
     this.processor = enrollmentProcessor
 
     bindAll(this, 'onEnrollmentProcesed')
@@ -45,4 +47,8 @@ class DisposeEnrollmentsTask {
 }
 
 export default storage =>
-  new DisposeEnrollmentsTask(createEnrollmentProcessor(storage), logger.child({ from: 'DisposeEnrollmentsTask' }))
+  new DisposeEnrollmentsTask(
+    Config,
+    createEnrollmentProcessor(storage),
+    logger.child({ from: 'DisposeEnrollmentsTask' })
+  )
