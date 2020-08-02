@@ -154,7 +154,7 @@ export class Wallet {
       this.addWallet(account)
       log.info('Initialized by private key:', { address: account.address })
     } else if (this.mnemonic) {
-      let root = HDKey.fromMasterSeed(bip39.mnemonicToSeed(this.mnemonic))
+      let root = HDKey.fromMasterSeed(bip39.mnemonicToSeed(this.mnemonic, conf.adminWalletPassword))
       for (let i = 0; i < this.numberOfAdminWalletAccounts; i++) {
         const path = "m/44'/60'/0'/0/" + i
         let addrNode = root.derive(path)

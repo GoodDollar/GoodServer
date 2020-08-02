@@ -503,6 +503,12 @@ const conf = convict({
     format: String,
     default: '',
     env: 'SLACK_ALERTS_WEBHOOK'
+  },
+  adminWalletPassword: {
+    doc: 'password to admin mnemonic',
+    format: String,
+    default: '',
+    env: 'ADMIN_PASSWORD'
   }
 })
 
