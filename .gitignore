@@ -1,5 +1,6 @@
 .vscode
 .env
+.env.test.local
 .env.staging
 node_modules
 dist/

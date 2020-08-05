@@ -1,36 +1,38 @@
-import startTaskRunner from '../TaskRunner'
+import getTaskRunner from '../TaskRunner'
 import moment from 'moment'
 import delay from 'delay'
+import { size } from 'lodash'
 
-const TaskRunner = startTaskRunner()
+const TaskRunner = getTaskRunner()
 jest.setTimeout(10000)
+
 describe('TaskRunner', () => {
   const testTask = {
+    name: 'testTask',
     schedule: moment()
       .add(3, 'seconds')
       .toDate(),
-    name: 'testTask',
-    execute: async ({ setTime }) => {
+    execute: async ({ setTime }) =>
       setTime(
         moment()
           .add(3, 'seconds')
           .toDate()
       )
-    }
   }
+
   const testCronTask = {
-    schedule: '* * * * * *',
     name: 'testCronTask',
+    schedule: '* * * * * *',
     execute: async () => {}
   }
 
   const executeSpy = jest.spyOn(testTask, 'execute')
   const executeCronSpy = jest.spyOn(testCronTask, 'execute')
+
   test('it should queue task', async () => {
-    expect(TaskRunner.tasks.length).toEqual(0)
+    expect(size(TaskRunner.tasks)).toEqual(0)
     TaskRunner.registerTask(testTask)
-    console.log(TaskRunner.tasks)
-    expect(TaskRunner.tasks.length).toEqual(1)
+    expect(size(TaskRunner.tasks)).toEqual(1)
   })
 
   test('it should run task', async () => {

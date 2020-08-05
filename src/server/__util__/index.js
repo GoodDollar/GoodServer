@@ -17,7 +17,7 @@ export const getCreds = async (random = false) => {
     profileSignature:
       'SEA{"m":"Login to GoodDAPP","s":"tNknsunS9psSLQDr/nFeobeHWdROtu3kEHgjHFSkreLFkgmHJPy/E3fm6llN1QOsNtfE12WTs4k1mOEE/H1AWw=="}',
     nonce: '',
-    networkId: 4447
+    networkId: 122
   }
   if (random) {
     let account = web3.eth.accounts.create()
