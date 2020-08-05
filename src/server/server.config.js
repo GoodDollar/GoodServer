@@ -342,6 +342,12 @@ const conf = convict({
     env: 'KEEP_FACE_VERIFICATION_RECORDS',
     default: 24
   },
+  faceVerificationCron: {
+    doc: 'Cron schedule for the delayed task removing face verification records',
+    format: String,
+    env: 'FACE_VERIFICATION_CRON',
+    default: '0 0 * * * *'
+  },
   disableFaceVerification: {
     doc: 'Whitelist user once they register, returns already enrolled with no Zoom API interaction',
     format: Boolean,
