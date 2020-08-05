@@ -9,19 +9,38 @@ import { ClaimQueueProps } from '../db/mongo/models/props'
 
 import conf from '../server.config'
 import { wrapAsync } from '../utils/helpers'
+import logger from '../../imports/logger'
+
+const defaultLogger = logger.child({ from: 'ClaimQueue ' })
 
 const ClaimQueue = {
-  async setWhitelisted(user, storage, log) {
-    //if user has passed, then we mark that in claim queue and tag the user
-    return Promise.all([
-      user.claimQueue && storage.updateUser({ identifier: user.identifier, 'claimQueue.status': 'whitelisted' }),
-      Mautic.updateContact(user.mauticId, { tags: ['claimqueue_claimed'] }).catch(e => {
-        log.error('Failed Mautic tagging  user claimed', e.message, e, { mauticId: user.mauticId })
-      }),
-      Mautic.addContactsToSegment([user.mauticId], conf.mauticClaimQueueWhitelistedSegmentId).catch(e => {
-        log && log.error('Failed Mautic adding user to claim queue whitelisted segment', e.message, e)
+  async setWhitelisted(user, storage, log = defaultLogger) {
+    const { mauticClaimQueueWhitelistedSegmentId } = conf
+    const { identifier, mauticId, claimQueue } = user
+    let result = Promise.resolve()
+
+    if (claimQueue) {
+      result = storage.updateUser({ identifier, 'claimQueue.status': 'whitelisted' })
+    }
+
+    // Mautic calls could took a lot of time and cause ZoOm timeout
+    // so let's do it 'in background'
+    // also we won't call mautic if user.mauticId is empty or null
+    if (mauticId) {
+      Mautic.updateContact(mauticId, { tags: ['claimqueue_claimed'] }).catch(exception => {
+        const { message } = exception
+
+        log.error('Failed Mautic tagging user claimed', message, exception, { mauticId })
       })
-    ])
+
+      Mautic.addContactsToSegment([mauticId], mauticClaimQueueWhitelistedSegmentId).catch(exception => {
+        const { message } = exception
+
+        log.error('Failed Mautic adding user to claim queue whitelisted segment', message, exception)
+      })
+    }
+
+    return result
   },
 
   async getStatistics(storage) {
@@ -43,7 +62,7 @@ const ClaimQueue = {
     return stats.map(pair => ({ [pair._id]: pair.total }))
   },
 
-  async updateAllowed(toAdd, storage, log) {
+  async updateAllowed(toAdd, storage, log = defaultLogger) {
     const { claimQueueAllowed } = conf
     let queueProps = await ClaimQueueProps.findOne({})
 
@@ -82,7 +101,7 @@ const ClaimQueue = {
     return { ok: 1, newAllowed, stillPending, approvedUsers: pendingUsers }
   },
 
-  async enqueue(user, storage, log) {
+  async enqueue(user, storage, log = defaultLogger) {
     const { claimQueueAllowed } = conf
     const { claimQueue } = user
 
@@ -97,7 +116,7 @@ const ClaimQueue = {
     const openSpaces = claimQueueAllowed - totalQueued
     let status = openSpaces > 0 ? 'approved' : 'pending'
 
-    //if user was added to queue tag him in mautic
+    // if user was added to queue tag him in mautic
     if (['test', 'development'].includes(conf.env) === false && user.mauticId) {
       if (status === 'pending') {
         Mautic.updateContact(user.mauticId, { tags: ['claimqueue_in'] }).catch(e => {
