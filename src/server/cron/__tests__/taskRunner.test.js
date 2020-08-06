@@ -27,10 +27,9 @@ describe('TaskRunner', () => {
   const executeSpy = jest.spyOn(testTask, 'execute')
   const executeCronSpy = jest.spyOn(testCronTask, 'execute')
   test('it should queue task', async () => {
-    expect(TaskRunner.tasks.length).toEqual(0)
+    expect(Object.keys(TaskRunner.tasks).length).toEqual(0)
     TaskRunner.registerTask(testTask)
-    console.log(TaskRunner.tasks)
-    expect(TaskRunner.tasks.length).toEqual(1)
+    expect(Object.keys(TaskRunner.tasks).length).toEqual(1)
   })
 
   test('it should run task', async () => {
