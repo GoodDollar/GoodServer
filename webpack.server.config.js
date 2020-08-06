@@ -15,25 +15,24 @@ const { version } = require('./package.json')
 
 module.exports = (_, argv) => {
   const isProductionMode = argv.mode === 'production'
-  const SERVER_PATH =  `./src/server/${isProductionMode ? 'index-prod' : 'server-dev'}.js`
-  const { VERSION, NODE_ENV } = process.env
+  const SERVER_PATH = `./src/server/${isProductionMode ? 'index-prod' : 'server-dev'}.js`
+  const { VERSION, NODE_ENV, TRAVIS } = process.env
 
-  const plugins = [
-    new webpack.DefinePlugin({}),
-    new NodemonPlugin(),
-  ]
+  const plugins = [new webpack.DefinePlugin({}), new NodemonPlugin()]
 
-  if (isProductionMode) {
-    plugins.push(new SentryCliPlugin({
-      rewrite: true,
-      release: VERSION || version,
-      deploy: { env: NODE_ENV || 'development' },
-      configFile: './sentry.properties',
+  if (isProductionMode && TRAVIS !== 'true') {
+    plugins.push(
+      new SentryCliPlugin({
+        rewrite: true,
+        release: VERSION || version,
+        deploy: { env: NODE_ENV || 'development' },
+        configFile: './sentry.properties',
 
-      include: ['./dist'],
-      ignoreFile: '.gitignore',
-      ignore: ['node_modules', 'webpack.*.config.js'],
-    }))
+        include: ['./dist'],
+        ignoreFile: '.gitignore',
+        ignore: ['node_modules', 'webpack.*.config.js']
+      })
+    )
   }
 
   return {
@@ -43,7 +42,7 @@ module.exports = (_, argv) => {
     output: {
       publicPath: '/',
       filename: '[name].js',
-      path: path.join(__dirname, 'dist'),
+      path: path.join(__dirname, 'dist')
     },
     devtool: 'source-map',
     mode: argv.mode,
