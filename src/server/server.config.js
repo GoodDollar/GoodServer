@@ -20,6 +20,7 @@ if (process.env.NODE_ENV === 'test') {
 }
 
 dotenv.config({ path: dotenvPath })
+process.setMaxListeners(0)
 
 // Define a schema
 const conf = convict({
