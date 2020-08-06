@@ -50,7 +50,7 @@ describe('TaskRunner', () => {
   test('it should run cron syntax multiple times', async () => {
     TaskRunner.registerTask(testCronTask)
     TaskRunner.startTasks()
-    await delay(2500)
+    await delay(2000)
     TaskRunner.stopTasks()
     expect(executeCronSpy).toHaveBeenCalledTimes(2)
   })
