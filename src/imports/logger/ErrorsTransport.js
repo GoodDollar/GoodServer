@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/node'
 import { RewriteFrames } from '@sentry/integrations'
 import Transport from 'winston-transport'
 import { SPLAT } from 'triple-beam'
-import { assign, forEach, bindAll } from 'lodash'
+import { assign, forEach, bindAll, trimEnd } from 'lodash'
 
 import Config from '../../server/server.config'
 
@@ -62,7 +62,7 @@ export default class ErrorsTransport extends Transport {
       })
     })
 
-    errorObj.message = `${generalMessage}: ${message}`
+    errorObj.message = `${trimEnd(generalMessage, ' :')}: ${message}`
     Sentry.captureException(errorObj)
 
     Sentry.flush().finally(() => {

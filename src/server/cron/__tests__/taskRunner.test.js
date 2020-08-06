@@ -44,14 +44,16 @@ describe('TaskRunner', () => {
   test('it should run task again with rescheduled time', async () => {
     await delay(3500)
     TaskRunner.stopTasks()
-    expect(executeSpy).toHaveBeenCalledTimes(2)
+    // check if there was at lest one additional call during last 3.5sec
+    expect(executeSpy.mock.calls.length).toBeGreaterThanOrEqual(2)
   })
 
   test('it should run cron syntax multiple times', async () => {
     TaskRunner.registerTask(testCronTask)
     TaskRunner.startTasks()
-    await delay(2000)
+    await delay(2500)
     TaskRunner.stopTasks()
-    expect(executeCronSpy).toHaveBeenCalledTimes(2)
+    // check if there was at lest 2 call during last 2.5 sec
+    expect(executeCronSpy.mock.calls.length).toBeGreaterThanOrEqual(2)
   })
 })

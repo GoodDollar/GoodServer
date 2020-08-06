@@ -1,7 +1,7 @@
 // libraries
 import winston from 'winston'
 import errorSerializer from 'pino-std-serializers/lib/err'
-import { omit, isPlainObject, isError } from 'lodash'
+import { omit, isPlainObject, isError, keys } from 'lodash'
 import Crypto from 'crypto'
 import { SPLAT } from 'triple-beam'
 
@@ -16,6 +16,7 @@ const colorizer = format.colorize()
 const { env, logLevel } = conf
 
 console.log('Starting logger', { logLevel, env })
+
 const levelConfigs = {
   levels: {
     error: 0,
@@ -35,9 +36,17 @@ const levelConfigs = {
   }
 }
 
+const transports = [
+  new winston.transports.Console({
+    silent: logLevel === 'silent'
+  }),
+  ErrorsTransport.factory({ level: 'error' })
+]
+
 const logger = winston.createLogger({
-  levels: levelConfigs.levels,
+  transports,
   level: logLevel,
+  levels: levelConfigs.levels,
   format: combine(
     timestamp(),
     format.errors({ stack: true }),
@@ -53,19 +62,30 @@ const logger = winston.createLogger({
         }: ${stringifiedPayload}`
       )
     })
-  ),
-  transports: [
-    new winston.transports.Console({
-      silent: logLevel === 'silent'
-    }),
-    ErrorsTransport.factory({ level: 'error' })
-  ]
+  )
 })
 
 winston.addColors(levelConfigs.colors)
 
-// set log middleware
-const addRequestLogger = (req, res, next) => {
+Object.defineProperty(logger.constructor.prototype, 'async', {
+  get() {
+    return new Proxy(this, {
+      get: (target, method) => async (...args) => {
+        const promise = Promise.all(
+          transports.map(transport => new Promise(resolve => transport.once('logged', resolve)))
+        )
+
+        target[method](...args)
+        return promise
+      }
+    })
+  }
+})
+
+/**
+ * Sets log middleware
+ */
+export const addRequestLogger = (req, res, next) => {
   const startTime = Date.now()
   let uuid = Math.random() + ' ' + startTime
   uuid = Crypto.createHash('sha1')
@@ -104,4 +124,4 @@ const printMemory = () => {
 }
 if (env !== 'test') setInterval(printMemory, 30000)
 
-export { addRequestLogger, logger as default }
+export default logger
