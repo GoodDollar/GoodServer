@@ -1,7 +1,7 @@
 // libraries
 import winston from 'winston'
 import errorSerializer from 'pino-std-serializers/lib/err'
-import { omit, isPlainObject, isError, keys } from 'lodash'
+import { omit, isPlainObject, isError } from 'lodash'
 import Crypto from 'crypto'
 import { SPLAT } from 'triple-beam'
 
@@ -69,16 +69,26 @@ winston.addColors(levelConfigs.colors)
 
 Object.defineProperty(logger.constructor.prototype, 'async', {
   get() {
-    return new Proxy(this, {
-      get: (target, method) => async (...args) => {
-        const promise = Promise.all(
-          transports.map(transport => new Promise(resolve => transport.once('logged', resolve)))
-        )
+    let { _asyncProxy } = this
 
-        target[method](...args)
-        return promise
-      }
-    })
+    if (!_asyncProxy) {
+      const _transports = transports.filter(({ silent }) => true !== silent)
+
+      _asyncProxy = new Proxy(this, {
+        get: (target, method) => async (...args) => {
+          const promise = Promise.all(
+            _transports.map(transport => new Promise(resolve => transport.once('logged', resolve)))
+          )
+
+          target[method](...args)
+          return promise
+        }
+      })
+
+      this._asyncProxy = _asyncProxy
+    }
+
+    return _asyncProxy
   }
 })
 
