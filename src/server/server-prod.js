@@ -4,6 +4,7 @@ import conf from './server.config'
 import { GunDBPublic } from './gun/gun-middleware'
 import requestTimeout from './utils/timeout'
 import startApp from './app'
+import AdminWallet from './blockchain/AdminWallet'
 
 export default function start(workerId) {
   global.workerId = workerId
@@ -36,7 +37,10 @@ export default function start(workerId) {
 
   Promise.race([
     requestTimeout(30000, 'gun not initialized'),
-    GunDBPublic.init(server, conf.gundbPassword, `publicdb${workerId}`, conf.gunPublicS3)
+    AdminWallet.ready.then(_ => {
+      const pkey = AdminWallet.wallets[AdminWallet.addresses[0]].privateKey
+      GunDBPublic.init(server, pkey, 'publicdb', conf.gunPublicS3)
+    })
   ]).catch(e => {
     console.log('gun failed... quiting', e)
     process.exit(-1)

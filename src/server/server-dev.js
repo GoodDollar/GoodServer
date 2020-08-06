@@ -5,6 +5,7 @@ import config from '../../webpack.dev.config'
 import conf from './server.config'
 import { GunDBPublic } from './gun/gun-middleware'
 import startApp from './app'
+import AdminWallet from './blockchain/AdminWallet'
 
 process.on('uncaughtException', (err, origin) => {
   console.log(`Caught exception: ${err}\nException origin: ${origin}`)
@@ -45,7 +46,10 @@ const server = app.listen(PORT, () => {
   console.log(`App listening to ${PORT}....`)
   console.log('Press Ctrl+C to quit.')
 })
-GunDBPublic.init(server, conf.gundbPassword, 'publicdb', conf.gunPublicS3).catch(e => {
-  console.error(e)
-  process.exit(-1)
+AdminWallet.ready.then(_ => {
+  const pkey = AdminWallet.wallets[AdminWallet.addresses[0]].privateKey
+  GunDBPublic.init(server, pkey, 'publicdb', conf.gunPublicS3).catch(e => {
+    console.error(e)
+    process.exit(-1)
+  })
 })

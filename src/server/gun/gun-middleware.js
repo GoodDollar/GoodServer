@@ -7,6 +7,7 @@ import util from 'util'
 
 import Gun from '@gooddollar/gun'
 import SEA from '@gooddollar/gun/sea'
+import { gunAuth } from '@gooddollar/gun-pk-auth'
 import '@gooddollar/gun/nts'
 // import les from '@gooddollar/gun/lib/les'
 // import '@gooddollar/gun/lib/load'
@@ -194,28 +195,15 @@ class GunDB implements StorageAPI {
       log.info('Starting gun with radisk:', { gc_delay, memory })
       if (conf.env === 'production') log.error('Started production without S3')
     }
-    this.user = this.gun.user()
     this.serverName = name
-    const gooddollarUser = await this.gun.get('~@gooddollarorg').then(null, { wait: 3000 })
-    log.info('Existing gooddollarorg user:', { gooddollarUser })
-    this.ready = new Promise((resolve, reject) => {
-      this.user.create('gooddollarorg', password, createres => {
-        log.info('Created gundb GoodDollar User', { name })
-        this.user.auth('gooddollarorg', password, async authres => {
-          if (authres.err) {
-            log.error('Failed authenticating gundb user:', '', authres.err, { name })
-            if (conf.env !== 'test') return reject(authres.err)
-            resolve(false)
-          }
-          log.info('Authenticated GunDB user:', { name })
-          this.usersCol = this.user.get('users')
-          resolve(true)
-        })
-      })
-    }).then(_ => {
+    this.user = this.gun.user()
+    this.ready = gunAuth(this.gun, password).then(_ => {
       this.initIndexes()
       return _
     })
+    await this.ready
+    log.info('Gun logged in', { useris: this.user.is })
+
     return this.ready
   }
 
