@@ -1,7 +1,12 @@
 import request from 'supertest'
 import Web3 from 'web3'
+import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
+
+import conf from '../server.config'
 
 const web3 = new Web3()
+
+const { networkId } = ContractsAddress[conf.network]
 
 export const getCreds = async (random = false) => {
   let randomCreds = {}
@@ -17,7 +22,7 @@ export const getCreds = async (random = false) => {
     profileSignature:
       'SEA{"m":"Login to GoodDAPP","s":"tNknsunS9psSLQDr/nFeobeHWdROtu3kEHgjHFSkreLFkgmHJPy/E3fm6llN1QOsNtfE12WTs4k1mOEE/H1AWw=="}',
     nonce: '',
-    networkId: 122
+    networkId
   }
   if (random) {
     let account = web3.eth.accounts.create()

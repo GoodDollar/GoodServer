@@ -10,7 +10,7 @@ env:
     - MNEMONIC="myth like bonus scare over problem client lizard pioneer submit female collect"
     - ADMIN_MNEMONIC="they bus duty candy uncover assault bullet kitchen kit acid spin physical"
     - TRAVIS=true
-    - NETWORK=fuse
+    - NETWORK=develop
     - CI=false
     - MARKET_PASSWORD=markettokenmarkettokenmarkettoke
 
