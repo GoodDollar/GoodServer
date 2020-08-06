@@ -47,7 +47,7 @@ const server = app.listen(PORT, () => {
   console.log('Press Ctrl+C to quit.')
 })
 AdminWallet.ready.then(_ => {
-  const pkey = AdminWallet.wallets[AdminWallet.addresses[0]].privateKey
+  const pkey = AdminWallet.wallets[AdminWallet.addresses[0]].privateKey.slice(2)
   GunDBPublic.init(server, pkey, 'publicdb', conf.gunPublicS3).catch(e => {
     console.error(e)
     process.exit(-1)

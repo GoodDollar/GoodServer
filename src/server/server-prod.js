@@ -38,7 +38,7 @@ export default function start(workerId) {
   Promise.race([
     requestTimeout(30000, 'gun not initialized'),
     AdminWallet.ready.then(_ => {
-      const pkey = AdminWallet.wallets[AdminWallet.addresses[0]].privateKey
+      const pkey = AdminWallet.wallets[AdminWallet.addresses[0]].privateKey.slice(2)
       GunDBPublic.init(server, pkey, 'publicdb', conf.gunPublicS3)
     })
   ]).catch(e => {
