@@ -1,3 +1,5 @@
+import fs from 'fs'
+import path from 'path'
 import { get } from 'lodash'
 import convict from 'convict'
 import dotenv from 'dotenv'
@@ -7,7 +9,17 @@ import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json
 
 import { version } from '../../package.json'
 
-dotenv.config({ path: process.env.NODE_ENV === 'test' ? `.env.test` : '.env' })
+let dotenvPath = '.env'
+
+if (process.env.NODE_ENV === 'test') {
+  dotenvPath += '.test'
+
+  if (fs.existsSync(path.resolve(__dirname, '../../.env.test.local'))) {
+    dotenvPath += '.local'
+  }
+}
+
+dotenv.config({ path: dotenvPath })
 
 // Define a schema
 const conf = convict({
