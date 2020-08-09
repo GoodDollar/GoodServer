@@ -197,7 +197,7 @@ class GunDB implements StorageAPI {
     this.user = this.gun.user()
     this.ready = gunAuth(this.gun, password).then(_ => {
       this.initIndexes()
-      return _
+      return true
     })
     await this.ready
     log.info('Gun logged in', { useris: this.user.is })

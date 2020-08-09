@@ -5,6 +5,8 @@ import { delay } from 'lodash'
 import logger from '../src/imports/logger'
 import { type UserRecord } from '../src/imports/types'
 import { GunDBPublic } from '../src/server/gun/gun-middleware'
+import AdminWallet from '../src/server/blockchain/AdminWallet'
+
 import conf from '../src/server/server.config'
 
 console.log(conf, process.env.NODE_ENV, process.env.TRAVIS)
@@ -18,11 +20,11 @@ class DBUpdates {
     let dbversion = await DatabaseVersion.findOne({})
 
     if (!dbversion) {
-      dbversion = new DatabaseVersion({ value: { version: 0 }})
+      dbversion = new DatabaseVersion({ value: { version: 0 } })
     }
 
     const { version } = dbversion.value
-    await this.testWrite()
+    // await this.testWrite()
 
     if (version < 1) {
       await Promise.all([
@@ -52,20 +54,24 @@ class DBUpdates {
           throw e
         })
 
-        dbversion.value.version = 2
-        await dbversion.save()
+      dbversion.value.version = 2
+      await dbversion.save()
     }
   }
 
   async testWrite() {
-    await GunDBPublic.init(null, conf.gundbPassword, `publicdb0`, null)
+    await AdminWallet.ready
+    const pkey = AdminWallet.wallets[AdminWallet.addresses[0]].privateKey.slice(2)
+    await GunDBPublic.init(null, pkey, `publicdb0`)
     await GunDBPublic.gun.get('users/bywalletAddress').putAck({ version: Date.now() })
   }
   /**
    * convert existing gun indexes to hash based, also add them to the trusted index under our profile
    */
   async upgradeGun() {
-    await GunDBPublic.init(null, conf.gundbPassword, `publicdb0`, null)
+    await AdminWallet.ready
+    const pkey = AdminWallet.wallets[AdminWallet.addresses[0]].privateKey.slice(2)
+    await GunDBPublic.init(null, pkey, `publicdb0`, null)
     const gooddollarProfile = '~' + GunDBPublic.user.is.pub
     logger.info('GoodDollar profile id:', { gooddollarProfile })
     let ps = []
@@ -148,7 +154,9 @@ class DBUpdates {
    * convert existing gun indexes to hash based, also add them to the trusted index under our profile
    */
   async fixGunTrustProfiles() {
-    await GunDBPublic.init(null, conf.gundbPassword, `publicdb0`, null)
+    await AdminWallet.ready
+    const pkey = AdminWallet.wallets[AdminWallet.addresses[0]].privateKey.slice(2)
+    await GunDBPublic.init(null, pkey, `publicdb0`, null)
     const gooddollarProfile = '~' + GunDBPublic.user.is.pub
     logger.info('GoodDollar profile id:', {
       gooddollarProfile,

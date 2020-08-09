@@ -6,7 +6,7 @@
 // import config from '../../webpack.dev.config'
 import conf from './server.config'
 import { GunDBPublic } from './gun/gun-middleware'
-// import AdminWallet from './blockchain/AdminWallet'
+import AdminWallet from './blockchain/AdminWallet'
 import mongoose from './db/mongo-db'
 import startApp from './app'
 
@@ -15,14 +15,16 @@ const PORT = conf.port || 4000
 const makeServer = done => {
   const app = startApp()
   let server
-  let serverPromise = new Promise((res, rej) => {
+  let serverPromise = new Promise(async (res, rej) => {
     server = app.listen(PORT, err => {
       console.log(`App listening to ${PORT}....`)
       // Delay to wait until gun middleware and wallet are ready
       if (err) rej(err)
       else res()
     })
-    GunDBPublic.init(server, conf.gundbPassword, 'publicdb')
+    await AdminWallet.ready
+    const pkey = AdminWallet.wallets[AdminWallet.addresses[0]].privateKey.slice(2)
+    GunDBPublic.init(server, pkey, 'publicdb')
   })
   serverPromise
     .then(x => mongoose.connection.readyState)
