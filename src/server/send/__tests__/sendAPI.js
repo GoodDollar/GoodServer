@@ -7,7 +7,8 @@ import makeServer from '../../server-test'
 import { getToken } from '../../__util__/'
 import UserDBPrivate from '../../db/mongo/user-privat-provider'
 import { Mautic } from '../../mautic/mauticAPI'
-
+import AdminWallet from '../../blockchain/AdminWallet'
+jest.setTimeout(10000)
 describe('sendAPÏ', () => {
   let server
   beforeAll(async done => {
@@ -19,7 +20,7 @@ describe('sendAPÏ', () => {
       fullName: 'full name',
       mauticId
     })
-    jest.setTimeout(30000)
+    await AdminWallet.ready
     server = makeServer(done)
   })
 
