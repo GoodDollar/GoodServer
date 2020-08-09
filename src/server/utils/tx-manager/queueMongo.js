@@ -4,9 +4,9 @@ import conf from '../../server.config'
 import moment from 'moment'
 
 export default class queueMongo {
-  constructor(networkId) {
+  constructor(networkId, lockExpireSeconds = conf.mongoQueueMaxLockTime) {
     this.log = logger.child({ from: 'queueMongo-' + networkId })
-
+    this.lockExpireSeconds = lockExpireSeconds
     this.networkId = networkId
     this.model = WalletNonce
     this.queue = []
@@ -44,7 +44,7 @@ export default class queueMongo {
   async getWalletNonce(addresses) {
     try {
       const expired = moment()
-        .subtract(conf.mongoQueueMaxLockTime, 'seconds')
+        .subtract(this.lockExpireSeconds, 'seconds')
         .toDate()
       const filter = {
         address: { $in: addresses },
@@ -70,7 +70,7 @@ export default class queueMongo {
       }
       this.reRunQueue = setTimeout(() => {
         this.run()
-      }, conf.mongoQueueMaxLockTime * 1000)
+      }, this.lockExpireSeconds * 1000)
       return wallet
     } catch (e) {
       this.log.error('TX queueMongo (getWalletNonce)', e.message, e, { addresses })
@@ -221,7 +221,7 @@ export default class queueMongo {
    */
   async isLocked(address) {
     const wallet = await this.model.findOne({ address, networkId: this.networkId })
-    const expired = moment().subtract(conf.mongoQueueMaxLockTime, 'seconds')
+    const expired = moment().subtract(this.lockExpireSeconds, 'seconds')
     const lockNotExpired = wallet && wallet.lockedAt && expired.isBefore(wallet.lockedAt)
     return Boolean(wallet && wallet.isLock && lockNotExpired)
   }
