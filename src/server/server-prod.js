@@ -1,8 +1,5 @@
 import path from 'path'
 import express from 'express'
-import conf from './server.config'
-import { GunDBPublic } from './gun/gun-middleware'
-import requestTimeout from './utils/timeout'
 import startApp from './app'
 
 export default function start(workerId) {
@@ -32,13 +29,5 @@ export default function start(workerId) {
   const server = app.listen(PORT, () => {
     console.log(`App listening to ${PORT}....`)
     console.log('Press Ctrl+C to quit.')
-  })
-
-  Promise.race([
-    requestTimeout(30000, 'gun not initialized'),
-    GunDBPublic.init(server, conf.gundbPassword, `publicdb${workerId}`, conf.gunPublicS3)
-  ]).catch(e => {
-    console.log('gun failed... quiting', e)
-    process.exit(-1)
   })
 }
