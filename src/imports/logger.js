@@ -62,6 +62,13 @@ export const addRequestLogger = (req, res, next) => {
   next()
 }
 
+// add logging of the deprecation errors
+process.on('deprecation', exception => {
+  const { message } = exception
+
+  logger.error('Deprecation error:', message, exception)
+})
+
 // print memory fn
 const printMemory = () => {
   const used = process.memoryUsage()
