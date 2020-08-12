@@ -68,7 +68,7 @@ class ZoomProvider implements IEnrollmentProvider {
       const { subCode, message } = exception.response || {}
 
       // if liveness issues were detected
-      if ('unableToProcess' === subCode && message.toLowerCase().includes('liveness')) {
+      if ('livenessCheckFailed' === subCode) {
         const isLive = false
 
         // notifying about liveness check failed
@@ -122,7 +122,7 @@ class ZoomProvider implements IEnrollmentProvider {
       // (e.g. liveness wasn't passsed, glasses detected, poor quality)
       if ('nameCollision' !== response.subCode) {
         const isEnrolled = false
-        const isLive = api.checkLivenessStatus(response)
+        const isLive = api.isLivenessCheckPassed(response)
 
         // then notifying & throwing enrollment exception
         await notifyProcessor({ isEnrolled, isLive })
