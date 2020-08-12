@@ -268,7 +268,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         let verified = await verifier.verifyMobile({ identifier: user.loggedInAs }, verificationData).catch(e => {
           log.warn('mobile verification failed:', { e })
 
-          res.json(400, { ok: 0, error: 'OTP FAILED', message: e.message })
+          res.status(400).json({ ok: 0, error: 'OTP FAILED', message: e.message })
 
           return false
         })
@@ -868,7 +868,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
    */
   app.get('/verify/phase', (_, res) => {
     const { phase } = conf
-    
+
     res.json({ success: true, phase })
     res.end()
   })
