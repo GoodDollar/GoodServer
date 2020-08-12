@@ -1,7 +1,6 @@
 // libraries
 import winston from 'winston'
-import { omit, isPlainObject, mapValues } from 'lodash'
-import Crypto from 'crypto'
+import { mapValues } from 'lodash'
 
 // configs
 import ErrorsTransport from './logger/ErrorsTransport'
@@ -9,6 +8,8 @@ import conf from '../server/server.config'
 
 import { levelConfigs } from './logger/options'
 import { extended } from './logger/formatter'
+import { createLoggerMiddleware } from './logger/middleware'
+import { addLoggerMonitor } from './logger/monitor'
 
 const { combine, timestamp, errors } = winston.format
 const { env, logLevel } = conf
@@ -34,40 +35,10 @@ winston.addColors(levelConfigs.colors)
 /**
  * Sets log middleware
  */
-export const addRequestLogger = (req, res, next) => {
-  const startTime = Date.now()
-  let uuid = Math.random() + ' ' + startTime
-  uuid = Crypto.createHash('sha1')
-    .update(uuid)
-    .digest('base64')
-    .slice(0, 10)
+export const addRequestLogger = createLoggerMiddleware(logger)
 
-  req.log = logger.child({ uuid, from: req.url, userId: req.user && req.user.identifier })
-  res.on('finish', () => {
-    const responseTimeSeconds = (Date.now() - startTime) / 1000
-    let logBody = req.body
-
-    if (req.url.startsWith('/verify/face/') && isPlainObject(logBody)) {
-      logBody = omit(logBody, 'faceMap', 'auditTrailImage', 'lowQualityAuditTrailImage')
-    }
-
-    req.log.log('http', 'Incoming Request', {
-      responseTimeSeconds,
-      method: req.method,
-      body: logBody,
-      query: req.query,
-      headers: req.headers
-    })
-  })
-  next()
-}
-
-// add logging of the deprecation errors
-process.on('deprecation', exception => {
-  const { message } = exception
-
-  logger.error('Deprecation error:', message, exception)
-})
+// add logging of the global events (errors, warning, deprecations, unhandled rejections )
+addLoggerMonitor(logger)
 
 // print memory fn
 const printMemory = () => {

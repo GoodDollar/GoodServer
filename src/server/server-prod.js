@@ -6,19 +6,11 @@ export default function start(workerId) {
   global.workerId = workerId
   console.log(`start workerId = ${workerId}`)
 
-  process.on('uncaughtException', (err, origin) => {
-    console.log(`Uncaught exception: ${err}\nException origin: ${origin}`)
-    process.exit(-1)
-  })
-  process.on('unhandledRejection', (reason, promise) => {
-    console.log('Unhandled Rejection at:', promise, 'reason:', reason)
-    // Application specific logging, throwing an error, or other logic here
-  })
-
   const DIST_DIR = __dirname
 
   const HTML_FILE = path.join(DIST_DIR, 'index.html')
   const app = startApp()
+
   app.use(express.static(DIST_DIR))
 
   app.get('*', (req, res) => {
@@ -26,7 +18,8 @@ export default function start(workerId) {
   })
 
   const PORT = process.env.PORT || 3000
-  const server = app.listen(PORT, () => {
+
+  app.listen(PORT, () => {
     console.log(`App listening to ${PORT}....`)
     console.log('Press Ctrl+C to quit.')
   })
