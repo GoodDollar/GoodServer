@@ -1,4 +1,4 @@
-import { isError, isString, assign } from 'lodash'
+import { isError, isString } from 'lodash'
 
 export const addLoggerMonitor = logger => {
   const log = logger.child({ from: 'GoodServer' })
