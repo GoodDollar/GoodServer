@@ -122,7 +122,7 @@ class ZoomProvider implements IEnrollmentProvider {
       // (e.g. liveness wasn't passsed, glasses detected, poor quality)
       if ('nameCollision' !== response.subCode) {
         const isEnrolled = false
-        const isLive = api.checkLivenessStatus(response)
+        const isLive = api.isLivenessCheckPassed(response)
 
         // then notifying & throwing enrollment exception
         await notifyProcessor({ isEnrolled, isLive })

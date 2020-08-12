@@ -42,28 +42,16 @@ class ZoomAPI {
 
   async submitEnrollment(payload, customLogger = null) {
     let [response, exception] = await this._sendRequest('post', '/enrollment', payload, { customLogger })
-    const { code, glasses, message, isLowQuality, isEnrolled } = response
-    const isLivenessPassed = this.checkLivenessStatus(response)
+    const { code, message, isEnrolled } = response
+    const [isLivenessPassed, reasonOfFailure] = this._checkLivenessStatus(response)
 
     if (exception && /enrollment\s+already\s+exists/i.test(message)) {
       response.subCode = 'nameCollision'
     } else if (200 !== code || !isLivenessPassed || !isEnrolled) {
-      let errorMessage = message
-
-      if (!isLivenessPassed && (isLowQuality || glasses)) {
-        errorMessage = 'Liveness could not be determined because '
-
-        if (isLowQuality) {
-          errorMessage += 'the photoshoots evaluated to be of poor quality.'
-        } else if (glasses) {
-          errorMessage += 'wearing glasses were detected.'
-        }
-      }
-
       if (exception) {
-        exception.message = errorMessage
+        exception.message = reasonOfFailure
       } else {
-        exception = new Error(errorMessage)
+        exception = new Error(reasonOfFailure)
         assign(exception, { response })
       }
     }
@@ -87,10 +75,24 @@ class ZoomAPI {
 
   async faceSearch(payload, minimalMatchLevel: number = null, customLogger = null) {
     let minMatchLevel = minimalMatchLevel
-    const [response, exception] = await this._sendRequest('post', '/search', payload, { customLogger })
+    let [response, exception] = await this._sendRequest('post', '/search', payload, { customLogger })
 
     if (exception) {
-      if (/must\s+have.+?liveness\s+proven/i.test(response.message)) {
+      let livenessCheckFailed = false
+
+      if ('livenessStatus' in response) {
+        const [isLivenessPassed, reasonOfFailure] = this._checkLivenessStatus(response)
+
+        livenessCheckFailed = !isLivenessPassed
+
+        if (livenessCheckFailed) {
+          exception.message = reasonOfFailure
+        }
+      } else {
+        livenessCheckFailed = /must\s+have.+?liveness\s+proven/i.test(response.message)
+      }
+
+      if (livenessCheckFailed) {
         response.subCode = 'livenessCheckFailed'
       }
 
@@ -111,8 +113,10 @@ class ZoomAPI {
     return response
   }
 
-  checkLivenessStatus(response) {
-    return LIVENESS_PASSED === response.livenessStatus
+  isLivenessCheckPassed(response) {
+    const { livenessStatus } = response
+
+    return LIVENESS_PASSED === livenessStatus
   }
 
   _configureClient(Config, logger) {
@@ -294,6 +298,29 @@ class ZoomAPI {
     }
 
     return response
+  }
+
+  _checkLivenessStatus(response) {
+    const { glasses, message, isLowQuality } = response
+    const isLivenessPassed = this.isLivenessCheckPassed(response)
+
+    let errorMessage = null
+
+    if (!isLivenessPassed) {
+      errorMessage = message
+
+      if (isLowQuality || glasses) {
+        errorMessage = 'Liveness could not be determined because '
+
+        if (isLowQuality) {
+          errorMessage += 'the photoshoots evaluated to be of poor quality.'
+        } else if (glasses) {
+          errorMessage += 'wearing glasses were detected.'
+        }
+      }
+    }
+
+    return [isLivenessPassed, errorMessage]
   }
 }
 

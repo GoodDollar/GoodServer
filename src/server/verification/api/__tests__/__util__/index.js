@@ -73,6 +73,13 @@ export default zoomServiceMock => {
         code: 400,
         mode: 'dev',
         message: '3D FaceMaps that are used with Search APIs must have had Liveness Proven.'
+      },
+      data: {
+        glasses: false,
+        sessionTokenStatus: 1,
+        faceMapType: 0,
+        livenessStatus: 1,
+        isLowQuality: false
       }
     })
 
