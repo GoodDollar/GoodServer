@@ -15,7 +15,7 @@ class ZoomAPI {
 
   constructor(Config, httpFactory, logger) {
     const { zoomMinimalMatchLevel } = Config
-    const httpClientOptions = this._configureClient(Config)
+    const httpClientOptions = this._configureClient(Config, logger)
 
     this.logger = logger
     this.http = httpFactory(httpClientOptions)
@@ -115,8 +115,7 @@ class ZoomAPI {
     return LIVENESS_PASSED === response.livenessStatus
   }
 
-  _configureClient(Config) {
-    const { logger } = this
+  _configureClient(Config, logger) {
     const { zoomLicenseKey, zoomServerBaseUrl } = Config
     const serverURL = new URL(zoomServerBaseUrl)
     const { username, password } = serverURL
@@ -261,11 +260,12 @@ class ZoomAPI {
 
     try {
       response = await this.http[method](...filter([endpoint, payloadOrOptions, options]))
-    } catch (requestException) {
-      exception = requestException(({ response } = requestException))
+    } catch (apiException) {
+      exception = apiException
+      response = apiException.response
 
       if (!response) {
-        throw requestException
+        throw apiException
       }
     }
 
@@ -273,7 +273,7 @@ class ZoomAPI {
   }
 
   async _faceMapRequest(method, enrollmentIdentifier, customLogger = null) {
-    let [response, exception] = this._sendRequest(method, '/enrollment/:enrollmentIdentifier', {
+    let [response, exception] = await this._sendRequest(method, '/enrollment/:enrollmentIdentifier', {
       customLogger,
       params: { enrollmentIdentifier }
     })

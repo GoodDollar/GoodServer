@@ -90,7 +90,7 @@ describe('ZoomProvider', () => {
       }
     })
 
-    zoomServiceMock.onPost('/enrollment').reply(200, {
+    zoomServiceMock.onPost('/enrollment').reply(400, {
       meta: {
         ok: false,
         code: 400,
