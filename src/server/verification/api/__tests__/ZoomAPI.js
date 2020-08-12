@@ -124,8 +124,7 @@ describe('ZoomAPI', () => {
         ok: false,
         code: 400,
         mode: 'dev',
-        message: faceSearchServiceError,
-        subCode: 'invalidSessionId'
+        message: faceSearchServiceError
       }
     })
 
@@ -172,8 +171,7 @@ describe('ZoomAPI', () => {
         ok: false,
         code: 400,
         mode: 'dev',
-        message: enrollmentServiceError,
-        subCode: 'missingParameter'
+        message: enrollmentServiceError
       }
     })
 

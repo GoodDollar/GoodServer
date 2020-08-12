@@ -72,7 +72,6 @@ export default zoomServiceMock => {
         ok: false,
         code: 400,
         mode: 'dev',
-        subCode: 'unableToProcess',
         message: '3D FaceMaps that are used with Search APIs must have had Liveness Proven.'
       }
     })
@@ -155,8 +154,7 @@ export default zoomServiceMock => {
         ok: false,
         code: 400,
         mode: 'dev',
-        message: enrollmentNotFoundMessage,
-        subCode: 'facemapNotFound'
+        message: enrollmentNotFoundMessage
       }
     })
 

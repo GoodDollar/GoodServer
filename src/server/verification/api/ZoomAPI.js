@@ -2,12 +2,10 @@
 
 import Axios from 'axios'
 import { URL } from 'url'
-import { merge, get, pick, omit, isPlainObject, isArray, mapValues, once } from 'lodash'
+import { assign, merge, get, pick, omit, isPlainObject, isArray, mapValues, once, filter } from 'lodash'
 
 import Config from '../../server.config'
 import logger from '../../../imports/logger'
-
-const log = logger.child({ from: 'ZoomAPI' })
 
 const LIVENESS_PASSED = 0
 
@@ -15,10 +13,11 @@ class ZoomAPI {
   http = null
   defaultMinimalMatchLevel = null
 
-  constructor(Config, httpFactory) {
+  constructor(Config, httpFactory, logger) {
     const { zoomMinimalMatchLevel } = Config
     const httpClientOptions = this._configureClient(Config)
 
+    this.logger = logger
     this.http = httpFactory(httpClientOptions)
     this.defaultMinimalMatchLevel = Number(zoomMinimalMatchLevel)
 
@@ -27,21 +26,28 @@ class ZoomAPI {
   }
 
   async getSessionToken(customLogger = null) {
-    const response = await this.http.get('/session-token', { customLogger })
+    let [response, exception] = await this._sendRequest('get', '/session-token', { customLogger })
 
-    if (!get(response, 'sessionToken')) {
-      throw new Error('FaceTec API response is empty')
+    if (!exception && !get(response, 'sessionToken')) {
+      exception = new Error('FaceTec API response is empty')
+      assign(exception, { response })
+    }
+
+    if (exception) {
+      throw exception
     }
 
     return response
   }
 
   async submitEnrollment(payload, customLogger = null) {
-    const response = await this.http.post('/enrollment', payload, { customLogger })
+    let [response, exception] = await this._sendRequest('post', '/enrollment', payload, { customLogger })
     const { code, glasses, message, isLowQuality, isEnrolled } = response
     const isLivenessPassed = this.checkLivenessStatus(response)
 
-    if (200 !== code || !isLivenessPassed || !isEnrolled) {
+    if (exception && /enrollment\s+already\s+exists/i.test(message)) {
+      response.subCode = 'nameCollision'
+    } else if (200 !== code || !isLivenessPassed || !isEnrolled) {
       let errorMessage = message
 
       if (!isLivenessPassed && (isLowQuality || glasses)) {
@@ -54,45 +60,45 @@ class ZoomAPI {
         }
       }
 
-      const exception = new Error(errorMessage)
+      if (exception) {
+        exception.message = errorMessage
+      } else {
+        exception = new Error(errorMessage)
+        assign(exception, { response })
+      }
+    }
 
-      exception.response = response
+    if (exception) {
       throw exception
     }
 
     return response
   }
 
+  // eslint-disable-next-line require-await
   async readEnrollment(enrollmentIdentifier, customLogger = null) {
-    return this.http.get('/enrollment/:enrollmentIdentifier', { customLogger, params: { enrollmentIdentifier } })
+    return this._faceMapRequest('get', enrollmentIdentifier, customLogger)
   }
 
+  // eslint-disable-next-line require-await
   async disposeEnrollment(enrollmentIdentifier, customLogger = null) {
-    const response = await this.http.delete('/enrollment/:enrollmentIdentifier', {
-      customLogger,
-      params: { enrollmentIdentifier }
-    })
-
-    const { code, message } = response
-
-    if (200 !== code || message.includes('No entry found')) {
-      const exception = new Error(message)
-
-      response.subCode = 'facemapNotFound'
-      exception.response = response
-      throw exception
-    }
-
-    return response
+    return this._faceMapRequest('delete', enrollmentIdentifier, customLogger)
   }
 
   async faceSearch(payload, minimalMatchLevel: number = null, customLogger = null) {
-    const { http, defaultMinimalMatchLevel } = this
-    const response = await http.post('/search', payload, { customLogger })
     let minMatchLevel = minimalMatchLevel
+    const [response, exception] = await this._sendRequest('post', '/search', payload, { customLogger })
+
+    if (exception) {
+      if (/must\s+have.+?liveness\s+proven/i.test(response.message)) {
+        response.subCode = 'livenessCheckFailed'
+      }
+
+      throw exception
+    }
 
     if (null === minMatchLevel) {
-      minMatchLevel = defaultMinimalMatchLevel
+      minMatchLevel = this.defaultMinimalMatchLevel
     }
 
     if (minMatchLevel) {
@@ -110,6 +116,7 @@ class ZoomAPI {
   }
 
   _configureClient(Config) {
+    const { logger } = this
     const { zoomLicenseKey, zoomServerBaseUrl } = Config
     const serverURL = new URL(zoomServerBaseUrl)
     const { username, password } = serverURL
@@ -140,7 +147,7 @@ class ZoomAPI {
       baseURL: serverURL.toString()
     }
 
-    log.debug('Initialized Zoom API client with the options:', httpClientOptions)
+    logger.debug('Initialized Zoom API client with the options:', httpClientOptions)
     return httpClientOptions
   }
 
@@ -207,7 +214,7 @@ class ZoomAPI {
   _logRequest(request) {
     const requestCopy = pick(request, 'url', 'method', 'headers', 'params')
     const { data, customLogger } = request
-    const logger = customLogger || log
+    const logger = customLogger || this.logger
 
     requestCopy.data = this._createLoggingSafeCopy(data)
     logger.debug('Calling Zoom API:', requestCopy)
@@ -215,18 +222,22 @@ class ZoomAPI {
 
   _logResponse(logMessage, response) {
     const { data, config } = response
-    const logger = config.customLogger || log
+    const logger = config.customLogger || this.logger
 
     logger.debug(logMessage, this._createLoggingSafeCopy(data))
   }
 
   _logUnexpectedExecption(exception) {
+    const { logger } = this
     const { response, message } = exception
 
     if (response) {
-      log.debug('HTTP exception during Zoom API call:', pick(response, 'data', 'status', 'statusText'))
+      const { data, status, statusText, config } = response
+      const log = config.customLogger || logger
+
+      log.debug('HTTP exception during Zoom API call:', { data, status, statusText })
     } else {
-      log.debug('Unexpected exception during Zoom API call:', message)
+      logger.debug('Unexpected exception during Zoom API call:', message)
     }
   }
 
@@ -243,6 +254,47 @@ class ZoomAPI {
       this._createLoggingSafeCopy(payloadField)
     )
   }
+
+  async _sendRequest(method, endpoint, payloadOrOptions = null, options = null) {
+    let response
+    let exception
+
+    try {
+      response = await this.http[method](...filter([endpoint, payloadOrOptions, options]))
+    } catch (requestException) {
+      exception = requestException(({ response } = requestException))
+
+      if (!response) {
+        throw requestException
+      }
+    }
+
+    return [response, exception]
+  }
+
+  async _faceMapRequest(method, enrollmentIdentifier, customLogger = null) {
+    let [response, exception] = this._sendRequest(method, '/enrollment/:enrollmentIdentifier', {
+      customLogger,
+      params: { enrollmentIdentifier }
+    })
+
+    const { message } = response
+
+    if (/no\s+entry\s+found/i.test(message)) {
+      if (!exception) {
+        exception = new Error(message)
+        exception.response = response
+      }
+
+      response.subCode = 'facemapNotFound'
+    }
+
+    if (exception) {
+      throw exception
+    }
+
+    return response
+  }
 }
 
-export default once(() => new ZoomAPI(Config, Axios.create))
+export default once(() => new ZoomAPI(Config, Axios.create, logger.child({ from: 'ZoomAPI' })))

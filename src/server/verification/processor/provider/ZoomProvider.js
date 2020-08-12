@@ -68,7 +68,7 @@ class ZoomProvider implements IEnrollmentProvider {
       const { subCode, message } = exception.response || {}
 
       // if liveness issues were detected
-      if ('unableToProcess' === subCode && message.toLowerCase().includes('liveness')) {
+      if ('livenessCheckFailed' === subCode) {
         const isLive = false
 
         // notifying about liveness check failed

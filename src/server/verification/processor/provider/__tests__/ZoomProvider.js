@@ -95,8 +95,7 @@ describe('ZoomProvider', () => {
         ok: false,
         code: 400,
         mode: 'dev',
-        message: 'An enrollment already exists for this enrollmentIdentifier.',
-        subCode: 'nameCollision'
+        message: 'An enrollment already exists for this enrollmentIdentifier.'
       }
     })
 
