@@ -15,7 +15,6 @@ export default class ErrorsTransport extends Transport {
     const { env, sentryDSN, version, network, remoteLoggingAllowed } = Config
 
     super(opts)
-    bindAll(this, 'onLogged')
 
     if (!remoteLoggingAllowed || !sentryDSN) {
       return
@@ -37,10 +36,12 @@ export default class ErrorsTransport extends Transport {
   }
 
   log(context, callback) {
-    const { sentryInitialized, onLogged } = this
+    setImmediate(() => {
+      this.emit('logged', context)
+    })
 
-    if (!sentryInitialized) {
-      onLogged(context, callback)
+    if (!this.sentryInitialized) {
+      callback()
       return
     }
 
@@ -50,7 +51,8 @@ export default class ErrorsTransport extends Transport {
     // i.e log.error('some error message')
     const [errorMessage, errorObj = new Error(), extra = {}] = context[SPLAT] || []
     const dataToPassIntoLog = { generalMessage, errorMessage, errorObj, ...extra, ...data }
-    const { message } = errorObj
+
+    errorObj.message = `${trimEnd(generalMessage, ' :')}: ${errorObj.message}`
 
     Sentry.configureScope(scope => {
       scope.setUser({
@@ -62,17 +64,7 @@ export default class ErrorsTransport extends Transport {
       })
     })
 
-    errorObj.message = `${trimEnd(generalMessage, ' :')}: ${message}`
     Sentry.captureException(errorObj)
-
-    Sentry.flush().finally(() => {
-      assign(errorObj, { message })
-      onLogged(context, callback)
-    })
-  }
-
-  onLogged(context, callback) {
-    this.emit('logged', context)
     callback()
   }
 }

@@ -55,8 +55,8 @@ export default class EnrollmentSession {
         result.enrollmentResult = response
       }
 
-      await log.async.error('Enrollment session failed with exception:', message, exception, { result })
       this.onEnrollmentFailed(exception)
+      log.error('Enrollment session failed with exception:', message, exception, { result })
     } finally {
       this.sessionRef = null
     }
