@@ -50,8 +50,8 @@ const logger = winston.createLogger({
   format: combine(
     timestamp(),
     format.errors({ stack: true }),
-    printf(({ level, timestamp, from, userId, ...rest }) => {
-      const logPayload = { ...rest, context: rest[SPLAT] }
+    printf(({ level, timestamp, from, userId, message, ...rest }) => {
+      const logPayload = { message, context: rest[SPLAT] }
       const stringifiedPayload = JSON.stringify(logPayload, (_, value) =>
         isError(value) ? errorSerializer(value) : value
       )
