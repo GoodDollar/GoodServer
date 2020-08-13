@@ -80,7 +80,6 @@ describe('stakingModelManager', () => {
 
   test(`stakingModelManager should return next cronTime`, async () => {
     const { cronTime } = await fundManager.run().catch(_ => _)
-    console.log({ cronTime })
     expect(cronTime.isAfter()).toBeTruthy()
   })
 })
