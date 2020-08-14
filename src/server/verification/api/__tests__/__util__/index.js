@@ -67,7 +67,7 @@ export default zoomServiceMock => {
     })
 
   const mockFailedSearch = () =>
-    zoomServiceMock.onPost('/search').reply(400, {
+    zoomServiceMock.onPost('/search').reply(200, {
       meta: {
         ok: false,
         code: 400,
@@ -156,7 +156,7 @@ export default zoomServiceMock => {
   }
 
   const mockEnrollmentNotFound = enrollmentIdentifier => {
-    zoomServiceMock.onGet(enrollmentUri(enrollmentIdentifier)).reply(400, {
+    zoomServiceMock.onGet(enrollmentUri(enrollmentIdentifier)).reply(200, {
       meta: {
         ok: false,
         code: 400,
