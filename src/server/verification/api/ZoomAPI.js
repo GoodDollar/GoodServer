@@ -42,21 +42,17 @@ class ZoomAPI {
 
   async submitEnrollment(payload, customLogger = null) {
     let [response, exception] = await this._sendRequest('post', '/enrollment', payload, { customLogger })
-    const { code, message, isEnrolled } = response
-    const [isLivenessPassed, reasonOfFailure] = this._checkLivenessStatus(response)
-
-    if (exception && /enrollment\s+already\s+exists/i.test(message)) {
-      response.subCode = 'nameCollision'
-    } else if (200 !== code || !isLivenessPassed || !isEnrolled) {
-      if (exception) {
-        exception.message = reasonOfFailure
-      } else {
-        exception = new Error(reasonOfFailure)
-        assign(exception, { response })
-      }
-    }
+    const { message, isEnrolled } = response
 
     if (exception) {
+      const [isLivenessPassed, reasonOfFailure] = this._checkLivenessStatus(response)
+
+      if (/enrollment\s+already\s+exists/i.test(message)) {
+        response.subCode = 'nameCollision'
+      } else if (!isLivenessPassed || !isEnrolled) {
+        exception.message = reasonOfFailure
+      }
+
       throw exception
     }
 
@@ -181,16 +177,29 @@ class ZoomAPI {
   _configureResponses() {
     const { response } = this.http.interceptors
 
-    response.use(response => this._responseInterceptor(response), exception => this._exceptionInterceptor(exception))
+    response.use(
+      async response => this._responseInterceptor(response),
+      async exception => this._exceptionInterceptor(exception)
+    )
   }
 
-  _responseInterceptor(response) {
+  async _responseInterceptor(response) {
+    const transformedResponse = this._transformResponse(response)
+    const { ok, message, code } = transformedResponse
+
     this._logResponse('Received response from Zoom API:', response)
 
-    return this._transformResponse(response)
+    if (!ok || 200 !== code) {
+      const exception = new Error(message)
+
+      exception.response = transformedResponse
+      throw exception
+    }
+
+    return transformedResponse
   }
 
-  _exceptionInterceptor(exception) {
+  async _exceptionInterceptor(exception) {
     const { response, message } = exception
 
     if (response && isPlainObject(response.data)) {
