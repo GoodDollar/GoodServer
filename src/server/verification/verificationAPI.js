@@ -217,22 +217,29 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
       log.debug('sending otp:', user.loggedInAs)
 
-      if (!userRec.smsValidated || hashedMobile !== savedMobile) {
-        let code
-        if (['production', 'staging'].includes(conf.env)) {
-          code = await sendOTP({ mobile })
-        }
-        const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
-        log.debug('otp sent:', user.loggedInAs, code)
-        await storage.updateUser({
-          identifier: user.loggedInAs,
-          otp: {
-            ...userRec.otp,
-            code,
-            expirationDate,
-            mobile
+      if (['production', 'staging'].includes(conf.env)) {
+        if (!userRec.smsValidated || hashedMobile !== savedMobile) {
+          try {
+            const code = await sendOTP({ mobile })
+            const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
+
+            log.debug('otp sent:', user.loggedInAs, code)
+
+            await storage.updateUser({
+              identifier: user.loggedInAs,
+              otp: {
+                ...userRec.otp,
+                code,
+                expirationDate,
+                mobile
+              }
+            })
+          } catch (e) {
+            log.error('Failed to send otp', e.message, e, { userRec })
+
+            throw new Error('Something went wrong while trying to send OTP to the user')
           }
-        })
+        }
       }
 
       res.json({ ok: 1 })
@@ -429,7 +436,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
             log.debug('sent new user email validation code', code)
           } catch (e) {
             log.error('failed sending email verification to user:', e.message, e, { userRec, code })
-            throw e
+            throw new Error('Something went wrong while trying to send email verification code to the user')
           }
         }
       }
