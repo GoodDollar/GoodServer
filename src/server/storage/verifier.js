@@ -96,23 +96,25 @@ class FacebookVerificationStrategy {
 class UserVerifier {
   static strategies = {}
 
+  static get hasStrategiesAttached() {
+    return !isEmpty(UserVerifier.strategies)
+  }
+
   // initialization incapsulated via factory pattern
   static factory(userRecord, requestPayload, logger) {
+    const { hasStrategiesAttached, addStrategy } = this
+
     // attaching strategies on first call
-    if (!UserVerifier.hasStrategiesAttached()) {
-      UserVerifier.addStrategy('default', DefaultVerificationStrategy, [Config])
-      UserVerifier.addStrategy('facebook', FacebookVerificationStrategy)
+    if (!hasStrategiesAttached) {
+      addStrategy('default', new DefaultVerificationStrategy(Config))
+      addStrategy('facebook', new FacebookVerificationStrategy())
     }
 
     return new UserVerifier(userRecord, requestPayload, logger)
   }
 
-  static addStrategy(provider, strategyClass, dependencies = []) {
-    UserVerifier.strategies[provider] = Reflect.construct(strategyClass, dependencies)
-  }
-
-  static hasStrategiesAttached() {
-    return !isEmpty(UserVerifier.strategies)
+  static addStrategy(provider, strategy) {
+    UserVerifier.strategies[provider] = strategy
   }
 
   constructor(userRecord, requestPayload, logger) {
