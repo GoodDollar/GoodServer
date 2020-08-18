@@ -94,7 +94,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         .then(r => logger.debug('updated new user record', { toUpdateUser }))
         .catch(e => {
           logger.error('failed updating new user record', e.message, e, { toUpdateUser })
-          throw new Error('Something went wrong while trying update user record')
+          throw e
         })
       signUpPromises.push(p1)
 
@@ -108,7 +108,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           })
           .catch(e => {
             logger.error('addUserToWhiteList failed', e.message, e, { userRecord })
-            throw new Error('Something went wrong while trying to white-list a new user')
+            throw e
           })
         signUpPromises.push(p2)
       }
@@ -144,7 +144,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         })
         .catch(e => {
           logger.error('updateMarketToken failed', e.message, e, { userRecordWithPII })
-          throw new Error('Something went wrong while trying to fetch market token')
+          throw e
         })
       signUpPromises.push(marketTokenP)
 
