@@ -102,7 +102,7 @@ class UserVerifier {
 
   // initialization incapsulated via factory pattern
   static factory(userRecord, requestPayload, logger) {
-    const { hasStrategiesAttached, addStrategy } = this
+    const { hasStrategiesAttached, addStrategy } = UserVerifier
 
     // attaching strategies on first call
     if (!hasStrategiesAttached) {
