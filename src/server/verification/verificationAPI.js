@@ -388,17 +388,18 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
     '/verify/sendemail',
     requestRateLimiter(),
     passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res, next) => {
+    wrapAsync(async (req, res) => {
       let runInEnv = ['production', 'staging', 'test'].includes(conf.env)
       const log = req.log
 
       const { user, body } = req
       const { email } = body.user
+      let { tempMauticId } = user.otp || {}
 
       //merge user details for use by mautic
+      const { email: currentEmail, mauticId } = user
       let userRec: UserRecord = defaults(body.user, user)
-      const currentEmail = user.email
-      const tempMauticId = user.otp && user.otp.tempMauticId
+      const isEmailChanged = currentEmail && currentEmail !== email
 
       if (conf.allowDuplicateUserData === false && (await storage.isDupUserData({ email }))) {
         return res.json({ ok: 0, error: 'Email already exists, please use a different one' })
@@ -406,24 +407,37 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
       let code
       if (runInEnv === true && conf.skipEmailVerification === false) {
-        if ((!user.mauticId && !tempMauticId) || (currentEmail && currentEmail !== email)) {
+        let currentMauticId = mauticId || tempMauticId
+
+        if (currentMauticId && !isEmailChanged) {
+          const isMauticIdExists = await Mautic.contactExists(currentMauticId)
+
+          if (!isMauticIdExists) {
+            currentMauticId = null
+          }
+        }
+
+        if (!currentMauticId || isEmailChanged) {
           const mauticContact = await Mautic.createContact(userRec)
 
-          //otp might be undefined so we use spread operator instead of userRec.otp.tempId=
+          tempMauticId = get(mauticContact, 'contact.id')
+          // otp might be undefined so we use spread operator instead of userRec.otp.tempId=
           userRec.otp = {
             ...userRec.otp,
-            tempMauticId: mauticContact.contact.id
+            tempMauticId
           }
+
           log.debug('created new user mautic contact', userRec)
         }
 
         code = generateOTP(6)
-        if (!user.isEmailConfirmed || email !== currentEmail) {
+
+        if (!user.isEmailConfirmed || isEmailChanged) {
           try {
             await Mautic.sendVerificationEmail(
               {
                 ...userRec,
-                mauticId: (userRec.otp && userRec.otp.tempMauticId) || userRec.mauticId
+                mauticId: tempMauticId || mauticId
               },
               code
             )
