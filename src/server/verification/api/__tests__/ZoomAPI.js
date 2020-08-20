@@ -119,7 +119,7 @@ describe('ZoomAPI', () => {
   test('faceSearch() should throw on service failure', async () => {
     const faceSearchServiceError = 'sessionId must be UUID in standard format.'
 
-    zoomServiceMock.onPost('/search').reply(400, {
+    zoomServiceMock.onPost('/search').reply(200, {
       meta: {
         ok: false,
         code: 400,
@@ -166,7 +166,7 @@ describe('ZoomAPI', () => {
   test('submitEnrollment() should throw on service failures', async () => {
     const enrollmentServiceError = 'You must pass a valid FaceMap or image parameter.'
 
-    zoomServiceMock.onPost('/enrollment').reply(400, {
+    zoomServiceMock.onPost('/enrollment').reply(200, {
       meta: {
         ok: false,
         code: 400,

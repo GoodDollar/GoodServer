@@ -360,12 +360,13 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           log.debug('topping wallet tx', { walletaddress: user.gdAddress, tx })
           return { ok: 1 }
         })
-        .catch(async e => {
-          log.error('Failed top wallet tx', e.message, e)
+        .catch(async exception => {
+          const { message } = exception
+          log.error('Failed top wallet tx', message, exception)
           //restore last top wallet in case of error
           await storage.updateUser({ identifier: user.loggedInAs, lastTopWallet: user.lastTopWallet })
 
-          return { ok: -1, error: e.message }
+          return { ok: -1, error: message }
         })
       log.info('topping wallet', { txRes, loggedInAs: user.loggedInAs, adminBalance: await AdminWallet.getBalance() })
 

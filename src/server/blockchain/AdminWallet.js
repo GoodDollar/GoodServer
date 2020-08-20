@@ -658,10 +658,13 @@ export class Wallet {
             onConfirmation && onConfirmation(c)
           })
           .on('error', async e => {
-            log.error('sendNative failed', e.message, e)
+            const { message } = e
+
+            log.error('sendNative failed', message, e)
+
             if (isNonceError(e)) {
               let netNonce = parseInt(await this.web3.eth.getTransactionCount(address))
-              log.error('sendNative nonce failure retry', e.message, e, {
+              log.error('sendNative nonce failure retry', message, e, {
                 params,
                 nonce,
                 gas,
@@ -749,11 +752,13 @@ export class Wallet {
             res(r)
           })
           .on('confirmation', c => onConfirmation && onConfirmation(c))
-          .on('error', async e => {
-            log.error('sendTransaction error:', e.message, e, { from: address, uuid })
-            if (isFundsError(e)) {
+          .on('error', async exception => {
+            const { message } = exception
+
+            log.error('sendTransaction error:', message, exception, { from: address, uuid })
+            if (isFundsError(exception)) {
               log.warn('sendTransaciton funds issue retry', {
-                errMessage: e.message,
+                errMessage: message,
                 nonce,
                 gas,
                 gasPrice,
@@ -767,10 +772,10 @@ export class Wallet {
                 await this.txManager.unlock(address)
                 rej(e)
               }
-            } else if (isNonceError(e)) {
+            } else if (isNonceError(exception)) {
               let netNonce = parseInt(await this.mainnetWeb3.eth.getTransactionCount(address))
               log.warn('sendTransaciton nonce failure retry', {
-                errMessage: e.message,
+                errMessage: message,
                 nonce,
                 gas,
                 gasPrice,
@@ -786,8 +791,8 @@ export class Wallet {
               }
             } else {
               fail()
-              onError && onError(e)
-              rej(e)
+              onError && onError(exception)
+              rej(exception)
             }
           })
       })

@@ -29,7 +29,7 @@ class ZoomAPI {
     let [response, exception] = await this._sendRequest('get', '/session-token', { customLogger })
 
     if (!exception && !get(response, 'sessionToken')) {
-      exception = new Error('FaceTec API response is empty')
+      exception = new Error('No sessionToken in the FaceTec API response')
       assign(exception, { response })
     }
 
@@ -43,16 +43,18 @@ class ZoomAPI {
   async submitEnrollment(payload, customLogger = null) {
     let [response, exception] = await this._sendRequest('post', '/enrollment', payload, { customLogger })
     const { message, isEnrolled } = response
+    const [isLivenessPassed, reasonOfFailure] = this._checkLivenessStatus(response)
 
-    if (exception) {
-      const [isLivenessPassed, reasonOfFailure] = this._checkLivenessStatus(response)
-
+    if (exception || !isLivenessPassed || !isEnrolled) {
       if (/enrollment\s+already\s+exists/i.test(message)) {
         response.subCode = 'nameCollision'
-      } else if (!isLivenessPassed || !isEnrolled) {
-        exception.message = reasonOfFailure
       }
 
+      if (!exception) {
+        exception = new Error(reasonOfFailure)
+      }
+
+      assign(exception, { response, message: reasonOfFailure })
       throw exception
     }
 
@@ -189,8 +191,8 @@ class ZoomAPI {
 
     this._logResponse('Received response from Zoom API:', response)
 
-    if (!ok || 200 !== code) {
-      const exception = new Error(message)
+    if (false === ok || 200 !== code) {
+      const exception = new Error(message || 'FaceTec API response is empty')
 
       exception.response = transformedResponse
       throw exception

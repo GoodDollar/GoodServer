@@ -162,8 +162,10 @@ export class StakingModelManager {
       const cronTime = await this.getNextCollectionTime()
       //make sure atleast one hour passes in case of an error
       if (cronTime.isBefore(moment().add(1, 'hour'))) cronTime.add(1, 'hour')
-      this.log.error('collecting interest failed.', e.message, e, { cronTime })
-      sendSlackAlert({ msg: 'failure: collecting interest failed.', error: e.message })
+
+      const { message } = e
+      this.log.error('collecting interest failed.', message, e, { cronTime })
+      sendSlackAlert({ msg: 'failure: collecting interest failed.', error: message })
 
       return { result: false, cronTime }
     }
@@ -349,9 +351,10 @@ class FishingManager {
       const fishers = await this.fish(inactive)
       const cronTime = await this.getNextDay()
       return { result: true, cronTime, fishers }
-    } catch (e) {
-      this.log.error('fishing task failed:', e.message, e)
-      sendSlackAlert({ msg: 'failure: fishing failed', error: e.message })
+    } catch (exception) {
+      const { message } = exception
+      this.log.error('fishing task failed:', message, exception)
+      sendSlackAlert({ msg: 'failure: fishing failed', error: message })
 
       const cronTime = await this.getNextDay()
       if (cronTime.isBefore(moment().add(1, 'hour'))) cronTime.add(1, 'hour')

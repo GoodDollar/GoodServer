@@ -510,6 +510,18 @@ const conf = convict({
     default: 'gooddollar-auth0-sms-passwordless',
     env: 'TORUS_AUTH0SMS'
   },
+  torusVerificationAttempts: {
+    doc: 'Amount of proof verification attempts',
+    format: Number,
+    default: 3,
+    env: 'TORUS_VERIFICATION_ATTEMPTS'
+  },
+  torusVerificationRetryDelay: {
+    doc: 'Delay before next attempt after failure',
+    format: Number,
+    default: 50,
+    env: 'TORUS_VERIFICATION_RETRY_DELAY'
+  },
   newuserTag: {
     doc: 'mautic tag for new user. incremented by phases',
     format: String,
