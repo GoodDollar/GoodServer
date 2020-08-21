@@ -219,6 +219,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
       if (!userRec.smsValidated || hashedMobile !== savedMobile) {
         let code
+
         if (['production', 'staging'].includes(conf.env)) {
           code = await sendOTP({ mobile })
         }
@@ -227,7 +228,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         await storage.updateUser({
           identifier: user.loggedInAs,
           otp: {
-            ...userRec.otp,
+            ...(userRec.otp || {}),
             code,
             expirationDate,
             mobile
@@ -423,7 +424,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           tempMauticId = get(mauticContact, 'contact.id')
           // otp might be undefined so we use spread operator instead of userRec.otp.tempId=
           userRec.otp = {
-            ...userRec.otp,
+            ...(userRec.otp || {}),
             tempMauticId
           }
 
@@ -454,7 +455,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         identifier: user.identifier,
         emailVerificationCode: code,
         otp: {
-          ...userRec.otp,
+          ...(userRec.otp || {}),
           email
         }
       })
