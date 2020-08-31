@@ -113,6 +113,10 @@ export default class queueMongo {
             nonce,
             isLock: false,
             networkId: this.networkId
+          },
+          //make sure we reset nonce on startup
+          $set: {
+            nonce
           }
         },
         { upsert: true }
