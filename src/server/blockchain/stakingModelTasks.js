@@ -28,6 +28,7 @@ export class StakingModelManager {
 
   constructor() {
     this.log = logger.child({ from: 'StakingModelManager' })
+    this.log.debug('initializing', { dai: this.daiAddress, cdai: this.cDaiAddress })
     this.managerContract = AdminWallet.mainnetWeb3.eth.Contract(FundManagerABI.abi, this.managerAddress)
     this.stakingContract = AdminWallet.mainnetWeb3.eth.Contract(StakingABI.abi, this.stakingAddress)
     this.dai = AdminWallet.mainnetWeb3.eth.Contract(DaiABI.abi, this.daiAddress)
@@ -68,50 +69,57 @@ export class StakingModelManager {
   }
 
   mockInterest = async () => {
-    if (config.ethereumMainnet.network_id !== 1) {
-      //top ropsten wallet
-      if (moment().diff(this.lastRopstenTopping, 'days') > 0) {
-        fetch('https://faucet.metamask.io', { method: 'POST', body: AdminWallet.mainnetAddresses[0] }).catch(e => {
-          this.log.error('failed calling ropsten faucet', e.message, e)
-        })
-        this.lastRopstenTopping = moment()
-      }
-      const tx1 = AdminWallet.sendTransactionMainnet(
-        this.dai.methods.approve(this.cDai.address, toWei('100', 'ether')),
-        {},
-        {},
-        AdminWallet.mainnetAddresses[0]
-      )
-      const tx2 = AdminWallet.sendTransactionMainnet(
-        this.dai.methods.allocateTo(AdminWallet.mainnetAddresses[0], toWei('100', 'ether')),
-        {},
-        {}
-      )
-      await Promise.all([tx1, tx2]).catch(e => {
-        this.log.warn('mockInterest dai approve and allocateTo failed', { e, msg: e.message })
-        throw e
-      })
-      this.log.info('mockInterest approved and allocated dai. minting cDai...')
-      const tx3 = await AdminWallet.sendTransactionMainnet(
-        this.cDai.methods.mint(toWei('100', 'ether')),
-        {},
-        {},
-        AdminWallet.mainnetAddresses[0]
-      )
-
-      let ownercDaiBalanceAfter = await this.cDai.methods
-        .balanceOf(AdminWallet.mainnetAddresses[0])
-        .call()
-        .then(_ => _.toString())
-
-      this.log.info('mockInterest minted fake cDai, transferring to staking contract...', { ownercDaiBalanceAfter })
-      await AdminWallet.sendTransactionMainnet(
-        this.cDai.methods.transfer(this.stakingAddress, ownercDaiBalanceAfter),
-        {},
-        {},
-        AdminWallet.mainnetAddresses[0]
-      )
+    if (config.ethereumMainnet.network_id === 1) {
+      return
     }
+    //top ropsten wallet
+    if (moment().diff(this.lastRopstenTopping, 'days') > 0) {
+      fetch('https://faucet.metamask.io', { method: 'POST', body: AdminWallet.mainnetAddresses[0] }).catch(e => {
+        this.log.error('failed calling ropsten faucet', e.message, e)
+      })
+      this.lastRopstenTopping = moment()
+    }
+    const tx1 = AdminWallet.sendTransactionMainnet(
+      this.dai.methods.approve(this.cDai.address, toWei('10', 'ether')),
+      {},
+      {},
+      AdminWallet.mainnetAddresses[0]
+    ).catch(e => {
+      this.log.warn('dai  approve failed')
+      throw e
+    })
+    const tx2 = AdminWallet.sendTransactionMainnet(
+      this.dai.methods.allocateTo(AdminWallet.mainnetAddresses[0], toWei('100', 'ether')),
+      {},
+      {}
+    ).catch(e => {
+      this.log.warn('dai  allocateTo failed')
+    })
+    await Promise.all([tx1, tx2]).catch(e => {
+      this.log.warn('mockInterest dai approve and allocateTo failed', { e, msg: e.message })
+      throw e
+    })
+
+    this.log.info('mockInterest approved and allocated dai. minting cDai...')
+    await AdminWallet.sendTransactionMainnet(
+      this.cDai.methods.mint(toWei('10', 'ether')),
+      {},
+      {},
+      AdminWallet.mainnetAddresses[0]
+    )
+
+    let ownercDaiBalanceAfter = await this.cDai.methods
+      .balanceOf(AdminWallet.mainnetAddresses[0])
+      .call()
+      .then(_ => _.toString())
+
+    this.log.info('mockInterest minted fake cDai, transferring to staking contract...', { ownercDaiBalanceAfter })
+    await AdminWallet.sendTransactionMainnet(
+      this.cDai.methods.transfer(this.stakingAddress, ownercDaiBalanceAfter),
+      {},
+      {},
+      AdminWallet.mainnetAddresses[0]
+    )
   }
   run = async () => {
     try {
