@@ -110,7 +110,6 @@ export default class queueMongo {
         {
           $setOnInsert: {
             address,
-            nonce,
             isLock: false,
             networkId: this.networkId
           },
