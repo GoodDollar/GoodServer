@@ -47,7 +47,7 @@
   "dependencies": {
     "@babel/polyfill": "^7.4.4",
     "@gooddollar/goodcontracts": "^2.0.0",
-    "@gooddollar/gun": "^0.2020.901",
+    "@gooddollar/gun": "^0.2020.902",
     "@gooddollar/gun-pk-auth": "^1.0.2",
     "@sendgrid/mail": "^6.4.0",
     "@sentry/integrations": "^5.19.2",
