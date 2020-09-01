@@ -605,87 +605,9 @@ describe('verificationAPI', () => {
 
   test('/verify/phase', async () => {
     const { phase } = Config
-    
+
     await request(server)
       .get('/verify/phase')
       .expect(200, { success: true, phase })
-  })
-
-  xtest('/verify/hanuka-bonus witout auth creds', async () => {
-    let res = await request(server).get('/verify/hanuka-bonus')
-
-    expect(res.status).toBe(401)
-  })
-
-  xtest('/verify/hanuka-bonus with wrong dates', async () => {
-    Config.hanukaStartDate = moment('01/01/2018').format('DD/MM/YYYY')
-    Config.hanukaEndDate = moment('01/02/2018').format('DD/MM/YYYY')
-
-    const creds = await getCreds(true)
-    const token = await getToken(server, creds)
-
-    let res = await request(server)
-      .get('/verify/hanuka-bonus')
-      .set('Authorization', `Bearer ${token}`)
-
-    expect(res.status).toBe(200)
-    expect(res.body).toMatchObject({
-      ok: 0,
-      message: 'That is no the period of Hanuka bonus'
-    })
-  })
-
-  xtest('/verify/hanuka-bonus errored with trying to get bonus 2 times per day', async () => {
-    Config.hanukaStartDate = moment()
-      .subtract(1, 'day')
-      .format('DD/MM/YYYY')
-    Config.hanukaEndDate = moment()
-      .add(1, 'day')
-      .format('DD/MM/YYYY')
-
-    const creds = await getCreds(true)
-    const token = await getToken(server, creds)
-
-    let res = await request(server)
-      .get('/verify/hanuka-bonus')
-      .set('Authorization', `Bearer ${token}`)
-
-    expect(res.status).toBe(200)
-    expect(res.body).toMatchObject({
-      ok: 1
-    })
-
-    await delay(7000)
-
-    let res2 = await request(server)
-      .get('/verify/hanuka-bonus')
-      .set('Authorization', `Bearer ${token}`)
-
-    expect(res2.status).toBe(200)
-    console.log('qqq', res2.body)
-    expect(res2.body).toMatchObject({
-      message: 'The user already get Hanuka bonus today'
-    })
-  })
-
-  xtest('/verify/hanuka-bonus with correct dates', async () => {
-    Config.hanukaStartDate = moment()
-      .subtract(1, 'day')
-      .format('DD/MM/YYYY')
-    Config.hanukaEndDate = moment()
-      .add(1, 'day')
-      .format('DD/MM/YYYY')
-
-    const creds = await getCreds(true)
-    const token = await getToken(server, creds)
-
-    let res = await request(server)
-      .get('/verify/hanuka-bonus')
-      .set('Authorization', `Bearer ${token}`)
-
-    expect(res.status).toBe(200)
-    expect(res.body).toMatchObject({
-      ok: 1
-    })
   })
 })

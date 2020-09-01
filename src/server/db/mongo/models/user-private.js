@@ -66,10 +66,6 @@ export const UserPrivateSchema = new mongoose.Schema({
   profilePublickey: {
     type: String
   },
-  hanukaBonus: {
-    type: mongoose.Schema.Types.Mixed,
-    default: {}
-  },
   isCompleted: {
     whiteList: {
       type: Boolean,
