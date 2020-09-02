@@ -8,7 +8,6 @@ import { wrapAsync } from '../utils/helpers'
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import addUserSteps from './addUserSteps'
-import { generateMarketToken } from '../utils/market'
 import createUserVerifier from './verifier'
 
 const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
@@ -81,7 +80,6 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           : {
               whiteList: false,
               w3Record: false,
-              marketToken: false,
               topWallet: false
             }
       })
@@ -136,18 +134,6 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         })
       signUpPromises.push(web3RecordP)
 
-      const marketTokenP = addUserSteps
-        .updateMarketToken(userRecordWithPII, logger)
-        .then(r => {
-          logger.debug('updateMarketToken success')
-          return r
-        })
-        .catch(e => {
-          logger.error('updateMarketToken failed', e.message, e, { userRecordWithPII })
-          throw e
-        })
-      signUpPromises.push(marketTokenP)
-
       const p4 = addUserSteps
         .topUserWallet(userRecord, logger)
         .then(isTopWallet => {
@@ -182,13 +168,11 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
       })
 
       const web3Record = await web3RecordP
-      const marketToken = await marketTokenP
 
       res.json({
         ok: 1,
         loginToken: web3Record && web3Record.loginToken,
-        w3Token: web3Record && web3Record.w3Token,
-        marketToken
+        w3Token: web3Record && web3Record.w3Token
       })
     })
   )
@@ -241,28 +225,6 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
       const { user } = req
 
       res.json({ ok: 1, exists: user.createdDate != null, fullName: user.fullName })
-    })
-  )
-
-  /**
-   * @api {post} /user/market generate user market login token
-   * @apiName Market Token
-   * @apiGroup Storage
-   *   *
-   * @apiSuccess {Number} ok
-   * @apiSuccess {String} jwt
-   * @ignore
-   */
-  app.get(
-    '/user/market',
-    passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res, next) => {
-      const { user, log } = req
-      log.debug('new market token request:', { user })
-      const jwt = conf.marketPassword && generateMarketToken(user)
-      log.debug('new market token result:', { jwt })
-
-      res.json({ ok: 1, jwt })
     })
   )
 

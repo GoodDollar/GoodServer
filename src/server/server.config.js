@@ -396,12 +396,6 @@ const conf = convict({
     env: 'WEB3_SITE_URL',
     default: 'https://inivtation.herokuapp.com'
   },
-  marketPassword: {
-    doc: 'password for market jwt',
-    format: '*',
-    env: 'MARKET_PASSWORD',
-    default: undefined
-  },
   rateLimitMinutes: {
     doc: 'Amount of minutes used for request rate limiter',
     format: '*',

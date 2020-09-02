@@ -75,10 +75,6 @@ export const UserPrivateSchema = new mongoose.Schema({
       type: Boolean,
       default: false
     },
-    marketToken: {
-      type: Boolean,
-      default: false
-    },
     topWallet: {
       type: Boolean,
       default: false

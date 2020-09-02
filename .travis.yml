@@ -12,7 +12,6 @@ env:
     - TRAVIS=true
     - NETWORK=develop
     - CI=false
-    - MARKET_PASSWORD=markettokenmarkettokenmarkettoke
 
 # before_install:
 # - npm install -g ganache-cli truffle webpack
