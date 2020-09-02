@@ -539,6 +539,12 @@ const conf = convict({
     format: String,
     default: '',
     env: 'ADMIN_PASSWORD'
+  },
+  maxGasPrice: {
+    doc: 'ethereum mainnet max gas price in gwei',
+    format: Number,
+    default: 200,
+    env: 'MAX_GAS_PRICE'
   }
 })
 

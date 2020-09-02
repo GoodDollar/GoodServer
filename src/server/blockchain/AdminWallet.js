@@ -67,6 +67,7 @@ export class Wallet {
     this.network = conf.network
     this.networkIdMainnet = conf.ethereumMainnet.network_id
     this.networkId = conf.ethereum.network_id
+    this.maxMainnetGasPrice = conf.maxGasPrice * 1000000000 //maxGasPrice is in gwei, convert to wei
     this.ready = this.init()
   }
 
@@ -728,7 +729,7 @@ export class Wallet {
 
       //adminwallet contract might give wrong gas estimates, so if its more than block gas limit reduce it to default
       if (gas > 8000000) gas = defaultGas
-      gasPrice = gasPrice || (await this.mainnetWeb3.eth.getGasPrice())
+      gasPrice = gasPrice || Math.min(await this.mainnetWeb3.eth.getGasPrice(), this.maxMainnetGasPrice)
 
       const uuid = Crypto.randomBytes(5).toString('base64')
       log.debug('getting tx lock mainnet:', { uuid })
