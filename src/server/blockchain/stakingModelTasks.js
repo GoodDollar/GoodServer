@@ -28,7 +28,10 @@ export class StakingModelManager {
 
   constructor() {
     this.log = logger.child({ from: 'StakingModelManager' })
-    this.managerContract = AdminWallet.mainnetWeb3.eth.Contract(FundManagerABI.abi, this.managerAddress)
+    //polling timeout since ethereum has network congestion and we try to pay little gas so it will take a long time to confirm tx
+    this.managerContract = AdminWallet.mainnetWeb3.eth.Contract(FundManagerABI.abi, this.managerAddress, {
+      transactionPollingTimeout: 1000
+    })
     this.stakingContract = AdminWallet.mainnetWeb3.eth.Contract(StakingABI.abi, this.stakingAddress)
     this.dai = AdminWallet.mainnetWeb3.eth.Contract(DaiABI.abi, this.daiAddress)
     this.cDai = AdminWallet.mainnetWeb3.eth.Contract(cDaiABI.abi, this.cDaiAddress)
@@ -48,20 +51,54 @@ export class StakingModelManager {
 
   getAvailableInterest = async () => this.stakingContract.methods.currentUBIInterest.call()
   transferInterest = async () => {
-    const fundsTX = await AdminWallet.sendTransactionMainnet(
-      this.managerContract.methods.transferInterest(this.stakingAddress),
-      {}
-    )
-    const fundsEvent = get(fundsTX, 'events.FundsTransferred')
-    this.log.info('transferInterest result event', { fundsEvent })
-    return fundsEvent
+    let txHash
+    try {
+      const fundsTX = await AdminWallet.sendTransactionMainnet(
+        this.managerContract.methods.transferInterest(this.stakingAddress),
+        { onTransactionHash: h => (txHash = h) },
+        { gas: 500000 } //force fixed gas price, tx should take around 450k
+      )
+      const fundsEvent = get(fundsTX, 'events.FundsTransferred')
+      this.log.info('transferInterest result event', { fundsEvent })
+      return fundsEvent
+    } catch (e) {
+      if (txHash && e.message.toLowerCase().includes('timeout')) {
+        return this.waitForTransferInterest(txHash)
+      } else {
+        throw e
+      }
+    }
+  }
+
+  waitForTransferInterest = async txHash => {
+    let retry = 0
+    while (true) {
+      retry += 1
+      this.log.info('retrying timedout tx', { txHash, retry })
+      const receipt = await AdminWallet.mainnetWeb3.eth.getTransactionReceipt(txHash)
+      if (receipt) {
+        if (receipt.status) {
+          const fundsEvents = await this.managerContract.getPastEvents('FundsTransferred', {
+            fromBlock: receipt.blockNumber,
+            toBlock: receipt.blockNumber
+          })
+          const fundsEvent = get(fundsEvents, 0)
+          this.log.info('retrying timedout tx success transferInterest result event', { txHash, fundsEvent })
+          return fundsEvent
+        }
+        //tx eventually failed
+        throw new Error('retrying timedout tx failed txHash: ' + txHash)
+      }
+      //no receipt yet wait 10 minutes
+      await delay(1000 * 60 * 10)
+    }
   }
 
   getNextCollectionTime = async () => {
     let canCollectFunds = await this.canCollectFunds()
+    const blocksForNextCollection = await this.blocksUntilNextCollection()
+    this.log.info('canRun result:', { canCollectFunds, blocksForNextCollection })
     if (canCollectFunds === false) {
-      const blocksForNextCollection = await this.blocksUntilNextCollection()
-      this.log.info('canRun result:', { canCollectFunds, blocksForNextCollection })
       return moment().add(blocksForNextCollection * 15, 'seconds')
     }
     return moment()
