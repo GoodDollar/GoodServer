@@ -6,7 +6,6 @@ import UserDBPrivate from '../db/mongo/user-privat-provider'
 import { type UserRecord } from '../../imports/types'
 import { Mautic } from '../mautic/mauticAPI'
 import W3Helper from '../utils/W3Helper'
-import { generateMarketToken } from '../utils/market'
 import requestTimeout from '../utils/timeout'
 
 const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
@@ -99,24 +98,6 @@ const updateW3Record = async (user: any, logger: any) => {
   return userDB
 }
 
-const updateMarketToken = async (user: any, logger: any) => {
-  if (conf.env !== 'test' && conf.isEtoro === false) {
-    return
-  }
-
-  let userDB = await UserDBPrivate.getUser(user.identifier)
-  const marketToken = get(userDB, 'isCompleted.marketToken', false)
-  if (!marketToken) {
-    const marketToken = await generateMarketToken(user)
-    logger.debug('generate new user market token:', { marketToken, user })
-    if (marketToken) {
-      await UserDBPrivate.updateUser({ identifier: user.identifier, marketToken, 'isCompleted.marketToken': true })
-    }
-    return marketToken
-  }
-  return userDB.marketToken
-}
-
 const topUserWallet = async (userRecord: UserRecord, logger: any) => {
   let user = await UserDBPrivate.getUser(userRecord.identifier)
   const topWallet = get(user, 'isCompleted.topWallet', false)
@@ -138,7 +119,6 @@ const topUserWallet = async (userRecord: UserRecord, logger: any) => {
 
 export default {
   topUserWallet,
-  updateMarketToken,
   updateW3Record,
   updateMauticRecord,
   addUserToWhiteList

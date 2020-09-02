@@ -535,99 +535,6 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
   )
 
   /**
-   * @api {post} /verify/hanuka-bonus Check hanuka bonus availability
-   * @apiName Hanuka Bonus
-   * @apiGroup Verification
-   *
-   * @apiSuccess {Number} ok
-   * @ignore
-   */
-  app.get(
-    '/verify/hanuka-bonus',
-    passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res, next) => {
-      const log = req.log
-      const { user } = req
-      const now = moment().utcOffset('+0200')
-      const startHanuka = moment(conf.hanukaStartDate, 'DD/MM/YYYY').utcOffset('+0200')
-      const endHanuka = moment(conf.hanukaEndDate, 'DD/MM/YYYY')
-        .endOf('day')
-        .utcOffset('+0200')
-
-      if (startHanuka.isAfter(now) || now.isAfter(endHanuka)) {
-        log.info('That is no the period of Hanuka bonus')
-
-        return res.json({
-          ok: 0,
-          message: 'That is no the period of Hanuka bonus'
-        })
-      }
-
-      const currentDayNumber = now.diff(startHanuka, 'days') + 1
-      const dayField = `day${currentDayNumber}`
-
-      if (user.hanukaBonus && user.hanukaBonus[dayField]) {
-        log.info('The user already get Hanuka bonus today', { date: now, dayNumber: dayField, user })
-
-        return res.json({
-          ok: 0,
-          message: 'The user already get Hanuka bonus today'
-        })
-      }
-
-      const bonusInWei = gdToWei(currentDayNumber)
-
-      log.debug('Hanuka Dates/Data for calculations', {
-        now,
-        currentDayNumber,
-        dayField,
-        bonusInWei,
-        bonus: currentDayNumber
-      })
-
-      const { release, fail } = await txManager.lock(user.gdAddress, 0)
-
-      AdminWallet.redeemBonuses(user.gdAddress, bonusInWei, {
-        onTransactionHash: hash => {
-          if (res.headersSent) {
-            log.error('checkHanukaBonus got tx hash but headers already sent', '', null, { hash, user })
-            return
-          }
-          return res.status(200).json({
-            ok: 1,
-            hash
-          })
-        },
-        onReceipt: async r => {
-          log.info('Bonus redeem - receipt received', r)
-
-          await storage.updateUser({
-            identifier: user.loggedInAs,
-            hanukaBonus: {
-              ...user.hanukaBonus,
-              [dayField]: true
-            }
-          })
-
-          release()
-        },
-        onError: e => {
-          log.error('Bonuses charge failed', e.message, e, { user })
-
-          fail()
-
-          if (!res.headersSent) {
-            res.status(400).json({
-              ok: -1,
-              message: 'The error occurred while trying to send your bonus'
-            })
-          }
-        }
-      })
-    })
-  )
-
-  /**
    * @api {get} /verify/w3/email Verify email to be equal with email provided by token from web3
    * @apiName Web3 Email Verify
    * @apiGroup Verification
@@ -766,8 +673,6 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           message: 'User should be verified to get bonuses'
         })
       }
-
-      AdminWallet.checkHanukaBonus(currentUser, storage).catch(e => log.error('checkHnukaBonus failed', e.message, e))
 
       let wallet_token = currentUser.w3Token
 

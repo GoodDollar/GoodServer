@@ -8,7 +8,7 @@ export type UserRecord = {
   smsValidated?: boolean,
   isEmailConfirmed?: boolean,
   otp?: { code: number, expirationDate: number, tempMauticId: string },
-  isCompleted?: { whiteList: boolean, w3Record: boolean, marketToken: boolean, topWallet: boolean },
+  isCompleted?: { whiteList: boolean, w3Record: boolean, topWallet: boolean },
   emailVerificationCode?: string,
   mauticId?: string,
   loginToken?: string,

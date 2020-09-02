@@ -14,13 +14,11 @@ describe('storageAPI', () => {
   const isCompletedAllFalse = {
     whiteList: false,
     w3Record: false,
-    marketToken: false,
     topWallet: false
   }
   const isCompletedAllTrue = {
     whiteList: true,
     w3Record: true,
-    marketToken: true,
     topWallet: false
   }
   const user: UserRecord = {
@@ -95,12 +93,6 @@ describe('storageAPI', () => {
     await addUserSteps.updateW3Record(userRecord, console)
     const userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')
     expect(userIsCompleted.w3Record).toBeTruthy()
-  })
-
-  test('check updateMarketToken', async () => {
-    await addUserSteps.updateMarketToken(user, console)
-    const userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')
-    expect(userIsCompleted.marketToken).toBeTruthy()
   })
 
   test('check isCompletedAllTrue', async () => {
