@@ -4,6 +4,8 @@ import { body } from 'express-validator'
 import passport from 'passport'
 import { map, get } from 'lodash'
 import { sha3 } from 'web3-utils'
+import moment from 'moment'
+
 import { Mautic } from '../mautic/mauticAPI'
 import { ClaimQueueProps } from '../db/mongo/models/props'
 
@@ -172,9 +174,11 @@ const ClaimQueue = {
       }
     }
 
-    storage.updateUser({ identifier: user.identifier, claimQueue: { status, date: Date.now() } })
+    const now = Date.now()
 
-    return { ok: 1, queue: { status, date: Date.now() } }
+    storage.updateUser({ identifier: user.identifier, claimQueue: { status, date: now } })
+
+    return { ok: 1, queue: { status, date: moment(now).toISOString() } }
   }
 }
 
