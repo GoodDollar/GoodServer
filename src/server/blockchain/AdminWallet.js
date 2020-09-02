@@ -570,14 +570,16 @@ export class Wallet {
           .on('error', async e => {
             log.error('sendTransaction error:', e.message, e, { from: address, uuid })
             if (isFundsError(e)) {
+              balance = await this.mainnetWeb3.eth.getBalance(address)
               log.warn('sendTransaciton funds issue retry', {
                 errMessage: e.message,
                 nonce,
                 gas,
                 gasPrice,
-                address
+                address,
+                balance
               })
-              sendSlackAlert({ msg: 'admin account funds low', address })
+              sendSlackAlert({ msg: 'admin account funds low', address, balance })
               await this.txManager.unlock(address)
               try {
                 res(await this.sendTransaction(tx, txCallbacks, { gas, gasPrice }))
@@ -720,7 +722,7 @@ export class Wallet {
           .estimateGas()
           .then(gas => gas + 200000) //buffer for proxy contract, reimburseGas?, and low gas unexpected failures
           .catch(e => {
-            log.error('Failed to estimate gas for tx', e.message, e)
+            log.error('Failed to estimate gas for tx mainnet', e.message, e)
             return defaultGas
           }))
 
@@ -729,25 +731,31 @@ export class Wallet {
       gasPrice = gasPrice || (await this.mainnetWeb3.eth.getGasPrice())
 
       const uuid = Crypto.randomBytes(5).toString('base64')
-      log.debug('getting tx lock:', { uuid })
+      log.debug('getting tx lock mainnet:', { uuid })
       const { nonce, release, fail, address } = await this.mainnetTxManager.lock(forceAddress || this.mainnetAddresses)
-      log.debug('got tx lock:', { uuid, address })
+      log.debug('got tx lock mainnet:', { uuid, address })
 
       let balance = NaN
       if (conf.env === 'development') {
         balance = await this.mainnetWeb3.eth.getBalance(address)
       }
       currentAddress = address
-      log.debug(`sending tx from: ${address} | nonce: ${nonce}`, { uuid, balance, gas, gasPrice })
+      log.debug(`sending  tx mainnet from: ${address} | nonce: ${nonce}`, {
+        network: this.networkIdMainNet,
+        uuid,
+        balance,
+        gas,
+        gasPrice
+      })
       return new Promise((res, rej) => {
         tx.send({ gas, gasPrice, chainId: this.networkIdMainNet, nonce, from: address })
           .on('transactionHash', h => {
             release()
-            log.debug('got tx hash:', { uuid })
+            log.debug('got tx hash mainnet:', { uuid })
             onTransactionHash && onTransactionHash(h)
           })
           .on('receipt', r => {
-            log.debug('got tx receipt:', { uuid })
+            log.debug('got tx receipt mainnet:', { uuid })
             onReceipt && onReceipt(r)
             res(r)
           })
@@ -755,26 +763,28 @@ export class Wallet {
           .on('error', async exception => {
             const { message } = exception
 
-            log.error('sendTransaction error:', message, exception, { from: address, uuid })
+            log.error('sendTransaction error mainnet:', message, exception, { from: address, uuid })
             if (isFundsError(exception)) {
-              log.warn('sendTransaciton funds issue retry', {
+              balance = await this.mainnetWeb3.eth.getBalance(address)
+              log.warn('sendTransaciton funds issue retry mainnet', {
                 errMessage: message,
                 nonce,
                 gas,
                 gasPrice,
-                address
+                address,
+                balance
               })
-              sendSlackAlert({ msg: 'admin account funds low', address })
-              await this.txManager.unlock(address)
+              sendSlackAlert({ msg: 'admin account funds low mainnet', address, balance })
+              await this.mainnetTxManager.unlock(address)
               try {
                 res(await this.sendTransaction(tx, txCallbacks, { gas, gasPrice }))
               } catch (e) {
-                await this.txManager.unlock(address)
+                await this.mainnetTxManager.unlock(address)
                 rej(e)
               }
             } else if (isNonceError(exception)) {
               let netNonce = parseInt(await this.mainnetWeb3.eth.getTransactionCount(address))
-              log.warn('sendTransaciton nonce failure retry', {
+              log.warn('sendTransaciton nonce failure retry mainnet', {
                 errMessage: message,
                 nonce,
                 gas,
