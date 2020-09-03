@@ -32,6 +32,18 @@ describe('adminwallet', () => {
     expect(isVerified).toBeTruthy()
   })
 
+  test('adminWallet can authenticate user', async () => {
+    const unverifiedAddress = generateWalletAddress()
+    const tx = await AdminWallet.authenticateUser(unverifiedAddress)
+    const isVerified = await AdminWallet.isVerified(unverifiedAddress)
+    const lastAuth = await AdminWallet.identityContract.methods
+      .lastAuthenticated(unverifiedAddress)
+      .call()
+      .then(_ => _.toNumber())
+    expect(isVerified).toBeFalsy()
+    expect(lastAuth).toBeGreaterThan(0)
+  })
+
   test('adminWallet can blacklist user', async () => {
     const unverifiedAddress = generateWalletAddress()
     const tx = await AdminWallet.whitelistUser(unverifiedAddress, 'did:gd' + Math.random())
