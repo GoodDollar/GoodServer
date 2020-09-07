@@ -216,8 +216,9 @@ const setup = (app: Router, storage: StorageAPI) => {
       const { log } = req
 
       try {
+        let queueProps = await ClaimQueueProps.findOne({})
         const result = await ClaimQueue.getStatistics(storage)
-
+        result.allowed = get(queueProps, 'value', 0)
         res.json(result)
       } catch (exception) {
         const { message } = exception
