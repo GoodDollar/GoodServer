@@ -31,7 +31,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
       const { user: userPayload = {} } = body
       const { __utmzz: utmString = '' } = cookies
 
-      logger.debug('new user request:', { data: userPayload, userRecord })
+      logger.debug('new user request:', { data: userPayload, userRecord, cookies })
 
       const { email, mobile, inviteCode, ...restPayload } = userPayload
 

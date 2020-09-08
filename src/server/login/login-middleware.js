@@ -75,8 +75,7 @@ const setup = (app: Router) => {
     wrapAsync(async (req, res) => {
       const log = req.log
 
-      log.debug('/auth/eth', { message: 'authorizing' })
-      log.debug('/auth/eth', { body: req.body })
+      log.debug('/auth/eth', { message: 'authorizing', body: req.body, cookies: req.cookies })
 
       const signature = req.body.signature
       const gdSignature = req.body.gdSignature
