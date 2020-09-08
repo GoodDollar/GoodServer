@@ -65,11 +65,12 @@ class ZoomProvider implements IEnrollmentProvider {
         ({ enrollmentIdentifier: matchId }) => matchId.toLowerCase() !== enrollmentIdentifier.toLowerCase()
       )
     } catch (exception) {
-      const { subCode, message } = exception.response || {}
+      faceSearchResponse = exception.response || {}
 
       // if liveness issues were detected
-      if ('livenessCheckFailed' === subCode) {
+      if ('livenessCheckFailed' === faceSearchResponse.subCode) {
         const isLive = false
+        const { message } = faceSearchResponse
 
         // notifying about liveness check failed
         await notifyProcessor({ isLive })
