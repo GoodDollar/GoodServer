@@ -2,8 +2,10 @@
 import { Router } from 'express'
 import { body } from 'express-validator'
 import passport from 'passport'
-import { map, get } from 'lodash'
+import { map, get, flatten } from 'lodash'
 import { sha3 } from 'web3-utils'
+import moment from 'moment'
+
 import { Mautic } from '../mautic/mauticAPI'
 import { ClaimQueueProps } from '../db/mongo/models/props'
 
@@ -58,8 +60,12 @@ const ClaimQueue = {
       }
     ]
 
-    const stats = await storage.model.aggregate(agg)
-    return stats.map(pair => ({ [pair._id]: pair.total }))
+    const [queueProps, stats] = await Promise.all([ClaimQueueProps.findOne({}).lean(), storage.model.aggregate(agg)])
+
+    const result = {}
+    stats.forEach(pair => (result[pair._id] = pair.total))
+    result['allowed'] = queueProps.value
+    return result
   },
 
   async updateAllowed(toAdd, storage, log = defaultLogger) {
@@ -141,7 +147,7 @@ const ClaimQueue = {
   async enqueue(user, storage, log = defaultLogger) {
     const { claimQueueAllowed: claimQueueAllowedDefault } = conf
 
-    let queueProps = await ClaimQueueProps.findOne({})
+    let queueProps = await ClaimQueueProps.findOne({}).lean()
     const claimQueueAllowed = get(queueProps, 'value', claimQueueAllowedDefault)
     const { claimQueue } = user
 
@@ -172,9 +178,11 @@ const ClaimQueue = {
       }
     }
 
-    storage.updateUser({ identifier: user.identifier, claimQueue: { status, date: Date.now() } })
+    const now = Date.now()
 
-    return { ok: 1, queue: { status, date: Date.now() } }
+    storage.updateUser({ identifier: user.identifier, claimQueue: { status, date: now } })
+
+    return { ok: 1, queue: { status, date: moment(now).toISOString() } }
   }
 }
 
@@ -216,10 +224,9 @@ const setup = (app: Router, storage: StorageAPI) => {
       const { log } = req
 
       try {
-        let queueProps = await ClaimQueueProps.findOne({})
-        const result = await ClaimQueue.getStatistics(storage)
-        result.allowed = get(queueProps, 'value', 0)
-        res.json(result)
+        const defaults = { whitelisted: 0, approved: 0, allowed: 0 }
+        let result = await ClaimQueue.getStatistics(storage)
+        res.json({ ...defaults, ...result })
       } catch (exception) {
         const { message } = exception
 

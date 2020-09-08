@@ -6,7 +6,6 @@ import UserDBPrivate from '../db/mongo/user-privat-provider'
 import { type UserRecord } from '../../imports/types'
 import { Mautic } from '../mautic/mauticAPI'
 import W3Helper from '../utils/W3Helper'
-import { generateMarketToken } from '../utils/market'
 import requestTimeout from '../utils/timeout'
 
 const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
@@ -41,8 +40,8 @@ const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
   }
 }
 
-const updateMauticRecord = async (userRecord: UserRecord, logger: any) => {
-  const fieldsForMautic = pick(userRecord, [
+const updateMauticRecord = async (userRecord: UserRecord, utmString: string, logger: any) => {
+  const userFields = pick(userRecord, [
     'fullName',
     'mobile',
     'email',
@@ -51,14 +50,26 @@ const updateMauticRecord = async (userRecord: UserRecord, logger: any) => {
     'regMethod',
     'torusProvider'
   ])
-  const nameParts = get(userRecord, 'fullName', '').split(' ')
-  fieldsForMautic.firstName = nameParts[0]
-  fieldsForMautic.lastName = nameParts.length > 1 && nameParts.pop()
+
+  const utmFields = Mautic.parseUtmString(utmString)
+  const nameParts = get(userFields, 'fullName', '').split(' ')
+  const firstName = nameParts[0]
+  const lastName = nameParts.length > 1 && nameParts.pop()
+
+  const fieldsForMautic = {
+    firstName,
+    lastName,
+    ...userFields,
+    ...utmFields
+  }
+
   const mauticRecord = await Mautic.createContact(fieldsForMautic).catch(e => {
     logger.error('updateMauticRecord Create Mautic Record Failed', e.message, e, { fieldsForMautic, userRecord })
     throw e
   })
+
   const mauticId = get(mauticRecord, 'contact.id', userRecord.mauticId)
+
   await UserDBPrivate.updateUser({ identifier: userRecord.identifier, mauticId })
   logger.debug('updateMauticRecord user mautic record updated', { fieldsForMautic, userRecord, mauticId, mauticRecord })
 
@@ -99,24 +110,6 @@ const updateW3Record = async (user: any, logger: any) => {
   return userDB
 }
 
-const updateMarketToken = async (user: any, logger: any) => {
-  if (conf.env !== 'test' && conf.isEtoro === false) {
-    return
-  }
-
-  let userDB = await UserDBPrivate.getUser(user.identifier)
-  const marketToken = get(userDB, 'isCompleted.marketToken', false)
-  if (!marketToken) {
-    const marketToken = await generateMarketToken(user)
-    logger.debug('generate new user market token:', { marketToken, user })
-    if (marketToken) {
-      await UserDBPrivate.updateUser({ identifier: user.identifier, marketToken, 'isCompleted.marketToken': true })
-    }
-    return marketToken
-  }
-  return userDB.marketToken
-}
-
 const topUserWallet = async (userRecord: UserRecord, logger: any) => {
   let user = await UserDBPrivate.getUser(userRecord.identifier)
   const topWallet = get(user, 'isCompleted.topWallet', false)
@@ -138,7 +131,6 @@ const topUserWallet = async (userRecord: UserRecord, logger: any) => {
 
 export default {
   topUserWallet,
-  updateMarketToken,
   updateW3Record,
   updateMauticRecord,
   addUserToWhiteList

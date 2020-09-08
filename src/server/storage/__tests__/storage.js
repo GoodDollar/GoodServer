@@ -6,7 +6,7 @@ import UserDBPrivate from '../../db/mongo/user-privat-provider'
 import type { UserRecord } from '../../../imports/types'
 
 import addUserSteps from '../addUserSteps'
-import { getCreds } from '../../__util__'
+import { getCreds, utmString } from '../../__util__'
 
 jest.setTimeout(30000)
 
@@ -14,13 +14,11 @@ describe('storageAPI', () => {
   const isCompletedAllFalse = {
     whiteList: false,
     w3Record: false,
-    marketToken: false,
     topWallet: false
   }
   const isCompletedAllTrue = {
     whiteList: true,
     w3Record: true,
-    marketToken: true,
     topWallet: false
   }
   const user: UserRecord = {
@@ -46,8 +44,10 @@ describe('storageAPI', () => {
   test('check updateMauticRecord', async () => {
     const creds = await getCreds()
     const userRecord = { ...creds, ...user }
-    await addUserSteps.updateMauticRecord(userRecord, console)
+
+    await addUserSteps.updateMauticRecord(userRecord, utmString, console)
     const mauticId = await UserDBPrivate.getUserField(user.identifier, 'mauticId')
+
     expect(mauticId).toBeTruthy()
   })
 
@@ -95,12 +95,6 @@ describe('storageAPI', () => {
     await addUserSteps.updateW3Record(userRecord, console)
     const userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')
     expect(userIsCompleted.w3Record).toBeTruthy()
-  })
-
-  test('check updateMarketToken', async () => {
-    await addUserSteps.updateMarketToken(user, console)
-    const userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')
-    expect(userIsCompleted.marketToken).toBeTruthy()
   })
 
   test('check isCompletedAllTrue', async () => {

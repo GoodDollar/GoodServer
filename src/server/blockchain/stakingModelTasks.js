@@ -380,7 +380,8 @@ class FishingManager {
         this.log.error('Failed fishing chunk', e.message, e, { tofish })
       }
     }
-    sendSlackAlert({ msg: 'info: fishing done', unfished: unfished.length, failed, outof: accounts.length })
+    if (accounts.length > 0)
+      sendSlackAlert({ msg: 'info: fishing done', unfished: unfished.length, failed, outof: accounts.length })
 
     if (unfished.length > 0) {
       this.log.info('Retrying unfished accounts', { unfished: unfished.length })

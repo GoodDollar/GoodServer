@@ -2,8 +2,10 @@
 import express, { Router } from 'express'
 import type { NextFunction } from 'express'
 import bodyParser from 'body-parser'
+import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import { version as contractsVersion } from '@gooddollar/goodcontracts/package.json'
+
 import addLoginMiddlewares from './login/login-middleware'
 import { setup as addGunMiddlewares, GunDBPublic } from './gun/gun-middleware'
 import UserDBPrivate from './db/mongo/user-privat-provider'
@@ -18,7 +20,6 @@ import VerificationAPI from './verification/verification'
 import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
 import addClaimQueueMiddlewares from './claimQueue/claimQueueAPI'
 import { fishInactiveTask, collectFundsTask } from './blockchain/stakingModelTasks'
-import conf from './server.config'
 import AdminWallet from './blockchain/AdminWallet'
 import requestTimeout from './utils/timeout'
 
@@ -41,6 +42,8 @@ export default (app: Router, env: any) => {
   app.use(express.json({ limit: '100mb', extended: true }))
   // parse application/json
   app.use(bodyParser.json({ limit: '100mb' }))
+  // parse UTM cookies
+  app.use(cookieParser())
 
   app.options(cors())
   app.use(cors())

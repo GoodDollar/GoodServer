@@ -25,7 +25,7 @@ const log = logger.child({ from: 'AdminWallet' })
 
 const defaultGas = 200000
 const defaultGasPrice = web3Utils.toWei('1', 'gwei')
-const adminMinBalance = web3Utils.toWei(String(conf.adminMinBalance), 'gwei')
+const adminMinBalance = conf.adminMinBalance
 /**
  * Exported as AdminWallet
  * Interface with blockchain contracts via web3 using HDWalletProvider
@@ -170,7 +170,7 @@ export class Wallet {
 
     const adminWalletContractBalance = await this.web3.eth.getBalance(adminWalletAddress)
     log.info(`AdminWallet contract balance`, { adminWalletContractBalance, adminWalletAddress })
-    if (adminWalletContractBalance < adminMinBalance * this.addresses.length) {
+    if (web3Utils.fromWei(adminWalletContractBalance, 'gwei') < adminMinBalance * this.addresses.length) {
       log.error('AdminWallet contract low funds')
       sendSlackAlert({ msg: 'AdminWallet contract low funds', adminWalletAddress, adminWalletContractBalance })
       if (conf.env !== 'test' && conf.env !== 'development') process.exit(-1)
@@ -186,11 +186,11 @@ export class Wallet {
       const mainnetBalance = await this.mainnetWeb3.eth.getBalance(addr)
 
       const isAdminWallet = await this.isVerifiedAdmin(addr)
-      if (isAdminWallet && parseInt(balance) > adminMinBalance) {
+      if (isAdminWallet && web3Utils.fromWei(balance, 'gwei') > adminMinBalance) {
         log.info(`admin wallet ${addr} balance ${balance}`)
         this.filledAddresses.push(addr)
       } else log.warn('Failed adding admin wallet', { addr, mainnetBalance, balance, isAdminWallet, adminMinBalance })
-      if (parseInt(mainnetBalance) > adminMinBalance) {
+      if (web3Utils.fromWei(mainnetBalance, 'gwei') > adminMinBalance) {
         log.info(`admin wallet ${addr} mainnet balance ${mainnetBalance}`)
         this.mainnetAddresses.push(addr)
       } else log.warn('Failed adding mainnet admin wallet', { addr, mainnetBalance, adminMinBalance })
@@ -256,90 +256,6 @@ export class Wallet {
     return true
   }
 
-  async checkHanukaBonus(user, storage) {
-    const now = moment().utcOffset('+0200')
-    const startHanuka = moment(conf.hanukaStartDate, 'DD/MM/YYYY').utcOffset('+0200')
-    const endHanuka = moment(conf.hanukaEndDate, 'DD/MM/YYYY')
-      .endOf('day')
-      .utcOffset('+0200')
-
-    if (
-      startHanuka.isValid() === false ||
-      endHanuka.isValid() === false ||
-      startHanuka.isAfter(now) ||
-      now.isAfter(endHanuka)
-    ) {
-      return
-    }
-
-    const currentDayNumber = now.diff(startHanuka, 'days') + 1
-    if (currentDayNumber <= 0) return
-    const dayField = `day${currentDayNumber}`
-
-    if (user.hanukaBonus && user.hanukaBonus[dayField]) return
-
-    const blocksFromStartOfDay = parseInt((now.diff(moment().startOf('day'), 'seconds') / 5).toFixed())
-    const startOfDayBlock = (await this.web3.eth.getBlockNumber()) - blocksFromStartOfDay
-    const dayBlock = await this.web3.eth.getBlock(startOfDayBlock)
-    log.debug('getting ubi events', { startOfDayBlock, timestamp: dayBlock.timestamp })
-    const ubiEvents = await this.UBIContract.getPastEvents('UBIClaimed', {
-      fromBlock: startOfDayBlock,
-      filter: { claimer: user.gdAddress }
-    })
-
-    const bonusInWei = gdToWei(currentDayNumber)
-
-    log.debug('Hanuka Dates/Data for checkHanukaBonus', {
-      now,
-      startOfDayBlock,
-      currentDayNumber,
-      dayField,
-      bonusInWei,
-      claimEventFound: ubiEvents.length
-    })
-    if (ubiEvents.length === 0) {
-      return
-    }
-    const { release, fail } = await this.txManager.lock(user.gdAddress, 0)
-    const recheck = await storage.getUserField(user.identifier, 'hanukaBonus')
-    if (recheck && recheck[dayField]) {
-      release()
-      return
-    }
-    return this.redeemBonuses(user.gdAddress, bonusInWei, {
-      onTransactionHash: hash => {
-        log.info('checkHanukaBonus redeem - txhash received', {
-          hash,
-          identifier: user.identifier,
-          gdAddress: user.gdAddress
-        })
-      },
-      onReceipt: async r => {
-        log.info('checkHanukaBonus redeem - receipt received', {
-          hash: r.transactionHash,
-          identifier: user.identifier,
-          gdAddress: user.gdAddress
-        })
-        await storage.updateUser({
-          identifier: user.loggedInAs,
-          hanukaBonus: {
-            ...user.hanukaBonus,
-            [dayField]: true
-          }
-        })
-        release()
-      },
-      onError: e => {
-        log.error('checkHanukaBonus redeem failed', e.message, e, {
-          identifier: user.identifier,
-          gdAddress: user.gdAddress
-        })
-
-        fail()
-      }
-    })
-  }
-
   /**
    * top admin wallet accounts
    * @param {object} event callbacks
@@ -376,27 +292,61 @@ export class Wallet {
    */
   async whitelistUser(address: string, did: string): Promise<TransactionReceipt | boolean> {
     const isVerified = await this.isVerified(address)
-    let tx
 
     if (isVerified) {
       return { status: true }
     }
 
     try {
+      const lastAuth = await this.identityContract.methods
+        .lastAuthenticated(address)
+        .call()
+        .then(_ => _.toNumber())
+
+      if (lastAuth > 0) {
+        //user was already whitelisted in the past, just needs re-authentication
+        return this.authenticateUser(address)
+      }
+
       const transaction = this.proxyContract.methods.whitelist(address, did)
 
-      tx = await this.sendTransaction(transaction)
+      let tx = await this.sendTransaction(transaction)
+      log.info('Whitelisted user', { address, did, tx })
+      return tx
     } catch (exception) {
       const { message } = exception
 
       log.error('Error whitelistUser', message, exception, { address, did })
       throw exception
     }
-
-    log.info('Whitelisted user', { address, did, tx })
-    return tx
   }
 
+  async authenticateUser(address: string): Promise<TransactionReceipt> {
+    try {
+      let encodedCall = this.web3.eth.abi.encodeFunctionCall(
+        {
+          name: 'authenticate',
+          type: 'function',
+          inputs: [
+            {
+              type: 'address',
+              name: 'account'
+            }
+          ]
+        },
+        [address]
+      )
+      const transaction = await this.proxyContract.methods.genericCall(this.identityContract.address, encodedCall, 0)
+      const tx = await this.sendTransaction(transaction)
+      log.info('authenticated user', { address, tx })
+      return tx
+    } catch (exception) {
+      const { message } = exception
+
+      log.error('Error authenticateUser', message, exception, { address })
+      throw exception
+    }
+  }
   /**
    * blacklist an user in the `Identity` contract
    * @param {string} address

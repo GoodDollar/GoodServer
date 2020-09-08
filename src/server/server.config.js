@@ -396,12 +396,6 @@ const conf = convict({
     env: 'WEB3_SITE_URL',
     default: 'https://inivtation.herokuapp.com'
   },
-  marketPassword: {
-    doc: 'password for market jwt',
-    format: '*',
-    env: 'MARKET_PASSWORD',
-    default: undefined
-  },
   rateLimitMinutes: {
     doc: 'Amount of minutes used for request rate limiter',
     format: '*',
@@ -419,18 +413,6 @@ const conf = convict({
     format: Boolean,
     env: 'ETORO',
     default: false
-  },
-  hanukaStartDate: {
-    doc: 'Hanuka Start Day',
-    format: '*',
-    env: 'HANUKA_START_DATE',
-    default: undefined
-  },
-  hanukaEndDate: {
-    doc: 'Hanuka End Day',
-    format: '*',
-    env: 'HANUKA_END_DATE',
-    default: undefined
   },
   autoApproveW3: {
     doc: 'should new user be automatically approved on w3',

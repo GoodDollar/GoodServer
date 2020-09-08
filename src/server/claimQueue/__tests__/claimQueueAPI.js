@@ -203,5 +203,24 @@ describe('claimQueueAPI', () => {
         queue: { status: 'approved' }
       })
     })
+
+    test('/admin/queue get request should return stats', async () => {
+      let queueProps = await ClaimQueueProps.findOne({})
+      if (!queueProps) {
+        queueProps = new ClaimQueueProps({ value: 0 })
+      }
+      queueProps.value = 5
+      await queueProps.save()
+
+      const res = await request(server)
+        .get('/admin/queue')
+        .send()
+
+      expect(res.body).toMatchObject({
+        whitelisted: 0,
+        approved: 2,
+        allowed: 5
+      })
+    })
   })
 })
