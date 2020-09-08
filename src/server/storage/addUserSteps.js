@@ -52,7 +52,9 @@ const updateMauticRecord = async (userRecord: UserRecord, utmString: string, log
   ])
 
   const utmFields = Mautic.parseUtmString(utmString)
-  const [firstName, lastName] = get(userFields, 'fullName', '').split(' ')
+  const nameParts = get(userFields, 'fullName', '').split(' ')
+  const firstName = nameParts[0]
+  const lastName = nameParts.length > 1 && nameParts.pop()
 
   const fieldsForMautic = {
     firstName,
