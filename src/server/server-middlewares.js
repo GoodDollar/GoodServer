@@ -22,6 +22,7 @@ import addClaimQueueMiddlewares from './claimQueue/claimQueueAPI'
 import { fishInactiveTask, collectFundsTask } from './blockchain/stakingModelTasks'
 import AdminWallet from './blockchain/AdminWallet'
 import requestTimeout from './utils/timeout'
+import Config from './server.config'
 
 export default (app: Router, env: any) => {
   Promise.race([
@@ -45,8 +46,12 @@ export default (app: Router, env: any) => {
   // parse UTM cookies
   app.use(cookieParser())
 
-  app.options(cors())
-  app.use(cors())
+  const corsConfig = {
+    credentials: true,
+    origin: Config.env === 'production' ? /\.gooddollar\.org$/ : true
+  }
+  app.options(cors(corsConfig))
+  app.use(cors(corsConfig))
   app.use(addRequestLogger)
 
   addCypressMiddleware(app)
