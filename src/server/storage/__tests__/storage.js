@@ -6,7 +6,7 @@ import UserDBPrivate from '../../db/mongo/user-privat-provider'
 import type { UserRecord } from '../../../imports/types'
 
 import addUserSteps from '../addUserSteps'
-import { getCreds } from '../../__util__'
+import { getCreds, utmString } from '../../__util__'
 
 jest.setTimeout(30000)
 
@@ -44,8 +44,10 @@ describe('storageAPI', () => {
   test('check updateMauticRecord', async () => {
     const creds = await getCreds()
     const userRecord = { ...creds, ...user }
-    await addUserSteps.updateMauticRecord(userRecord, console)
+
+    await addUserSteps.updateMauticRecord(userRecord, utmString, console)
     const mauticId = await UserDBPrivate.getUserField(user.identifier, 'mauticId')
+
     expect(mauticId).toBeTruthy()
   })
 

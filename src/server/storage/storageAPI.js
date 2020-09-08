@@ -27,9 +27,9 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
     wrapAsync(async (req, res) => {
       const { env, skipEmailVerification, disableFaceVerification, mauticBasicToken, mauticToken } = conf
       const isNonDevelopMode = process.env.NODE_ENV !== 'development'
-      const { body, user: userRecord } = req
+      const { cookies, body, log: logger, user: userRecord } = req
       const { user: userPayload = {} } = body
-      const logger = req.log
+      const { __utmzz: utmString = '' } = cookies
 
       logger.debug('new user request:', { data: userPayload, userRecord })
 
@@ -113,7 +113,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
 
       if (isNonDevelopMode || mauticBasicToken || mauticToken) {
         const p3 = addUserSteps
-          .updateMauticRecord(userRecordWithPII, logger)
+          .updateMauticRecord(userRecordWithPII, utmString, logger)
           .then(r => logger.debug('updateMauticRecord success'))
           .catch(e => {
             logger.error('updateMauticRecord failed', e.message, e, { userRecordWithPII })
