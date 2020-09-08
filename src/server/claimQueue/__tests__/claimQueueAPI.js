@@ -210,7 +210,7 @@ describe('claimQueueAPI', () => {
         queueProps = new ClaimQueueProps({ value: 0 })
       }
       queueProps.value = 5
-      queueProps.save()
+      await queueProps.save()
 
       const res = await request(server)
         .get('/admin/queue')
@@ -218,7 +218,7 @@ describe('claimQueueAPI', () => {
 
       expect(res.body).toMatchObject({
         whitelisted: 0,
-        approved: 0,
+        approved: 2,
         allowed: 5
       })
     })

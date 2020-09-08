@@ -2,7 +2,7 @@
 import { Router } from 'express'
 import { body } from 'express-validator'
 import passport from 'passport'
-import { map, get } from 'lodash'
+import { map, get, flatten } from 'lodash'
 import { sha3 } from 'web3-utils'
 import moment from 'moment'
 
@@ -62,7 +62,8 @@ const ClaimQueue = {
 
     const [queueProps, stats] = await Promise.all([ClaimQueueProps.findOne({}).lean(), storage.model.aggregate(agg)])
 
-    const result = stats.map(pair => ({ [pair._id]: pair.total }))
+    const result = {}
+    stats.forEach(pair => (result[pair._id] = pair.total))
     result['allowed'] = queueProps.value
     return result
   },
