@@ -9,6 +9,14 @@ import requestTimeout from '../utils/timeout'
 
 // TODO: use axios instead
 export const Mautic = new (class {
+  tagsMap = {
+    utmctr: 'utm_term',
+    utmcct: 'utm_content',
+    utmcsr: 'utm_source',
+    utmcmd: 'utm_medium',
+    utmccn: 'utm_campaign'
+  }
+
   constructor(config, log) {
     const { mauticURL, mauticBasicToken, mauticToken } = config
 
@@ -42,6 +50,23 @@ export const Mautic = new (class {
 
         throw e
       })
+  }
+
+  parseUtmString(utmString) {
+    const { tagsMap } = this
+
+    return (utmString || '').split('|').reduce((tags, record) => {
+      const [name, value] = record.split('=')
+      const tagValue = decodeURIComponent(value)
+
+      if (name in tagsMap && tagValue && '(not set)' !== tagValue) {
+        const mappedName = tagsMap[name]
+
+        tags[mappedName] = tagValue
+      }
+
+      return tags
+    }, {})
   }
 
   async contactExists(mauticId) {

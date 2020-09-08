@@ -8,6 +8,9 @@ const web3 = new Web3()
 
 const { networkId } = ContractsAddress[conf.network]
 
+export const utmString =
+  'utmcsr=twitter|utmcmd=banner|utmccn=Test_campaign_name_%3A-)|utmctr=test-term|utmcct=test-contant'
+
 export const getCreds = async (random = false) => {
   let randomCreds = {}
   //0x7ac080f6607405705aed79675789701a48c76f55

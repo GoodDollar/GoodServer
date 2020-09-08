@@ -4,6 +4,7 @@
 
 import { Mautic } from '../mauticAPI'
 import conf from '../../server.config'
+import { utmString } from '../../__util__'
 
 describe('Send', () => {
   var mauticId = ''
@@ -89,5 +90,29 @@ describe('Send', () => {
         lastname: 'r'
       })
     )
+  })
+
+  it('should parse utm tags', () => {
+    const tags = Mautic.parseUtmString(utmString)
+
+    expect(tags).toEqual({
+      utm_source: 'twitter',
+      utm_medium: 'banner',
+      utm_campaign: 'Test_campaign_name_:-)',
+      utm_term: 'test-term',
+      utm_content: 'test-contant'
+    })
+  })
+
+  it('should skip empty tags', () => {
+    const tags = Mautic.parseUtmString('utmcsr=|utmcmd=(not set)|utmccn=(not%20set)|utmctr=test-term')
+
+    expect(tags).toEqual({ utm_term: 'test-term' })
+  })
+
+  it('should skip unknown tags', () => {
+    const tags = Mautic.parseUtmString('utmtest=test|utmctr=test-term')
+
+    expect(tags).toEqual({ utm_term: 'test-term' })
   })
 })

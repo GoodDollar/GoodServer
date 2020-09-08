@@ -40,8 +40,8 @@ const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
   }
 }
 
-const updateMauticRecord = async (userRecord: UserRecord, logger: any) => {
-  const fieldsForMautic = pick(userRecord, [
+const updateMauticRecord = async (userRecord: UserRecord, utmString: string, logger: any) => {
+  const userFields = pick(userRecord, [
     'fullName',
     'mobile',
     'email',
@@ -50,14 +50,24 @@ const updateMauticRecord = async (userRecord: UserRecord, logger: any) => {
     'regMethod',
     'torusProvider'
   ])
-  const nameParts = get(userRecord, 'fullName', '').split(' ')
-  fieldsForMautic.firstName = nameParts[0]
-  fieldsForMautic.lastName = nameParts.length > 1 && nameParts.pop()
+
+  const utmFields = Mautic.parseUtmString(utmString)
+  const [firstName, lastName] = get(userFields, 'fullName', '').split(' ')
+
+  const fieldsForMautic = {
+    firstName,
+    lastName,
+    ...userFields,
+    ...utmFields
+  }
+
   const mauticRecord = await Mautic.createContact(fieldsForMautic).catch(e => {
     logger.error('updateMauticRecord Create Mautic Record Failed', e.message, e, { fieldsForMautic, userRecord })
     throw e
   })
+
   const mauticId = get(mauticRecord, 'contact.id', userRecord.mauticId)
+
   await UserDBPrivate.updateUser({ identifier: userRecord.identifier, mauticId })
   logger.debug('updateMauticRecord user mautic record updated', { fieldsForMautic, userRecord, mauticId, mauticRecord })
 
