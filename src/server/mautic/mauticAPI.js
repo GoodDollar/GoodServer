@@ -10,11 +10,11 @@ import requestTimeout from '../utils/timeout'
 // TODO: use axios instead
 export const Mautic = new (class {
   tagsMap = {
-    utmctr: 'utm_term',
-    utmcct: 'utm_content',
-    utmcsr: 'utm_source',
-    utmcmd: 'utm_medium',
-    utmccn: 'utm_campaign'
+    utmctr: 'term_utm',
+    utmcct: 'content_utm',
+    utmcsr: 'source_utm',
+    utmcmd: 'medium_utm',
+    utmccn: 'campaign_utm'
   }
 
   constructor(config, log) {
