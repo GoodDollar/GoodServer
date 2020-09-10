@@ -105,10 +105,12 @@ const setup = (app: Router) => {
       try {
         Gun.serve(req, res, next)
       } catch (e) {
-        log.error('Gun.servce error:', e.message, e)
+        log.error('Gun.serve error:', e.message, e)
         next(e)
       }
     })
+
+    log.info('Done setup Gun.serve middleware.')
   }
 
   // returns details about our gundb trusted indexes
