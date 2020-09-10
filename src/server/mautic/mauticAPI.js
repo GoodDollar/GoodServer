@@ -40,7 +40,7 @@ export const Mautic = new (class {
 
     return Promise.race([requestTimeout(timeout), fetch(fullUrl, fetchOptions)])
       .then(async res => {
-        log.debug(res)
+        log.debug('response for:', { fullUrl, res })
         if (res.status >= 300) throw new Error(await res.text())
         return res.json()
       })
