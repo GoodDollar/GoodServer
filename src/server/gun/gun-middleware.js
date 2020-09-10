@@ -103,9 +103,9 @@ const setup = (app: Router) => {
   if (conf.gundbServerMode) {
     app.use((req, res, next) => {
       try {
-        return Gun.serve(req, res, next)
+        Gun.serve(req, res, next)
       } catch (e) {
-        return next(e)
+        next(e)
       }
     })
   }
