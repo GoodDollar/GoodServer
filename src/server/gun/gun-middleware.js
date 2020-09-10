@@ -105,6 +105,7 @@ const setup = (app: Router) => {
       try {
         Gun.serve(req, res, next)
       } catch (e) {
+        log.error('Gun.servce error:', e.message, e)
         next(e)
       }
     })
