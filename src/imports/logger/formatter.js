@@ -2,16 +2,29 @@
 
 import winston from 'winston'
 import errorSerializer from 'pino-std-serializers/lib/err'
-import { isError } from 'lodash'
+import { isError, isArray, first } from 'lodash'
 import { SPLAT } from 'triple-beam'
 
 const { printf, colorize } = winston.format
 const colorizer = colorize()
 
+const getLogPayload = logRecord => {
+  const { message, uuid, ...rest } = logRecord
+  let context = rest[SPLAT]
+
+  if (isArray(context)) {
+    context = first(context)
+  }
+
+  return { message, context: { uuid, ...context } }
+}
+
 export const extended = () =>
-  printf(({ level, timestamp, from, userId, message, ...rest }) => {
-    const logPayload = { message, context: rest[SPLAT] }
-    const fromString = from ? ` (FROM ${from} ${userId || ''})` : ''
+  printf(logRecord => {
+    const { level, timestamp, from, userId } = logRecord
+    const userString = userId ? ` ${userId}` : ''
+    const fromString = from ? ` (FROM ${from}${userString})` : ''
+    const logPayload = getLogPayload(logRecord)
 
     const stringifiedPayload = JSON.stringify(logPayload, (_, value) =>
       isError(value) ? errorSerializer(value) : value
