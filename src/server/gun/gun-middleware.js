@@ -18,6 +18,7 @@ import logger from '../../imports/logger'
 
 const log = logger.child({ from: 'GunDB-Middleware' })
 
+// TODO: import refactorings from server
 assign(Gun.chain, {
   async putAck(data, callback = identity) {
     const nodeCompatiblePut = cb => this.put(data, once(ack => cb(ack.err, ack)))
@@ -97,9 +98,19 @@ export type S3Conf = {
  * Make app use Gun.serve and put Gun as global so we can do  `node --inspect` - debug only
  */
 const setup = (app: Router) => {
-  if (conf.gundbServerMode) app.use(Gun.serve)
   global.Gun = Gun // / make global to `node --inspect` - debug only
-  //returns details about our gundb trusted indexes
+
+  if (conf.gundbServerMode) {
+    app.use((req, res, next) => {
+      try {
+        return Gun.serve(req, res, next)
+      } catch (e) {
+        return next(e)
+      }
+    })
+  }
+
+  // returns details about our gundb trusted indexes
   app.get(
     '/trust',
     wrapAsync(async (_, res) => {

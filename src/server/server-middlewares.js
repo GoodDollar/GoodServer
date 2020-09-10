@@ -25,9 +25,14 @@ import requestTimeout from './utils/timeout'
 import Config from './server.config'
 
 export default (app: Router, env: any) => {
+  const corsConfig = {
+    credentials: true,
+    origin: Config.env === 'production' ? /\.gooddollar\.org$/ : true
+  }
+
   Promise.race([
     requestTimeout(30000, 'gun not initialized'),
-    AdminWallet.ready.then(_ => {
+    AdminWallet.ready.then(() => {
       const pkey = AdminWallet.wallets[AdminWallet.addresses[0]].privateKey.slice(2)
       //we no longer use backend also as gundb  server, otherwise this needs to be moved back
       //to server-prod.js so we can pass the express server instance instead of null
@@ -45,12 +50,6 @@ export default (app: Router, env: any) => {
   app.use(bodyParser.json({ limit: '100mb' }))
   // parse UTM cookies
   app.use(cookieParser())
-
-  const corsConfig = {
-    credentials: true,
-    origin: Config.env === 'production' ? /\.gooddollar\.org$/ : true
-  }
-  app.options(cors(corsConfig))
   app.use(cors(corsConfig))
   app.use(addRequestLogger)
 
