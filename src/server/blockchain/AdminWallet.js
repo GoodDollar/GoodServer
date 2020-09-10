@@ -82,12 +82,12 @@ export class Wallet {
         break
 
       case 'HttpProvider':
-        provider = conf.ethereum.httpWeb3Provider + conf.infuraKey
+        provider = conf.ethereum.httpWeb3Provider
         web3Provider = new Web3.providers.HttpProvider(provider)
         break
 
       default:
-        provider = conf.ethereum.httpWeb3Provider + conf.infuraKey
+        provider = conf.ethereum.httpWeb3Provider
         web3Provider = new Web3.providers.HttpProvider(provider)
         break
     }
