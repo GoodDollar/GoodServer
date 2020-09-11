@@ -19,7 +19,7 @@ export const createLoggerMiddleware = logger => (req, res, next) => {
       logBody = omit(logBody, 'faceMap', 'auditTrailImage', 'lowQualityAuditTrailImage')
     }
 
-    log('http', 'Incoming Request', {
+    log.info('http', 'Incoming Request', {
       responseTimeSeconds,
       method,
       body: logBody,
