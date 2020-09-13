@@ -3,6 +3,11 @@ import Crypto from 'crypto'
 import Web3 from 'web3'
 import HDKey from 'hdkey'
 import bip39 from 'bip39-light'
+import { defer, from as fromPromise, timer } from 'rxjs'
+import { retryWhen, mergeMap, throwError } from 'rxjs/operators'
+import moment from 'moment'
+import get from 'lodash/get'
+import * as web3Utils from 'web3-utils'
 import IdentityABI from '@gooddollar/goodcontracts/build/contracts/Identity.min.json'
 import GoodDollarABI from '@gooddollar/goodcontracts/build/contracts/GoodDollar.min.json'
 import UBIABI from '@gooddollar/goodcontracts/build/contracts/FixedUBI.min.json'
@@ -12,14 +17,11 @@ import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json
 import conf from '../server.config'
 import logger from '../../imports/logger'
 import { isNonceError, isFundsError } from '../utils/eth'
+import requestTimeout from '../utils/timeout'
 import { type TransactionReceipt } from './blockchain-types'
-import moment from 'moment'
-import get from 'lodash/get'
 
 import { getManager } from '../utils/tx-manager'
-import gdToWei from '../utils/gdToWei'
 import { sendSlackAlert } from '../../imports/slack'
-import * as web3Utils from 'web3-utils'
 
 const log = logger.child({ from: 'AdminWallet' })
 
@@ -296,7 +298,7 @@ export class Wallet {
     if (isVerified) {
       return { status: true }
     }
-
+    let txHash
     try {
       const lastAuth = await this.identityContract.methods
         .lastAuthenticated(address)
@@ -308,15 +310,26 @@ export class Wallet {
         return this.authenticateUser(address)
       }
 
-      const transaction = this.proxyContract.methods.whitelist(address, did)
+      const onTransactionHash = hash => {
+        log.debug('WhitelistUser got txhash:', { hash, address, did })
+        txHash = hash
+      }
 
-      let tx = await this.sendTransaction(transaction)
-      log.info('Whitelisted user', { address, did, tx })
+      const timeoutRace = () => {
+        const txPromise = this.sendTransaction(this.proxyContract.methods.whitelist(address, did), {
+          onTransactionHash
+        })
+        return txPromise
+      }
+
+      let tx = await this.retryTimeout(timeoutRace)
+
+      log.info('Whitelisted user', { txHash, address, did, tx })
       return tx
     } catch (exception) {
       const { message } = exception
 
-      log.error('Error whitelistUser', message, exception, { address, did })
+      log.error('Error whitelistUser', message, exception, { txHash, address, did })
       throw exception
     }
   }
@@ -411,6 +424,25 @@ export class Wallet {
     return tx
   }
 
+  retryTimeout(asyncFnTx, timeout = 10000, retries = 1, interval = 0) {
+    return defer(() => fromPromise(Promise.race([asyncFnTx(), requestTimeout(timeout, 'Adminwallet tx timeout')])))
+      .pipe(
+        retryWhen(attempts =>
+          attempts.pipe(
+            mergeMap((attempt, index) => {
+              const retryAttempt = index + 1
+
+              if (retryAttempt > retries) {
+                return throwError(attempt)
+              }
+
+              return timer(interval || 0)
+            })
+          )
+        )
+      )
+      .toPromise()
+  }
   /**
    * top wallet if needed
    * @param {string} address
@@ -432,12 +464,22 @@ export class Wallet {
       return { status: 1 }
     }
 
+    let txHash
     try {
-      let res = await this.sendTransaction(this.proxyContract.methods.topWallet(address))
-      log.debug('Topwallet result:', { address, res })
+      const onTransactionHash = hash => {
+        log.debug('Topwallet got txhash:', { hash, address })
+        txHash = hash
+      }
+
+      const timeoutRace = () => {
+        const txPromise = this.sendTransaction(this.proxyContract.methods.topWallet(address), { onTransactionHash })
+        return txPromise
+      }
+      let res = await this.retryTimeout(timeoutRace)
+      log.debug('Topwallet result:', { txHash, address, res })
       return res
     } catch (e) {
-      log.error('Error topWallet', e.message, e, { address, lastTopping, force })
+      log.error('Error topWallet', e.message, e, { txHash, address, lastTopping, force })
       throw e
     }
   }
