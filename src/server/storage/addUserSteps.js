@@ -115,7 +115,7 @@ const topUserWallet = async (userRecord: UserRecord, logger: any) => {
   let user = await UserDBPrivate.getUser(userRecord.identifier)
   const topWallet = get(user, 'isCompleted.topWallet', false)
   if (!topWallet) {
-    return Promise.race([AdminWallet.topWallet(userRecord.gdAddress, null), requestTimeout(15000, 'topWallet')])
+    return AdminWallet.topWallet(userRecord.gdAddress, null)
       .then(r => {
         UserDBPrivate.completeStep(userRecord.identifier, 'topWallet')
         logger.debug('topUserWallet success', { address: userRecord.gdAddress })
