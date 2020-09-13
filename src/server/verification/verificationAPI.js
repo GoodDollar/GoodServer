@@ -3,7 +3,6 @@
 import { Router } from 'express'
 import passport from 'passport'
 import { get, defaults } from 'lodash'
-import moment from 'moment'
 import { sha3 } from 'web3-utils'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
@@ -125,13 +124,13 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       const { user, log, params, body: payload, isE2ERunning } = req
       const { enrollmentIdentifier } = params
       let enrollmentResult
-
       try {
         const { disableFaceVerification, allowDuplicatedFaceRecords, claimQueueAllowed } = conf
         const enrollmentProcessor = createEnrollmentProcessor(storage)
 
         await enrollmentProcessor.validate(user, enrollmentIdentifier, payload)
 
+        req.checkConnection() //check if user request aborted
         // if user is already verified, we're skipping enroillment logic
         if (user.isVerified || disableFaceVerification || allowDuplicatedFaceRecords || isE2ERunning) {
           // creating enrollment session manually for this user
@@ -154,6 +153,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
             // after enrollment was successfull
             // it whitelists user in the wallet and updates Gun's session
             // here we're calling it manually as we've skipped enroll()
+            req.checkConnection() //check if user request aborted
             await enrollmentSession.onEnrollmentCompleted()
           } catch (exception) {
             // also we should try...catch manually,
@@ -170,7 +170,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           if (claimQueueAllowed > 0 && false === isApprovedToClaim) {
             throw new Error('User not approved to claim, not in queue or still pending')
           }
-
+          req.checkConnection() //check if user request aborted
           enrollmentResult = await enrollmentProcessor.enroll(user, enrollmentIdentifier, payload, log)
         }
       } catch (exception) {
