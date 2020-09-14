@@ -101,14 +101,7 @@ const setup = (app: Router) => {
   global.Gun = Gun // / make global to `node --inspect` - debug only
 
   if (conf.gundbServerMode) {
-    app.use((req, res, next) => {
-      try {
-        Gun.serve(req, res, next)
-      } catch (e) {
-        log.error('Gun.serve error:', e.message, e)
-        next(e)
-      }
-    })
+    app.use(Gun.serve)
 
     log.info('Done setup Gun.serve middleware.')
   }
