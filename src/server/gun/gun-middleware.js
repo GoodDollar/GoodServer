@@ -203,7 +203,8 @@ class GunDB implements StorageAPI {
     this.serverName = name
     this.user = this.gun.user()
     this.ready = gunAuth(this.gun, password).then(async _ => {
-      this.userRoot = await this.user.then(null, { wait: 2000 })
+      await this.initIndexes()
+      this.userRoot = await this.gun.user().then(null, { wait: 2000 })
       log.debug('gun logged in', { user: this.userRoot })
       this.trust = this.getIndexes()
       log.debug('done indexes', { indexes: this.trust })
@@ -237,6 +238,17 @@ class GunDB implements StorageAPI {
     return attestation
   }
 
+  async initIndexes() {
+    log.debug('initIndexes started')
+    const res = await Promise.all([
+      this.user.get(`users/byemail`).putAck({ init: true }),
+      this.user.get(`users/bymobile`).putAck({ init: true }),
+      this.user.get(`users/bywalletAddress`).putAck({ init: true })
+    ]).catch(e => {
+      log.error('initIndexes failed', e.message, e)
+    })
+    log.debug('initIndexes done', res)
+  }
   getIndexes() {
     const goodDollarPublicKey = get(this, 'user.is.pub')
     const indexes = { goodDollarPublicKey }
@@ -279,7 +291,8 @@ class GunDB implements StorageAPI {
   }
 
   getIndexId(index: string) {
-    return get(this.userRoot, `users/by${index}.#`)
+    const goodDollarPublicKey = get(this, 'user.is.pub')
+    return `~${goodDollarPublicKey}/users/by${index}`
   }
 
   async getPublicProfile() {
