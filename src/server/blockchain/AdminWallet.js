@@ -416,25 +416,6 @@ export class Wallet {
     return tx
   }
 
-  retryTimeout(asyncFnTx, timeout = 10000, retries = 1, interval = 0) {
-    return defer(() => fromPromise(Promise.race([asyncFnTx(), requestTimeout(timeout, 'Adminwallet tx timeout')])))
-      .pipe(
-        retryWhen(attempts =>
-          attempts.pipe(
-            mergeMap((attempt, index) => {
-              const retryAttempt = index + 1
-
-              if (retryAttempt > retries) {
-                return throwError(attempt)
-              }
-
-              return timer(interval || 0)
-            })
-          )
-        )
-      )
-      .toPromise()
-  }
   /**
    * top wallet if needed
    * @param {string} address

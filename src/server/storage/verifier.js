@@ -10,7 +10,6 @@ class DefaultVerificationStrategy {
   constructor(config) {
     const { torusVerificationRetryDelay, torusVerificationAttempts } = config
 
-    bindAll(this, '_onRetry', '_callVerifier')
     assign(this, { torusVerificationRetryDelay, torusVerificationAttempts })
   }
 
