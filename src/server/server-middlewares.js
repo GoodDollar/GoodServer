@@ -21,7 +21,7 @@ import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollments
 import addClaimQueueMiddlewares from './claimQueue/claimQueueAPI'
 import { fishInactiveTask, collectFundsTask } from './blockchain/stakingModelTasks'
 import AdminWallet from './blockchain/AdminWallet'
-import requestTimeout from './utils/async'
+import { requestTimeout } from './utils/async'
 import Config from './server.config'
 
 export default (app: Router, env: any) => {

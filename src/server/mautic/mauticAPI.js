@@ -5,7 +5,7 @@ import { get, assign, range, isNil } from 'lodash'
 import logger from '../../imports/logger'
 import { UserRecord } from '../../imports/types'
 import Config from '../server.config'
-import requestTimeout from '../utils/async'
+import { requestTimeout } from '../utils/async'
 
 // TODO: use axios instead
 export const Mautic = new (class {
