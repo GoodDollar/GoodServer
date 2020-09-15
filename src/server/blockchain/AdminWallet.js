@@ -313,17 +313,11 @@ export class Wallet {
         txHash = hash
       }
 
-      const timeoutRace = () => {
-        const txPromise = this.sendTransaction(this.proxyContract.methods.whitelist(address, did), {
-          onTransactionHash
-        })
-        return txPromise
-      }
+      const makeTx = () => this.proxyContract.methods.whitelist(address, did)
+      const result = await retryTimeout(() => this.sendTransaction(makeTx(), { onTransactionHash }))
 
-      let tx = await this.retryTimeout(timeoutRace)
-
-      log.info('Whitelisted user', { txHash, address, did, tx })
-      return tx
+      log.info('Whitelisted user', { txHash, address, did, result })
+      return result
     } catch (exception) {
       const { message } = exception
 
