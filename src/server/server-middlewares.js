@@ -50,6 +50,7 @@ export default (app: Router, env: any) => {
     credentials: true,
     origin: Config.env === 'production' ? /\.gooddollar\.org$/ : true
   }
+
   app.use(cors(corsConfig))
   app.use(addRequestLogger)
 
