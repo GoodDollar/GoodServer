@@ -4,7 +4,6 @@ import type { NextFunction } from 'express'
 import bodyParser from 'body-parser'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
-import createAbortMiddleware from './utils/abortMiddleware'
 import { version as contractsVersion } from '@gooddollar/goodcontracts/package.json'
 
 import addLoginMiddlewares from './login/login-middleware'
@@ -15,14 +14,14 @@ import addStorageMiddlewares from './storage/storageAPI'
 import addVerificationMiddlewares from './verification/verificationAPI'
 import addSendMiddlewares from './send/sendAPI'
 import addLoadTestMiddlewares from './loadtest/loadtest-middleware'
-import addCypressMiddleware from './cypress/cypress-middleware'
+import { addCypressMiddleware } from './cypress/cypress-middleware'
 import { addRequestLogger } from '../imports/logger'
 import VerificationAPI from './verification/verification'
 import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
 import addClaimQueueMiddlewares from './claimQueue/claimQueueAPI'
 import { fishInactiveTask, collectFundsTask } from './blockchain/stakingModelTasks'
 import AdminWallet from './blockchain/AdminWallet'
-import requestTimeout from './utils/timeout'
+import requestTimeout from './utils/async'
 import Config from './server.config'
 
 export default (app: Router, env: any) => {
@@ -39,7 +38,6 @@ export default (app: Router, env: any) => {
     process.exit(-1)
   })
 
-  app.use(createAbortMiddleware())
   // parse application/x-www-form-urlencoded
   // for easier testing with Postman or plain HTML forms
   app.use(express.json({ limit: '100mb', extended: true }))

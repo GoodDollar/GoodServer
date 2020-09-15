@@ -2,7 +2,6 @@ import Web3 from 'web3'
 import AdminWallet from '../AdminWallet'
 
 import txManager from '../../utils/tx-manager'
-import { delay } from '../../utils/timeout'
 
 const web3 = new Web3()
 const generateWalletAddress = () => web3.eth.accounts.create().address
@@ -27,14 +26,14 @@ describe('adminwallet', () => {
 
   test('adminWallet can whitelist user', async () => {
     const unverifiedAddress = generateWalletAddress()
-    const tx = await AdminWallet.whitelistUser(unverifiedAddress, 'did:gd' + Math.random())
+    await AdminWallet.whitelistUser(unverifiedAddress, 'did:gd' + Math.random())
     const isVerified = await AdminWallet.isVerified(unverifiedAddress)
     expect(isVerified).toBeTruthy()
   })
 
   test('adminWallet can authenticate user', async () => {
     const unverifiedAddress = generateWalletAddress()
-    const tx = await AdminWallet.authenticateUser(unverifiedAddress)
+    await AdminWallet.authenticateUser(unverifiedAddress)
     const isVerified = await AdminWallet.isVerified(unverifiedAddress)
     const lastAuth = await AdminWallet.identityContract.methods
       .lastAuthenticated(unverifiedAddress)
@@ -46,8 +45,8 @@ describe('adminwallet', () => {
 
   test('adminWallet can blacklist user', async () => {
     const unverifiedAddress = generateWalletAddress()
-    const tx = await AdminWallet.whitelistUser(unverifiedAddress, 'did:gd' + Math.random())
-    const tx2 = await AdminWallet.removeWhitelisted(unverifiedAddress)
+    await AdminWallet.whitelistUser(unverifiedAddress, 'did:gd' + Math.random())
+    await AdminWallet.removeWhitelisted(unverifiedAddress)
     const isVerified = await AdminWallet.isVerified(unverifiedAddress)
     expect(isVerified).not.toBeTruthy()
   })
@@ -65,8 +64,8 @@ describe('adminwallet', () => {
   test('adminWallet receive queue nonce', async () => {
     const promises = []
     for (let i = 0; i < 5; i++) {
-      // await delay(300) //hack otherwise txes fail, looks like a web3 issue, sending txes out of order
       const unverifiedAddress = generateWalletAddress()
+
       promises.push(
         AdminWallet.topWallet(unverifiedAddress)
           .then(tx => tx.blockNumber)

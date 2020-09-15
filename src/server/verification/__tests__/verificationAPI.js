@@ -11,7 +11,7 @@ import AdminWallet from '../../blockchain/AdminWallet'
 import { GunDBPublic } from '../../gun/gun-middleware'
 
 import makeServer from '../../server-test'
-import { delay } from '../../utils/timeout'
+import { delay } from '../../utils/async'
 
 import createEnrollmentProcessor, { DISPOSE_ENROLLMENTS_TASK } from '../processor/EnrollmentProcessor'
 import { getToken, getCreds } from '../../__util__/'

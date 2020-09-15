@@ -10,7 +10,7 @@ import SEA from '@gooddollar/gun/sea'
 import { gunAuth } from '@gooddollar/gun-pk-auth'
 import '@gooddollar/gun/nts'
 
-import { delay } from '../utils/timeout'
+import { delay } from '../utils/async'
 import { wrapAsync } from '../utils/helpers'
 import { LoggedUser, type StorageAPI } from '../../imports/types'
 import conf from '../server.config'
@@ -40,7 +40,7 @@ assign(Gun.chain, {
       gun.on((v, k, g, ev) => {
         ev.off()
 
-        //timeout if value is undefined
+        // timeout if value is undefined
         if (v !== undefined) {
           res(v)
         }
@@ -49,7 +49,7 @@ assign(Gun.chain, {
     let oncePromise = new Promise(function(res, rej) {
       gun.once(
         v => {
-          //timeout if value is undefined
+          // timeout if value is undefined
           if (v !== undefined) {
             res(v)
           }

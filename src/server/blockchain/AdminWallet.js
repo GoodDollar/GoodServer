@@ -3,8 +3,6 @@ import Crypto from 'crypto'
 import Web3 from 'web3'
 import HDKey from 'hdkey'
 import bip39 from 'bip39-light'
-import { defer, from as fromPromise, timer } from 'rxjs'
-import { retryWhen, mergeMap, throwError } from 'rxjs/operators'
 import moment from 'moment'
 import get from 'lodash/get'
 import * as web3Utils from 'web3-utils'
@@ -17,7 +15,7 @@ import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json
 import conf from '../server.config'
 import logger from '../../imports/logger'
 import { isNonceError, isFundsError } from '../utils/eth'
-import requestTimeout from '../utils/timeout'
+import { retryTimeout } from '../utils/async'
 import { type TransactionReceipt } from './blockchain-types'
 
 import { getManager } from '../utils/tx-manager'
@@ -424,25 +422,6 @@ export class Wallet {
     return tx
   }
 
-  retryTimeout(asyncFnTx, timeout = 10000, retries = 1, interval = 0) {
-    return defer(() => fromPromise(Promise.race([asyncFnTx(), requestTimeout(timeout, 'Adminwallet tx timeout')])))
-      .pipe(
-        retryWhen(attempts =>
-          attempts.pipe(
-            mergeMap((attempt, index) => {
-              const retryAttempt = index + 1
-
-              if (retryAttempt > retries) {
-                return throwError(attempt)
-              }
-
-              return timer(interval || 0)
-            })
-          )
-        )
-      )
-      .toPromise()
-  }
   /**
    * top wallet if needed
    * @param {string} address
@@ -458,26 +437,27 @@ export class Wallet {
     let userBalance = await this.web3.eth.getBalance(address)
     let maxTopWei = parseInt(web3Utils.toWei('1000000', 'gwei'))
     let toTop = maxTopWei - userBalance
+
     log.debug('TopWallet:', { address, userBalance, toTop })
+
     if (toTop <= 0 || toTop / maxTopWei < 0.75) {
       log.debug("User doesn't need topping", { address })
       return { status: 1 }
     }
 
     let txHash
+
     try {
       const onTransactionHash = hash => {
         log.debug('Topwallet got txhash:', { hash, address })
         txHash = hash
       }
 
-      const timeoutRace = () => {
-        const txPromise = this.sendTransaction(this.proxyContract.methods.topWallet(address), { onTransactionHash })
-        return txPromise
-      }
-      let res = await this.retryTimeout(timeoutRace)
-      log.debug('Topwallet result:', { txHash, address, res })
-      return res
+      const tx = this.proxyContract.methods.topWallet(address)
+      const result = await retryTimeout(() => this.sendTransaction(tx), { onTransactionHash })
+
+      log.debug('Topwallet result:', { txHash, address, res: result })
+      return result
     } catch (e) {
       log.error('Error topWallet', e.message, e, { txHash, address, lastTopping, force })
       throw e
