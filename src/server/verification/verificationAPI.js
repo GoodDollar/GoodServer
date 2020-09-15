@@ -175,6 +175,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           if (claimQueueAllowed > 0 && false === isApprovedToClaim) {
             throw new Error('User not approved to claim, not in queue or still pending')
           }
+
           enrollmentResult = await enrollmentProcessor.enroll(user, enrollmentIdentifier, payload, log)
         }
       } catch (exception) {
