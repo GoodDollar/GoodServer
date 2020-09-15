@@ -64,8 +64,9 @@ describe('GunDB', () => {
     await storage.addUserToIndex('mobile', '972507315555', {
       profilePublickey: 'ABCDE'
     })
-    const indexid = await storage.getIndexId('mobile')
+    const indexid = storage.getIndexId('mobile')
     const index = await storage.getIndex('mobile')
+
     expect(index['_']['#']).toEqual(indexid)
     expect(index).toBeTruthy()
     expect(index).not.toHaveProperty('972507315555')
@@ -76,7 +77,7 @@ describe('GunDB', () => {
     await storage.addUserToIndex('email', 'hr@blah.com', {
       profilePublickey: 'ABCDE'
     })
-    const indexid = await storage.getIndexId('email')
+    const indexid = storage.getIndexId('email')
     const index = await storage.gun.get(indexid).then()
     expect(index).toBeTruthy()
     expect(index).not.toHaveProperty('hr@blah.com')
@@ -87,7 +88,7 @@ describe('GunDB', () => {
     await storage.addUserToIndex('walletAddress', '0x05', {
       profilePublickey: 'ABCDE'
     })
-    const indexid = await storage.getIndexId('walletAddress')
+    const indexid = storage.getIndexId('walletAddress')
     const index = await storage.gun.get(indexid).then()
     expect(index).toBeTruthy()
     expect(index).not.toHaveProperty('0x05')
@@ -95,7 +96,7 @@ describe('GunDB', () => {
   })
 
   it('should remove user from index', async () => {
-    const indexid = await storage.getIndexId('walletAddress')
+    const indexid = storage.getIndexId('walletAddress')
     const indexValueBefore = await storage.gun
       .get(indexid)
       .get(sha3('0x05'))
@@ -113,9 +114,9 @@ describe('GunDB', () => {
     const { status, body } = await request(server)
       .get('/trust')
       .send()
-    const bywalletAddress = await storage.getIndexId('walletAddress')
-    const bymobile = await storage.getIndexId('mobile')
-    const byemail = await storage.getIndexId('email')
+    const bywalletAddress = storage.getIndexId('walletAddress')
+    const bymobile = storage.getIndexId('mobile')
+    const byemail = storage.getIndexId('email')
 
     expect(body).toMatchObject({
       goodDollarPublicKey: storage.user.is.pub,
@@ -131,7 +132,7 @@ describe('GunDB', () => {
 
   //this test should be last since it modifies the gundb user on server
   it('should not allow other user to update index', async () => {
-    const indexid = await storage.getIndexId('walletAddress')
+    const indexid = storage.getIndexId('walletAddress')
     storage.user.leave()
     const user = storage.gun.user()
     let res = await new Promise((res, rej) => user.create('maluser', 'test', res))
