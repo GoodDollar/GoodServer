@@ -453,8 +453,8 @@ export class Wallet {
         txHash = hash
       }
 
-      const tx = this.proxyContract.methods.topWallet(address)
-      const result = await retryTimeout(() => this.sendTransaction(tx), { onTransactionHash })
+      const makeTx = () => this.proxyContract.methods.topWallet(address)
+      const result = await retryTimeout(() => this.sendTransaction(makeTx()), { onTransactionHash })
 
       log.debug('Topwallet result:', { txHash, address, res: result })
       return result
