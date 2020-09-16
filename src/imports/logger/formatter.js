@@ -3,7 +3,7 @@
 import winston from 'winston'
 import errorSerializer from 'pino-std-serializers/lib/err'
 import { isError } from 'lodash'
-import { SPLAT, LEVEL } from 'triple-beam'
+import { SPLAT } from 'triple-beam'
 
 const { printf, colorize } = winston.format
 const colorizer = colorize()
