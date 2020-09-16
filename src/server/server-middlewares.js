@@ -15,7 +15,7 @@ import addVerificationMiddlewares from './verification/verificationAPI'
 import addSendMiddlewares from './send/sendAPI'
 import addLoadTestMiddlewares from './loadtest/loadtest-middleware'
 import addCypressMiddleware from './cypress/cypress-middleware'
-import { addRequestLogger } from '../imports/logger'
+import logger, { addRequestLogger } from '../imports/logger'
 import VerificationAPI from './verification/verification'
 import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
 import addClaimQueueMiddlewares from './claimQueue/claimQueueAPI'
@@ -23,6 +23,8 @@ import { fishInactiveTask, collectFundsTask } from './blockchain/stakingModelTas
 import AdminWallet from './blockchain/AdminWallet'
 import requestTimeout from './utils/timeout'
 import Config from './server.config'
+
+const rootLogger = logger.child({ from: 'Server' })
 
 export default (app: Router, env: any) => {
   const corsConfig = {
@@ -63,10 +65,10 @@ export default (app: Router, env: any) => {
   addLoadTestMiddlewares(app)
 
   app.use((error, req, res, next: NextFunction) => {
-    const log = req.log
+    const log = req.log || rootLogger
     const { message } = error
 
-    log.error('Something went wrong while performing request', message, error)
+    log.error('Something went wrong while performing request', message, error, { req })
 
     res.status(400).json({ message })
   })
