@@ -10,7 +10,6 @@ const middleware = (req, res, next) => {
     enumerable: false
   })
   req.on('close', () => {
-    console.log('AAAAAAAAA connection closed')
     req.connection[NAME] = true
   })
 
