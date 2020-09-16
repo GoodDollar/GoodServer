@@ -1,4 +1,5 @@
 // @flow
+import once from 'events.once'
 import { omit, isPlainObject, assign } from 'lodash'
 import Crypto from 'crypto'
 
@@ -11,7 +12,10 @@ export const createLoggerMiddleware = logger => (req, res, next) => {
 
   const log = logger.child({ uuid, from: req.url, userId: req.user && req.user.identifier })
 
-  const logRequest = () => {
+  assign(req, { log })
+
+  Promise.race([once(req, 'close').then(() => true), once(res, 'finish').then(() => false)]).then(aborted => {
+    const logMessage = 'Incoming Request' + (aborted ? ' [aborted]' : '')
     const responseTimeSeconds = (Date.now() - startTime) / 1000
     let { url, method, body: logBody, query, headers } = req
 
@@ -19,18 +23,14 @@ export const createLoggerMiddleware = logger => (req, res, next) => {
       logBody = omit(logBody, 'faceMap', 'auditTrailImage', 'lowQualityAuditTrailImage')
     }
 
-    log.info('http', 'Incoming Request', {
+    log[aborted ? 'warn' : 'info']('http', logMessage, {
       responseTimeSeconds,
       method,
       body: logBody,
       query,
       headers
     })
-  }
+  })
 
-  assign(req, { log })
-  req.on('abort', logRequest)
-  res.on('finish', logRequest)
-
-  next()
+  return next()
 }

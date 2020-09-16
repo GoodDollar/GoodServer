@@ -1,7 +1,7 @@
 // @flow
 import express, { Router } from 'express'
 
-import { get, assign, identity, memoize, once } from 'lodash'
+import { get, assign, identity, memoize, once, zipObject } from 'lodash'
 import { sha3 } from 'web3-utils'
 import util from 'util'
 
@@ -155,6 +155,7 @@ class GunDB implements StorageAPI {
 
   //managed user indexes
   trust: {}
+  indexesRefs: object = {}
 
   /**
    *
@@ -239,16 +240,24 @@ class GunDB implements StorageAPI {
   }
 
   async initIndexes() {
+    const indexFields = ['email', 'mobile', 'walletAddress']
+    const indexRefs = indexFields.map(field => this.user.get(`users/by${field}`))
+
     log.debug('initIndexes started')
-    const res = await Promise.all([
-      this.user.get(`users/byemail`).putAck({ init: true }),
-      this.user.get(`users/bymobile`).putAck({ init: true }),
-      this.user.get(`users/bywalletAddress`).putAck({ init: true })
-    ]).catch(e => {
-      log.error('initIndexes failed', e.message, e)
-    })
-    log.debug('initIndexes done', res)
+
+    try {
+      const result = await Promise.all(indexRefs.map(ref => ref.putAck({ init: true })))
+
+      this.indexesRefs = zipObject(indexFields, indexRefs)
+      log.debug('initIndexes done', result)
+    } catch (exception) {
+      const { message } = exception
+
+      log.error('initIndexes failed', message, exception)
+      throw exception
+    }
   }
+
   getIndexes() {
     const goodDollarPublicKey = get(this, 'user.is.pub')
     const indexes = { goodDollarPublicKey }
@@ -262,36 +271,32 @@ class GunDB implements StorageAPI {
   }
 
   async addUserToIndex(index: string, value: String, user: LoggedUser) {
-    const updateP = this.user
-      .get(`users/by${index}`)
+    return this.indexesRefs[index]
       .get(sha3(value))
       .putAck({ '#': '~' + user.profilePublickey })
       .catch(e => {
         log.error('failed updating user index', e.message, e, { index, value, user })
         return false
       })
-    return updateP
   }
 
   async removeUserFromIndex(index: string, hashedValue: String) {
-    const updateP = this.user
-      .get(`users/by${index}`)
+    return this.indexesRefs[index]
       .get(hashedValue)
       .putAck('')
       .catch(e => {
         log.error('failed removing user from index', e.message, e, { index, hashedValue })
         return false
       })
-    return updateP
   }
 
   async getIndex(index: string) {
-    const res = await this.user.get(`users/by${index}`).onThen(null, { wait: 60000 })
-    return res
+    return this.indexesRefs[index].onThen(null, { wait: 60000 })
   }
 
   getIndexId(index: string) {
     const goodDollarPublicKey = get(this, 'user.is.pub')
+
     return `~${goodDollarPublicKey}/users/by${index}`
   }
 

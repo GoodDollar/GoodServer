@@ -4,7 +4,6 @@ import type { NextFunction } from 'express'
 import bodyParser from 'body-parser'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
-import createAbortMiddleware from './utils/abortMiddleware'
 import { version as contractsVersion } from '@gooddollar/goodcontracts/package.json'
 
 import addLoginMiddlewares from './login/login-middleware'
@@ -44,7 +43,6 @@ export default (app: Router, env: any) => {
     process.exit(-1)
   })
 
-  app.use(createAbortMiddleware())
   // parse application/x-www-form-urlencoded
   // for easier testing with Postman or plain HTML forms
   app.use(express.json({ limit: '100mb', extended: true }))
