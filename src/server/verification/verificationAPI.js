@@ -124,6 +124,8 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       const { user, log, params, body: payload, isE2ERunning } = req
       const { enrollmentIdentifier } = params
       let enrollmentResult
+
+      req.checkConnection() //check if user request aborted
       try {
         const { disableFaceVerification, allowDuplicatedFaceRecords, claimQueueAllowed } = conf
         const enrollmentProcessor = createEnrollmentProcessor(storage)
