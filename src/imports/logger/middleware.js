@@ -14,7 +14,7 @@ export const createLoggerMiddleware = logger => (req, res, next) => {
 
   assign(req, { log })
 
-  Promise.race([once(req, 'abort'), once(res, 'finish')]).then(() => {
+  Promise.race([once(req, 'close'), once(res, 'finish')]).then(() => {
     const responseTimeSeconds = (Date.now() - startTime) / 1000
     let { url, method, body: logBody, query, headers } = req
 
@@ -31,5 +31,5 @@ export const createLoggerMiddleware = logger => (req, res, next) => {
     })
   })
 
-  next()
+  return next()
 }
