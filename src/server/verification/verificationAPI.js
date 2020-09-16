@@ -262,10 +262,19 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       const { user, body } = req
       const verificationData: { otp: string } = body.verificationData
       const tempSavedMobile = user.otp && user.otp.mobile
-      const hashedNewMobile = sha3(tempSavedMobile)
+
+      if (!tempSavedMobile) {
+        log.error('mobile to verify not found or missing', 'mobile missing', new Error('mobile missing'), {
+          user,
+          verificationData
+        })
+        return res.status(400).json({ ok: 0, error: 'MOBILE MISSING' })
+      }
+
+      const hashedNewMobile = tempSavedMobile && sha3(tempSavedMobile)
       const currentMobile = user.mobile
 
-      log.debug('mobile verified', { user, verificationData })
+      log.debug('mobile verified', { user, verificationData, hashedNewMobile })
 
       if (!user.smsValidated || currentMobile !== hashedNewMobile) {
         let verified = await verifier.verifyMobile({ identifier: user.loggedInAs }, verificationData).catch(e => {
