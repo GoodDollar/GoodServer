@@ -1,5 +1,6 @@
+import { isError, isNumber, isFunction } from 'lodash'
 import { defer, from as fromPromise, timer } from 'rxjs'
-import { retryWhen, mergeMap, throwError } from 'rxjs/operators'
+import { retryWhen, mergeMap, throwError, timeout as rxTimeout } from 'rxjs/operators'
 import { promisify } from 'util'
 
 const promisifiedTimeout = promisify(setTimeout)
@@ -25,8 +26,10 @@ export const requestTimeout = async (millis, timeoutReason = null) => {
   await timeout(millis, errorMessage)
 }
 
-export const retry = (asyncFn, retries = 5, interval = 0, shouldRetry = () => true) =>
-  defer(() => fromPromise(asyncFn()))
+export const retry = (source, retries = 5, interval = 0, shouldRetry = () => true) => {
+  const observable = isFunction(source) ? defer(() => fromPromise(source())) : source
+
+  return observable
     .pipe(
       retryWhen(attempts =>
         attempts.pipe(
@@ -34,7 +37,7 @@ export const retry = (asyncFn, retries = 5, interval = 0, shouldRetry = () => tr
             if (shouldRetry(attempt)) {
               const retryAttempt = index + 1
 
-              if (retryAttempt <= retries) {
+              if (!isNumber(retries) || retries <= 0 || retryAttempt <= retries) {
                 return timer(interval || 0)
               }
             }
@@ -45,12 +48,13 @@ export const retry = (asyncFn, retries = 5, interval = 0, shouldRetry = () => tr
       )
     )
     .toPromise()
+}
 
 // eslint-disable-next-line
-export const retryTimeout = (asyncFn, timeout = 10000, retries = 1, interval = 0, shouldRetry = () => true) =>
+export const retryTimeout = (asyncFn, timeout = 10000, retries = 1, interval = 0) =>
   retry(
-    () => Promise.race([asyncFn(), requestTimeout(timeout, 'Adminwallet tx timeout')]),
+    defer(() => fromPromise(asyncFn())).pipe(rxTimeout(timeout)),
     retries,
     interval,
-    shouldRetry
+    error => isError(error) && 'TimeoutError' === error.name
   )
