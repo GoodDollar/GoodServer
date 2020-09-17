@@ -28,15 +28,17 @@ class Verifications implements VerificationAPI {
   async verifyMobile(user: UserRecord, verificationData: { otp: string }): Promise<boolean | Error> {
     const { otp } = verificationData
 
-    this.log.debug('verifyMobile:', { userId: user.identifier, otp })
+    this.log.debug('verifyMobile:', { user, otp })
 
     if (!otp) {
       throw new Error('No code to validate, retry')
     }
 
-    const { status } = await OTP.checkOTP(user, otp)
+    const checkResult = await OTP.checkOTP(user, otp)
 
-    if ('canceled' !== status) {
+    this.log.debug('verifyMobile result:', { checkResult, user, otp })
+    const { status } = checkResult
+    if ('canceled' === status) {
       throw new Error('Code expired, retry')
     }
 

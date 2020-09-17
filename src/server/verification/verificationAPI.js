@@ -224,10 +224,10 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
       if (!userRec.smsValidated || hashedMobile !== savedMobile) {
         if (['production', 'staging'].includes(conf.env)) {
-          await OTP.sendOTP({ mobile })
+          const sendResult = await OTP.sendOTP({ mobile })
+          log.debug('otp sent:', user.loggedInAs, sendResult)
         }
         // const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
-        log.debug('otp sent:', user.loggedInAs)
         await storage.updateUser({
           identifier: user.loggedInAs,
           otp: {
@@ -276,13 +276,15 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       log.debug('mobile verified', { user, verificationData, hashedNewMobile })
 
       if (!user.smsValidated || currentMobile !== hashedNewMobile) {
-        let verified = await verifier.verifyMobile({ identifier: user.loggedInAs }, verificationData).catch(e => {
-          log.warn('mobile verification failed:', { e })
+        let verified = await verifier
+          .verifyMobile({ identifier: user.loggedInAs, mobile: tempSavedMobile }, verificationData)
+          .catch(e => {
+            log.warn('mobile verification failed:', { e })
 
-          res.status(400).json({ ok: 0, error: 'OTP FAILED', message: e.message })
+            res.status(400).json({ ok: 0, error: 'OTP FAILED', message: e.message })
 
-          return false
-        })
+            return false
+          })
 
         if (verified === false) return
 
