@@ -241,6 +241,8 @@ export class Wallet {
       let nativebalance = await this.web3.eth.getBalance(this.address)
       this.nonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
       log.debug('AdminWallet Ready:', {
+        activeWallets: this.filledAddresses.length,
+        activeMainnetWallets: this.mainnetAddresses.length,
         account: this.address,
         gdbalance,
         nativebalance,
