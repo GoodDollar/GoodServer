@@ -1,34 +1,36 @@
 // @flow
-import { omit, isPlainObject } from 'lodash'
+import once from 'events.once'
+import { omit, isPlainObject, assign } from 'lodash'
 import Crypto from 'crypto'
 
 export const createLoggerMiddleware = logger => (req, res, next) => {
   const startTime = Date.now()
-  let uuid = Math.random() + ' ' + startTime
-
-  uuid = Crypto.createHash('sha1')
-    .update(uuid)
+  const uuid = Crypto.createHash('sha1')
+    .update(Math.random() + ' ' + startTime)
     .digest('base64')
     .slice(0, 10)
 
-  req.log = logger.child({ uuid, from: req.url, userId: req.user && req.user.identifier })
+  const log = logger.child({ uuid, from: req.url, userId: req.user && req.user.identifier })
 
-  res.on('finish', () => {
+  assign(req, { log })
+
+  Promise.race([once(req, 'close').then(() => true), once(res, 'finish').then(() => false)]).then(aborted => {
+    const logMessage = 'Incoming Request' + (aborted ? ' [aborted]' : '')
     const responseTimeSeconds = (Date.now() - startTime) / 1000
-    let logBody = req.body
+    let { url, method, body: logBody, query, headers } = req
 
-    if (req.url.startsWith('/verify/face/') && isPlainObject(logBody)) {
+    if (url.startsWith('/verify/face/') && isPlainObject(logBody)) {
       logBody = omit(logBody, 'faceMap', 'auditTrailImage', 'lowQualityAuditTrailImage')
     }
 
-    req.log.log('http', 'Incoming Request', {
+    log[aborted ? 'warn' : 'info']('http', logMessage, {
       responseTimeSeconds,
-      method: req.method,
+      method,
       body: logBody,
-      query: req.query,
-      headers: req.headers
+      query,
+      headers
     })
   })
 
-  next()
+  return next()
 }

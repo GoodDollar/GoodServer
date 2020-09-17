@@ -1,10 +1,10 @@
 {
   "name": "@gooddollar/goodserver",
-  "version": "1.2.1-1",
+  "version": "1.3.0",
   "description": "GoodDollar Server",
   "main": "src/server/index.js",
   "engines": {
-    "node": "10.21.0"
+    "node": "12.*"
   },
   "scripts": {
     "build": "webpack --mode production --config webpack.server.config.js",
@@ -71,6 +71,7 @@
     "cross-fetch": "^3.0.3",
     "delay": "^4.3.0",
     "dotenv": "^6.2.0",
+    "events.once": "^2.0.2",
     "express": "^4.17.1",
     "express-pino-logger": "^4.0.0",
     "express-rate-limit": "^5.0.0",

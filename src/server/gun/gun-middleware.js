@@ -1,7 +1,7 @@
 // @flow
 import express, { Router } from 'express'
 
-import { get, assign, identity, memoize, once } from 'lodash'
+import { get, assign, identity, memoize, once, zipObject } from 'lodash'
 import { sha3 } from 'web3-utils'
 import util from 'util'
 
@@ -18,6 +18,7 @@ import logger from '../../imports/logger'
 
 const log = logger.child({ from: 'GunDB-Middleware' })
 
+// TODO: import refactorings from server
 assign(Gun.chain, {
   async putAck(data, callback = identity) {
     const nodeCompatiblePut = cb => this.put(data, once(ack => cb(ack.err, ack)))
@@ -97,9 +98,15 @@ export type S3Conf = {
  * Make app use Gun.serve and put Gun as global so we can do  `node --inspect` - debug only
  */
 const setup = (app: Router) => {
-  if (conf.gundbServerMode) app.use(Gun.serve)
   global.Gun = Gun // / make global to `node --inspect` - debug only
-  //returns details about our gundb trusted indexes
+
+  if (conf.gundbServerMode) {
+    app.use(Gun.serve)
+
+    log.info('Done setup Gun.serve middleware.')
+  }
+
+  // returns details about our gundb trusted indexes
   app.get(
     '/trust',
     wrapAsync(async (_, res) => {
@@ -148,6 +155,7 @@ class GunDB implements StorageAPI {
 
   //managed user indexes
   trust: {}
+  indexesRefs: object = {}
 
   /**
    *
@@ -173,7 +181,7 @@ class GunDB implements StorageAPI {
     }
     if (this.serverMode === false) {
       log.info('Starting gun as client:', { peers: this.peers })
-      this.gun = Gun({ peers: this.peers })
+      this.gun = Gun({ peers: this.peers, memory: 25, file: 'radata-worker' + get(global, 'workerId', '0') })
     } else if (s3 && s3.secret) {
       log.info('Starting gun with S3:', { gc_delay, memory })
       this.gun = Gun({
@@ -195,13 +203,16 @@ class GunDB implements StorageAPI {
     }
     this.serverName = name
     this.user = this.gun.user()
-    this.ready = gunAuth(this.gun, password).then(_ => {
-      this.initIndexes()
+    this.ready = gunAuth(this.gun, password).then(async _ => {
+      await this.initIndexes()
+      this.userRoot = await this.gun.user().then(null, { wait: 2000 })
+      log.debug('gun logged in', { user: this.userRoot })
+      this.trust = this.getIndexes()
+      log.debug('done indexes', { indexes: this.trust })
       return true
     })
     await this.ready
-    log.info('Gun logged in', { useris: this.user.is })
-
+    log.info('gun initialized', { useris: this.user.is })
     return this.ready
   }
 
@@ -229,70 +240,64 @@ class GunDB implements StorageAPI {
   }
 
   async initIndexes() {
-    const indexesInitialized = await Promise.all([
-      this.user
-        .get(`users/byemail`)
-        .onThen(_ => _ === undefined && this.user.get(`users/byemail`).putAck({ init: true })),
-      this.user
-        .get(`users/bymobile`)
-        .onThen(_ => _ === undefined && this.user.get(`users/bymobile`).putAck({ init: true })),
-      this.user
-        .get(`users/bywalletAddress`)
-        .onThen(_ => _ === undefined && this.user.get(`users/bywalletAddress`).putAck({ init: true }))
-    ]).catch(e => {
-      log.error('initIndexes failed', e.message, e)
-    })
+    const indexFields = ['email', 'mobile', 'walletAddress']
+    const indexRefs = indexFields.map(field => this.user.get(`users/by${field}`))
 
-    this.trust = await this.getIndexes()
+    log.debug('initIndexes started')
 
-    log.debug('initIndexes', { indexesInitialized, ...this.trust })
+    try {
+      const result = await Promise.all(indexRefs.map(ref => ref.putAck({ init: true })))
+
+      this.indexesRefs = zipObject(indexFields, indexRefs)
+      log.debug('initIndexes done', result)
+    } catch (exception) {
+      const { message } = exception
+
+      log.error('initIndexes failed', message, exception)
+      throw exception
+    }
   }
 
-  async getIndexes() {
+  getIndexes() {
     const goodDollarPublicKey = get(this, 'user.is.pub')
     const indexes = { goodDollarPublicKey }
+    const keys = ['mobile', 'email', 'walletAddress']
 
-    await Promise.all(
-      ['mobile', 'email', 'walletAddress'].map(async field => {
-        const indexId = await this.getIndexId(field)
-
-        indexes['by' + field] = indexId
-      })
-    )
+    keys.forEach(field => {
+      indexes['by' + field] = this.getIndexId(field)
+    })
 
     return indexes
   }
 
   async addUserToIndex(index: string, value: String, user: LoggedUser) {
-    const updateP = this.user
-      .get(`users/by${index}`)
+    return this.indexesRefs[index]
       .get(sha3(value))
       .putAck({ '#': '~' + user.profilePublickey })
       .catch(e => {
         log.error('failed updating user index', e.message, e, { index, value, user })
         return false
       })
-    return updateP
   }
+
   async removeUserFromIndex(index: string, hashedValue: String) {
-    const updateP = this.user
-      .get(`users/by${index}`)
+    return this.indexesRefs[index]
       .get(hashedValue)
       .putAck('')
       .catch(e => {
         log.error('failed removing user from index', e.message, e, { index, hashedValue })
         return false
       })
-    return updateP
   }
 
   async getIndex(index: string) {
-    const res = await this.user.get(`users/by${index}`).then()
-    return res
+    return this.indexesRefs[index].onThen(null, { wait: 60000 })
   }
 
-  async getIndexId(index: string) {
-    return this.user.get(`users/by${index}`).then(_ => Gun.node.soul(_))
+  getIndexId(index: string) {
+    const goodDollarPublicKey = get(this, 'user.is.pub')
+
+    return `~${goodDollarPublicKey}/users/by${index}`
   }
 
   async getPublicProfile() {
