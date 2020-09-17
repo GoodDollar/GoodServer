@@ -316,14 +316,11 @@ export class Wallet {
         txHash = hash
       }
 
-      const timeoutRace = () => {
-        const txPromise = this.sendTransaction(this.proxyContract.methods.whitelist(address, did), {
-          onTransactionHash
-        })
-        return txPromise
-      }
+      const txPromise = this.sendTransaction(this.proxyContract.methods.whitelist(address, did), {
+        onTransactionHash
+      })
 
-      let tx = await this.retryTimeout(timeoutRace)
+      let tx = await txPromise
 
       log.info('Whitelisted user', { txHash, address, did, tx })
       return tx
@@ -472,11 +469,8 @@ export class Wallet {
         txHash = hash
       }
 
-      const timeoutRace = () => {
-        const txPromise = this.sendTransaction(this.proxyContract.methods.topWallet(address), { onTransactionHash })
-        return txPromise
-      }
-      let res = await this.retryTimeout(timeoutRace)
+      const txPromise = this.sendTransaction(this.proxyContract.methods.topWallet(address), { onTransactionHash })
+      let res = await txPromise
       log.debug('Topwallet result:', { txHash, address, res })
       return res
     } catch (e) {
