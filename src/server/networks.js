@@ -34,7 +34,7 @@ export default once(() => ({
   122: {
     network_id: 122,
     web3Transport: 'HttpProvider',
-    httpWeb3Provider: 'https://rpc.fuse.io/',
+    httpWeb3Provider: process.env.FUSE_RPC || 'https://fuse.gooddollar.org/',
     websocketWeb3Provider: 'wss://rpc.fuse.io/ws'
   }
 }))
