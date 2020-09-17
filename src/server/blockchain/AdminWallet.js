@@ -23,6 +23,7 @@ import { sendSlackAlert } from '../../imports/slack'
 
 const log = logger.child({ from: 'AdminWallet' })
 
+const FUSE_TX_TIMEOUT = 12000 //should be confirmed after max 2 blocks (10sec)
 const defaultGas = 200000
 const defaultGasPrice = web3Utils.toWei('1', 'gwei')
 const adminMinBalance = conf.adminMinBalance
@@ -313,8 +314,11 @@ export class Wallet {
         txHash = hash
       }
 
-      const makeTx = () => this.proxyContract.methods.whitelist(address, did)
-      const result = await retryTimeout(() => this.sendTransaction(makeTx(), { onTransactionHash }))
+      const txPromise = this.sendTransaction(this.proxyContract.methods.whitelist(address, did), {
+        onTransactionHash
+      })
+
+      let tx = await txPromise
 
       log.info('Whitelisted user', { txHash, address, did, result })
       return result
@@ -447,11 +451,11 @@ export class Wallet {
         txHash = hash
       }
 
-      const makeTx = () => this.proxyContract.methods.topWallet(address)
-      const result = await retryTimeout(() => this.sendTransaction(makeTx(), { onTransactionHash }))
+      const txPromise = this.sendTransaction(this.proxyContract.methods.topWallet(address), { onTransactionHash })
+      let res = await txPromise
 
-      log.debug('Topwallet result:', { txHash, address, res: result })
-      return result
+      log.debug('Topwallet result:', { txHash, address, res })
+      return res
     } catch (e) {
       log.error('Error topWallet', e.message, e, { txHash, address, lastTopping, force })
       throw e
@@ -491,9 +495,11 @@ export class Wallet {
   async sendTransaction(
     tx: any,
     txCallbacks: PromiEvents = {},
-    { gas, gasPrice }: GasValues = { gas: undefined, gasPrice: undefined }
+    { gas, gasPrice }: GasValues = { gas: undefined, gasPrice: undefined },
+    retry = true
   ) {
-    let currentAddress
+    let currentAddress, txHash
+    const uuid = Crypto.randomBytes(5).toString('base64')
     try {
       const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
       gas =
@@ -510,7 +516,6 @@ export class Wallet {
       if (gas > 8000000) gas = defaultGas
       gasPrice = gasPrice || defaultGasPrice
 
-      const uuid = Crypto.randomBytes(5).toString('base64')
       log.debug('getting tx lock:', { uuid })
       const { nonce, release, fail, address } = await this.txManager.lock(this.filledAddresses)
       log.debug('got tx lock:', { uuid, address })
@@ -521,11 +526,12 @@ export class Wallet {
       }
       currentAddress = address
       log.debug(`sending tx from: ${address} | nonce: ${nonce}`, { uuid, balance, gas, gasPrice })
-      return await new Promise((res, rej) => {
+      let txPromise = new Promise((res, rej) => {
         tx.send({ gas, gasPrice, chainId: this.networkId, nonce, from: address })
           .on('transactionHash', h => {
             release()
-            log.debug('got tx hash:', { uuid })
+            txHash = h
+            log.debug('got tx hash:', { uuid, txHash })
             onTransactionHash && onTransactionHash(h)
           })
           .on('receipt', r => {
@@ -578,8 +584,16 @@ export class Wallet {
             }
           })
       })
+
+      const res = await Promise.race([txPromise, requestTimeout(FUSE_TX_TIMEOUT, 'fuse tx timeout')])
+      return res
     } catch (e) {
-      await this.txManager.unlock(currentAddress)
+      log.warn('sendTransaction failed:', e.message, { uuid, txHash, retry })
+      this.txManager.unlock(currentAddress)
+      if (retry && e.message.contains('fuse tx timeout')) {
+        log.warn('sendTransaction failed retrying:', { uuid, txHash })
+        return this.sendTransaction(tx, txCallbacks, { gas, gasPrice }, false)
+      }
       throw new Error(e)
     }
   }
