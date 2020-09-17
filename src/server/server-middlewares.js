@@ -14,8 +14,8 @@ import addStorageMiddlewares from './storage/storageAPI'
 import addVerificationMiddlewares from './verification/verificationAPI'
 import addSendMiddlewares from './send/sendAPI'
 import addLoadTestMiddlewares from './loadtest/loadtest-middleware'
-import { addCypressMiddleware } from './cypress/cypress-middleware'
-import { addRequestLogger } from '../imports/logger'
+import addCypressMiddleware from './cypress/cypress-middleware'
+import logger, { addRequestLogger } from '../imports/logger'
 import VerificationAPI from './verification/verification'
 import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
 import addClaimQueueMiddlewares from './claimQueue/claimQueueAPI'
@@ -24,10 +24,17 @@ import AdminWallet from './blockchain/AdminWallet'
 import { requestTimeout } from './utils/async'
 import Config from './server.config'
 
+const rootLogger = logger.child({ from: 'Server' })
+
 export default (app: Router, env: any) => {
+  const corsConfig = {
+    credentials: true,
+    origin: Config.env === 'production' ? /\.gooddollar\.org$/ : true
+  }
+
   Promise.race([
     requestTimeout(30000, 'gun not initialized'),
-    AdminWallet.ready.then(_ => {
+    AdminWallet.ready.then(() => {
       const pkey = AdminWallet.wallets[AdminWallet.addresses[0]].privateKey.slice(2)
       //we no longer use backend also as gundb  server, otherwise this needs to be moved back
       //to server-prod.js so we can pass the express server instance instead of null
@@ -45,12 +52,6 @@ export default (app: Router, env: any) => {
   app.use(bodyParser.json({ limit: '100mb' }))
   // parse UTM cookies
   app.use(cookieParser())
-
-  const corsConfig = {
-    credentials: true,
-    origin: Config.env === 'production' ? /\.gooddollar\.org$/ : true
-  }
-
   app.use(cors(corsConfig))
   app.use(addRequestLogger)
 
@@ -64,10 +65,10 @@ export default (app: Router, env: any) => {
   addLoadTestMiddlewares(app)
 
   app.use((error, req, res, next: NextFunction) => {
-    const log = req.log
+    const log = req.log || rootLogger
     const { message } = error
 
-    log.error('Something went wrong while performing request', message, error)
+    log.error('Something went wrong while performing request', message, error, { req })
 
     res.status(400).json({ message })
   })
