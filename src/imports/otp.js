@@ -1,16 +1,30 @@
 // @flow
-import { assign } from 'lodash'
+import random from 'math-random'
 import Twilio from 'twilio'
 
 import conf from '../server/server.config'
 import type { UserRecord } from './types'
 
+/**
+ * Creates an OTP code and returns it as a string
+ * @param {number} length - length of OTP code
+ * @returns {string}
+ */
+export const generateOTP = (length: number = 0): string => {
+  const exponent = length - 1
+  const base = Number(`1e${exponent}`)
+  const multiplier = Number(`9e${exponent}`)
+
+  return Math.floor(base + random() * multiplier).toString()
+}
+
 export default new (class {
   constructor(Config, Twilio) {
-    const { twilioAuthID, twilioAuthToken, otpDigits } = Config
+    const { twilioAuthID, twilioAuthToken, twilioVerifyID, otpDigits } = Config
 
     this.client = Twilio(twilioAuthID, twilioAuthToken)
     this.options = { friendlyName: 'GoodDollar', codeLength: otpDigits }
+    this.service = this.client.verify.services(twilioVerifyID)
   }
 
   /**
@@ -21,7 +35,7 @@ export default new (class {
   async sendOTP(user: UserRecord): Promise<void> {
     const options = { to: user.mobile, channel: 'sms' }
 
-    await this.exec(service => service.verifications.create(options))
+    return this.service.verifications.create(options)
   }
 
   /**
@@ -31,24 +45,6 @@ export default new (class {
    */
   async checkOTP(user: UserRecord, code: string): Promise<boolean> {
     const options = { to: user.mobile, code }
-
-    return this.exec(service => service.verificationChecks.create(options))
-  }
-
-  /**
-   * @private
-   */
-  async exec(serviceCall) {
-    let { client, options, service } = this
-    const { services } = client.verify
-
-    if (!service) {
-      const { sid } = await services.create(options)
-
-      service = services(sid)
-      assign(this, { service })
-    }
-
-    return serviceCall(service)
+    return this.service.verificationChecks.create(options)
   }
 })(conf, Twilio)

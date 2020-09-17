@@ -168,6 +168,12 @@ const conf = convict({
     env: 'TWILIO_AUTH_TOKEN',
     default: ''
   },
+  twilioVerifyID: {
+    doc: "Twilio's verify service id",
+    format: '*',
+    env: 'TWILIO_VERIFY_ID',
+    default: ''
+  },
   otpDigits: {
     doc: 'Amount of digits for the OTP',
     format: '*',
