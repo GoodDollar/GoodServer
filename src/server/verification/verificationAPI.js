@@ -125,14 +125,18 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       const { enrollmentIdentifier } = params
       let enrollmentResult
 
-      req.checkConnection() //check if user request aborted
+      // checking if request aborted to handle cases when connection is slow
+      // and facemap / images were uploaded more that 30sec cousing timeout
+      if (req.aborted) {
+        return
+      }
+
       try {
         const { disableFaceVerification, allowDuplicatedFaceRecords, claimQueueAllowed } = conf
         const enrollmentProcessor = createEnrollmentProcessor(storage)
 
         await enrollmentProcessor.validate(user, enrollmentIdentifier, payload)
 
-        req.checkConnection() //check if user request aborted
         // if user is already verified, we're skipping enroillment logic
         if (user.isVerified || disableFaceVerification || allowDuplicatedFaceRecords || isE2ERunning) {
           // creating enrollment session manually for this user
@@ -155,7 +159,6 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
             // after enrollment was successfull
             // it whitelists user in the wallet and updates Gun's session
             // here we're calling it manually as we've skipped enroll()
-            req.checkConnection() //check if user request aborted
             await enrollmentSession.onEnrollmentCompleted()
           } catch (exception) {
             // also we should try...catch manually,
@@ -172,7 +175,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           if (claimQueueAllowed > 0 && false === isApprovedToClaim) {
             throw new Error('User not approved to claim, not in queue or still pending')
           }
-          req.checkConnection() //check if user request aborted
+
           enrollmentResult = await enrollmentProcessor.enroll(user, enrollmentIdentifier, payload, log)
         }
       } catch (exception) {
@@ -262,10 +265,19 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       const { user, body } = req
       const verificationData: { otp: string } = body.verificationData
       const tempSavedMobile = user.otp && user.otp.mobile
-      const hashedNewMobile = sha3(tempSavedMobile)
+
+      if (!tempSavedMobile) {
+        log.error('mobile to verify not found or missing', 'mobile missing', new Error('mobile missing'), {
+          user,
+          verificationData
+        })
+        return res.status(400).json({ ok: 0, error: 'MOBILE MISSING' })
+      }
+
+      const hashedNewMobile = tempSavedMobile && sha3(tempSavedMobile)
       const currentMobile = user.mobile
 
-      log.debug('mobile verified', { user, verificationData })
+      log.debug('mobile verified', { user, verificationData, hashedNewMobile })
 
       if (!user.smsValidated || currentMobile !== hashedNewMobile) {
         let verified = await verifier.verifyMobile({ identifier: user.loggedInAs }, verificationData).catch(e => {
