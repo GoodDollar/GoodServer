@@ -184,6 +184,12 @@ export class Wallet {
     await this.txManager.createListIfNotExists(this.addresses)
     await this.mainnetTxManager.createListIfNotExists(this.mainnetAddresses)
 
+    if (conf.topAdminsOnStartup) {
+      await this.topAdmins().catch(e => {
+        log.warn('Top admins failed', { e, errMessage: e.message })
+      })
+    }
+
     for (let addr of this.addresses) {
       const balance = await this.web3.eth.getBalance(addr)
       const mainnetBalance = await this.mainnetWeb3.eth.getBalance(addr)
@@ -214,14 +220,6 @@ export class Wallet {
     }
 
     this.address = this.filledAddresses[0]
-
-    if (conf.topAdminsOnStartup) {
-      // this needs to happen here after we have added atleast 1 admin address otherwise calling proxy contract
-      // wont work
-      await this.topAdmins().catch(e => {
-        log.warn('Top admins failed', { e, errMessage: e.message })
-      })
-    }
 
     this.identityContract = new this.web3.eth.Contract(
       IdentityABI.abi,
@@ -265,11 +263,16 @@ export class Wallet {
    * @returns {Promise<String>}
    */
   async topAdmins(): Promise<any> {
-    return this.sendTransaction(
-      this.proxyContract.methods.topAdmins(0),
-      {},
-      { gas: '200000' } // gas estimate for this is very high so we limit it to prevent failure
-    )
+    const { nonce, release, fail, address } = await this.txManager.lock(this.addresses[0])
+    try {
+      log.debug('topAdmins sending tx', { address, nonce })
+      await this.proxyContract.methods.topAdmins(0).send({ gas: '500000', from: address, nonce })
+      log.debug('topAdmins success')
+      release()
+    } catch (e) {
+      fail()
+      log.error('topAdmins failed', e)
+    }
   }
 
   /**
@@ -448,11 +451,7 @@ export class Wallet {
    * @param {boolean} force
    * @returns {PromiEvent<TransactionReceipt>}
    */
-  async topWallet(
-    address: string,
-    lastTopping?: moment.Moment = moment().subtract(1, 'day'),
-    force: boolean = false
-  ): PromiEvent<TransactionReceipt> {
+  async topWallet(address: string, force: boolean = false): PromiEvent<TransactionReceipt> {
     let userBalance = await this.web3.eth.getBalance(address)
     let maxTopWei = parseInt(web3Utils.toWei('1000000', 'gwei'))
     let toTop = maxTopWei - userBalance
@@ -474,7 +473,7 @@ export class Wallet {
       log.debug('Topwallet result:', { txHash, address, res })
       return res
     } catch (e) {
-      log.error('Error topWallet', e.message, e, { txHash, address, lastTopping, force })
+      log.error('Error topWallet', e.message, e, { txHash, address, force })
       throw e
     }
   }

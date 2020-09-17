@@ -345,32 +345,32 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
     wrapAsync(async (req, res, next) => {
       const log = req.log
       const user: LoggedUser = req.user
+
+      //TODO: restore if necessary
       // check if user send ether out of the good dollar system
-      let isUserSendEtherOutOfSystem = false
-      try {
-        const { result = [] } = await fuseapi.getTxList({
-          address: user.gdAddress,
-          page: 1,
-          offset: 10,
-          filterby: 'from'
-        })
-        isUserSendEtherOutOfSystem = result.some(r => Number(r.value) > 0)
-      } catch (e) {
-        log.error('Check user transactions error', e.message, e)
-      }
+      // let isUserSendEtherOutOfSystem = false
+      // try {
+      //   const { result = [] } = await fuseapi.getTxList({
+      //     address: user.gdAddress,
+      //     page: 1,
+      //     offset: 10,
+      //     filterby: 'from'
+      //   })
+      //   isUserSendEtherOutOfSystem = result.some(r => Number(r.value) > 0)
+      // } catch (e) {
+      //   log.error('Check user transactions error', e.message, e)
+      // }
 
-      if (isUserSendEtherOutOfSystem) {
-        log.warn('User send ether out of system')
+      // if (isUserSendEtherOutOfSystem) {
+      //   log.warn('User send ether out of system')
 
-        return res.json({
-          ok: 0,
-          sendEtherOutOfSystem: true
-        })
-      }
+      //   return res.json({
+      //     ok: 0,
+      //     sendEtherOutOfSystem: true
+      //   })
+      // }
 
-      //allow topping once a day
-      await storage.updateUser({ identifier: user.loggedInAs, lastTopWallet: new Date().toISOString() })
-      let txRes = await AdminWallet.topWallet(user.gdAddress, user.lastTopWallet)
+      let txRes = await AdminWallet.topWallet(user.gdAddress)
         .then(tx => {
           log.debug('topping wallet tx', { walletaddress: user.gdAddress, tx })
           return { ok: 1 }
@@ -378,8 +378,6 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         .catch(async exception => {
           const { message } = exception
           log.error('Failed top wallet tx', message, exception)
-          //restore last top wallet in case of error
-          await storage.updateUser({ identifier: user.loggedInAs, lastTopWallet: user.lastTopWallet })
 
           return { ok: -1, error: message }
         })
