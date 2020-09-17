@@ -34,17 +34,14 @@ class Verifications implements VerificationAPI {
       throw new Error('No code to validate, retry')
     }
 
-    const { otpTtlMinutes } = conf
-    const { status, date_created } = await OTP.checkOTP(user, otp)
+    const { status } = await OTP.checkOTP(user, otp)
+
+    if ('canceled' !== status) {
+      throw new Error('Code expired, retry')
+    }
 
     if ('approved' !== status) {
       throw new Error("Oops, it's not right code")
-    }
-
-    const dateExpired = moment(date_created).add(otpTtlMinutes, 'minutes')
-
-    if (moment().isAfter(dateExpired)) {
-      throw new Error('Code expired, retry')
     }
 
     return true
