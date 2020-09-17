@@ -613,7 +613,7 @@ export class Wallet {
     } catch (e) {
       log.warn('sendTransaction failed:', e.message, { uuid, txHash, retry })
       await this.txManager.unlock(currentAddress)
-      if (retry && e.message === 'fuse tx timeout') {
+      if (retry && e.message.contains('fuse tx timeout')) {
         log.warn('sendTransaction failed retrying:', { uuid, txHash })
         return this.sendTransaction(tx, txCallbacks, { gas, gasPrice }, false)
       }
