@@ -168,12 +168,6 @@ const conf = convict({
     env: 'TWILIO_AUTH_TOKEN',
     default: ''
   },
-  twilioPhoneNumber: {
-    doc: "Plivo's Phone Number",
-    format: '*',
-    env: 'TWILIO_PHONE_NUMBER',
-    default: ''
-  },
   otpDigits: {
     doc: 'Amount of digits for the OTP',
     format: '*',

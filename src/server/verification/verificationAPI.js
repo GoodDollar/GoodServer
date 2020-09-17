@@ -9,7 +9,7 @@ import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import fuseapi from '../utils/fuseapi'
-import { sendOTP, generateOTP } from '../../imports/otp'
+import OTP from '../../imports/otp'
 import conf from '../server.config'
 import { Mautic } from '../mautic/mauticAPI'
 import W3Helper from '../utils/W3Helper'
@@ -226,7 +226,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         let code
 
         if (['production', 'staging'].includes(conf.env)) {
-          code = await sendOTP({ mobile })
+          await OTP.sendOTP({ mobile })
         }
         const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
         log.debug('otp sent:', user.loggedInAs, code)
@@ -445,7 +445,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           log.debug('created new user mautic contact', userRec)
         }
 
-        code = generateOTP(6)
+        code = '' //generateOTP(6)
 
         if (!user.isEmailConfirmed || isEmailChanged) {
           try {

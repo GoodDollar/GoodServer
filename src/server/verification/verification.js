@@ -1,7 +1,11 @@
 // @flow
+import moment from 'moment'
+
 import type { UserRecord, VerificationAPI } from '../../imports/types'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
+import OTP from '../../imports/otp'
 import logger from '../../imports/logger'
+import conf from '../server.config'
 
 /**
  * Verifications class implements `VerificationAPI`
@@ -22,7 +26,7 @@ class Verifications implements VerificationAPI {
    * @returns {Promise<boolean | Error>}
    */
   async verifyMobile(user: UserRecord, verificationData: { otp: string }): Promise<boolean | Error> {
-    const otp = await UserDBPrivate.getUserField(user.identifier, 'otp')
+    const { otp } = verificationData
 
     this.log.debug('verifyMobile:', { userId: user.identifier, otp })
 
@@ -30,11 +34,16 @@ class Verifications implements VerificationAPI {
       throw new Error('No code to validate, retry')
     }
 
-    if (String(verificationData.otp) !== String(otp.code)) {
+    const { otpTtlMinutes } = conf
+    const { status, date_created } = await OTP.checkOTP(user, otp)
+
+    if ('approved' !== status) {
       throw new Error("Oops, it's not right code")
     }
 
-    if (otp.expirationDate <= Date.now()) {
+    const dateExpired = moment(date_created).add(otpTtlMinutes, 'minutes')
+
+    if (moment().isAfter(dateExpired)) {
       throw new Error('Code expired, retry')
     }
 
