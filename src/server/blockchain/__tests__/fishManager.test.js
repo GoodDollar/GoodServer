@@ -1,7 +1,7 @@
 import AdminWallet from '../AdminWallet'
 import { fishManager } from '../stakingModelTasks'
-import delay from 'delay'
 import { version } from '@gooddollar/goodcontracts/package.json'
+
 jest.setTimeout(20000)
 
 const setNextDay = async () => {

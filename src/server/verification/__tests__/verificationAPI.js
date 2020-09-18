@@ -1,5 +1,4 @@
 import request from 'supertest'
-import moment from 'moment'
 import MockAdapter from 'axios-mock-adapter'
 
 import { assign, omit, invokeMap } from 'lodash'

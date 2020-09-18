@@ -1,7 +1,7 @@
-import mongoose from '../../mongo-db.js'
+import mongoose, { Schema } from '../../mongo-db.js'
 import { MODEL_WALLET_NONCE } from './constants'
 
-export const WalletNonceSchema = new mongoose.Schema({
+export const WalletNonceSchema = new Schema({
   address: {
     type: String
   },

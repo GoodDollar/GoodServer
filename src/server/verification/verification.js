@@ -1,11 +1,8 @@
 // @flow
-import moment from 'moment'
-
 import type { UserRecord, VerificationAPI } from '../../imports/types'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
 import OTP from '../../imports/otp'
 import logger from '../../imports/logger'
-import conf from '../server.config'
 
 /**
  * Verifications class implements `VerificationAPI`
@@ -26,18 +23,20 @@ class Verifications implements VerificationAPI {
    * @returns {Promise<boolean | Error>}
    */
   async verifyMobile(user: UserRecord, verificationData: { otp: string }): Promise<boolean | Error> {
+    const { log } = this
     const { otp } = verificationData
 
-    this.log.debug('verifyMobile:', { user, otp })
+    log.debug('verifyMobile:', { user, otp })
 
     if (!otp) {
       throw new Error('No code to validate, retry')
     }
 
     const checkResult = await OTP.checkOTP(user, otp)
-
-    this.log.debug('verifyMobile result:', { checkResult, user, otp })
     const { status } = checkResult
+
+    log.debug('verifyMobile result:', { checkResult, user, otp })
+
     if ('canceled' === status) {
       throw new Error('Code expired, retry')
     }

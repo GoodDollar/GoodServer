@@ -34,7 +34,7 @@ export const DelayedTaskSchema = new Schema({
   },
   subject: {
     // some parameters (subject, options) of the task. Could be string number or object corresponding to the kind of the task.
-    type: mongoose.Schema.Types.Mixed,
+    type: Mixed,
     index: true
   },
   status: {

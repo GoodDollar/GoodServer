@@ -3,48 +3,68 @@ import random from 'math-random'
 import Twilio from 'twilio'
 
 import conf from '../server/server.config'
+import logger from './logger'
 import type { UserRecord } from './types'
 
-/**
- * Creates an OTP code and returns it as a string
- * @param {number} length - length of OTP code
- * @returns {string}
- */
-export const generateOTP = (length: number = 0): string => {
-  const exponent = length - 1
-  const base = Number(`1e${exponent}`)
-  const multiplier = Number(`9e${exponent}`)
-
-  return Math.floor(base + random() * multiplier).toString()
-}
-
 export default new (class {
-  constructor(Config, Twilio) {
-    const { twilioAuthID, twilioAuthToken, twilioVerifyID, otpDigits } = Config
+  constructor(Config, Twilio, logger) {
+    const { twilioAuthID, twilioAuthToken, twilioVerifyID } = Config
+    const { services } = Twilio(twilioAuthID, twilioAuthToken).verify
 
-    this.client = Twilio(twilioAuthID, twilioAuthToken)
-    this.options = { friendlyName: 'GoodDollar', codeLength: otpDigits }
-    this.service = this.client.verify.services(twilioVerifyID)
+    this.log = logger
+    this.service = services(twilioVerifyID)
+  }
+
+  /**
+   * Creates an OTP code and returns it as a string
+   * @param {number} length - length of OTP code
+   * @returns {string}
+   */
+  generateOTP(length: number = 0): string {
+    const exponent = length - 1
+    const base = Number(`1e${exponent}`)
+    const multiplier = Number(`9e${exponent}`)
+
+    return Math.floor(base + random() * multiplier).toString()
   }
 
   /**
    * Generates and sends an OTP code to the user's mobile number
    * @param {UserRecord} user - object with user's information
-   * @returns {Promise<void>}
+   * @returns {Promise<object>}
    */
-  async sendOTP(user: UserRecord): Promise<void> {
-    const options = { to: user.mobile, channel: 'sms' }
+  async sendOTP(user: UserRecord): Promise<object> {
+    const { mobile } = user
+    const { log, service } = this
+    const options = { to: mobile, channel: 'sms' }
 
-    return this.service.verifications.create(options)
+    try {
+      return await service.verifications.create(options)
+    } catch (exception) {
+      const { message } = exception
+
+      log.error('Error sending OTP:', message, exception, { mobile })
+      throw exception
+    }
   }
 
   /**
    * Checks OTP code sent to the user's mobile number
    * @param {UserRecord} user - object with user's information
-   * @returns {Promise<string>}
+   * @returns {Promise<object>}
    */
-  async checkOTP(user: UserRecord, code: string): Promise<boolean> {
-    const options = { to: user.mobile, code }
-    return this.service.verificationChecks.create(options)
+  async checkOTP(user: UserRecord, code: string): Promise<object> {
+    const { mobile } = user
+    const { log, service } = this
+    const options = { to: mobile, code }
+
+    try {
+      return await service.verificationChecks.create(options)
+    } catch (exception) {
+      const { message } = exception
+
+      log.error('Error verification OTP:', message, exception, { mobile, code })
+      throw exception
+    }
   }
-})(conf, Twilio)
+})(conf, Twilio, logger.child({ from: 'Twilio' }))

@@ -2,7 +2,7 @@
  * @jest-environment node
  */
 
-import { generateOTP } from '../otp'
+import OTP from '../otp'
 
 describe('generateOTP positive values', () => {
   // Given
@@ -11,7 +11,7 @@ describe('generateOTP positive values', () => {
   lengths.forEach(length => {
     it(`should generate an OTP code of ${length} chars for length = ${length}`, () => {
       // When
-      const otp = generateOTP(length)
+      const otp = OTP.generateOTP(length)
 
       // Then
       expect(otp.length).toBe(length)
@@ -26,7 +26,7 @@ describe('generateOTP negative values and zero', () => {
   lengths.forEach(length => {
     it(`should generate an OTP equal to '0' for: ${length}`, () => {
       // When
-      const otp = generateOTP(length)
+      const otp = OTP.generateOTP(length)
 
       // Then
       expect(otp.length).toBe(1)

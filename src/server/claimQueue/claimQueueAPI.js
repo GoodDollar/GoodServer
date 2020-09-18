@@ -2,7 +2,7 @@
 import { Router } from 'express'
 import { body } from 'express-validator'
 import passport from 'passport'
-import { map, get, flatten } from 'lodash'
+import { map, get } from 'lodash'
 import { sha3 } from 'web3-utils'
 import moment from 'moment'
 
