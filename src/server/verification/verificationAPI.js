@@ -9,7 +9,7 @@ import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import fuseapi from '../utils/fuseapi'
-import { sendOTP, generateOTP } from '../../imports/otp'
+import OTP from '../../imports/otp'
 import conf from '../server.config'
 import { Mautic } from '../mautic/mauticAPI'
 import W3Helper from '../utils/W3Helper'
@@ -223,19 +223,16 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       log.debug('sending otp:', user.loggedInAs)
 
       if (!userRec.smsValidated || hashedMobile !== savedMobile) {
-        let code
-
         if (['production', 'staging'].includes(conf.env)) {
-          code = await sendOTP({ mobile })
+          const sendResult = await OTP.sendOTP({ mobile })
+
+          log.debug('otp sent:', user.loggedInAs, sendResult)
         }
-        const expirationDate = Date.now() + +conf.otpTtlMinutes * 60 * 1000
-        log.debug('otp sent:', user.loggedInAs, code)
+
         await storage.updateUser({
           identifier: user.loggedInAs,
           otp: {
             ...(userRec.otp || {}),
-            code,
-            expirationDate,
             mobile
           }
         })
@@ -271,6 +268,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           user,
           verificationData
         })
+
         return res.status(400).json({ ok: 0, error: 'MOBILE MISSING' })
       }
 
@@ -280,13 +278,14 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       log.debug('mobile verified', { user, verificationData, hashedNewMobile })
 
       if (!user.smsValidated || currentMobile !== hashedNewMobile) {
-        let verified = await verifier.verifyMobile({ identifier: user.loggedInAs }, verificationData).catch(e => {
-          log.warn('mobile verification failed:', { e })
+        let verified = await verifier
+          .verifyMobile({ identifier: user.loggedInAs, mobile: tempSavedMobile }, verificationData)
+          .catch(e => {
+            log.warn('mobile verification failed:', { e })
 
-          res.status(400).json({ ok: 0, error: 'OTP FAILED', message: e.message })
-
-          return false
-        })
+            res.status(400).json({ ok: 0, error: 'OTP FAILED', message: e.message })
+            return false
+          })
 
         if (verified === false) return
 
@@ -443,7 +442,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           log.debug('created new user mautic contact', userRec)
         }
 
-        code = generateOTP(6)
+        code = OTP.generateOTP(6)
 
         if (!user.isEmailConfirmed || isEmailChanged) {
           try {

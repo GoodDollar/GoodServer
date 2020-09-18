@@ -1,7 +1,7 @@
-import mongoose from '../../mongo-db.js'
+import mongoose, { Schema } from '../../mongo-db.js'
 import { MODEL_USER_PRIVATE } from './constants'
 
-export const UserPrivateSchema = new mongoose.Schema({
+export const UserPrivateSchema = new Schema({
   identifier: {
     type: String,
     index: { unique: true },

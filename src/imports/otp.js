@@ -1,51 +1,70 @@
 // @flow
 import random from 'math-random'
-// import * as plivo from 'plivo'
 import Twilio from 'twilio'
+
 import conf from '../server/server.config'
+import logger from './logger'
 import type { UserRecord } from './types'
 
-/**
- * Creates an OTP code and returns it as a string
- * @param {number} length - length of OTP code
- * @returns {string}
- */
-export const generateOTP = (length: number = 0): string => {
-  const exponent = length - 1
-  const base = Number(`1e${exponent}`)
-  const multiplier = Number(`9e${exponent}`)
+export default new (class {
+  constructor(Config, Twilio, logger) {
+    const { twilioAuthID, twilioAuthToken, twilioVerifyID } = Config
+    const { services } = Twilio(twilioAuthID, twilioAuthToken).verify
 
-  return Math.floor(base + random() * multiplier).toString()
-}
+    this.log = logger
+    this.service = services(twilioVerifyID)
+  }
 
-/**
- * Sends an OTP code to the user's mobile number
- * @param {UserRecord} user - object with user's information
- * @returns {Promise<$TupleMap<*[], typeof $await>>}
- */
-export const sendOTP = async (user: UserRecord): Promise<any> => {
-  const { twilioAuthID, twilioAuthToken, twilioPhoneNumber } = conf
-  const { mobile } = user
+  /**
+   * Creates an OTP code and returns it as a string
+   * @param {number} length - length of OTP code
+   * @returns {string}
+   */
+  generateOTP(length: number = 0): string {
+    const exponent = length - 1
+    const base = Number(`1e${exponent}`)
+    const multiplier = Number(`9e${exponent}`)
 
-  const client = Twilio(twilioAuthID, twilioAuthToken)
+    return Math.floor(base + random() * multiplier).toString()
+  }
 
-  const otp = generateOTP(conf.otpDigits)
-  const msg = 'Your GoodDollar Verification Code Is: ' + otp
-  await client.messages.create({ to: mobile, from: twilioPhoneNumber, body: msg })
-  return otp
-}
+  /**
+   * Generates and sends an OTP code to the user's mobile number
+   * @param {UserRecord} user - object with user's information
+   * @returns {Promise<object>}
+   */
+  async sendOTP(user: UserRecord): Promise<object> {
+    const { mobile } = user
+    const { log, service } = this
+    const options = { to: mobile, channel: 'sms' }
 
-/**
- * Sends an magic code to the user's mobile number
- * @param {String} to - users's mobile number
- * @param {String} code - magic code to be send to user
- * @returns {Promise<any>}
- */
-// export const sendMagicCodeBySMS = async (to, code) => {
-//   const { twilioAuthID, twilioAuthToken, twilioPhoneNumber } = conf
-//   const client = Twilio(twilioAuthID, twilioAuthToken)
-//   const msg = 'Open the GoodDollar app you just installed and paste this code:'
-//
-//   await client.messages.create({ to, from: twilioPhoneNumber, body: msg })
-//   await client.messages.create({ to, from: twilioPhoneNumber, body: code })
-// }
+    try {
+      return await service.verifications.create(options)
+    } catch (exception) {
+      const { message } = exception
+
+      log.error('Error sending OTP:', message, exception, { mobile })
+      throw exception
+    }
+  }
+
+  /**
+   * Checks OTP code sent to the user's mobile number
+   * @param {UserRecord} user - object with user's information
+   * @returns {Promise<object>}
+   */
+  async checkOTP(user: UserRecord, code: string): Promise<object> {
+    const { mobile } = user
+    const { log, service } = this
+    const options = { to: mobile, code }
+
+    try {
+      return await service.verificationChecks.create(options)
+    } catch (exception) {
+      const { message } = exception
+
+      log.error('Error verification OTP:', message, exception, { mobile, code })
+      throw exception
+    }
+  }
+})(conf, Twilio, logger.child({ from: 'Twilio' }))

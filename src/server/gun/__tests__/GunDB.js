@@ -11,10 +11,9 @@ import makeServer from '../../server-test'
 
 jest.setTimeout(10000)
 let server
+
 describe('GunDB', () => {
   beforeAll(async done => {
-    // storage.init(null, 'test', 'testdb')
-    // await storage.ready
     server = makeServer(done)
   })
 
@@ -27,12 +26,11 @@ describe('GunDB', () => {
 
   it('Gun and SEA should work in tests', async () => {
     const gun = Gun()
-    const password = 'test'
-    const uname = 'gdtest' + Math.random()
     const user = gun.user()
-    let res = await new Promise((res, rej) => user.create('gdtest', 'test', res))
-    // expect(res.err).toBeFalsy()
+
+    await new Promise((res, rej) => user.create('gdtest', 'test', res))
     let res2 = await new Promise((res, rej) => user.auth('gdtest', 'test', res))
+
     expect(res2.err).toBeFalsy()
   })
 
@@ -43,6 +41,7 @@ describe('GunDB', () => {
 
   it('Should sign attestation', async () => {
     let res = await storage.signClaim('dummykey', { passedTest: true })
+
     expect(res).toMatchObject({
       sig: expect.anything(),
       claim: { passedTest: true },
@@ -56,7 +55,9 @@ describe('GunDB', () => {
       },
       issuedAt: expect.any(Date)
     })
+
     let msg = await SEA.verify(res.sig, storage.user.is.pub)
+
     expect(msg).toBeTruthy()
   })
 
@@ -135,15 +136,18 @@ describe('GunDB', () => {
     const indexid = storage.getIndexId('walletAddress')
     storage.user.leave()
     const user = storage.gun.user()
-    let res = await new Promise((res, rej) => user.create('maluser', 'test', res))
+
+    await new Promise((res, rej) => user.create('maluser', 'test', res))
     // expect(res.err).toBeFalsy()
     let res2 = await new Promise((res, rej) => user.auth('maluser', 'test', res))
     expect(res2.err).toBeFalsy()
+
     let indexres = await storage.gun
       .get(indexid)
       .get('0x01')
       .putAck('ABCDEF')
       .catch(_ => false)
+
     expect(indexres).toEqual(false)
   })
 })

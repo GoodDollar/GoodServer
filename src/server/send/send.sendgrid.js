@@ -6,7 +6,7 @@ import conf from '../server.config'
 import logger from '../../imports/logger'
 
 import type { UserRecord } from '../../imports/types'
-import { generateOTP } from '../../imports/otp'
+import OTP from '../../imports/otp'
 
 sgMail.setApiKey(conf.sendGrid.apiKey)
 
@@ -82,7 +82,7 @@ export const sendRecoveryInstructionsByEmail = (to: string, name: string, key: s
  * @returns {Promise<R>|Promise<R|*>}
  */
 export const sendEmailConfirmationLink = (user: UserRecord) => {
-  const validationHash = generateOTP(10)
+  const validationHash = OTP.generateOTP(10)
   const validationLink = `${conf.walletUrl}/Signup/EmailConfirmation/?validation=${validationHash}`
 
   // structure required by SendGrid API: https://sendgrid.api-docs.io/v3.0/mail-send

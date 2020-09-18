@@ -1,7 +1,9 @@
 // @flow
 import type { UserRecord, VerificationAPI } from '../../imports/types'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
+import OTP from '../../imports/otp'
 import logger from '../../imports/logger'
+import { timeout } from '../utils/timeout'
 
 /**
  * Verifications class implements `VerificationAPI`
@@ -22,20 +24,43 @@ class Verifications implements VerificationAPI {
    * @returns {Promise<boolean | Error>}
    */
   async verifyMobile(user: UserRecord, verificationData: { otp: string }): Promise<boolean | Error> {
-    const otp = await UserDBPrivate.getUserField(user.identifier, 'otp')
+    let checkResult
+    const { log } = this
+    const { otp } = verificationData
 
-    this.log.debug('verifyMobile:', { userId: user.identifier, otp })
+    log.debug('verifyMobile:', { user, otp })
 
     if (!otp) {
-      throw new Error('No code to validate, retry')
+      throw new Error('No code to validate, please retry')
     }
 
-    if (String(verificationData.otp) !== String(otp.code)) {
+    try {
+      checkResult = await Promise.race([
+        OTP.checkOTP(user, otp),
+        timeout(5000, 'Not much time since last attempt. Please try again later')
+      ])
+    } catch (e) {
+      let exception = e
+
+      if (e.code === 60202) {
+        exception = new Error(
+          'You have failed 5 verification attempts. ' + 'Please go back and try again in 10 minutes'
+        )
+      }
+
+      throw exception
+    }
+
+    const { status } = checkResult
+
+    log.debug('verifyMobile result:', { checkResult, user, otp })
+
+    if ('canceled' === status) {
+      throw new Error('Code expired, please retry')
+    }
+
+    if ('approved' !== status) {
       throw new Error("Oops, it's not right code")
-    }
-
-    if (otp.expirationDate <= Date.now()) {
-      throw new Error('Code expired, retry')
     }
 
     return true

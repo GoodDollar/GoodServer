@@ -6,7 +6,6 @@ import UserDBPrivate from '../db/mongo/user-privat-provider'
 import { type UserRecord } from '../../imports/types'
 import { Mautic } from '../mautic/mauticAPI'
 import W3Helper from '../utils/W3Helper'
-import requestTimeout from '../utils/timeout'
 
 const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
   if (!conf.disableFaceVerification) {

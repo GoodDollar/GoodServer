@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/node'
 import { RewriteFrames } from '@sentry/integrations'
 import Transport from 'winston-transport'
 import { SPLAT } from 'triple-beam'
-import { assign, forEach, bindAll, trimEnd } from 'lodash'
+import { forEach, trimEnd } from 'lodash'
 
 import Config from '../../server/server.config'
 

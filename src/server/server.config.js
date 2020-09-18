@@ -168,23 +168,11 @@ const conf = convict({
     env: 'TWILIO_AUTH_TOKEN',
     default: ''
   },
-  twilioPhoneNumber: {
-    doc: "Plivo's Phone Number",
+  twilioVerifyID: {
+    doc: "Twilio's verify service id",
     format: '*',
-    env: 'TWILIO_PHONE_NUMBER',
+    env: 'TWILIO_VERIFY_ID',
     default: ''
-  },
-  otpDigits: {
-    doc: 'Amount of digits for the OTP',
-    format: '*',
-    env: 'OTP_DIGITS',
-    default: '6'
-  },
-  otpTtlMinutes: {
-    doc: 'Time, in minutes, for the OTP to be valid',
-    format: '*',
-    env: 'OTP_TTL_MINUTES',
-    default: '60'
   },
   sendGrid: {
     apiKey: {
