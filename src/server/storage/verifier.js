@@ -75,6 +75,11 @@ class FacebookVerificationStrategy {
     let emailVerified = false
     const { email, torusAccessToken } = requestPayload
 
+    if (userRecord.isEmailConfirmed) {
+      logger.warn('FacebookVerifier skipping because email already verified')
+      return
+    }
+
     if (!torusAccessToken) {
       logger.warn('FacebookVerifier skipping because no accessToken was specified')
       return
