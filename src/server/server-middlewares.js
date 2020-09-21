@@ -20,30 +20,15 @@ import VerificationAPI from './verification/verification'
 import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
 import addClaimQueueMiddlewares from './claimQueue/claimQueueAPI'
 import { fishInactiveTask, collectFundsTask } from './blockchain/stakingModelTasks'
-import AdminWallet from './blockchain/AdminWallet'
-import requestTimeout from './utils/timeout'
 import Config from './server.config'
 
 const rootLogger = logger.child({ from: 'Server' })
 
-export default (app: Router, env: any) => {
+export default async (app: Router, env: any) => {
   const corsConfig = {
     credentials: true,
     origin: Config.env === 'production' ? /\.gooddollar\.org$/ : true
   }
-
-  Promise.race([
-    requestTimeout(30000, 'gun not initialized'),
-    AdminWallet.ready.then(() => {
-      const pkey = AdminWallet.wallets[AdminWallet.addresses[0]].privateKey.slice(2)
-      //we no longer use backend also as gundb  server, otherwise this needs to be moved back
-      //to server-prod.js so we can pass the express server instance instead of null
-      GunDBPublic.init(null, pkey, 'publicdb')
-    })
-  ]).catch(e => {
-    console.log('gun failed... quiting', e)
-    process.exit(-1)
-  })
 
   // parse application/x-www-form-urlencoded
   // for easier testing with Postman or plain HTML forms

@@ -6,15 +6,15 @@ import conf from './server.config'
 import startApp from './app'
 
 const compiler = webpack(config)
-const app = startApp()
+startApp().then(app => {
+  app.use(webpackHotMiddleware(compiler))
 
-app.use(webpackHotMiddleware(compiler))
+  console.log({ conf })
 
-console.log({ conf })
+  const PORT = conf.port || 8080
 
-const PORT = conf.port || 8080
-
-app.listen(PORT, () => {
-  console.log(`App listening to ${PORT}....`)
-  console.log('Press Ctrl+C to quit.')
+  app.listen(PORT, () => {
+    console.log(`App listening to ${PORT}....`)
+    console.log('Press Ctrl+C to quit.')
+  })
 })

@@ -2,14 +2,14 @@ import path from 'path'
 import express from 'express'
 import startApp from './app'
 
-export default function start(workerId) {
+export default async function start(workerId) {
   global.workerId = workerId
   console.log(`start workerId = ${workerId}`)
 
   const DIST_DIR = __dirname
 
   const HTML_FILE = path.join(DIST_DIR, 'index.html')
-  const app = startApp()
+  const app = await startApp()
 
   app.use(express.static(DIST_DIR))
 
