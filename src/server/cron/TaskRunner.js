@@ -61,7 +61,7 @@ class TaskRunner {
         }
       } catch (exception) {
         const { message: errMessage } = exception
-        if (errMessage.contains('lock not acquired timeout')) {
+        if (errMessage.includes('lock not acquired timeout')) {
           const nextTry = moment().add(1, 'hours')
           logger.info('task lock timeout,probably other worker is doing it, retrying later', { taskName, nextTry })
           taskJob.setTime(new CronTime(nextTry))
