@@ -1,7 +1,7 @@
 import { CronJob, CronTime } from 'cron'
 import { invokeMap, keys, once } from 'lodash'
 import { v4 as uuidv4 } from 'uuid'
-
+import moment from 'moment'
 import MongoLock from '../utils/tx-manager/queueMongo'
 import logger from '../../imports/logger'
 
@@ -61,7 +61,12 @@ class TaskRunner {
         }
       } catch (exception) {
         const { message: errMessage } = exception
-
+        if (errMessage.contains('lock not acquired timeout')) {
+          const nextTry = moment().add(1, 'hours')
+          logger.info('task lock timeout,probably other worker is doing it, retrying later', { taskName, nextTry })
+          taskJob.setTime(new CronTime(nextTry))
+          return
+        }
         logger.error('Cron task failed', errMessage, exception, { taskName })
       }
     })
