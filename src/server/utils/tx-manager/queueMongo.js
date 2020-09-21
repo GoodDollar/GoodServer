@@ -165,7 +165,7 @@ export default class queueMongo {
    */
   lock(addresses) {
     return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject('lock not acquired timeout'), 15000)
+      const timeout = setTimeout(() => reject(new Error('lock not acquired timeout')), 15000)
       this.addToQueue(addresses, ({ nonce, address }) => {
         clearTimeout(timeout)
         resolve({
