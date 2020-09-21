@@ -14,10 +14,10 @@ const startApp = async () => {
   await Promise.race([
     requestTimeout(30000, 'gun not initialized'),
     AdminWallet.ready.then(() => {
-      // const pkey = AdminWallet.wallets[AdminWallet.addresses[0]].privateKey.slice(2)
-      // //we no longer use backend also as gundb  server, otherwise this needs to be moved back
-      // //to server-prod.js so we can pass the express server instance instead of null
-      // GunDBPublic.init(null, pkey, 'publicdb')
+      const pkey = AdminWallet.wallets[AdminWallet.addresses[0]].privateKey.slice(2)
+      //we no longer use backend also as gundb  server, otherwise this needs to be moved back
+      //to server-prod.js so we can pass the express server instance instead of null
+      GunDBPublic.init(null, pkey, 'publicdb')
     })
   ]).catch(e => {
     console.log('gun failed... quiting', e)
