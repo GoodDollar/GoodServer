@@ -210,7 +210,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
       log.info('otp request:', { user, body })
 
-      const mobile = body.user.mobile || user.otp.mobile
+      const mobile = decodeURIComponent(body.user.mobile || user.otp.mobile) //fix in case input is %2B instead of +
       const hashedMobile = sha3(mobile)
       let userRec: UserRecord = defaults(body.user, user, { identifier: user.loggedInAs })
 
