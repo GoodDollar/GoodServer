@@ -110,8 +110,8 @@ export const Mautic = new (class {
 
   async searchContact(email) {
     const result = await this.baseQuery(`/contacts?search=${email}`, this.baseHeaders, null, 'get')
-    const ids = Object.keys(get(result, 'contacts', {}))
-    if (ids.length > 0) {
+    const ids = Object.keys(get(result || {}, 'contacts', {}))
+    if (ids.length > 1) {
       this.log.warn('searchContact founds multiple ids:', ids)
     }
     return ids.sort()
@@ -123,7 +123,10 @@ export const Mautic = new (class {
       email = get(contact, 'contact.fields.all.email')
     }
     if (!email) return false
-    const ids = await this.searchContact(email)
+    const ids = await this.searchContact(email).catch(e => {
+      this.log.warn('deleteDuplicate search failed:', email, e.message, e)
+      return []
+    })
     if (ids.length > 1) {
       this.log.warn('deleteDuplicate found duplicate user:', ids)
       const toDelete = ids.filter(_ => _ !== mauticId).pop()
