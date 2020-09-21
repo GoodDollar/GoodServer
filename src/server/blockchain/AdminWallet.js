@@ -265,14 +265,18 @@ export class Wallet {
    * @returns {Promise<String>}
    */
   async topAdmins(): Promise<any> {
-    const { nonce, release, fail, address } = await this.txManager.lock(this.addresses[0])
     try {
-      log.debug('topAdmins sending tx', { address, nonce })
-      await this.proxyContract.methods.topAdmins(0).send({ gas: '500000', from: address, nonce })
-      log.debug('topAdmins success')
-      release()
+      const { nonce, release, fail, address } = await this.txManager.lock(this.addresses[0])
+      try {
+        log.debug('topAdmins sending tx', { address, nonce })
+        await this.proxyContract.methods.topAdmins(0).send({ gas: '500000', from: address, nonce })
+        log.debug('topAdmins success')
+        release()
+      } catch (e) {
+        fail()
+        log.error('topAdmins failed', e)
+      }
     } catch (e) {
-      fail()
       log.error('topAdmins failed', e)
     }
   }

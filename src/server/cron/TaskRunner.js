@@ -26,37 +26,43 @@ class TaskRunner {
     const taskName = name || `task/${uuidv4()}`
 
     const taskJob = new jobFactory(schedule, async () => {
-      logger.info('Running cron task', { taskName })
-
-      // we don't need re-queue in the cron. just lock -> run -> release (despite success/failed)
-      const { address, release } = await lock.lock(taskName)
-      logger.info('Obtained mutex for exclusive run:', { address, taskName })
-
       try {
-        const taskResult = await task.execute({
-          // an context object we're passing to the task to let it manipilate its execution & schedule
-          // let task whould decide to stop or to set new schedule by themselves during execution
-          // let's make this feedback more clear
-          setTime: time => {
-            logger.info('Cron task setting new schedule', { taskName, schedule: time })
+        logger.info('Running cron task', { taskName })
 
-            taskJob.setTime(time instanceof CronTime ? time : new CronTime(time))
-            taskJob.start()
-          },
+        // we don't need re-queue in the cron. just lock -> run -> release (despite success/failed)
+        logger.info('Obtained mutex for exclusive run:', { address, taskName })
 
-          stop: () => {
-            logger.info('Cron task has stopped itself', { taskName })
-            taskJob.stop()
-          }
-        })
+        const { address, release } = await lock.lock(taskName)
+        try {
+          const taskResult = await task.execute({
+            // an context object we're passing to the task to let it manipilate its execution & schedule
+            // let task whould decide to stop or to set new schedule by themselves during execution
+            // let's make this feedback more clear
+            setTime: time => {
+              logger.info('Cron task setting new schedule', { taskName, schedule: time })
 
-        logger.info('Cron task completed', { taskName, taskResult })
+              taskJob.setTime(time instanceof CronTime ? time : new CronTime(time))
+              taskJob.start()
+            },
+
+            stop: () => {
+              logger.info('Cron task has stopped itself', { taskName })
+              taskJob.stop()
+            }
+          })
+
+          logger.info('Cron task completed', { taskName, taskResult })
+        } catch (exception) {
+          const { message: errMessage } = exception
+
+          logger.error('Cron task failed', errMessage, exception, { taskName })
+        } finally {
+          release()
+        }
       } catch (exception) {
         const { message: errMessage } = exception
 
         logger.error('Cron task failed', errMessage, exception, { taskName })
-      } finally {
-        release()
       }
     })
 

@@ -163,7 +163,7 @@ export default class queueMongo {
    *
    * @returns {Promise<any>}
    */
-  async lock(addresses) {
+  lock(addresses) {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => reject('lock not acquired timeout'), 15000)
       this.addToQueue(addresses, ({ nonce, address }) => {
