@@ -31,15 +31,17 @@ export default new (class {
   /**
    * Generates and sends an OTP code to the user's mobile number
    * @param {UserRecord} user - object with user's information
+   * @param {object} options - options used to config the method behavior
    * @returns {Promise<object>}
    */
-  async sendOTP(user: UserRecord): Promise<object> {
+  async sendOTP(user: UserRecord, options: any = {}): Promise<object> {
+    const { channel = 'sms' } = options
     const { mobile } = user
     const { log, service } = this
-    const options = { to: mobile, channel: 'sms' }
+    const payload = { to: mobile, channel }
 
     try {
-      return await service.verifications.create(options)
+      return await service.verifications.create(payload)
     } catch (exception) {
       const { message } = exception
 

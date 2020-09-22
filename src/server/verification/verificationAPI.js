@@ -224,7 +224,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
       if (!userRec.smsValidated || hashedMobile !== savedMobile) {
         if (['production', 'staging'].includes(conf.env)) {
-          const sendResult = await OTP.sendOTP({ mobile })
+          const sendResult = await OTP.sendOTP({ mobile }, { channel: body.user.otpChannel })
 
           log.debug('otp sent:', user.loggedInAs, sendResult)
         }
