@@ -31,149 +31,154 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
       const { user: userPayload = {} } = body
       const { __utmzz: utmString = '' } = cookies
 
-      logger.debug('new user request:', { data: userPayload, userRecord })
+      try {
+        logger.debug('new user request:', { data: userPayload, userRecord })
 
-      const { email, mobile, inviteCode, ...restPayload } = userPayload
+        const { email, mobile, inviteCode, ...restPayload } = userPayload
 
-      // if torus, then we first verify the user mobile/email by verifying it matches the torus public key
-      // (torus maps identifier such as email and mobile to private/public key pairs)
-      const verifier = createUserVerifier(userRecord, userPayload, logger)
+        // if torus, then we first verify the user mobile/email by verifying it matches the torus public key
+        // (torus maps identifier such as email and mobile to private/public key pairs)
+        const verifier = createUserVerifier(userRecord, userPayload, logger)
 
-      await verifier.verifySignInIdentifiers()
+        await verifier.verifySignInIdentifiers()
 
-      // check that user email/mobile sent is the same as the ones verified
-      //in case email/mobile was verified using torus userRecord.mobile/email will be empty
-      if (['production', 'staging'].includes(env)) {
-        if (userRecord.smsValidated !== true || (userRecord.mobile && userRecord.mobile !== sha3(mobile))) {
-          throw new Error('User mobile not verified!')
+        // check that user email/mobile sent is the same as the ones verified
+        //in case email/mobile was verified using torus userRecord.mobile/email will be empty
+        if (['production', 'staging'].includes(env)) {
+          if (userRecord.smsValidated !== true || (userRecord.mobile && userRecord.mobile !== sha3(mobile))) {
+            throw new Error('User mobile not verified!')
+          }
+
+          if (
+            skipEmailVerification === false &&
+            (userRecord.isEmailConfirmed !== true || (userRecord.email && userRecord.email !== sha3(email)))
+          ) {
+            throw new Error('User email not verified!')
+          }
         }
 
-        if (
-          skipEmailVerification === false &&
-          (userRecord.isEmailConfirmed !== true || (userRecord.email && userRecord.email !== sha3(email)))
-        ) {
-          throw new Error('User email not verified!')
+        if ('development' === env) {
+          userRecord.isEmailConfirmed = true
+          userRecord.smsValidated = true
         }
-      }
 
-      if ('development' === env) {
-        userRecord.isEmailConfirmed = true
-        userRecord.smsValidated = true
-      }
+        if (userRecord.createdDate) {
+          throw new Error('You cannot create more than 1 account with the same credentials')
+        }
 
-      if (userRecord.createdDate) {
-        throw new Error('You cannot create more than 1 account with the same credentials')
-      }
+        // removing creds, nonce, proof and crypto keys from user payload as they shouldn't be stored in the userRecord
+        const payloadWithoutCreds = omitBy(restPayload, (_, userProperty) => userProperty.startsWith('torus'))
 
-      // removing creds, nonce, proof and crypto keys from user payload as they shouldn't be stored in the userRecord
-      const payloadWithoutCreds = omitBy(restPayload, (_, userProperty) => userProperty.startsWith('torus'))
-
-      const toUpdateUser: UserRecord = defaults(payloadWithoutCreds, {
-        identifier: userRecord.loggedInAs,
-        regMethod: userPayload.regMethod,
-        torusProvider: userPayload.torusProvider,
-        email: sha3(email),
-        mobile: sha3(mobile),
-        profilePublickey: userRecord.profilePublickey,
-        isCompleted: userRecord.isCompleted
-          ? userRecord.isCompleted
-          : {
-              whiteList: false,
-              w3Record: false,
-              topWallet: false
-            }
-      })
-
-      const userRecordWithPII = { ...payloadWithoutCreds, ...userRecord, inviteCode, email, mobile }
-      const signUpPromises = []
-
-      const p1 = storage
-        .updateUser(toUpdateUser)
-        .then(r => logger.debug('updated new user record', { toUpdateUser }))
-        .catch(e => {
-          logger.error('failed updating new user record', e.message, e, { toUpdateUser })
-          throw e
+        const toUpdateUser: UserRecord = defaults(payloadWithoutCreds, {
+          identifier: userRecord.loggedInAs,
+          regMethod: userPayload.regMethod,
+          torusProvider: userPayload.torusProvider,
+          email: sha3(email),
+          mobile: sha3(mobile),
+          profilePublickey: userRecord.profilePublickey,
+          isCompleted: userRecord.isCompleted
+            ? userRecord.isCompleted
+            : {
+                whiteList: false,
+                w3Record: false,
+                topWallet: false
+              }
         })
-      signUpPromises.push(p1)
 
-      // whitelisting user if FR is disabled
-      if (disableFaceVerification) {
-        const p2 = addUserSteps
-          .addUserToWhiteList(userRecord, logger)
-          .then(isWhitelisted => {
-            logger.debug('addUserToWhiteList result', { isWhitelisted })
-            if (isWhitelisted === false) throw new Error('Failed whitelisting user')
-          })
+        const userRecordWithPII = { ...payloadWithoutCreds, ...userRecord, inviteCode, email, mobile }
+        const signUpPromises = []
+
+        const p1 = storage
+          .updateUser(toUpdateUser)
+          .then(r => logger.debug('updated new user record', { toUpdateUser }))
           .catch(e => {
-            logger.error('addUserToWhiteList failed', e.message, e, { userRecord })
+            logger.error('failed updating new user record', e.message, e, { toUpdateUser })
             throw e
           })
-        signUpPromises.push(p2)
-      }
+        signUpPromises.push(p1)
 
-      if (isNonDevelopMode || mauticBasicToken || mauticToken) {
-        const p3 = addUserSteps
-          .updateMauticRecord(userRecordWithPII, utmString, logger)
-          .then(r => logger.debug('updateMauticRecord success'))
-          .catch(e => {
-            logger.error('updateMauticRecord failed', e.message, e, { userRecordWithPII })
-            throw new Error('Failed adding user to mautic')
+        // whitelisting user if FR is disabled
+        if (disableFaceVerification) {
+          const p2 = addUserSteps
+            .addUserToWhiteList(userRecord, logger)
+            .then(isWhitelisted => {
+              logger.debug('addUserToWhiteList result', { isWhitelisted })
+              if (isWhitelisted === false) throw new Error('Failed whitelisting user')
+            })
+            .catch(e => {
+              logger.error('addUserToWhiteList failed', e.message, e, { userRecord })
+              throw e
+            })
+          signUpPromises.push(p2)
+        }
+
+        if (isNonDevelopMode || mauticBasicToken || mauticToken) {
+          const p3 = addUserSteps
+            .updateMauticRecord(userRecordWithPII, utmString, logger)
+            .then(r => logger.debug('updateMauticRecord success'))
+            .catch(e => {
+              logger.error('updateMauticRecord failed', e.message, e, { userRecordWithPII })
+              throw new Error('Failed adding user to mautic')
+            })
+          signUpPromises.push(p3)
+        }
+
+        const web3RecordP = addUserSteps
+          .updateW3Record(userRecordWithPII, logger)
+          .then(r => {
+            logger.debug('updateW3Record success')
+            return r
           })
-        signUpPromises.push(p3)
+          .catch(e => {
+            logger.error('updateW3Record failed', e.message, e, { userRecordWithPII })
+            throw new Error('Failed adding user to w3')
+          })
+        signUpPromises.push(web3RecordP)
+
+        const p4 = addUserSteps
+          .topUserWallet(userRecord, logger)
+          .then(isTopWallet => {
+            if (isTopWallet === false) throw new Error('Failed to top wallet of new user')
+            logger.debug('topUserWallet success')
+          })
+          .catch(e => {
+            logger.error('topUserWallet failed', e.message, e, { userRecord })
+            throw new Error('Failed topping user wallet')
+          })
+        signUpPromises.push(p4)
+
+        const p5 = Promise.all([
+          userRecordWithPII.smsValidated &&
+            userRecordWithPII.mobile &&
+            gunPublic.addUserToIndex('mobile', userRecordWithPII.mobile, userRecordWithPII),
+          userRecordWithPII.email &&
+            userRecordWithPII.isEmailConfirmed &&
+            gunPublic.addUserToIndex('email', userRecordWithPII.email, userRecordWithPII),
+          userRecordWithPII.gdAddress &&
+            gunPublic.addUserToIndex('walletAddress', userRecordWithPII.gdAddress, userRecordWithPII)
+        ]).then(res => logger.info('updated trust indexes result:', { res }))
+        signUpPromises.push(p5)
+
+        await Promise.all(signUpPromises)
+        logger.debug('signup steps success. adding new user:', { toUpdateUser })
+
+        await storage.updateUser({
+          identifier: userRecord.loggedInAs,
+          createdDate: new Date().toString(),
+          otp: {} //delete trace of mobile,email
+        })
+
+        const web3Record = await web3RecordP
+
+        res.json({
+          ok: 1,
+          loginToken: web3Record && web3Record.loginToken,
+          w3Token: web3Record && web3Record.w3Token
+        })
+      } catch (e) {
+        logger.warn('user signup failed', e.message, e)
+        throw e
       }
-
-      const web3RecordP = addUserSteps
-        .updateW3Record(userRecordWithPII, logger)
-        .then(r => {
-          logger.debug('updateW3Record success')
-          return r
-        })
-        .catch(e => {
-          logger.error('updateW3Record failed', e.message, e, { userRecordWithPII })
-          throw new Error('Failed adding user to w3')
-        })
-      signUpPromises.push(web3RecordP)
-
-      const p4 = addUserSteps
-        .topUserWallet(userRecord, logger)
-        .then(isTopWallet => {
-          if (isTopWallet === false) throw new Error('Failed to top wallet of new user')
-          logger.debug('topUserWallet success')
-        })
-        .catch(e => {
-          logger.error('topUserWallet failed', e.message, e, { userRecord })
-          throw new Error('Failed topping user wallet')
-        })
-      signUpPromises.push(p4)
-
-      const p5 = Promise.all([
-        userRecordWithPII.smsValidated &&
-          userRecordWithPII.mobile &&
-          gunPublic.addUserToIndex('mobile', userRecordWithPII.mobile, userRecordWithPII),
-        userRecordWithPII.email &&
-          userRecordWithPII.isEmailConfirmed &&
-          gunPublic.addUserToIndex('email', userRecordWithPII.email, userRecordWithPII),
-        userRecordWithPII.gdAddress &&
-          gunPublic.addUserToIndex('walletAddress', userRecordWithPII.gdAddress, userRecordWithPII)
-      ]).then(res => logger.info('updated trust indexes result:', { res }))
-      signUpPromises.push(p5)
-
-      await Promise.all(signUpPromises)
-      logger.debug('signup steps success. adding new user:', { toUpdateUser })
-
-      await storage.updateUser({
-        identifier: userRecord.loggedInAs,
-        createdDate: new Date().toString(),
-        otp: {} //delete trace of mobile,email
-      })
-
-      const web3Record = await web3RecordP
-
-      res.json({
-        ok: 1,
-        loginToken: web3Record && web3Record.loginToken,
-        w3Token: web3Record && web3Record.w3Token
-      })
     })
   )
 
