@@ -260,9 +260,9 @@ class EnrollmentProcessor {
 
 const enrollmentProcessors = new WeakMap()
 
-export default storage => {
+export default (storage, log) => {
   if (!enrollmentProcessors.has(storage)) {
-    const log = logger.child({ from: 'EnrollmentProcessor' })
+    log = log || logger.child({ from: 'EnrollmentProcessor' })
     const enrollmentProcessor = new EnrollmentProcessor(Config, storage, AdminWallet, ClaimQueue, GunDBPublic, log)
 
     enrollmentProcessor.registerProvier(getZoomProvider())
