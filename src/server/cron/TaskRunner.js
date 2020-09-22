@@ -65,6 +65,7 @@ class TaskRunner {
           const nextTry = moment().add(1, 'hours')
           logger.info('task lock timeout,probably other worker is doing it, retrying later', { taskName, nextTry })
           taskJob.setTime(new CronTime(nextTry))
+          taskJob.start()
           return
         }
         logger.error('Cron task failed', errMessage, exception, { taskName })
