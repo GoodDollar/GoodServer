@@ -16,8 +16,8 @@ const userCredentials = {
 describe.skip('loadtest-middleware', () => {
   let server
 
-  beforeAll(done => {
-    server = makeServer(done)
+  beforeAll(async done => {
+    server = await makeServer(done)
   })
 
   afterAll(done => {

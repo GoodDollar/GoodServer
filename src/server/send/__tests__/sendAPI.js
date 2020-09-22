@@ -21,7 +21,7 @@ describe('sendAPÏ', () => {
       mauticId
     })
     await AdminWallet.ready
-    server = makeServer(done)
+    server = await makeServer(done)
   })
 
   afterAll(done => {

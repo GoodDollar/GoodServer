@@ -22,7 +22,7 @@ describe('claimQueueAPI', () => {
     await ClaimQueueProps.deleteMany({})
 
     jest.setTimeout(30000)
-    server = makeServer(done)
+    server = await makeServer(done)
   })
 
   afterAll(done => {
