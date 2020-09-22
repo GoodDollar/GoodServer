@@ -45,8 +45,8 @@ class DefaultVerificationStrategy {
   // eslint-disable-next-line require-await
   async _callVerifier(requestPayload) {
     const { torusProof, torusProvider, torusProofNonce } = requestPayload
-
-    return TorusVerifier.verifyProof(torusProof, torusProvider, requestPayload, torusProofNonce)
+    const verifier = TorusVerifier.factory(this.logger)
+    return verifier.verifyProof(torusProof, torusProvider, requestPayload, torusProofNonce)
   }
 
   _onRetry(reason, attemptIndex) {
@@ -86,7 +86,7 @@ class FacebookVerificationStrategy {
     }
 
     try {
-      emailVerified = await FacebookVerifier.verifyEmail(email, torusAccessToken)
+      emailVerified = await FacebookVerifier.verifyEmail(email, torusAccessToken, logger)
     } catch (exception) {
       const { message: msg } = exception
 

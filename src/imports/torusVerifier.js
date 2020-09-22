@@ -52,9 +52,16 @@ class PasswordlessSMSStrategy {
 class TorusVerifier {
   strategies = {}
 
-  static factory() {
+  static factory(log = logger.child({ from: 'TorusVerifier' })) {
+    const { torusNetwork, torusProxyContract } = Config
+    const torus = new TorusUtils()
+
+    const fetchNodeDetails = new FetchNodeDetails({
+      network: torusNetwork,
+      proxyAddress: torusProxyContract
+    })
     // incapsulating verifier initialization using factory pattern
-    const verifier = new TorusVerifier(Config, logger.child({ from: 'TorusVerifier' }))
+    const verifier = new TorusVerifier(torus, fetchNodeDetails, log)
 
     // Strategy pattern defines that strategies should be passed from outside
     // The main class shouldn't pass them to itself (expect probably some default/fallback strategy)
@@ -66,16 +73,10 @@ class TorusVerifier {
     return verifier
   }
 
-  constructor(Config, logger) {
-    const { torusNetwork, torusProxyContract } = Config
-
+  constructor(torus, fetchNodeDetails, logger) {
+    this.torus = torus
+    this.fetchNodeDetails = fetchNodeDetails
     this.logger = logger
-    this.torus = new TorusUtils()
-
-    this.fetchNodeDetails = new FetchNodeDetails({
-      network: torusNetwork,
-      proxyAddress: torusProxyContract
-    })
   }
 
   async isIdentifierOwner(publicAddress, verifier, identifier) {

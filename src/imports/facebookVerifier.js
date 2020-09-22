@@ -7,6 +7,8 @@ import Config from '../server/server.config'
 import logger from '../imports/logger'
 
 class FacebookVerifier {
+  static factory(log = logger.child({ from: 'TorusVerifier' })) {}
+
   constructor(Config, httpFactory, logger) {
     const { facebookGraphApiUrl } = Config
 
@@ -22,8 +24,9 @@ class FacebookVerifier {
     this._configureResponses()
   }
 
-  async verifyEmail(userEmail, accessToken) {
-    const { http, logger } = this
+  async verifyEmail(userEmail, accessToken, logger) {
+    const { http } = this
+    logger = logger || this.logger
     const params = { fields: 'email', access_token: accessToken }
     const userInfo = await http.get('/me', { params })
 
