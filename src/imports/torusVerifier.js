@@ -107,7 +107,7 @@ class TorusVerifier {
   async verifyProof(signature, torusType, userRecord, nonce) {
     const { logger } = this
 
-    if (moment().diff(moment(Number(nonce)), 'minutes') >= 1) {
+    if (moment().diff(moment(Number(nonce)), 'minutes') > 4) {
       throw new Error('torus proof nonce invalid:' + nonce)
     }
 
