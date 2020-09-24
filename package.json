@@ -4,7 +4,7 @@
   "description": "GoodDollar Server",
   "main": "src/server/index.js",
   "engines": {
-    "node": "12.*"
+    "node": "10.21.0"
   },
   "scripts": {
     "build": "webpack --mode production --config webpack.server.config.js",
