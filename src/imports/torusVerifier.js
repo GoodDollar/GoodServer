@@ -132,4 +132,4 @@ class TorusVerifier {
   }
 }
 
-export default TorusVerifier.factory()
+export default TorusVerifier

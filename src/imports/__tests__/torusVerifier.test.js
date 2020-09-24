@@ -5,7 +5,7 @@ import { assign } from 'lodash'
 
 import conf from '../../server/server.config'
 import { recoverPublickey } from '../../server/utils/eth'
-import torusVerifier from '../torusVerifier'
+import TorusVerifier from '../torusVerifier'
 import createUserVerifier from '../../server/storage/verifier'
 
 jest.setTimeout(20000)
@@ -15,6 +15,7 @@ describe('Test torus email/mobile to address', () => {
   const strategies = ['auth0-pwdless-email']
 
   it('should get torus nodes', async () => {
+    const torusVerifier = TorusVerifier.factory()
     const nodes = await torusVerifier.fetchNodeDetails.getNodeDetails()
 
     expect(nodes).toMatchObject({
@@ -24,6 +25,7 @@ describe('Test torus email/mobile to address', () => {
   })
 
   it('should get strategy options', async () => {
+    const torusVerifier = TorusVerifier.factory()
     strategies.forEach(torusType => {
       const z = torusVerifier.getVerificationOptions(torusType, { email: 'x@x.com', mobile: '+972505050' })
 
@@ -37,6 +39,7 @@ describe('Test torus email/mobile to address', () => {
   })
 
   it('should return public key for email/mobile', async () => {
+    const torusVerifier = TorusVerifier.factory()
     const { torusNodeEndpoints, torusNodePub } = await torusVerifier.fetchNodeDetails.getNodeDetails()
 
     await Promise.all(
@@ -60,6 +63,7 @@ describe('Test torus email/mobile to address', () => {
   })
 
   it('should recover signer correctly', async () => {
+    const torusVerifier = TorusVerifier.factory()
     const nonce = '1593455827517'
     const signature =
       '0xa7fb3a514469d038b0cda821977cd534eaed857f9cb7db5d4a6e843d55598bb80b66359ece24e626533b6cc9fea06abb95b7c152bef66a8b71a087f8e20987951c'
@@ -74,7 +78,7 @@ describe('Test torus email/mobile to address', () => {
   })
 
   it('should modify userrecord if verified', async () => {
-    const { verifyProof } = torusVerifier
+    const { verifyProof } = TorusVerifier.prototype
 
     const userRecord = {
       smsValidated: false,
@@ -89,7 +93,7 @@ describe('Test torus email/mobile to address', () => {
 
     const userVerifier = createUserVerifier(userRecord, requestPayload, console)
 
-    torusVerifier.verifyProof = jest.fn(() => ({
+    TorusVerifier.prototype.verifyProof = jest.fn(() => ({
       mobileVerified: true,
       emailVerified: false
     }))
@@ -97,7 +101,7 @@ describe('Test torus email/mobile to address', () => {
     try {
       await userVerifier.verifySignInIdentifiers()
     } finally {
-      assign(torusVerifier, { verifyProof })
+      assign(TorusVerifier.prototype, { verifyProof })
     }
 
     expect(userRecord).toEqual({
@@ -113,7 +117,7 @@ describe('Test torus email/mobile to address', () => {
       const { torusNetwork, torusProxyContract } = conf
 
       assign(conf, { torusNetwork: 'mainnet', torusProxyContract: '0x638646503746d5456209e33a2ff5e3226d698bea' })
-      mainnetVerifier = torusVerifier.constructor.factory()
+      mainnetVerifier = TorusVerifier.factory()
       assign(conf, { torusNetwork, torusProxyContract })
     })
 
