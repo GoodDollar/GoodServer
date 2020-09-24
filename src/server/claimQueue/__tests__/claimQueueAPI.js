@@ -10,7 +10,7 @@ import { getToken, getCreds } from '../../__util__'
 import UserDBPrivate from '../../db/mongo/user-privat-provider'
 import { ClaimQueueProps } from '../../db/mongo/models/props'
 
-jest.setTimeout(10000)
+jest.setTimeout(15000)
 describe('claimQueueAPI', () => {
   let server, creds, token
   const { claimQueueAllowed } = conf

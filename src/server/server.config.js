@@ -226,7 +226,7 @@ const conf = convict({
     doc: 'mautic token',
     format: '*',
     env: 'MAUTIC_TOKEN',
-    default: 'MAUTIC_TOKEN'
+    default: null
   },
   mauticBasicToken: {
     doc: 'mautic basic auth token',
