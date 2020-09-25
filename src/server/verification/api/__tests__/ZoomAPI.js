@@ -155,14 +155,6 @@ describe('ZoomAPI', () => {
     )
   })
 
-  test('submitEnrollment() handles glasses weared', async () => {
-    helper.mockFailedEnrollment(enrollmentIdentifier, { glasses: true })
-
-    await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow(
-      'Liveness could not be determined because wearing glasses were detected.'
-    )
-  })
-
   test('submitEnrollment() should throw on service failures', async () => {
     const enrollmentServiceError = 'You must pass a valid FaceMap or image parameter.'
 

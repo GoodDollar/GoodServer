@@ -56,7 +56,11 @@ export default class EnrollmentSession {
       }
 
       this.onEnrollmentFailed(exception)
-      log.error('Enrollment session failed with exception:', message, exception, { result })
+      if (message.toLowerCase().includes('liveness')) {
+        log.warn('Enrollment session failed with exception:', message, exception, { result })
+      } else {
+        log.error('Enrollment session failed with exception:', message, exception, { result })
+      }
     } finally {
       this.sessionRef = null
     }

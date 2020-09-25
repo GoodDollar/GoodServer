@@ -21,7 +21,7 @@ describe('verificationAPI', () => {
   const { skipEmailVerification, claimQueueAllowed } = Config
   const userIdentifier = '0x7ac080f6607405705aed79675789701a48c76f55'
 
-  beforeAll(done => {
+  beforeAll(async done => {
     // remove claim queue, enable E-Mail verification
     assign(Config, {
       claimQueueAllowed: 0,
@@ -29,7 +29,7 @@ describe('verificationAPI', () => {
     })
 
     jest.setTimeout(50000)
-    server = makeServer(done)
+    server = await makeServer(done)
 
     console.log('the server is ..')
     console.log({ server })

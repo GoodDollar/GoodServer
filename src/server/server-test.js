@@ -12,8 +12,8 @@ import startApp from './app'
 
 const PORT = conf.port || 4000
 
-const makeServer = done => {
-  const app = startApp()
+const makeServer = async done => {
+  const app = await startApp()
   let server
   let serverPromise = new Promise(async (res, rej) => {
     server = app.listen(PORT, err => {

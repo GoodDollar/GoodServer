@@ -27,7 +27,7 @@ class TaskRunner {
 
     const taskJob = new jobFactory(schedule, async () => {
       try {
-        logger.info('Running cron task', { taskName })
+        logger.info('Running cron task. getting lock...', { taskName })
 
         const { address, release } = await lock.lock(taskName)
         // we don't need re-queue in the cron. just lock -> run -> release (despite success/failed)

@@ -5,6 +5,7 @@ import middlewares from './server-middlewares'
 import AdminWallet from './blockchain/AdminWallet'
 import requestTimeout from './utils/timeout'
 import { GunDBPublic } from './gun/gun-middleware'
+import conf from './server.config'
 
 EventEmitter.defaultMaxListeners = 100
 // we're logging uncaught exceptions in logger monitor so just exiting process
@@ -20,6 +21,7 @@ const startApp = async () => {
       GunDBPublic.init(null, pkey, 'publicdb')
     })
   ]).catch(e => {
+    if (conf.env === 'test') return
     console.log('gun failed... quiting', e)
     process.exit(-1)
   })

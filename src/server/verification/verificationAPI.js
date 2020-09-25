@@ -38,7 +38,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       const { signature } = query
 
       try {
-        const processor = createEnrollmentProcessor(storage)
+        const processor = createEnrollmentProcessor(storage, log)
 
         await processor.enqueueDisposal(user, enrollmentIdentifier, signature, log)
       } catch (exception) {
@@ -69,7 +69,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       const { enrollmentIdentifier } = params
 
       try {
-        const processor = createEnrollmentProcessor(storage)
+        const processor = createEnrollmentProcessor(storage, log)
         const isDisposing = await processor.isEnqueuedForDisposal(enrollmentIdentifier, log)
 
         res.json({ success: true, isDisposing })
@@ -95,7 +95,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       const { log, user } = req
 
       try {
-        const processor = createEnrollmentProcessor(storage)
+        const processor = createEnrollmentProcessor(storage, log)
         const sessionToken = await processor.issueSessionToken(log)
 
         res.json({ success: true, sessionToken })
@@ -133,7 +133,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
       try {
         const { disableFaceVerification, allowDuplicatedFaceRecords, claimQueueAllowed } = conf
-        const enrollmentProcessor = createEnrollmentProcessor(storage)
+        const enrollmentProcessor = createEnrollmentProcessor(storage, log)
 
         await enrollmentProcessor.validate(user, enrollmentIdentifier, payload)
 

@@ -4,7 +4,7 @@ import delay from 'delay'
 import { size } from 'lodash'
 
 const TaskRunner = getTaskRunner()
-jest.setTimeout(10000)
+jest.setTimeout(20000)
 
 describe('TaskRunner', () => {
   const testTask = {
@@ -37,7 +37,7 @@ describe('TaskRunner', () => {
 
   test('it should run task', async () => {
     TaskRunner.startTasks()
-    await delay(3500)
+    await delay(5500)
     expect(executeSpy).toHaveBeenCalled()
   })
 
@@ -51,7 +51,7 @@ describe('TaskRunner', () => {
   test('it should run cron syntax multiple times', async () => {
     TaskRunner.registerTask(testCronTask)
     TaskRunner.startTasks()
-    await delay(2500)
+    await delay(12500)
     TaskRunner.stopTasks()
     // check if there was at lest 2 call during last 2.5 sec
     expect(executeCronSpy.mock.calls.length).toBeGreaterThanOrEqual(2)

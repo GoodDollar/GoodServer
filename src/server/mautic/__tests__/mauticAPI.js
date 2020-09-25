@@ -6,6 +6,7 @@ import { Mautic } from '../mauticAPI'
 import conf from '../../server.config'
 import { utmString } from '../../__util__'
 
+jest.setTimeout(15000)
 describe('Send', () => {
   var mauticId = ''
   it('should add new contact', async () => {

@@ -14,7 +14,7 @@ let server
 
 describe('GunDB', () => {
   beforeAll(async done => {
-    server = makeServer(done)
+    server = await makeServer(done)
   })
 
   afterAll(done => {
@@ -66,7 +66,7 @@ describe('GunDB', () => {
       profilePublickey: 'ABCDE'
     })
     const indexid = storage.getIndexId('mobile')
-    const index = await storage.getIndex('mobile')
+    const index = await storage.gun.get(indexid).then()
 
     expect(index['_']['#']).toEqual(indexid)
     expect(index).toBeTruthy()

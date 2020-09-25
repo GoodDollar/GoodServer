@@ -320,14 +320,9 @@ class ZoomAPI {
     if (!isLivenessPassed) {
       errorMessage = message
 
-      if (isLowQuality || glasses) {
+      if (isLowQuality) {
         errorMessage = 'Liveness could not be determined because '
-
-        if (isLowQuality) {
-          errorMessage += 'the photoshoots evaluated to be of poor quality.'
-        } else if (glasses) {
-          errorMessage += 'wearing glasses were detected.'
-        }
+        errorMessage += 'the photoshoots evaluated to be of poor quality.'
       }
     }
 
