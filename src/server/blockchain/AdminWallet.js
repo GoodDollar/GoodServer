@@ -85,12 +85,12 @@ export class Wallet {
 
       case 'HttpProvider':
         provider = conf.ethereum.httpWeb3Provider
-        web3Provider = new Web3.providers.HttpProvider(provider)
+        web3Provider = new Web3.providers.HttpProvider(provider, { timeout: 15000 })
         break
 
       default:
         provider = conf.ethereum.httpWeb3Provider
-        web3Provider = new Web3.providers.HttpProvider(provider)
+        web3Provider = new Web3.providers.HttpProvider(provider, { timeout: 15000 })
         break
     }
     log.debug({ conf, web3Provider, provider })
@@ -452,33 +452,37 @@ export class Wallet {
   /**
    * top wallet if needed
    * @param {string} address
-   * @param {moment.Moment} lastTopping
-   * @param {boolean} force
    * @returns {PromiEvent<TransactionReceipt>}
    */
-  async topWallet(address: string, force: boolean = false): PromiEvent<TransactionReceipt> {
+  async topWallet(address: string, logger = log): PromiEvent<TransactionReceipt> {
     let userBalance = await this.web3.eth.getBalance(address)
     let maxTopWei = parseInt(web3Utils.toWei('1000000', 'gwei'))
     let toTop = maxTopWei - userBalance
-    log.debug('TopWallet:', { address, userBalance, toTop })
+    logger.debug('TopWallet:', { address, userBalance, toTop })
     if (toTop <= 0 || toTop / maxTopWei < 0.75) {
-      log.debug("User doesn't need topping", { address })
+      logger.debug("User doesn't need topping", { address })
       return { status: 1 }
     }
 
     let txHash
     try {
       const onTransactionHash = hash => {
-        log.debug('Topwallet got txhash:', { hash, address })
+        logger.debug('Topwallet got txhash:', { hash, address })
         txHash = hash
       }
 
-      const txPromise = this.sendTransaction(this.proxyContract.methods.topWallet(address), { onTransactionHash })
+      const txPromise = this.sendTransaction(
+        this.proxyContract.methods.topWallet(address),
+        { onTransactionHash },
+        {},
+        true,
+        logger
+      )
       let res = await txPromise
-      log.debug('Topwallet result:', { txHash, address, res })
+      logger.debug('Topwallet result:', { txHash, address, res })
       return res
     } catch (e) {
-      log.error('Error topWallet', e.message, e, { txHash, address, force })
+      logger.error('Error topWallet', e.message, e, { txHash, address })
       throw e
     }
   }
@@ -517,7 +521,8 @@ export class Wallet {
     tx: any,
     txCallbacks: PromiEvents = {},
     { gas, gasPrice }: GasValues = { gas: undefined, gasPrice: undefined },
-    retry = true
+    retry = true,
+    logger = log
   ) {
     let currentAddress, txHash
     const uuid = Crypto.randomBytes(5).toString('base64')
@@ -529,7 +534,7 @@ export class Wallet {
           .estimateGas()
           .then(gas => gas + 200000) //buffer for proxy contract, reimburseGas?
           .catch(e => {
-            log.error('Failed to estimate gas for tx', e.message, e)
+            logger.error('Failed to estimate gas for tx', e.message, e)
             return defaultGas
           }))
 
@@ -537,35 +542,35 @@ export class Wallet {
       if (gas > 8000000) gas = defaultGas
       gasPrice = gasPrice || defaultGasPrice
 
-      log.debug('getting tx lock:', { uuid })
+      logger.debug('getting tx lock:', { uuid })
       const { nonce, release, fail, address } = await this.txManager.lock(this.filledAddresses)
-      log.debug('got tx lock:', { uuid, address })
+      logger.debug('got tx lock:', { uuid, address })
 
       let balance = NaN
       if (conf.env === 'development') {
         balance = await this.web3.eth.getBalance(address)
       }
       currentAddress = address
-      log.debug(`sending tx from: ${address} | nonce: ${nonce}`, { uuid, balance, gas, gasPrice })
+      logger.debug(`sending tx from: ${address} | nonce: ${nonce}`, { uuid, balance, gas, gasPrice })
       let txPromise = new Promise((res, rej) => {
         tx.send({ gas, gasPrice, chainId: this.networkId, nonce, from: address })
           .on('transactionHash', h => {
             release()
             txHash = h
-            log.debug('got tx hash:', { uuid, txHash })
+            logger.debug('got tx hash:', { uuid, txHash })
             onTransactionHash && onTransactionHash(h)
           })
           .on('receipt', r => {
-            log.debug('got tx receipt:', { uuid })
+            logger.debug('got tx receipt:', { uuid })
             onReceipt && onReceipt(r)
             res(r)
           })
           .on('confirmation', c => onConfirmation && onConfirmation(c))
           .on('error', async e => {
-            log.error('sendTransaction error:', e.message, e, { from: address, uuid })
+            logger.error('sendTransaction error:', e.message, e, { from: address, uuid })
             if (isFundsError(e)) {
               balance = await this.mainnetWeb3.eth.getBalance(address)
-              log.warn('sendTransaciton funds issue retry', {
+              logger.warn('sendTransaciton funds issue retry', {
                 errMessage: e.message,
                 nonce,
                 gas,
@@ -576,14 +581,14 @@ export class Wallet {
               sendSlackAlert({ msg: 'admin account funds low', address, balance })
               await this.txManager.unlock(address)
               try {
-                res(await this.sendTransaction(tx, txCallbacks, { gas, gasPrice }))
+                res(await this.sendTransaction(tx, txCallbacks, { gas, gasPrice }, retry, logger))
               } catch (e) {
                 await this.txManager.unlock(address)
                 rej(e)
               }
             } else if (isNonceError(e)) {
               let netNonce = parseInt(await this.web3.eth.getTransactionCount(address))
-              log.warn('sendTransaciton nonce failure retry', {
+              logger.warn('sendTransaciton nonce failure retry', {
                 errMessage: e.message,
                 nonce,
                 gas,
@@ -593,7 +598,7 @@ export class Wallet {
               })
               await this.txManager.unlock(address, netNonce)
               try {
-                res(await this.sendTransaction(tx, txCallbacks, { gas, gasPrice }))
+                res(await this.sendTransaction(tx, txCallbacks, { gas, gasPrice }, retry, logger))
               } catch (e) {
                 await this.txManager.unlock(address)
                 rej(e)
@@ -609,11 +614,11 @@ export class Wallet {
       const res = await Promise.race([txPromise, requestTimeout(FUSE_TX_TIMEOUT, 'fuse tx timeout')])
       return res
     } catch (e) {
-      log.warn('sendTransaction failed:', e.message, { uuid, txHash, retry })
+      logger.warn('sendTransaction failed:', e.message, { uuid, txHash, retry })
       await this.txManager.unlock(currentAddress)
       if (retry && e.message.contains('fuse tx timeout')) {
-        log.warn('sendTransaction failed retrying:', { uuid, txHash })
-        return this.sendTransaction(tx, txCallbacks, { gas, gasPrice }, false)
+        logger.warn('sendTransaction failed retrying:', { uuid, txHash })
+        return this.sendTransaction(tx, txCallbacks, { gas, gasPrice }, false, logger)
       }
       throw new Error(e)
     }

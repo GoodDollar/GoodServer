@@ -8,7 +8,8 @@ import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../
 import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
 import requestRateLimiter from '../utils/requestRateLimiter'
-import fuseapi from '../utils/fuseapi'
+import requestTimeout from '../utils/timeout'
+// import fuseapi from '../utils/fuseapi'
 import OTP from '../../imports/otp'
 import conf from '../server.config'
 import { Mautic } from '../mautic/mauticAPI'
@@ -369,20 +370,28 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       //   })
       // }
 
-      let txRes = await AdminWallet.topWallet(user.gdAddress)
-        .then(tx => {
-          log.debug('topping wallet tx', { walletaddress: user.gdAddress, tx })
-          return { ok: 1 }
-        })
-        .catch(async exception => {
-          const { message } = exception
-          log.error('Failed top wallet tx', message, exception)
+      try {
+        let txPromise = AdminWallet.topWallet(user.gdAddress, log)
+          .then(tx => {
+            log.debug('topwallet tx', { walletaddress: user.gdAddress, tx })
+            return { ok: 1 }
+          })
+          .catch(async exception => {
+            const { message } = exception
+            log.error('Failed topwallet tx', message, exception, { walletaddress: user.gdAddress })
 
-          return { ok: -1, error: message }
-        })
-      log.info('topping wallet', { txRes, loggedInAs: user.loggedInAs, adminBalance: await AdminWallet.getBalance() })
+            return { ok: -1, error: message }
+          })
 
-      res.json(txRes)
+        const txRes = await Promise.race([txPromise, requestTimeout(20000, 'topwallet tx timeout')])
+
+        log.info('topping wallet', { txRes, loggedInAs: user.loggedInAs, adminBalance: await AdminWallet.getBalance() })
+
+        res.json(txRes)
+      } catch (e) {
+        log.error('topwallet timeout or unexpected', e.message, e, { walletaddress: user.gdAddress })
+        res.json({ ok: -1, error: e.message })
+      }
     })
   )
 
