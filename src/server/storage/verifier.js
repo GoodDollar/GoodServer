@@ -1,11 +1,11 @@
 import { assign, isEmpty, bindAll, isError } from 'lodash'
-import { from as fromPromise, defer, throwError, timer } from 'rxjs'
-import { mergeMap, retryWhen } from 'rxjs/operators'
 
 import Config from '../../server/server.config'
 
 import TorusVerifier from '../../imports/torusVerifier'
 import FacebookVerifier from '../../imports/facebookVerifier'
+
+import { retry } from '../utils/async'
 
 class DefaultVerificationStrategy {
   constructor(config) {
@@ -16,8 +16,8 @@ class DefaultVerificationStrategy {
   }
 
   async verify(requestPayload, userRecord, logger) {
-    const { torusProof } = requestPayload
-    const { _callVerifier, _onRetry } = this
+    const { torusProof, torusProvider, torusProofNonce } = requestPayload
+    const { torusVerificationRetryDelay, torusVerificationAttempts } = this
     let verificationResult = { emailVerified: false, mobileVerified: false }
 
     if (!torusProof) {
@@ -26,9 +26,18 @@ class DefaultVerificationStrategy {
     }
 
     try {
-      verificationResult = await defer(() => fromPromise(_callVerifier(requestPayload))) // calling TorusProvider
-        .pipe(retryWhen(attempts => attempts.pipe(mergeMap(_onRetry)))) // on each failure passing rejection reason
-        .toPromise() // through the onRetry callback to determine should we retry or not and how long we have to wait before
+      // eslint-disable-next-line
+      verificationResult = await retry(
+        () => TorusVerifier.verifyProof(torusProof, torusProvider, requestPayload, torusProofNonce),
+        torusVerificationAttempts,
+        torusVerificationRetryDelay,
+        reason => {
+          const { message } = reason || {}
+
+          // checking if the reason related to the some nodes are down
+          return isError(reason) && message.toLowerCase().includes('node results do not match')
+        }
+      )
     } catch (exception) {
       const { message: msg } = exception
 
@@ -40,33 +49,6 @@ class DefaultVerificationStrategy {
     logger.info('TorusVerifier result:', verificationResult)
     userRecord.smsValidated = userRecord.smsValidated || mobileVerified
     userRecord.isEmailConfirmed = userRecord.isEmailConfirmed || emailVerified
-  }
-
-  // eslint-disable-next-line require-await
-  async _callVerifier(requestPayload) {
-    const { torusProof, torusProvider, torusProofNonce } = requestPayload
-    const verifier = TorusVerifier.factory(this.logger)
-    return verifier.verifyProof(torusProof, torusProvider, requestPayload, torusProofNonce)
-  }
-
-  _onRetry(reason, attemptIndex) {
-    const { message } = reason || {}
-    const { torusVerificationRetryDelay, torusVerificationAttempts } = this
-
-    // checking if the reason related to the some nodes are down
-    if (isError(reason) && message.toLowerCase().includes('node results do not match')) {
-      const retryAttempt = attemptIndex + 1
-
-      // if yes - checking attempts count
-      if (retryAttempt <= torusVerificationAttempts) {
-        // if we aren't reached it yet - retrying call
-        return timer(torusVerificationRetryDelay)
-      }
-    }
-
-    // if the reason not related to the temporary unavailability of the Torus services
-    // or we've reached the verification attempts limit - just re-throwing the reason
-    return throwError(reason)
   }
 }
 

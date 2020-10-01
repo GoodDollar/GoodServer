@@ -10,7 +10,7 @@ import SEA from '@gooddollar/gun/sea'
 import { gunAuth } from '@gooddollar/gun-pk-auth'
 import '@gooddollar/gun/nts'
 
-import { delay } from '../utils/timeout'
+import { delay } from '../utils/async'
 import { wrapAsync } from '../utils/helpers'
 import { LoggedUser, type StorageAPI } from '../../imports/types'
 import conf from '../server.config'

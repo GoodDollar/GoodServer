@@ -8,7 +8,7 @@ import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../
 import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
 import requestRateLimiter from '../utils/requestRateLimiter'
-import requestTimeout from '../utils/timeout'
+import { requestTimeout } from '../utils/async'
 // import fuseapi from '../utils/fuseapi'
 import OTP from '../../imports/otp'
 import conf from '../server.config'

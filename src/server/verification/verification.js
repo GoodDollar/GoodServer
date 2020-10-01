@@ -3,7 +3,7 @@ import type { UserRecord, VerificationAPI } from '../../imports/types'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
 import OTP from '../../imports/otp'
 import logger from '../../imports/logger'
-import { timeout } from '../utils/timeout'
+import { timeout } from '../utils/async'
 
 /**
  * Verifications class implements `VerificationAPI`

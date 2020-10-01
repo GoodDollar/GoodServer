@@ -3,7 +3,7 @@ import { EventEmitter } from 'events'
 
 import middlewares from './server-middlewares'
 import AdminWallet from './blockchain/AdminWallet'
-import requestTimeout from './utils/timeout'
+import { requestTimeout } from './utils/async'
 import { GunDBPublic } from './gun/gun-middleware'
 import conf from './server.config'
 
