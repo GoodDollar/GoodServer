@@ -1,4 +1,4 @@
-import { assign, isEmpty, bindAll, isError } from 'lodash'
+import { assign, isEmpty, isError } from 'lodash'
 
 import Config from '../../server/server.config'
 
@@ -11,11 +11,11 @@ class DefaultVerificationStrategy {
   constructor(config) {
     const { torusVerificationRetryDelay, torusVerificationAttempts } = config
 
-    bindAll(this, '_onRetry', '_callVerifier')
     assign(this, { torusVerificationRetryDelay, torusVerificationAttempts })
   }
 
   async verify(requestPayload, userRecord, logger) {
+    const verifier = TorusVerifier.factory(logger)
     const { torusProof, torusProvider, torusProofNonce } = requestPayload
     const { torusVerificationRetryDelay, torusVerificationAttempts } = this
     let verificationResult = { emailVerified: false, mobileVerified: false }
@@ -28,7 +28,7 @@ class DefaultVerificationStrategy {
     try {
       // eslint-disable-next-line
       verificationResult = await retry(
-        () => TorusVerifier.verifyProof(torusProof, torusProvider, requestPayload, torusProofNonce),
+        () => verifier.verifyProof(torusProof, torusProvider, requestPayload, torusProofNonce),
         torusVerificationAttempts,
         torusVerificationRetryDelay,
         reason => {

@@ -5,6 +5,8 @@ import Config from '../server/server.config'
 import { recoverPublickey } from '../server/utils/eth'
 import logger from '../imports/logger'
 
+const defaultLogger = logger.child({ from: 'TorusVerifier' })
+
 class GoogleLegacyStrategy {
   getVerificationOptions(userRecord) {
     return {
@@ -52,7 +54,7 @@ class PasswordlessSMSStrategy {
 class TorusVerifier {
   strategies = {}
 
-  static factory(log = logger.child({ from: 'TorusVerifier' })) {
+  static factory(log = defaultLogger) {
     const { torusNetwork, torusProxyContract } = Config
     const torus = new TorusUtils()
 

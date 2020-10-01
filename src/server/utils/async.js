@@ -1,6 +1,6 @@
 import { isError, isNumber, isFunction } from 'lodash'
-import { defer, from as fromPromise, timer } from 'rxjs'
-import { retryWhen, mergeMap, throwError, timeout as rxTimeout } from 'rxjs/operators'
+import { defer, from as fromPromise, throwError, timer } from 'rxjs'
+import { retryWhen, mergeMap, timeout as rxTimeout } from 'rxjs/operators'
 import { promisify } from 'util'
 
 const promisifiedTimeout = promisify(setTimeout)

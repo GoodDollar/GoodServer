@@ -93,7 +93,7 @@ describe('Test torus email/mobile to address', () => {
 
     const userVerifier = createUserVerifier(userRecord, requestPayload, console)
 
-    TorusVerifier.prototype.verifyProof = jest.fn(() => ({
+    TorusVerifier.prototype.verifyProof = jest.fn(async () => ({
       mobileVerified: true,
       emailVerified: false
     }))
