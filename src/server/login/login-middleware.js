@@ -11,7 +11,7 @@ import SEA from '@gooddollar/gun/sea'
 import Config from '../server.config.js'
 import { recoverPublickey } from '../utils/eth'
 import requestRateLimiter from '../utils/requestRateLimiter'
-
+import clientSettings from '../clients.config.js'
 const log = logger.child({ from: 'login-middleware' })
 
 const jwtOptions = {
@@ -139,10 +139,19 @@ const setup = (app: Router) => {
 
   app.get(
     '/auth/ping',
-    requestRateLimiter(500),
+    requestRateLimiter(200),
     wrapAsync(async (req, res) => {
       res.json({ ping: new Date() })
-      res.end()
+    })
+  )
+
+  app.post(
+    '/auth/settings',
+    requestRateLimiter(200),
+    wrapAsync(async (req, res) => {
+      const env = req.body.env
+      const settings = clientSettings[env] || { fromServer: false }
+      res.json(settings)
     })
   )
 
