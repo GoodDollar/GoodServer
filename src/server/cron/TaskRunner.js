@@ -29,7 +29,7 @@ class TaskRunner {
       try {
         logger.info('Running cron task. getting lock...', { taskName })
 
-        const { address, release } = await lock.lock(taskName)
+        const { address, release } = await lock.lock(taskName, 60000)
         // we don't need re-queue in the cron. just lock -> run -> release (despite success/failed)
         logger.info('Obtained mutex for exclusive run:', { address, taskName })
 

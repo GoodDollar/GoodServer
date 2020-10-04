@@ -2,7 +2,7 @@ import WalletNonce from '../../db/mongo/models/wallet-nonce'
 import logger from '../../../imports/logger'
 import conf from '../../server.config'
 import moment from 'moment'
-
+import { remove } from 'lodash'
 export default class queueMongo {
   constructor(networkId, lockExpireSeconds = conf.mongoQueueMaxLockTime) {
     this.log = logger.child({ from: 'queueMongo-' + networkId })
@@ -163,19 +163,32 @@ export default class queueMongo {
    *
    * @returns {Promise<any>}
    */
-  lock(addresses) {
+  lock(addresses, timeout = 15000) {
     return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('lock not acquired timeout')), 15000)
-      this.addToQueue(addresses, ({ nonce, address }) => {
-        clearTimeout(timeout)
+      let timer
+
+      const cb = ({ nonce, address }) => {
+        timer && clearTimeout(timer)
         resolve({
           address,
           nonce,
           release: async () => await this.unlock(address, nonce + 1),
           fail: async () => await this.unlock(address)
         })
-      })
+      }
+
+      timer = setTimeout(() => {
+        //if timer make sure to remove request from queue
+        this.removeFromQueue(cb)
+        reject(new Error('lock not acquired timeout'))
+      }, timeout)
+
+      this.addToQueue(addresses, cb)
     })
+  }
+
+  removeFromQueue(cb) {
+    remove(this.queue, x => x.cb === cb)
   }
 
   /**
