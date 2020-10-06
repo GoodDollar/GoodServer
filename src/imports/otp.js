@@ -1,6 +1,7 @@
 // @flow
 import random from 'math-random'
 import Twilio from 'twilio'
+import { startsWith } from 'lodash'
 
 import conf from '../server/server.config'
 import logger from './logger'
@@ -9,10 +10,20 @@ import type { UserRecord } from './types'
 export default new (class {
   constructor(Config, Twilio, logger) {
     const { twilioAuthID, twilioAuthToken, twilioVerifyID } = Config
-    const { services } = Twilio(twilioAuthID, twilioAuthToken).verify
 
     this.log = logger
-    this.service = services(twilioVerifyID)
+
+    if (!twilioAuthID || !twilioAuthToken || !twilioVerifyID) {
+      return
+    }
+
+    if (!startsWith(twilioAuthID, 'AC') || !startsWith(twilioVerifyID, 'VA')) {
+      return
+    }
+
+    const twilio = Twilio(twilioAuthID, twilioAuthToken)
+
+    this.service = twilio.verify.services(twilioVerifyID)
   }
 
   /**
@@ -41,6 +52,7 @@ export default new (class {
     const payload = { to: mobile, channel }
 
     try {
+      this.assertInitialized()
       return await service.verifications.create(payload)
     } catch (exception) {
       const { message } = exception
@@ -61,12 +73,19 @@ export default new (class {
     const options = { to: mobile, code }
 
     try {
+      this.assertInitialized()
       return await service.verificationChecks.create(options)
     } catch (exception) {
       const { message } = exception
 
       log.error('Error verification OTP:', message, exception, { mobile, code })
       throw exception
+    }
+  }
+
+  async assertInitialized() {
+    if (!this.service) {
+      throw new Error("Twilio service isn't initialized. Env vars are missing or invalid")
     }
   }
 })(conf, Twilio, logger.child({ from: 'Twilio' }))
