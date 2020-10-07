@@ -73,7 +73,7 @@ const updateMauticRecord = async (userRecord: UserRecord, utmString: string, log
   await UserDBPrivate.updateUser({ identifier: userRecord.identifier, mauticId })
   logger.debug('updateMauticRecord user mautic record updated', { fieldsForMautic, userRecord, mauticId, mauticRecord })
 
-  return true
+  return mauticId
 }
 
 const updateW3Record = async (user: any, logger: any) => {
