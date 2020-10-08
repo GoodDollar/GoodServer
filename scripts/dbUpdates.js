@@ -184,6 +184,7 @@ class DBUpdates {
 
     let fixedUsers = 0
     const processChunk = users => {
+      let hasWallet = 0
       const promises = users.map(async user => {
         const walletAddress = await GunDBPublic.gun
           .get('~' + user.profilePublickey)
@@ -195,11 +196,8 @@ class DBUpdates {
         if (walletAddress) {
           promises.push(UserPrivateModel.updateOne({ identifier: user.identifier }, { trustIndex: true }))
           fixedUsers += 1
-        } else
-          logger.warn('fixGunTrustProfiles2 user missing wallet:', {
-            identifier: user.identifier,
-            profile: user.profilePublickey
-          })
+          hasWallet += 1
+        }
 
         if (user.smsValidated && user.mobile && user.mobile.startsWith('0x'))
           promises.push(GunDBPublic.addHashToIndex('mobile', user.mobile, user))
@@ -214,15 +212,15 @@ class DBUpdates {
         // logger.info('fixGunTrustProfiles2 updated user:', { walletAddress, user })
         return indexRes
       })
-      return Promise.all(promises)
+      return [Promise.all(promises), hasWallet]
     }
 
     for (let users of chunk(docs, 100)) {
       // logger.debug('fixGunTrustProfiles2 users chunk:', users)
-      const res = await processChunk(users)
+      const [res, fixed] = await processChunk(users)
       // logger.debug('fixGunTrustProfiles2 chunk res:', { res })
       const failed = flattenDeep(res).filter(_ => _ === false)
-      logger.info('fixGunTrustProfiles2 processed chunk:', { users: users.length, failed: failed.length })
+      logger.info('fixGunTrustProfiles2 processed chunk:', { users: users.length, failed: failed.length, fixed })
     }
     logger.info('fixGunTrustProfiles2 finished:', { totalUsers: docs.length, fixedUsers })
   }
