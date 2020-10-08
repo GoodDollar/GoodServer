@@ -522,7 +522,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           email: hashedNewEmail
         }
 
-        if (user.mauticId) {
+        if (runInEnv && user.mauticId) {
           await Promise.all([
             Mautic.deleteContact({
               mauticId: tempSavedMauticId
@@ -538,6 +538,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           gunPublic.removeUserFromIndex('email', currentEmail)
           gunPublic.addUserToIndex('email', tempSavedEmail, user)
         }
+
         const [, , signedEmail] = await Promise.all([
           storage.model.updateOne(
             { identifier: user.loggedInAs },
