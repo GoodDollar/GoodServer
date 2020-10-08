@@ -83,6 +83,10 @@ export const UserPrivateSchema = new Schema({
   claimQueue: {
     date: { type: Date, default: Date.now },
     status: { type: String, index: { unique: false } }
+  },
+  trustIndex: {
+    type: Boolean,
+    default: false
   }
 })
 
