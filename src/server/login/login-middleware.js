@@ -149,6 +149,8 @@ const setup = (app: Router) => {
 
         fixTrustIndex(recovered, gdPublicAddress, log)
 
+        UserDBPrivate.updateUser({ identifier: recovered, lastLogin: new Date() })
+
         log.info('/auth/eth', {
           message: `JWT token: ${token}`
         })
