@@ -444,6 +444,12 @@ const conf = convict({
     env: 'STAKE_TASK_CRON',
     default: '0 0 * * * *'
   },
+  dbUpdateTaskCron: {
+    doc: 'cron string for db updates task',
+    format: String,
+    env: 'DBUPDATE_TASK_CRON',
+    default: '0 * * * * *'
+  },
   torusNetwork: {
     doc: 'Torus network. Default: ropsten (mainnet, kovan, fuse, etoro, production, develop)',
     format: ['mainnet', 'ropsten', 'kovan', 'fuse', 'etoro', 'production', 'develop'],

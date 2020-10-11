@@ -57,14 +57,6 @@ class DBUpdates {
       dbversion.value.version = 2
       await dbversion.save()
     }
-
-    //always run this
-    await this.fixGunTrustProfiles2()
-      .then(_ => logger.info('gun fixGunTrustProfiles2 done', { results: _ }))
-      .catch(e => {
-        logger.error('gun fixGunTrustProfiles failed', { err: e.message, e })
-        throw e
-      })
   }
 
   async testWrite() {
@@ -156,73 +148,6 @@ class DBUpdates {
     } else {
       logger.warn('upgrade mongodb. nothing to do')
     }
-  }
-
-  /**
-   * restore trust profiles
-   */
-  async fixGunTrustProfiles2() {
-    await AdminWallet.ready
-    const pkey = AdminWallet.wallets[AdminWallet.addresses[0]].privateKey.slice(2)
-    await GunDBPublic.init(null, pkey, `publicdb0`, null)
-    const gooddollarProfile = '~' + GunDBPublic.user.is.pub
-    logger.info('fixGunTrustProfiles2 GoodDollar profile id:', {
-      gooddollarProfile,
-      bywalletIdx: await GunDBPublic.user.get('users/bywalletAddress').then(Gun.node.soul)
-    })
-
-    const docs = await UserPrivateModel.find(
-      {
-        profilePublickey: { $exists: true },
-        trustIndex: { $exists: false },
-        createdDate: { $lt: new Date('2020-10-08') }
-      },
-      'email mobile profilePublickey smsValidated isEmailConfirmed identifier'
-    )
-      .lean()
-      .exec()
-
-    let fixedUsers = 0
-    const processChunk = users => {
-      let hasWallet = 0
-      const promises = users.map(async user => {
-        const walletAddress = await GunDBPublic.gun
-          .get('~' + user.profilePublickey)
-          .get('profile')
-          .get('walletAddress')
-          .get('display')
-          .then(null, { wait: 2000 })
-        const promises = []
-        if (walletAddress) {
-          promises.push(UserPrivateModel.updateOne({ identifier: user.identifier }, { trustIndex: true }))
-          fixedUsers += 1
-          hasWallet += 1
-        }
-
-        if (user.smsValidated && user.mobile && user.mobile.startsWith('0x'))
-          promises.push(GunDBPublic.addHashToIndex('mobile', user.mobile, user))
-        if (user.email && user.isEmailConfirmed && user.email.startsWith('0x'))
-          promises.push(GunDBPublic.addHashToIndex('email', user.email, user))
-        if (walletAddress) promises.push(GunDBPublic.addUserToIndex('walletAddress', walletAddress, user))
-
-        const indexRes = await Promise.all(promises).catch(e => {
-          logger.warn('fixGunTrustProfiles2 failed user:', e, { walletAddress, user })
-          return false
-        })
-        // logger.info('fixGunTrustProfiles2 updated user:', { walletAddress, user })
-        return indexRes
-      })
-      return [Promise.all(promises), hasWallet]
-    }
-
-    for (let users of chunk(docs, 100)) {
-      // logger.debug('fixGunTrustProfiles2 users chunk:', users)
-      const [res, fixed] = await processChunk(users)
-      // logger.debug('fixGunTrustProfiles2 chunk res:', { res })
-      const failed = flattenDeep(res).filter(_ => _ === false)
-      logger.info('fixGunTrustProfiles2 processed chunk:', { users: users.length, failed: failed.length, fixed })
-    }
-    logger.info('fixGunTrustProfiles2 finished:', { totalUsers: docs.length, fixedUsers })
   }
 
   /**

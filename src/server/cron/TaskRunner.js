@@ -93,5 +93,9 @@ class TaskRunner {
 
 export default once(
   () =>
-    new TaskRunner(new MongoLock('tasksRunner', 600 /*10 minutes lock*/), CronJob, logger.child({ from: 'TaskRunner' }))
+    new TaskRunner(
+      new MongoLock('tasksRunner', 3600 /*60 minutes lock*/),
+      CronJob,
+      logger.child({ from: 'TaskRunner' })
+    )
 )
