@@ -515,6 +515,12 @@ const conf = convict({
     format: Number,
     default: 200,
     env: 'MAX_GAS_PRICE'
+  },
+  optionalMobile: {
+    doc: 'make mobile verification optional on signup',
+    format: Boolean,
+    default: true,
+    env: 'OPTIONAL_MOBILE_VERIFIICATION'
   }
 })
 

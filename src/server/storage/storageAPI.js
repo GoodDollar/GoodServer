@@ -25,7 +25,14 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
     '/user/add',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
-      const { env, skipEmailVerification, disableFaceVerification, mauticBasicToken, mauticToken } = conf
+      const {
+        env,
+        skipEmailVerification,
+        disableFaceVerification,
+        mauticBasicToken,
+        mauticToken,
+        optionalMobile
+      } = conf
       const isNonDevelopMode = process.env.NODE_ENV !== 'development'
       const { cookies, body, log: logger, user: userRecord } = req
       const { user: userPayload = {} } = body
@@ -45,7 +52,10 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         // check that user email/mobile sent is the same as the ones verified
         //in case email/mobile was verified using torus userRecord.mobile/email will be empty
         if (['production', 'staging'].includes(env)) {
-          if (userRecord.smsValidated !== true || (userRecord.mobile && userRecord.mobile !== sha3(mobile))) {
+          if (
+            (optionalMobile === false && userRecord.smsValidated !== true) ||
+            (userRecord.mobile && userRecord.mobile !== sha3(mobile))
+          ) {
             throw new Error('User mobile not verified!')
           }
 
@@ -75,6 +85,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           torusProvider: userPayload.torusProvider,
           email: sha3(email),
           mobile: sha3(mobile),
+          mobileValidated: !!userRecord.smsValidated,
           profilePublickey: userRecord.profilePublickey,
           isCompleted: userRecord.isCompleted
             ? userRecord.isCompleted
