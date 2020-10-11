@@ -40,7 +40,7 @@ export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
 //add them again to the trust indexes
 const fixTrustIndex = async (identifier, gdAddress, logger) => {
   const user = await UserDBPrivate.getUser(identifier)
-  if (!user.trustIndex && moment(user.createdDate).isBefore('2020-10-08')) {
+  if (user && !user.trustIndex && moment(user.createdDate).isBefore('2020-10-08')) {
     user.trustIndex = true
     await Promise.all([
       user.smsValidated &&
