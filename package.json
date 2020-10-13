@@ -1,6 +1,6 @@
 {
   "name": "@gooddollar/goodserver",
-  "version": "1.6.0",
+  "version": "1.6.1-3",
   "description": "GoodDollar Server",
   "main": "src/server/index.js",
   "engines": {
@@ -46,7 +46,7 @@
   "homepage": "https://gooddollar.org",
   "dependencies": {
     "@babel/polyfill": "^7.11.5",
-    "@gooddollar/goodcontracts": "^2.1.0",
+    "@gooddollar/goodcontracts": "^2.1.2",
     "@gooddollar/gun": "^0.2020.910",
     "@gooddollar/gun-pk-auth": "^1.1.0",
     "@sendgrid/mail": "^6.5.5",

@@ -444,6 +444,12 @@ const conf = convict({
     env: 'STAKE_TASK_CRON',
     default: '0 0 * * * *'
   },
+  dbUpdateTaskCron: {
+    doc: 'cron string for db updates task',
+    format: String,
+    env: 'DBUPDATE_TASK_CRON',
+    default: '0 * * * * *'
+  },
   torusNetwork: {
     doc: 'Torus network. Default: ropsten (mainnet, kovan, fuse, etoro, production, develop)',
     format: ['mainnet', 'ropsten', 'kovan', 'fuse', 'etoro', 'production', 'develop'],
@@ -515,6 +521,12 @@ const conf = convict({
     format: Number,
     default: 200,
     env: 'MAX_GAS_PRICE'
+  },
+  optionalMobile: {
+    doc: 'make mobile verification optional on signup',
+    format: Boolean,
+    default: true,
+    env: 'OPTIONAL_MOBILE_VERIFIICATION'
   }
 })
 

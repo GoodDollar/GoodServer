@@ -86,7 +86,13 @@ export const UserPrivateSchema = new Schema(
       status: { type: String, index: { unique: false } }
     }
   },
-  { minimize: false }
-)
+  trustIndex: {
+    type: Boolean,
+    default: false
+  },
+  lastLogin: {
+    type: Date
+  }
+}, { minimize: false })
 
 export default mongoose.model(MODEL_USER_PRIVATE, UserPrivateSchema)

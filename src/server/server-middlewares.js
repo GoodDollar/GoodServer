@@ -20,6 +20,7 @@ import VerificationAPI from './verification/verification'
 import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
 import addClaimQueueMiddlewares from './claimQueue/claimQueueAPI'
 import { fishInactiveTask, collectFundsTask } from './blockchain/stakingModelTasks'
+import './db/cron/dbUpdateTask' //import to register the task
 import Config from './server.config'
 
 const rootLogger = logger.child({ from: 'Server' })

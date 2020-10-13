@@ -21,7 +21,11 @@ const log = logger.child({ from: 'GunDB-Middleware' })
 // TODO: import refactorings from server
 assign(Gun.chain, {
   async putAck(data, callback = identity) {
-    const nodeCompatiblePut = cb => this.put(data, once(ack => cb(ack.err, ack)))
+    const nodeCompatiblePut = cb =>
+      this.put(
+        data,
+        once(ack => cb(ack.err, ack))
+      )
     const promisifiedPut = util.promisify(nodeCompatiblePut)
 
     return promisifiedPut().then(callback)
@@ -271,11 +275,15 @@ class GunDB implements StorageAPI {
   }
 
   async addUserToIndex(index: string, value: String, user: LoggedUser) {
+    return this.addHashToIndex(index, sha3(value), user)
+  }
+
+  async addHashToIndex(index: string, hash: String, user: LoggedUser) {
     return this.indexesRefs[index]
-      .get(sha3(value))
+      .get(hash)
       .putAck({ '#': '~' + user.profilePublickey })
       .catch(e => {
-        log.error('failed updating user index', e.message, e, { index, value, user })
+        log.error('failed updating user index', e.message, e, { index, hash, user })
         return false
       })
   }

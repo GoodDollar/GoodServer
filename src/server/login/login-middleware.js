@@ -4,6 +4,7 @@ import passport from 'passport'
 import { ExtractJwt, Strategy } from 'passport-jwt'
 import { Router } from 'express'
 import { get, defaults } from 'lodash'
+import moment from 'moment'
 import logger from '../../imports/logger'
 import { wrapAsync } from '../utils/helpers'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
@@ -12,6 +13,7 @@ import Config from '../server.config.js'
 import { recoverPublickey } from '../utils/eth'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import clientSettings from '../clients.config.js'
+import { GunDBPublic } from '../gun/gun-middleware'
 const log = logger.child({ from: 'login-middleware' })
 
 const jwtOptions = {
@@ -33,6 +35,29 @@ export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
 
   next(null, user)
 })
+
+//for user registered before we fixed database persistance we need to
+//add them again to the trust indexes
+const fixTrustIndex = async (identifier, gdAddress, logger) => {
+  const user = await UserDBPrivate.getUser(identifier)
+  if (user && !user.trustIndex && moment(user.createdDate).isBefore('2020-10-08')) {
+    user.trustIndex = true
+    await Promise.all([
+      user.smsValidated &&
+        user.mobile &&
+        user.mobile.startsWith('0x') &&
+        GunDBPublic.addHashToIndex('mobile', user.mobile, user),
+      user.email &&
+        user.isEmailConfirmed &&
+        user.email.startsWith('0x') &&
+        GunDBPublic.addHashToIndex('email', user.email, user),
+
+      user.gdAddress && GunDBPublic.addUserToIndex('walletAddress', user.gdAddress, user),
+      UserDBPrivate.updateUser(user)
+    ])
+    logger.info('fixed trust index for user:', { identifier, gdAddress, mobile: user.mobile, email: user.email })
+  }
+}
 
 const setup = (app: Router) => {
   passport.use(strategy)
@@ -121,6 +146,10 @@ const setup = (app: Router) => {
           },
           Config.jwtPassword
         )
+
+        fixTrustIndex(recovered, gdPublicAddress, log)
+
+        UserDBPrivate.updateUser({ identifier: recovered, lastLogin: new Date() })
 
         log.info('/auth/eth', {
           message: `JWT token: ${token}`

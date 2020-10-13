@@ -1,7 +1,7 @@
 //@flow
 import Gun from '@gooddollar/gun'
 import { sha3 } from 'web3-utils'
-import { delay } from 'lodash'
+import { delay, chunk, flattenDeep } from 'lodash'
 import logger from '../src/imports/logger'
 import { type UserRecord } from '../src/imports/types'
 import { GunDBPublic } from '../src/server/gun/gun-middleware'
@@ -25,7 +25,7 @@ class DBUpdates {
 
     const { version } = dbversion.value
     // await this.testWrite()
-
+    logger.info('runUpgrades:', { version })
     if (version < 1) {
       await Promise.all([
         this.upgrade()
