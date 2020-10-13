@@ -305,7 +305,8 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
             smsValidated: true,
             mobile: hashedNewMobile
           }),
-          storage.model.updateOne({ identifier: user.loggedInAs }, { $unset: { 'otp.mobile': true } })
+          user.createdDate && //keep temporary field if user is signing up
+            storage.model.updateOne({ identifier: user.loggedInAs }, { $unset: { 'otp.mobile': true } })
         ])
       }
 
@@ -540,10 +541,11 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         }
 
         const [, , signedEmail] = await Promise.all([
-          storage.model.updateOne(
-            { identifier: user.loggedInAs },
-            { $unset: { 'otp.email': 1, 'otp.tempMauticId': 1 } }
-          ),
+          user.createdDate && //keep temporary field if user is signing up
+            storage.model.updateOne(
+              { identifier: user.loggedInAs },
+              { $unset: { 'otp.email': 1, 'otp.tempMauticId': 1 } }
+            ),
           storage.updateUser(updateUserUbj),
           gunPublic.signClaim(req.user.profilePubkey, { hasEmail: hashedNewEmail })
         ])

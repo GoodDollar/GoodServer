@@ -4,7 +4,7 @@ import passport from 'passport'
 import { defaults, omitBy } from 'lodash'
 import { sha3 } from 'web3-utils'
 import { type StorageAPI, UserRecord } from '../../imports/types'
-import { wrapAsync } from '../utils/helpers'
+import { wrapAsync, onlyInEnv } from '../utils/helpers'
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import addUserSteps from './addUserSteps'
@@ -123,10 +123,14 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           signUpPromises.push(p2)
         }
 
+        let p3 = Promise.resolve()
         if (isNonDevelopMode || mauticBasicToken || mauticToken) {
-          const p3 = addUserSteps
+          p3 = addUserSteps
             .updateMauticRecord(userRecordWithPII, utmString, logger)
-            .then(r => logger.debug('updateMauticRecord success'))
+            .then(r => {
+              logger.debug('updateMauticRecord success')
+              return r
+            })
             .catch(e => {
               logger.error('updateMauticRecord failed', e.message, e, { userRecordWithPII })
               throw new Error('Failed adding user to mautic')
@@ -179,6 +183,14 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           otp: {} //delete trace of mobile,email
         })
 
+        if (isNonDevelopMode || mauticBasicToken || mauticToken) {
+          const mauticId = await p3
+          Mautic.updateContact(mauticId, { tags: ['signup_completed'] }).catch(exception => {
+            const { message } = exception
+            logger.error('Failed Mautic tagging user completed signup', message, exception, { mauticId })
+          })
+        }
+
         // const web3Record = await web3RecordP
 
         res.json({
@@ -190,6 +202,39 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         logger.warn('user signup failed', e.message, e)
         throw e
       }
+    })
+  )
+
+  /**
+   * @api {post} /user/start user starts registration and we have his email
+   * @apiName Add
+   * @apiGroup Storage
+   *
+   * @apiParam {Object} user
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
+  app.post(
+    '/user/start',
+    onlyInEnv('production', 'staging', 'test'),
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res) => {
+      const { user } = req.body
+      const { log: logger, user: existingUser } = req
+      const { __utmzz: utmString = '' } = req.cookies
+
+      if (!user.email || existingUser.createdDate || existingUser.mauticId) return res.json({ ok: 0 })
+
+      await addUserSteps
+        .updateMauticRecord(user, utmString, logger)
+        .then(r => logger.debug('updateMauticRecord success'))
+        .catch(e => {
+          logger.error('updateMauticRecord failed', e.message, e, { user })
+          throw new Error('Failed adding user to mautic')
+        })
+
+      res.json({ ok: 1 })
     })
   )
 
