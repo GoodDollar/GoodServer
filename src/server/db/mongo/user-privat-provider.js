@@ -150,8 +150,8 @@ class UserPrivate {
    *
    * @returns {Promise<*>}
    */
-  async getUserByEmail(email: string): Promise<UserRecord> {
-    return await this.model.findOne({ email }).lean()
+  async getUsersByEmail(email: string): Promise<UserRecord> {
+    return await this.model.find({ email }).lean()
   }
 
   /**
@@ -161,8 +161,8 @@ class UserPrivate {
    *
    * @returns {Promise<*>}
    */
-  async getUserByMobile(mobile: string): Promise<UserRecord> {
-    return await this.model.findOne({ mobile }).lean()
+  async getUsersByMobile(mobile: string): Promise<UserRecord> {
+    return await this.model.find({ mobile }).lean()
   }
 
   /**

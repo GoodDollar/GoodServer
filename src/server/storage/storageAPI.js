@@ -250,8 +250,8 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
       const { body } = req
       if (body.password !== conf.gundbPassword) return res.json({ ok: 0 })
       let user = {}
-      if (body.email) user = await storage.getUserByEmail(sha3(body.email))
-      if (body.mobile) user = await storage.getUserByMobile(sha3(body.mobile))
+      if (body.email) user = await storage.getUsersByEmail(sha3(body.email))
+      if (body.mobile) user = await storage.getUsersByMobile(sha3(body.mobile))
       if (body.identifier) user = await storage.getUser(body.identifier)
 
       res.json({ ok: 1, user })
