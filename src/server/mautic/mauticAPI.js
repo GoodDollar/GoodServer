@@ -1,6 +1,6 @@
 // @flow
 import fetch from 'cross-fetch'
-import { get, assign, range, isNil } from 'lodash'
+import { get, assign, range, isNil, omit, isObject } from 'lodash'
 
 import logger from '../../imports/logger'
 import { UserRecord } from '../../imports/types'
@@ -41,12 +41,24 @@ export const Mautic = new (class {
     return Promise.race([requestTimeout(timeout), fetch(fullUrl, fetchOptions)])
       .then(async res => {
         log.debug('response for:', { fullUrl, res })
-        if (res.status >= 300) throw new Error(await res.text())
+
+        if (res.status >= 300) {
+          const statusText = await res.text()
+
+          throw new Error(statusText)
+        }
+
         return res.json()
       })
       .catch(e => {
-        delete body['mnemonic'] // hide confidential information
-        log.error('Mautic Error:', e.message, e, { url, body })
+        let redactedBody = body
+
+        if (isObject(body)) {
+          // hide confidential information
+          redactedBody = omit(body, 'mnemonic')
+        }
+
+        log.error('Mautic Error:', e.message, e, { url, body: redactedBody })
 
         throw e
       })
@@ -70,7 +82,8 @@ export const Mautic = new (class {
   }
 
   async getContact(mauticId) {
-    const { baseHeaders, log } = this
+    const { baseHeaders } = this
+
     return this.baseQuery(`/contacts/${mauticId}`, baseHeaders, null, 'get')
   }
 
@@ -120,6 +133,7 @@ export const Mautic = new (class {
   async deleteDuplicate(email, mauticId) {
     if (mauticId) {
       const contact = await this.getContact(mauticId)
+
       email = get(contact, 'contact.fields.all.email')
     }
     if (!email) return false
