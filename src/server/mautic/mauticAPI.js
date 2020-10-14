@@ -40,15 +40,15 @@ export const Mautic = new (class {
 
     return Promise.race([requestTimeout(timeout), fetch(fullUrl, fetchOptions)])
       .then(async res => {
-        log.debug('response for:', { fullUrl, res })
-
         if (res.status >= 300) {
           const statusText = await res.text()
+          log.warn('response for:', { fullUrl, statusText })
 
           throw new Error(statusText)
         }
-
-        return res.json()
+        const json = await res.json()
+        log.debug('response for:', { fullUrl, json })
+        return json
       })
       .catch(e => {
         let redactedBody = body
@@ -123,7 +123,7 @@ export const Mautic = new (class {
 
   async searchContact(email) {
     const result = await this.baseQuery(`/contacts?search=${email}`, this.baseHeaders, null, 'get')
-    const ids = Object.keys(get(result || {}, 'contacts', {}))
+    const ids = Object.keys(get(result || {}, 'contacts', {})) || []
     if (ids.length > 1) {
       this.log.warn('searchContact founds multiple ids:', ids)
     }
