@@ -24,8 +24,8 @@ class TaskRunner {
     const { logger, tasks, lock, jobFactory } = this
     const { schedule, name } = task
     const taskName = name || `task/${uuidv4()}`
-    const taskId = uuidv4()
     const taskJob = new jobFactory(schedule, async () => {
+      const taskId = uuidv4()
       try {
         logger.info('Running cron task. getting lock...', { taskName, taskId })
 
@@ -76,7 +76,7 @@ class TaskRunner {
       }
     })
 
-    logger.info('Cron task registered', { taskName, schedule, taskId })
+    logger.info('Cron task registered', { taskName, schedule })
     tasks[taskName] = taskJob
   }
 
