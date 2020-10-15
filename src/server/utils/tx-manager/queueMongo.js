@@ -179,7 +179,7 @@ export default class queueMongo {
 
       timer = setTimeout(() => {
         //if timer make sure to remove request from queue
-        this.removeFromQueue(cb)
+        this.removeFromQueue(cb, id)
         reject(new Error('lock not acquired timeout id:' + id))
         this.log.warn('lock timedout,', { addresses, id })
       }, timeout)
@@ -188,13 +188,16 @@ export default class queueMongo {
     })
   }
 
-  removeFromQueue(cb) {
+  removeFromQueue(cb, id) {
+    this.log.info('removeFromQueue', { cb, id, queue: this.queue.length })
     remove(this.queue, x => {
-      if (x.cb === cb) {
+      if (x.cb === cb || x.id === id) {
+        this.log.info('removed from queue', { x, id })
         return (x.removed = true)
       }
       return false
     })
+    this.log.info('removeFromQueue result ', { cb, id, queue: this.queue.length })
   }
 
   /**
