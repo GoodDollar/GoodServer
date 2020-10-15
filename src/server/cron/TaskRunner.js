@@ -24,14 +24,14 @@ class TaskRunner {
     const { logger, tasks, lock, jobFactory } = this
     const { schedule, name } = task
     const taskName = name || `task/${uuidv4()}`
-
+    const taskId = uuidv4()
     const taskJob = new jobFactory(schedule, async () => {
       try {
-        logger.info('Running cron task. getting lock...', { taskName })
+        logger.info('Running cron task. getting lock...', { taskName, taskId })
 
-        const { address, release } = await lock.lock(taskName, 60000)
+        const { address, release } = await lock.lock(taskName, 60000, taskId)
         // we don't need re-queue in the cron. just lock -> run -> release (despite success/failed)
-        logger.info('Obtained mutex for exclusive run:', { address, taskName })
+        logger.info('Obtained mutex for exclusive run:', { address, taskName, taskId })
 
         try {
           const taskResult = await task.execute({
@@ -39,23 +39,23 @@ class TaskRunner {
             // let task whould decide to stop or to set new schedule by themselves during execution
             // let's make this feedback more clear
             setTime: time => {
-              logger.info('Cron task setting new schedule', { taskName, schedule: time })
+              logger.info('Cron task setting new schedule', { taskName, schedule: time, taskId })
 
               taskJob.setTime(time instanceof CronTime ? time : new CronTime(time))
               taskJob.start()
             },
 
             stop: () => {
-              logger.info('Cron task has stopped itself', { taskName })
+              logger.info('Cron task has stopped itself', { taskName, taskId })
               taskJob.stop()
             }
           })
 
-          logger.info('Cron task completed', { taskName, taskResult })
+          logger.info('Cron task completed', { taskName, taskResult, taskId })
         } catch (exception) {
           const { message: errMessage } = exception
 
-          logger.error('Cron task failed', errMessage, exception, { taskName })
+          logger.error('Cron task failed', errMessage, exception, { taskName, taskId })
         } finally {
           release()
         }
@@ -63,16 +63,20 @@ class TaskRunner {
         const { message: errMessage } = exception
         if (errMessage.includes('lock not acquired timeout')) {
           const nextTry = moment().add(1, 'hours')
-          logger.info('task lock timeout,probably other worker is doing it, retrying later', { taskName, nextTry })
+          logger.info('task lock timeout,probably other worker is doing it, retrying later', {
+            taskName,
+            nextTry,
+            taskId
+          })
           taskJob.setTime(new CronTime(nextTry))
           taskJob.start()
           return
         }
-        logger.error('Cron task failed', errMessage, exception, { taskName })
+        logger.error('Cron task failed', errMessage, exception, { taskName, taskId })
       }
     })
 
-    logger.info('Cron task registered', { taskName, schedule })
+    logger.info('Cron task registered', { taskName, schedule, taskId })
     tasks[taskName] = taskJob
   }
 

@@ -41,7 +41,7 @@ export default class queueMongo {
 
    * @returns {Promise<*>}
    */
-  async getWalletNonce(addresses) {
+  async getWalletNonce(addresses, id) {
     try {
       const expired = moment()
         .subtract(this.lockExpireSeconds, 'seconds')
@@ -58,12 +58,12 @@ export default class queueMongo {
         ]
       }
       const update = { isLock: true, lockedAt: +new Date() }
-      this.log.debug('getting free address', { addresses, expired })
+      this.log.debug('getting free address', { addresses, expired, id })
       let wallet = await this.model.findOneAndUpdate(filter, update, {
         sort: { lockedAt: 1 }, //get least recently used
         returnNewDocument: true
       })
-      this.log.debug('got free address', { addresses, expired, wallet })
+      this.log.debug('got free address', { addresses, expired, wallet, id })
 
       if (this.reRunQueue) {
         clearTimeout(this.reRunQueue)
@@ -73,7 +73,7 @@ export default class queueMongo {
       }, this.lockExpireSeconds * 1000)
       return wallet
     } catch (e) {
-      this.log.error('TX queueMongo (getWalletNonce)', e.message, e, { addresses })
+      this.log.error('TX queueMongo (getWalletNonce)', e.message, e, { addresses, id })
       return false
     }
   }
@@ -163,7 +163,7 @@ export default class queueMongo {
    *
    * @returns {Promise<any>}
    */
-  lock(addresses, timeout = 15000) {
+  lock(addresses, timeout = 15000, id) {
     return new Promise((resolve, reject) => {
       let timer
 
@@ -180,15 +180,21 @@ export default class queueMongo {
       timer = setTimeout(() => {
         //if timer make sure to remove request from queue
         this.removeFromQueue(cb)
-        reject(new Error('lock not acquired timeout'))
+        reject(new Error('lock not acquired timeout id:' + id))
+        this.log.warn('lock timedout,', { addresses, id })
       }, timeout)
 
-      this.addToQueue(addresses, cb)
+      this.addToQueue(addresses, cb, id)
     })
   }
 
   removeFromQueue(cb) {
-    remove(this.queue, x => x.cb === cb)
+    remove(this.queue, x => {
+      if (x.cb === cb) {
+        return (x.removed = true)
+      }
+      return false
+    })
   }
 
   /**
@@ -199,11 +205,11 @@ export default class queueMongo {
    *
    * @returns {Promise<void>}
    */
-  async addToQueue(addresses, cb) {
+  async addToQueue(addresses, cb, id) {
     addresses = Array.isArray(addresses) ? addresses : [addresses]
     await this.createListIfNotExists(addresses)
 
-    this.queue.push({ cb, addresses })
+    this.queue.push({ cb, addresses, id })
 
     this.run()
   }
@@ -218,11 +224,11 @@ export default class queueMongo {
     try {
       if (this.queue.length > 0) {
         nextTr = this.queue.shift()
-        walletNonce = await this.getWalletNonce(nextTr.addresses)
+        if (!nextTr.removed) walletNonce = await this.getWalletNonce(nextTr.addresses, nextTr.id)
         if (walletNonce) {
           nextTr.cb({ nonce: walletNonce.nonce, address: walletNonce.address })
         } else {
-          this.queue.push(nextTr)
+          !nextTr.removed && this.queue.push(nextTr)
         }
       }
     } catch (e) {
