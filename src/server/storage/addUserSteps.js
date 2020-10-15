@@ -39,7 +39,7 @@ const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
   }
 }
 
-const updateMauticRecord = async (userRecord: UserRecord, utmString: string, logger: any) => {
+export const updateMauticRecord = async (userRecord: UserRecord, utmString: string, logger: any) => {
   const userFields = pick(userRecord, [
     'fullName',
     'mobile',

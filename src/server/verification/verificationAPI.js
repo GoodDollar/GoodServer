@@ -18,6 +18,7 @@ import gdToWei from '../utils/gdToWei'
 import txManager from '../utils/tx-manager'
 
 import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
+import { updateMauticRecord as createContact } from '../storage/addUserSteps'
 
 const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, storage: StorageAPI) => {
   /**
@@ -258,10 +259,10 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
     '/verify/mobile',
     passport.authenticate('jwt', { session: false }),
     onlyInEnv('production', 'staging'),
-    wrapAsync(async (req, res, next) => {
+    wrapAsync(async (req, res) => {
       const log = req.log
       const { user, body } = req
-      const verificationData: { otp: string } = body.verificationData
+      const { verificationData, email } = body
       const tempSavedMobile = user.otp && user.otp.mobile
 
       if (!tempSavedMobile) {
@@ -275,6 +276,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
       const hashedNewMobile = tempSavedMobile && sha3(tempSavedMobile)
       const currentMobile = user.mobile
+      const identifier = user.loggedInAs
 
       log.debug('mobile verified', { user, verificationData, hashedNewMobile })
 
@@ -292,24 +294,28 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           return
         }
 
-        const { mauticId, email } = user
+        const { mauticId } = user
         const updateMautic = async () => {
           const mobile = tempSavedMobile
-          const isContactExists = await Mautic.isContactExists(mauticId)
+          const isContactExists = await Mautic.contactExists(mauticId)
 
           try {
-            if (!isContactExists) {
-              log.warn(`Mautic contact ${mauticId} doesnt exists for user ${email}, re-creating`, {
-                email,
-                mauticId,
-                mobile,
-                user
-              })
-
-              return await Mautic.createContact({ ...user, mobile })
+            if (isContactExists) {
+              return await Mautic.updateContact(user.mauticId, { mobile })
             }
 
-            return await Mautic.updateContact(user.mauticId, { mobile })
+            log.warn(`Mautic contact ${mauticId} doesnt exists, re-creating`, {
+              email,
+              mauticId,
+              mobile,
+              user
+            })
+
+            const newMauticId = await createContact({ ...user, email, mobile }, '', log)
+
+            if (newMauticId) {
+              await storage.updateUser({ identifier, mauticId: newMauticId })
+            }
           } catch (e) {
             log.error(`Error updating mautic contact ${mauticId} for user ${email}`, e.message, e)
           }
@@ -327,12 +333,11 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           updIndexPromise,
           mauticId && updateMautic(),
           storage.updateUser({
-            identifier: user.loggedInAs,
+            identifier,
             smsValidated: true,
             mobile: hashedNewMobile
           }),
-          user.createdDate && //keep temporary field if user is signing up
-            storage.model.updateOne({ identifier: user.loggedInAs }, { $unset: { 'otp.mobile': true } })
+          user.createdDate && storage.model.updateOne({ identifier }, { $unset: { 'otp.mobile': true } }) //keep temporary field if user is signing up
         ])
       }
 
