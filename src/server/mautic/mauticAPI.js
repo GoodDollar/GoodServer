@@ -105,28 +105,30 @@ export const Mautic = new (class {
 
   async updateContact(mauticId, newFields) {
     const { log } = this
-    let mauticRecord
+
     try {
-      mauticRecord = await this.baseQuery(`/contacts/${mauticId}/edit`, this.baseHeaders, newFields, 'patch')
-      return mauticRecord
+      return await this.baseQuery(`/contacts/${mauticId}/edit`, this.baseHeaders, newFields, 'patch')
     } catch (e) {
-      //sometimes duplicate record exists and causes exception, lets try to update instead
+      // sometimes duplicate record exists and causes exception, lets try to update instead
       const duplicateId = await this.deleteDuplicate(undefined, mauticId)
-      if (duplicateId) {
-        log.warn('updateContact: found duplicate contact, deleted and updated', { keptId: duplicateId })
-        return this.baseQuery(`/contacts/${mauticId}/edit`, this.baseHeaders, newFields, 'patch')
-      } else {
+
+      if (!duplicateId) {
         throw e
       }
+
+      log.warn('updateContact: found duplicate contact, deleted and updated', { keptId: duplicateId })
+      return this.baseQuery(`/contacts/${mauticId}/edit`, this.baseHeaders, newFields, 'patch')
     }
   }
 
   async searchContact(email) {
     const result = await this.baseQuery(`/contacts?search=${email}`, this.baseHeaders, null, 'get')
     const ids = Object.keys(get(result || {}, 'contacts', {})) || []
+
     if (ids.length > 1) {
       this.log.warn('searchContact founds multiple ids:', ids)
     }
+
     return ids.sort()
   }
 
@@ -136,18 +138,27 @@ export const Mautic = new (class {
 
       email = get(contact, 'contact.fields.all.email')
     }
-    if (!email) return false
+
+    if (!email) {
+      return false
+    }
+
     const ids = await this.searchContact(email).catch(e => {
       this.log.warn('deleteDuplicate search failed:', email, e.message, e)
+
       return []
     })
+
     if (ids.length > 1) {
       this.log.warn('deleteDuplicate found duplicate user:', ids)
+
       const toDelete = ids.filter(_ => _ !== mauticId).pop()
       const res = await this.deleteContact(toDelete)
+
       this.log.info('deleted duplicate contact', { toDelete, res })
       return ids[0]
     }
+
     return false
   }
 
@@ -192,19 +203,21 @@ export const Mautic = new (class {
     tags.push(version)
 
     let mauticId, mauticRecord
+
     try {
       mauticRecord = await this.baseQuery('/contacts/new', this.baseHeaders, { ...user, tags })
       mauticId = get(mauticRecord, 'contact.id', -1)
     } catch (e) {
       //sometimes duplicate record exists and causes exception, lets try to update instead
       const duplicateId = await this.deleteDuplicate(user.email)
-      if (duplicateId) {
-        mauticRecord = await this.updateContact(duplicateId, { ...user, tags })
-        log.info('found duplicate contact, deleted and updated instead', { keptId: duplicateId })
-      } else {
+
+      if (!duplicateId) {
         throw e
       }
+
       mauticId = duplicateId
+      mauticRecord = await this.updateContact(duplicateId, { ...user, tags })
+      log.info('found duplicate contact, deleted and updated instead', { keptId: duplicateId })
     }
 
     if (mauticId === -1) {
