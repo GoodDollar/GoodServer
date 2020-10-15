@@ -288,7 +288,32 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
             return false
           })
 
-        if (verified === false) return
+        if (verified === false) {
+          return
+        }
+
+        const { mauticId, email } = user
+        const updateMautic = async () => {
+          const mobile = tempSavedMobile
+          const isContactExists = await Mautic.isContactExists(mauticId)
+
+          try {
+            if (!isContactExists) {
+              log.warn(`Mautic contact ${mauticId} doesnt exists for user ${email}, re-creating`, {
+                email,
+                mauticId,
+                mobile,
+                user
+              })
+
+              return await Mautic.createContact({ ...user, mobile })
+            }
+
+            return await Mautic.updateContact(user.mauticId, { mobile })
+          } catch (e) {
+            log.error(`Error updating mautic contact ${mauticId} for user ${email}`, e.message, e)
+          }
+        }
 
         let updIndexPromise
         if (currentMobile && currentMobile !== hashedNewMobile) {
@@ -297,9 +322,10 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
             gunPublic.addUserToIndex('mobile', tempSavedMobile, user)
           ])
         }
+
         await Promise.all([
           updIndexPromise,
-          user.mauticId && Mautic.updateContact(user.mauticId, { mobile: tempSavedMobile }),
+          mauticId && updateMautic(),
           storage.updateUser({
             identifier: user.loggedInAs,
             smsValidated: true,
