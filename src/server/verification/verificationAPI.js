@@ -471,7 +471,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         }
 
         if (!currentMauticId || isEmailChanged) {
-          const tempMauticId = await createContact(userRec, '', log)
+          tempMauticId = await createContact(userRec, '', log)
 
           // otp might be undefined so we use spread operator instead of userRec.otp.tempId=
           userRec.otp = {
