@@ -73,7 +73,8 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         }
 
         if (userRecord.createdDate) {
-          throw new Error('You cannot create more than 1 account with the same credentials')
+          logger.warn('user already created', { userRecord, userPayload })
+          return res.json({ ok: 1 })
         }
 
         // removing creds, nonce, proof and crypto keys from user payload as they shouldn't be stored in the userRecord
