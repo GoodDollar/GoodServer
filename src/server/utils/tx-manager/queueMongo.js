@@ -3,6 +3,7 @@ import logger from '../../../imports/logger'
 import conf from '../../server.config'
 import moment from 'moment'
 import { remove } from 'lodash'
+
 export default class queueMongo {
   constructor(networkId, lockExpireSeconds = conf.mongoQueueMaxLockTime) {
     this.log = logger.child({ from: 'queueMongo-' + networkId })
@@ -65,12 +66,6 @@ export default class queueMongo {
       })
       this.log.debug('got free address', { addresses, expired, wallet, id })
 
-      if (this.reRunQueue) {
-        clearTimeout(this.reRunQueue)
-      }
-      this.reRunQueue = setTimeout(() => {
-        this.run()
-      }, this.lockExpireSeconds * 1000)
       return wallet
     } catch (e) {
       this.log.error('TX queueMongo (getWalletNonce)', e.message, e, { addresses, id })
@@ -188,6 +183,21 @@ export default class queueMongo {
     })
   }
 
+  async lockOrFail(addresses, id) {
+    addresses = Array.isArray(addresses) ? addresses : [addresses]
+    await this.createListIfNotExists(addresses)
+    const wallet = await this.getWalletNonce(addresses, id)
+    if (wallet) {
+      return {
+        ...wallet,
+        release: async () => await this.unlock(wallet.address, wallet.nonce + 1),
+        fail: async () => await this.unlock(wallet.address)
+      }
+    } else {
+      throw new Error('lock not acquired')
+    }
+  }
+
   removeFromQueue(cb, id) {
     this.log.info('removeFromQueue', { cb, id, queue: this.queue.length })
     remove(this.queue, x => {
@@ -233,6 +243,14 @@ export default class queueMongo {
         } else {
           !nextTr.removed && this.queue.push(nextTr)
         }
+
+        //make sure we will run again, even though there's a mongodb listener
+        if (this.reRunQueue) {
+          clearTimeout(this.reRunQueue)
+        }
+        this.reRunQueue = setTimeout(() => {
+          this.run()
+        }, this.lockExpireSeconds * 1000)
       }
     } catch (e) {
       this.log.error('TX queueMongo (run)', e.message, e, { nextTr, walletNonce })

@@ -29,7 +29,7 @@ class TaskRunner {
       try {
         logger.info('Running cron task. getting lock...', { taskName, taskId })
 
-        const { address, release } = await lock.lock(taskName, 600000, taskId)
+        const { address, release } = await lock.lockOrFail(taskName, taskId)
         // we don't need re-queue in the cron. just lock -> run -> release (despite success/failed)
         logger.info('Obtained mutex for exclusive run:', { address, taskName, taskId })
 
@@ -61,9 +61,9 @@ class TaskRunner {
         }
       } catch (exception) {
         const { message: errMessage } = exception
-        if (errMessage.includes('lock not acquired timeout')) {
+        if (errMessage.includes('lock not acquired')) {
           const nextTry = moment().add(1, 'hours')
-          logger.info('task lock timeout,probably other worker is doing it, retrying later', {
+          logger.info('task lock not acquired,probably other worker is doing it, retrying later', {
             taskName,
             nextTry,
             taskId
