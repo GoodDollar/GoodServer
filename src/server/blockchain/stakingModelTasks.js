@@ -332,18 +332,26 @@ class FishingManager {
     const claimBlockEnd = result(searchEndDay, 'returnValues.blockNumber.toNumber', claimBlockStart + FUSE_DAY_BLOCKS)
 
     //get candidates
-    const claimEvents = await this.ubiContract.getPastEvents('UBIClaimed', {
-      fromBlock: claimBlockStart,
-      toBlock: claimBlockEnd
-    })
-
-    //check if they are inactive
-    const inactiveAccounts = (await Promise.all(
-      claimEvents.map(async e => {
-        const isActive = await this.ubiContract.methods.isActiveUser(e.returnValues.claimer).call()
-        return isActive ? undefined : e.returnValues.claimer
+    const claimEvents = await this.ubiContract
+      .getPastEvents('UBIClaimed', {
+        fromBlock: claimBlockStart,
+        toBlock: claimBlockEnd
       })
-    )).filter(_ => _)
+      .catch(e => {
+        this.log.warn('getInactiveAccounts getPastEvents UBIClaimed failed', e.message)
+        throw e
+      })
+
+    this.log.info('getInactiveAccounts got UBIClaimed events', { total: claimEvents.length })
+    //check if they are inactive
+    const inactiveAccounts = (
+      await Promise.all(
+        claimEvents.map(async e => {
+          const isActive = await this.ubiContract.methods.isActiveUser(e.returnValues.claimer).call()
+          return isActive ? undefined : e.returnValues.claimer
+        })
+      )
+    ).filter(_ => _)
 
     this.log.info('getInactiveAccounts found UBIClaimed events', {
       totalEvents: claimEvents.length,
