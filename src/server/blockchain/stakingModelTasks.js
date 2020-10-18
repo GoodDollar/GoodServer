@@ -344,14 +344,21 @@ class FishingManager {
 
     this.log.info('getInactiveAccounts got UBIClaimed events', { total: claimEvents.length })
     //check if they are inactive
-    const inactiveAccounts = (
-      await Promise.all(
-        claimEvents.map(async e => {
-          const isActive = await this.ubiContract.methods.isActiveUser(e.returnValues.claimer).call()
-          return isActive ? undefined : e.returnValues.claimer
-        })
-      )
-    ).filter(_ => _)
+    let inactiveAccounts = []
+    for (let eventsChunk of chunk(claimEvents, 100)) {
+      const inactive = (
+        await Promise.all(
+          eventsChunk.map(async e => {
+            const isActive = await this.ubiContract.methods
+              .isActiveUser(e.returnValues.claimer)
+              .call()
+              .catch(e => true)
+            return isActive ? undefined : e.returnValues.claimer
+          })
+        )
+      ).filter(_ => _)
+      inactiveAccounts.concat(inactive)
+    }
 
     this.log.info('getInactiveAccounts found UBIClaimed events', {
       totalEvents: claimEvents.length,
