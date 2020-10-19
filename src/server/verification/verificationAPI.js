@@ -546,11 +546,17 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         }
 
         if (runInEnv && mauticId) {
-          const updMauticPromise = Mautic.updateContact(mauticId, { email }).catch(e =>
-            log.error('Error updating Mautic contact', e.message, e, { mauticId, email })
+          await Promise.all([
+            Mautic.deleteContact({ mauticId: tempSavedMauticId }),
+            Mautic.updateContact(mauticId, { email })
+          ]).catch(e =>
+            log.error('Error updating Mautic contact', e.message, e, {
+              currentMauticId: tempSavedMauticId,
+              currentEmail,
+              mauticId,
+              email
+            })
           )
-
-          await Promise.all([Mautic.deleteContact({ mauticId: tempSavedMauticId }), updMauticPromise])
         } else {
           updateUserUbj.mauticId = tempSavedMauticId
         }
