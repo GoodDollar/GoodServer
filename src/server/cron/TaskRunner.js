@@ -62,17 +62,17 @@ class TaskRunner {
       } catch (exception) {
         const { message: errMessage } = exception
         if (errMessage.includes('lock not acquired')) {
-          const nextTry = moment().add(1, 'hours')
-          logger.info('task lock not acquired,probably other worker is doing it, retrying later', {
+          logger.info('task lock not acquired,probably other worker is doing it', {
             taskName,
-            nextTry,
             taskId
           })
-          taskJob.setTime(new CronTime(nextTry))
-          taskJob.start()
+
           return
         }
-        logger.error('Cron task failed', errMessage, exception, { taskName, taskId })
+        logger.error('Cron task failed, retrying later', errMessage, exception, { taskName, taskId, nextTry })
+        const nextTry = moment().add(1, 'hours')
+        taskJob.setTime(new CronTime(nextTry))
+        taskJob.start()
       }
     })
 
