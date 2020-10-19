@@ -526,9 +526,9 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       log.debug('email verified', {
         user,
         body,
+        email,
         verificationData,
-        tempSavedMauticId,
-        tempSavedEmail: email,
+        tempSavedMauticId,        
         currentEmail
       })
 
