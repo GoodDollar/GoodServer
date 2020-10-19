@@ -239,7 +239,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         })
       }
 
-      res.json({ ok: 1 })
+      res.json({ ok: 1, alreadyVerified: hashedMobile === savedMobile && user.smsValidated })
     })
   )
 
@@ -421,7 +421,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       //merge user details for use by mautic
       const { email: currentEmail, mauticId } = user
       let userRec: UserRecord = defaults(body.user, user)
-      const isEmailChanged = currentEmail && currentEmail !== email
+      const isEmailChanged = currentEmail && currentEmail !== sha3(email)
 
       if (conf.allowDuplicateUserData === false && (await storage.isDupUserData({ email }))) {
         return res.json({ ok: 0, error: 'Email already exists, please use a different one' })
@@ -481,7 +481,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         }
       })
 
-      res.json({ ok: 1 })
+      res.json({ ok: 1, alreadyVerified: isEmailChanged === false && user.isEmailConfirmed })
     })
   )
 

@@ -435,7 +435,7 @@ describe('verificationAPI', () => {
       .post('/verify/sendotp')
       .send({ user: { mobile: '+972507311111' } })
       .set('Authorization', `Bearer ${token}`)
-      .expect(200, { ok: 1 })
+      .expect(200, { ok: 1, alreadyVerified: false })
     expect(await storage.getByIdentifier(userIdentifier)).toMatchObject({ otp: { mobile: '+972507311111' } })
   })
 
@@ -474,7 +474,7 @@ describe('verificationAPI', () => {
         }
       })
       .set('Authorization', `Bearer ${token}`)
-      .expect(200, { ok: 1 })
+      .expect(200, { ok: 1, alreadyVerified: false })
 
     await delay(500)
 
