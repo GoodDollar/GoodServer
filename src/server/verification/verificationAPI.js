@@ -519,16 +519,25 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       const log = req.log
       const { user, body } = req
       const verificationData: { code: string } = body.verificationData
-      const tempSavedEmail = user.otp && user.otp.email
-      const hashedNewEmail = sha3(tempSavedEmail)
-      const tempSavedMauticId = user.otp && user.otp.tempMauticId
+      const { email, tempMauticId: tempSavedMauticId } = user.otp || {}
+      const hashedNewEmail = sha3(email)
       const currentEmail = user.email
 
-      log.debug('email verified', { user, body, verificationData, tempSavedMauticId, tempSavedEmail, currentEmail })
+      log.debug('email verified', {
+        user,
+        body,
+        verificationData,
+        tempSavedMauticId,
+        tempSavedEmail: email,
+        currentEmail
+      })
 
       if (!user.isEmailConfirmed || currentEmail !== hashedNewEmail) {
-        if (runInEnv && conf.skipEmailVerification === false)
+        const { mauticId } = user
+
+        if (runInEnv && conf.skipEmailVerification === false) {
           await verifier.verifyEmail({ identifier: user.loggedInAs }, verificationData)
+        }
 
         const updateUserUbj = {
           identifier: user.loggedInAs,
@@ -536,21 +545,20 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           email: hashedNewEmail
         }
 
-        if (runInEnv && user.mauticId) {
-          await Promise.all([
-            Mautic.deleteContact({
-              mauticId: tempSavedMauticId
-            }),
-            Mautic.updateContact(user.mauticId, { email: tempSavedEmail })
-          ])
+        if (runInEnv && mauticId) {
+          const updMauticPromise = Mautic.updateContact(mauticId, { email }).catch(e =>
+            log.error('Error updating Mautic contact', e.message, e, { mauticId, email })
+          )
+
+          await Promise.all([Mautic.deleteContact({ mauticId: tempSavedMauticId }), updMauticPromise])
         } else {
           updateUserUbj.mauticId = tempSavedMauticId
         }
 
         //update indexes, if new user, indexes are set in /adduser
-        if (currentEmail && currentEmail !== tempSavedEmail) {
+        if (currentEmail && currentEmail !== email) {
           gunPublic.removeUserFromIndex('email', currentEmail)
-          gunPublic.addUserToIndex('email', tempSavedEmail, user)
+          gunPublic.addUserToIndex('email', email, user)
         }
 
         const [, , signedEmail] = await Promise.all([
