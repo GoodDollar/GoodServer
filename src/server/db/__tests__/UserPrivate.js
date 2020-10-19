@@ -148,24 +148,24 @@ describe('UserPrivate', () => {
   })
 
   it('Should getUserByEmail', async () => {
-    let user = await storage.getUserByEmail(testUser.email)
+    let user = (await storage.getUsersByEmail(testUser.email))[0]
     expect(user).toBeTruthy()
     const userDb = pick(user, keys(testUser))
     expect(userDb).toMatchObject(testUser)
   })
 
   it('Should getUserByMobile', async () => {
-    let user = await storage.getUserByMobile(testUser.mobile)
+    let user = (await storage.getUsersByMobile(testUser.mobile))[0]
     expect(user).toBeTruthy()
   })
 
   it('Should getUserByEmail bad req', async () => {
-    let user = await storage.getUserByEmail('asdd@sdd.dd')
+    let user = await storage.getUsersByEmail('asdd@sdd.dd')[0]
     expect(user).not.toBeTruthy()
   })
 
   it('Should getUserByMobile bad req', async () => {
-    let user = await storage.getUserByMobile('987')
+    let user = await storage.getUsersByMobile('987')[0]
     expect(user).not.toBeTruthy()
   })
 
