@@ -448,7 +448,7 @@ const conf = convict({
     doc: 'cron string for db updates task',
     format: String,
     env: 'DBUPDATE_TASK_CRON',
-    default: '0 * * * * *'
+    default: '0 0 0 * * *'
   },
   torusNetwork: {
     doc: 'Torus network. Default: ropsten (mainnet, kovan, fuse, etoro, production, develop)',
