@@ -262,9 +262,9 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       const log = req.log
       const { user, body } = req
       const verificationData: { otp: string } = body.verificationData
-      const tempSavedMobile = user.otp && user.otp.mobile
+      const { mobile } = user.otp || {}
 
-      if (!tempSavedMobile) {
+      if (!mobile) {
         log.error('mobile to verify not found or missing', 'mobile missing', new Error('mobile missing'), {
           user,
           verificationData
@@ -273,14 +273,14 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         return res.status(400).json({ ok: 0, error: 'MOBILE MISSING' })
       }
 
-      const hashedNewMobile = tempSavedMobile && sha3(tempSavedMobile)
+      const hashedNewMobile = mobile && sha3(mobile)
       const currentMobile = user.mobile
 
       log.debug('mobile verified', { user, verificationData, hashedNewMobile })
 
       if (!user.smsValidated || currentMobile !== hashedNewMobile) {
         let verified = await verifier
-          .verifyMobile({ identifier: user.loggedInAs, mobile: tempSavedMobile }, verificationData)
+          .verifyMobile({ identifier: user.loggedInAs, mobile }, verificationData)
           .catch(e => {
             log.warn('mobile verification failed:', { e })
 
@@ -288,18 +288,30 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
             return false
           })
 
-        if (verified === false) return
+        if (verified === false) {
+          return
+        }
 
         let updIndexPromise
+        let updMauticPromise
+        const { mauticId } = user
+
         if (currentMobile && currentMobile !== hashedNewMobile) {
           updIndexPromise = Promise.all([
             gunPublic.removeUserFromIndex('mobile', currentMobile),
-            gunPublic.addUserToIndex('mobile', tempSavedMobile, user)
+            gunPublic.addUserToIndex('mobile', mobile, user)
           ])
         }
+
+        if (mauticId) {
+          updMauticPromise = Mautic.updateContact(mauticId, { mobile }).catch(e =>
+            log.error('Error updating Mautic contact', e.message, e, { mauticId, mobile })
+          )
+        }
+
         await Promise.all([
           updIndexPromise,
-          user.mauticId && Mautic.updateContact(user.mauticId, { mobile: tempSavedMobile }),
+          updMauticPromise,
           storage.updateUser({
             identifier: user.loggedInAs,
             smsValidated: true,
@@ -310,11 +322,12 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         ])
       }
 
-      const signedMobile = await gunPublic.signClaim(user.profilePubkey, { hasMobile: tempSavedMobile })
+      const signedMobile = await gunPublic.signClaim(user.profilePubkey, { hasMobile: mobile })
 
       res.json({ ok: 1, attestation: signedMobile })
     })
   )
+
   /**
    * @api {post} /verify/registration Verify user registration status
    * @apiName Verify Registration Status
@@ -506,16 +519,25 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       const log = req.log
       const { user, body } = req
       const verificationData: { code: string } = body.verificationData
-      const tempSavedEmail = user.otp && user.otp.email
-      const hashedNewEmail = sha3(tempSavedEmail)
-      const tempSavedMauticId = user.otp && user.otp.tempMauticId
+      const { email, tempMauticId: tempSavedMauticId } = user.otp || {}
+      const hashedNewEmail = sha3(email)
       const currentEmail = user.email
 
-      log.debug('email verified', { user, body, verificationData, tempSavedMauticId, tempSavedEmail, currentEmail })
+      log.debug('email verified', {
+        user,
+        body,
+        email,
+        verificationData,
+        tempSavedMauticId,        
+        currentEmail
+      })
 
       if (!user.isEmailConfirmed || currentEmail !== hashedNewEmail) {
-        if (runInEnv && conf.skipEmailVerification === false)
+        const { mauticId } = user
+
+        if (runInEnv && conf.skipEmailVerification === false) {
           await verifier.verifyEmail({ identifier: user.loggedInAs }, verificationData)
+        }
 
         const updateUserUbj = {
           identifier: user.loggedInAs,
@@ -523,21 +545,26 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           email: hashedNewEmail
         }
 
-        if (runInEnv && user.mauticId) {
+        if (runInEnv && mauticId) {
           await Promise.all([
-            Mautic.deleteContact({
-              mauticId: tempSavedMauticId
-            }),
-            Mautic.updateContact(user.mauticId, { email: tempSavedEmail })
-          ])
+            Mautic.deleteContact({ mauticId: tempSavedMauticId }),
+            Mautic.updateContact(mauticId, { email })
+          ]).catch(e =>
+            log.error('Error updating Mautic contact', e.message, e, {
+              currentMauticId: tempSavedMauticId,
+              currentEmail,
+              mauticId,
+              email
+            })
+          )
         } else {
           updateUserUbj.mauticId = tempSavedMauticId
         }
 
         //update indexes, if new user, indexes are set in /adduser
-        if (currentEmail && currentEmail !== tempSavedEmail) {
+        if (currentEmail && currentEmail !== email) {
           gunPublic.removeUserFromIndex('email', currentEmail)
-          gunPublic.addUserToIndex('email', tempSavedEmail, user)
+          gunPublic.addUserToIndex('email', email, user)
         }
 
         const [, , signedEmail] = await Promise.all([
