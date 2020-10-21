@@ -301,8 +301,8 @@ class FishingManager {
       throw e
     })
     this.log.info('getUBICalculatedDays ubiEvents:', { ubiEvents })
-    const searchStartDay = ubiEvents.find(e => e.returnValues.day.toNumber() === currentUBIDay - maxInactiveDays + 1)
-    const searchEndDay = ubiEvents.find(e => e.returnValues.day.toNumber() === currentUBIDay - maxInactiveDays + 2)
+    const searchStartDay = ubiEvents.find(e => e.returnValues.day.toNumber() === currentUBIDay - maxInactiveDays - 1)
+    const searchEndDay = ubiEvents.find(e => e.returnValues.day.toNumber() === currentUBIDay - maxInactiveDays)
     this.log.info('getInactiveAccounts got UBICalculatedEvents:', {
       foundEvents: ubiEvents.length,
       startDay: searchStartDay && searchStartDay.returnValues.day.toNumber(),

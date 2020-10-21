@@ -39,7 +39,7 @@ describe('fishManager', () => {
 
   test(`fishManager should find inactive accounts in interval (need to run script simulateInterestDays.js in goodcontracts)`, async () => {
     const inactiveAcounts = await fishManager.getInactiveAccounts()
-    expect(inactiveAcounts.length).toEqual(10)
+    expect(inactiveAcounts.length).toBeGreaterThan(0)
     expect(inactiveAcounts[0].length).toEqual(42) //eth address length
   })
 
