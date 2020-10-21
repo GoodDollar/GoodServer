@@ -384,6 +384,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       //   })
       // }
 
+      log.debug('topwallet tx request:', { address: user.gdAddress })
       try {
         let txPromise = AdminWallet.topWallet(user.gdAddress, log)
           .then(tx => {
@@ -399,8 +400,11 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
         const txRes = await Promise.race([txPromise, requestTimeout(20000, 'topwallet tx timeout')])
 
-        log.info('topping wallet', { txRes, loggedInAs: user.loggedInAs, adminBalance: await AdminWallet.getBalance() })
-
+        log.info('topwallet tx done', {
+          txRes,
+          loggedInAs: user.loggedInAs,
+          adminBalance: await AdminWallet.getBalance()
+        })
         res.json(txRes)
       } catch (e) {
         log.error('topwallet timeout or unexpected', e.message, e, { walletaddress: user.gdAddress })
@@ -528,7 +532,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         body,
         email,
         verificationData,
-        tempSavedMauticId,        
+        tempSavedMauticId,
         currentEmail
       })
 
