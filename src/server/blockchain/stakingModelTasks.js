@@ -301,14 +301,15 @@ class FishingManager {
       throw e
     })
     this.log.info('getUBICalculatedDays ubiEvents:', { ubiEvents })
-    const searchStartDay = ubiEvents.find(e => e.returnValues.day.toNumber() === currentUBIDay - maxInactiveDays)
-    const searchEndDay = ubiEvents.find(e => e.returnValues.day.toNumber() === currentUBIDay - maxInactiveDays + 1)
+    const searchStartDay = ubiEvents.find(e => e.returnValues.day.toNumber() === currentUBIDay - maxInactiveDays + 1)
+    const searchEndDay = ubiEvents.find(e => e.returnValues.day.toNumber() === currentUBIDay - maxInactiveDays + 2)
     this.log.info('getInactiveAccounts got UBICalculatedEvents:', {
       foundEvents: ubiEvents.length,
       startDay: searchStartDay && searchStartDay.returnValues.day.toNumber(),
       endDay: searchEndDay && searchEndDay.returnValues.day.toNumber(),
       searchStartDay: searchStartDay,
-      searchEndDay: searchEndDay
+      searchEndDay: searchEndDay,
+      currentUBIDay
     })
     return { searchStartDay, searchEndDay, maxInactiveDays }
   }
@@ -326,7 +327,7 @@ class FishingManager {
     const claimBlockStart = result(
       searchStartDay,
       'returnValues.blockNumber.toNumber',
-      (await AdminWallet.web3.eth.getBlockNumber()) - maxInactiveDays * FUSE_DAY_BLOCKS
+      Math.max((await AdminWallet.web3.eth.getBlockNumber()) - maxInactiveDays * FUSE_DAY_BLOCKS, 0)
     )
 
     const claimBlockEnd = result(searchEndDay, 'returnValues.blockNumber.toNumber', claimBlockStart + FUSE_DAY_BLOCKS)
@@ -342,7 +343,11 @@ class FishingManager {
         throw e
       })
 
-    this.log.info('getInactiveAccounts got UBIClaimed events', { total: claimEvents.length })
+    this.log.info('getInactiveAccounts got UBIClaimed events', {
+      claimBlockStart,
+      claimBlockEnd,
+      total: claimEvents.length
+    })
     //check if they are inactive
     let inactiveAccounts = []
     for (let eventsChunk of chunk(claimEvents, 100)) {
@@ -357,7 +362,8 @@ class FishingManager {
           })
         )
       ).filter(_ => _)
-      inactiveAccounts.concat(inactive)
+      this.log.debug('getInactiveAccounts batch:', { inactiveFound: inactive.length })
+      inactiveAccounts = inactiveAccounts.concat(inactive)
     }
 
     this.log.info('getInactiveAccounts found UBIClaimed events', {
