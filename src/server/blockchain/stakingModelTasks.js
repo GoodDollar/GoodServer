@@ -283,9 +283,10 @@ class FishingManager {
    * read events of previous claim epochs
    * we get the start block and end block for searching for possible inactive users
    */
-  getUBICalculatedDays = async () => {
+  getUBICalculatedDays = async forceDaysAgo => {
     const dayFuseBlocks = (60 * 60 * 24) / 5
-    const maxInactiveDays = await this.ubiContract.methods.maxInactiveDays.call().then(_ => _.toNumber())
+    const maxInactiveDays =
+      forceDaysAgo || (await this.ubiContract.methods.maxInactiveDays.call().then(_ => _.toNumber()))
 
     const daysagoBlocks = dayFuseBlocks * (maxInactiveDays + 1)
     const blocksAgo = Math.max((await AdminWallet.web3.eth.getBlockNumber()) - daysagoBlocks, 0)
@@ -317,8 +318,8 @@ class FishingManager {
   /**
    * users that claimed 14 days(or maxInactiveDays) ago are possible candidates to be inactive
    */
-  getInactiveAccounts = async () => {
-    const { searchStartDay, searchEndDay, maxInactiveDays } = await this.getUBICalculatedDays()
+  getInactiveAccounts = async forceDaysAgo => {
+    const { searchStartDay, searchEndDay, maxInactiveDays } = await this.getUBICalculatedDays(forceDaysAgo)
 
     if (searchStartDay === undefined) {
       this.log.warn('No UBICalculated event found for inactive interval', { maxInactiveDays })
@@ -411,12 +412,12 @@ class FishingManager {
     return fishers
   }
 
-  run = async () => {
+  run = async forceDaysAgo => {
     try {
-      const inactive = await this.getInactiveAccounts()
+      const inactive = await this.getInactiveAccounts(forceDaysAgo)
       const fishers = await this.fish(inactive)
       const cronTime = await this.getNextDay()
-      return { result: true, cronTime, fishers }
+      return { result: true, cronTime, fishers, inactive: inactive.length }
     } catch (exception) {
       const { message } = exception
       this.log.error('fishing task failed:', message, exception)
