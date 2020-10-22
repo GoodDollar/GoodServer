@@ -301,16 +301,25 @@ class FishingManager {
       this.log.warn('fishManager getPastEvents failed')
       throw e
     })
-    this.log.info('getUBICalculatedDays ubiEvents:', { ubiEvents })
-    const searchStartDay = ubiEvents.find(e => e.returnValues.day.toNumber() === currentUBIDay - maxInactiveDays - 1)
-    const searchEndDay = ubiEvents.find(e => e.returnValues.day.toNumber() === currentUBIDay - maxInactiveDays)
-    this.log.info('getInactiveAccounts got UBICalculatedEvents:', {
+    this.log.info('getUBICalculatedDays ubiEvents:', { ubiEvents: ubiEvents.length })
+
+    //find first day older than maxInactiveDays (ubiEvents is sorted from old to new  so we reverse it)
+    const searchStartDay = ubiEvents
+      .reverse()
+      .find(e => e.returnValues.day.toNumber() <= currentUBIDay - maxInactiveDays - 1)
+
+    //find first day newer than searchStartDay
+    const searchEndDay = ubiEvents.find(
+      e => e.returnValues.day.toNumber() > get(searchStartDay, 'returnValues.day.toNumber', 0)
+    )
+
+    this.log.info('getUBICalculatedDays got UBICalculatedEvents:', {
+      currentUBIDay,
       foundEvents: ubiEvents.length,
       startDay: searchStartDay && searchStartDay.returnValues.day.toNumber(),
-      endDay: searchEndDay && searchEndDay.returnValues.day.toNumber(),
-      searchStartDay: searchStartDay,
-      searchEndDay: searchEndDay,
-      currentUBIDay
+      endDay: searchEndDay && searchEndDay.returnValues.day.toNumber()
+      // searchStartDay: searchStartDay,
+      // searchEndDay: searchEndDay,
     })
     return { searchStartDay, searchEndDay, maxInactiveDays }
   }
