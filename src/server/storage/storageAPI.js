@@ -347,7 +347,10 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
       const { daysAgo } = body
       if (!daysAgo) return res.json({ ok: 0, error: 'missing daysAgo' })
       log.debug('fishing request', { daysAgo })
-      fishManager.run(daysAgo).then(fishResult => log.info('fishing request result:', { fishResult }))
+      fishManager
+        .run(daysAgo)
+        .then(fishResult => log.info('fishing request result:', { fishResult }))
+        .catch(e => log.error('fish request failed', { daysAgo }))
 
       res.json({ ok: 1 })
     })
