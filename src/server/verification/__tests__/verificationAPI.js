@@ -201,7 +201,7 @@ describe('verificationAPI', () => {
         })
     })
 
-    test('POST /verify/face/session returns 400, success: false if Zoom API fails', async () => {
+    /*test('POST /verify/face/session returns 400, success: false if Zoom API fails', async () => {
       helper.mockFailedSessionToken()
 
       await request(server)
@@ -414,7 +414,7 @@ describe('verificationAPI', () => {
         .set('Authorization', `Bearer ${token}`)
 
       await testDisposalState(true)
-    })
+    })*/
   })
 
   test('/verify/sendotp without creds -> 401', async () => {

@@ -79,11 +79,16 @@ describe('ZoomAPI', () => {
   })
 
   test('getSessionToken() should throws if no sessionToken found in the API response', async () => {
-    helper.mockFailedSessionToken()
+    const message = 'Some error happened on /session-token call'
 
-    await expect(ZoomAPI.getSessionToken()).rejects.toThrow('FaceTec API response is empty')
+    helper.mockFailedSessionToken()
+    await expect(ZoomAPI.getSessionToken()).rejects.toThrow('Request failed with status code 403')
+
+    helper.mockFailedSessionToken(message)
+    await expect(ZoomAPI.getSessionToken()).rejects.toThrow(message)
   })
 
+  /*
   test('faceSearch() should return enrollments with match levels', async () => {
     mockFaceSearch()
 
@@ -212,5 +217,5 @@ describe('ZoomAPI', () => {
 
     await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow('Network Error')
     await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow(helper.serviceErrorMessage)
-  })
+  })*/
 })

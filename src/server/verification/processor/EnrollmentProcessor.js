@@ -67,11 +67,11 @@ class EnrollmentProcessor {
     }
 
     // make sure user record is not being deleted at the moment
-    const hasDisposalTaskQueued = await this.isEnqueuedForDisposal(enrollmentIdentifier)
+    /*const hasDisposalTaskQueued = await this.isEnqueuedForDisposal(enrollmentIdentifier)
 
     if (hasDisposalTaskQueued) {
       throw new Error('Facemap record with same identifier is being deleted.')
-    }
+    }*/
   }
 
   async isEnqueuedForDisposal(enrollmentIdentifier: string, customLogger = null): Promise<boolean> {

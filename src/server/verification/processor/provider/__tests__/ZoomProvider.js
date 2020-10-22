@@ -54,7 +54,7 @@ describe('ZoomProvider', () => {
     expect(ZoomProvider.isPayloadValid({})).toBeFalsy()
   })
 
-  test('enroll() returns successfull response if no duplicates found and enrollment was successfull', async () => {
+  /*test('enroll() returns successfull response if no duplicates found and enrollment was successfull', async () => {
     helper.mockEmptyResultsFaceSearch()
     helper.mockSuccessEnrollment(enrollmentIdentifier)
 
@@ -186,5 +186,5 @@ describe('ZoomProvider', () => {
     helper.mockServiceErrorHappenedWhileDisposing(enrollmentIdentifier)
 
     await expect(ZoomProvider.dispose(enrollmentIdentifier)).rejects.toThrow(helper.serviceErrorMessage)
-  })
+  })*/
 })

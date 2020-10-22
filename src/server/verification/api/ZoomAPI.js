@@ -186,19 +186,19 @@ class ZoomAPI {
   }
 
   async _responseInterceptor(response) {
-    const transformedResponse = this._transformResponse(response)
-    const { ok, message, code } = transformedResponse
+    const zoomResponse = this._transformResponse(response)
+    const { success, errorMessage } = zoomResponse
 
     this._logResponse('Received response from Zoom API:', response)
 
-    if (false === ok || 200 !== code) {
-      const exception = new Error(message || 'FaceTec API response is empty')
+    if (false === success) {
+      const exception = new Error(errorMessage || 'FaceTec API response is empty')
 
-      exception.response = transformedResponse
+      exception.response = zoomResponse
       throw exception
     }
 
-    return transformedResponse
+    return zoomResponse
   }
 
   async _exceptionInterceptor(exception) {
@@ -208,7 +208,7 @@ class ZoomAPI {
       this._logResponse('Zoom API exception:', response)
 
       const zoomResponse = this._transformResponse(response)
-      const { message: zoomMessage } = zoomResponse
+      const { errorMessage: zoomMessage } = zoomResponse
 
       exception.message = zoomMessage || message
       exception.response = zoomResponse
@@ -222,7 +222,7 @@ class ZoomAPI {
   }
 
   _transformResponse(response) {
-    return merge(...Object.values(pick(response.data, 'meta', 'data')))
+    return get(response, 'data', {})
   }
 
   _logRequest(request) {

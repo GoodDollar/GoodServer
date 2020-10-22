@@ -12,23 +12,33 @@ export default zoomServiceMock => {
 
   const mockSuccessSessionToken = sessionToken =>
     zoomServiceMock.onGet('/session-token').reply(200, {
-      meta: {
-        ok: true,
-        code: 200,
-        mode: 'dev'
+      additionalSessionData: {
+        isAdditionalDataPartiallyIncomplete: true
       },
-      data: {
-        sessionToken
-      }
+      callData: {
+        tid: '67noWFBQCAW-60e91ce4-1450-11eb-86b0-0232fd4aba88',
+        path: '/session-token',
+        date: 'Oct 22, 2020 10:21:42 AM',
+        epochSecond: 1603362102,
+        requestMethod: 'GET'
+      },
+      error: false,
+      serverInfo: {
+        version: '9.0.0-SNAPSHOT',
+        mode: 'Development Only',
+        notice:
+          'You should only be reading this if you are in server-side code.  ' +
+          'Please make sure you do not allow the FaceTec Server to be called from the public internet.'
+      },
+      sessionToken,
+      success: true
     })
 
-  const mockFailedSessionToken = () =>
-    zoomServiceMock.onGet('/session-token').reply(200, {
-      meta: {
-        ok: false,
-        code: 200,
-        mode: 'dev'
-      }
+  const mockFailedSessionToken = (withMessage = null) =>
+    zoomServiceMock.onGet('/session-token').reply(403, {
+      error: true,
+      errorMessage: withMessage,
+      success: false
     })
 
   const mockEmptyResultsFaceSearch = () =>
