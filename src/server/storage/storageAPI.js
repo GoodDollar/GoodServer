@@ -9,6 +9,13 @@ import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import addUserSteps from './addUserSteps'
 import createUserVerifier from './verifier'
+import { fishManager } from '../blockchain/stakingModelTasks'
+
+const adminAuthenticate = (req, res, next) => {
+  const { body } = req
+  if (body.password !== conf.gundbPassword) return res.json({ ok: 0 })
+  next()
+}
 
 const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
   /**
@@ -296,9 +303,9 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
 
   app.post(
     '/admin/user/get',
+    adminAuthenticate,
     wrapAsync(async (req, res, next) => {
       const { body } = req
-      if (body.password !== conf.gundbPassword) return res.json({ ok: 0 })
       let user = {}
       if (body.email) user = await storage.getUsersByEmail(sha3(body.email))
       if (body.mobile) user = await storage.getUsersByMobile(sha3(body.mobile))
@@ -310,9 +317,9 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
 
   app.post(
     '/admin/user/list',
+    adminAuthenticate,
     wrapAsync(async (req, res, next) => {
       const { body } = req
-      if (body.password !== conf.gundbPassword) return res.json({ ok: 0 })
       let done = jsonres => {
         res.json(jsonres)
       }
@@ -322,13 +329,27 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
 
   app.post(
     '/admin/user/delete',
+    adminAuthenticate,
     wrapAsync(async (req, res, next) => {
       const { body } = req
       let result = {}
-      if (body.password !== conf.gundbPassword) return res.json({ ok: 0 })
       if (body.identifier) result = await storage.deleteUser(body)
 
       res.json({ ok: 1, result })
+    })
+  )
+
+  app.post(
+    '/admin/model/fish',
+    adminAuthenticate,
+    wrapAsync(async (req, res, next) => {
+      const { body, log } = req
+      const { daysAgo } = body
+      if (!daysAgo) return res.json({ ok: 0, error: 'missing daysAgo' })
+      log.debug('fishing request', { daysAgo })
+      fishManager.run(daysAgo).then(fishResult => log.info('fishing request result:', { fishResult }))
+
+      res.json({ ok: 1 })
     })
   )
 }
