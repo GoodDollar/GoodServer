@@ -186,7 +186,7 @@ export class StakingModelManager {
         sendSlackAlert({ msg: 'warning: no transfer funds event found' })
         return { result: 'no interest', cronTime }
       }
-      const ubiTransfered = fundsEvent.returnValues.gdUBI.toString()
+      const ubiTransfered = fundsEvent.returnValues.gdUBI
       if (ubiTransfered === '0') {
         this.log.warn('No UBI was transfered to bridge')
       } else {
@@ -194,7 +194,7 @@ export class StakingModelManager {
         //wait for funds on sidechain to transfer via bridge
         const transferEvent = await this.waitForBridgeTransfer(sidechainCurBlock, Date.now(), ubiTransfered)
         this.log.info('ubi success: bridge transfer event found', {
-          ubiGenerated: transferEvent.returnValues.value.toString()
+          ubiGenerated: transferEvent.returnValues.value
         })
       }
       sendSlackAlert({ msg: 'success: UBI transfered', ubiTransfered })
@@ -304,20 +304,18 @@ class FishingManager {
     this.log.info('getUBICalculatedDays ubiEvents:', { ubiEvents: ubiEvents.length })
 
     //find first day older than maxInactiveDays (ubiEvents is sorted from old to new  so we reverse it)
-    const searchStartDay = ubiEvents
-      .reverse()
-      .find(e => e.returnValues.day.toNumber() <= currentUBIDay - maxInactiveDays - 1)
+    const searchStartDay = ubiEvents.reverse().find(e => e.args.day.toNumber() <= currentUBIDay - maxInactiveDays)
 
     //find first day newer than searchStartDay
-    const searchEndDay = ubiEvents.find(
-      e => e.returnValues.day.toNumber() > get(searchStartDay, 'returnValues.day.toNumber', 0)
-    )
+    const searchEndDay = ubiEvents
+      .reverse()
+      .find(e => e.args.day.toNumber() > get(searchStartDay, 'args.day.toNumber', 0))
 
     this.log.info('getUBICalculatedDays got UBICalculatedEvents:', {
       currentUBIDay,
       foundEvents: ubiEvents.length,
-      startDay: searchStartDay && searchStartDay.returnValues.day.toNumber(),
-      endDay: searchEndDay && searchEndDay.returnValues.day.toNumber()
+      startDay: searchStartDay && searchStartDay.args.day.toNumber(),
+      endDay: searchEndDay && searchEndDay.args.day.toNumber()
       // searchStartDay: searchStartDay,
       // searchEndDay: searchEndDay,
     })
@@ -336,11 +334,11 @@ class FishingManager {
     //now get accounts that claimed in that day
     const claimBlockStart = result(
       searchStartDay,
-      'returnValues.blockNumber.toNumber',
+      'args.blockNumber.toNumber',
       Math.max((await AdminWallet.web3.eth.getBlockNumber()) - maxInactiveDays * FUSE_DAY_BLOCKS, 0)
     )
 
-    const claimBlockEnd = result(searchEndDay, 'returnValues.blockNumber.toNumber', claimBlockStart + FUSE_DAY_BLOCKS)
+    const claimBlockEnd = result(searchEndDay, 'args.blockNumber.toNumber', claimBlockStart + FUSE_DAY_BLOCKS)
 
     //get candidates
     const claimEvents = await this.ubiContract
@@ -360,19 +358,20 @@ class FishingManager {
     })
     //check if they are inactive
     let inactiveAccounts = []
+    let inactiveCheckFailed = 0
+    const checkInactive = async e => {
+      const isActive = await this.ubiContract.methods
+        .isActiveUser(e.returnValues.claimer)
+        .call()
+        .catch(e => undefined)
+      if (isActive === undefined) {
+        inactiveCheckFailed += 1
+      }
+      return isActive ? undefined : e.returnValues.claimer
+    }
     for (let eventsChunk of chunk(claimEvents, 100)) {
-      const inactive = (
-        await Promise.all(
-          eventsChunk.map(async e => {
-            const isActive = await this.ubiContract.methods
-              .isActiveUser(e.returnValues.claimer)
-              .call()
-              .catch(e => true)
-            return isActive ? undefined : e.returnValues.claimer
-          })
-        )
-      ).filter(_ => _)
-      this.log.debug('getInactiveAccounts batch:', { inactiveFound: inactive.length })
+      const inactive = (await Promise.all(eventsChunk.map(checkInactive))).filter(_ => _)
+      this.log.debug('getInactiveAccounts batch:', { inactiveCheckFailed, inactiveFound: inactive.length })
       inactiveAccounts = inactiveAccounts.concat(inactive)
     }
 
@@ -389,7 +388,7 @@ class FishingManager {
   fishChunk = async tofish => {
     const fishTX = await AdminWallet.sendTransaction(this.ubiContract.methods.fishMulti(tofish), {}, { gas: 6000000 })
     const fishEvent = get(fishTX, 'events.TotalFished')
-    const totalFished = fishEvent.returnValues.total.toNumber()
+    const totalFished = fishEvent.args.total.toNumber()
     this.log.info('Fished accounts', { tofish, totalFished, fisherAccount: fishTX.from, fishEvents: fishTX.events })
     return { totalFished, fisherAccount: fishTX.from }
   }
