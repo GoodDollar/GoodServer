@@ -175,8 +175,9 @@ export const Mautic = new (class {
     return this.baseQuery(`/contacts/${user.mauticId}/dnc/${group}/add`, this.baseHeaders, {}, 'post')
   }
 
-  async createContact(user: UserRecord) {
-    const { log, config } = this
+  async createContact(user: UserRecord, logger) {
+    let { log, config } = this
+    log = logger || log
     const { newuserTag, version, isEtoro } = config
     const tags = [newuserTag]
 
