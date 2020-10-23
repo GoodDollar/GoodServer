@@ -186,7 +186,7 @@ export class StakingModelManager {
         sendSlackAlert({ msg: 'warning: no transfer funds event found' })
         return { result: 'no interest', cronTime }
       }
-      const ubiTransfered = fundsEvent.returnValues.gdUBI
+      const ubiTransfered = fundsEvent.returnValues.gdUBI.toString()
       if (ubiTransfered === '0') {
         this.log.warn('No UBI was transfered to bridge')
       } else {
@@ -304,18 +304,20 @@ class FishingManager {
     this.log.info('getUBICalculatedDays ubiEvents:', { ubiEvents: ubiEvents.length })
 
     //find first day older than maxInactiveDays (ubiEvents is sorted from old to new  so we reverse it)
-    const searchStartDay = ubiEvents.reverse().find(e => e.args.day.toNumber() <= currentUBIDay - maxInactiveDays)
+    const searchStartDay = ubiEvents
+      .reverse()
+      .find(e => e.returnValues.day.toNumber() <= currentUBIDay - maxInactiveDays)
 
     //find first day newer than searchStartDay
     const searchEndDay = ubiEvents
       .reverse()
-      .find(e => e.args.day.toNumber() > get(searchStartDay, 'args.day.toNumber', 0))
+      .find(e => e.returnValues.day.toNumber() > get(searchStartDay, 'returnValues.day.toNumber', 0))
 
     this.log.info('getUBICalculatedDays got UBICalculatedEvents:', {
       currentUBIDay,
       foundEvents: ubiEvents.length,
-      startDay: searchStartDay && searchStartDay.args.day.toNumber(),
-      endDay: searchEndDay && searchEndDay.args.day.toNumber()
+      startDay: searchStartDay && searchStartDay.returnValues.day.toNumber(),
+      endDay: searchEndDay && searchEndDay.returnValues.day.toNumber()
       // searchStartDay: searchStartDay,
       // searchEndDay: searchEndDay,
     })
@@ -334,11 +336,11 @@ class FishingManager {
     //now get accounts that claimed in that day
     const claimBlockStart = result(
       searchStartDay,
-      'args.blockNumber.toNumber',
+      'returnValues.blockNumber.toNumber',
       Math.max((await AdminWallet.web3.eth.getBlockNumber()) - maxInactiveDays * FUSE_DAY_BLOCKS, 0)
     )
 
-    const claimBlockEnd = result(searchEndDay, 'args.blockNumber.toNumber', claimBlockStart + FUSE_DAY_BLOCKS)
+    const claimBlockEnd = result(searchEndDay, 'returnValues.blockNumber.toNumber', claimBlockStart + FUSE_DAY_BLOCKS)
 
     //get candidates
     const claimEvents = await this.ubiContract
@@ -388,7 +390,7 @@ class FishingManager {
   fishChunk = async tofish => {
     const fishTX = await AdminWallet.sendTransaction(this.ubiContract.methods.fishMulti(tofish), {}, { gas: 6000000 })
     const fishEvent = get(fishTX, 'events.TotalFished')
-    const totalFished = fishEvent.args.total.toNumber()
+    const totalFished = fishEvent.returnValues.total.toNumber()
     this.log.info('Fished accounts', { tofish, totalFished, fisherAccount: fishTX.from, fishEvents: fishTX.events })
     return { totalFished, fisherAccount: fishTX.from }
   }
