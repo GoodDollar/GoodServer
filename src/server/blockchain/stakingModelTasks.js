@@ -391,7 +391,7 @@ class FishingManager {
     const fishTX = await AdminWallet.sendTransaction(this.ubiContract.methods.fishMulti(tofish), {}, { gas: 6000000 })
     const fishEvent = get(fishTX, 'events.TotalFished')
     const totalFished = fishEvent.returnValues.total.toNumber()
-    this.log.info('Fished accounts', { tofish, totalFished, fisherAccount: fishTX.from, fishEvents: fishTX.events })
+    this.log.info('Fished accounts', { tofish, totalFished, fisherAccount: fishTX.from })
     return { totalFished, fisherAccount: fishTX.from }
   }
 
