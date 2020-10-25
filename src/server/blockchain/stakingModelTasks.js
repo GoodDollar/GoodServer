@@ -309,9 +309,9 @@ class FishingManager {
       .find(e => e.returnValues.day.toNumber() <= currentUBIDay - maxInactiveDays)
 
     //find first day newer than searchStartDay
-    const searchEndDay = ubiEvents
-      .reverse()
-      .find(e => e.returnValues.day.toNumber() > get(searchStartDay, 'returnValues.day.toNumber', 0))
+    const searchEndDay = ubiEvents.find(
+      e => e.returnValues.day.toNumber() > result(searchStartDay, 'returnValues.day.toNumber', 0)
+    )
 
     this.log.info('getUBICalculatedDays got UBICalculatedEvents:', {
       currentUBIDay,
