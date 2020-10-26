@@ -402,8 +402,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
         log.info('topwallet tx done', {
           txRes,
-          loggedInAs: user.loggedInAs,
-          adminBalance: await AdminWallet.getBalance()
+          loggedInAs: user.loggedInAs
         })
         res.json(txRes)
       } catch (e) {
