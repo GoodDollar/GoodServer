@@ -6,7 +6,7 @@ import cDaiABI from '@gooddollar/goodcontracts/build/contracts/cDAIMock.min.json
 import ContractsAddress from '@gooddollar/goodcontracts/stakingModel/releases/deployment.json'
 import fetch from 'cross-fetch'
 import AdminWallet from './AdminWallet'
-import { get, chunk, result } from 'lodash'
+import { get, chunk, result, range, flatten } from 'lodash'
 import logger from '../../imports/logger'
 import delay from 'delay'
 import moment from 'moment'
@@ -343,15 +343,26 @@ class FishingManager {
     const claimBlockEnd = result(searchEndDay, 'returnValues.blockNumber.toNumber', claimBlockStart + FUSE_DAY_BLOCKS)
 
     //get candidates
-    const claimEvents = await this.ubiContract
-      .getPastEvents('UBIClaimed', {
-        fromBlock: claimBlockStart,
-        toBlock: claimBlockEnd
-      })
-      .catch(e => {
-        this.log.warn('getInactiveAccounts getPastEvents UBIClaimed failed', e.message)
-        throw e
-      })
+    const chunkSize = FUSE_DAY_BLOCKS / 10
+    const blockChunks = range(claimBlockStart, claimBlockEnd, chunkSize)
+    const claimEvents = flatten(
+      await Promise.all(
+        blockChunks.map(startBlock =>
+          this.ubiContract
+            .getPastEvents('UBIClaimed', {
+              fromBlock: startBlock,
+              toBlock: Math.min(claimBlockEnd, startBlock + chunkSize)
+            })
+            .catch(e => {
+              this.log.warn('getInactiveAccounts getPastEvents UBIClaimed chunk failed', e.message, {
+                startBlock,
+                chunkSize
+              })
+              return []
+            })
+        )
+      )
+    )
 
     this.log.info('getInactiveAccounts got UBIClaimed events', {
       claimBlockStart,
@@ -433,8 +444,7 @@ class FishingManager {
       this.log.error('fishing task failed:', message, exception)
       sendSlackAlert({ msg: 'failure: fishing failed', error: message })
 
-      const cronTime = await this.getNextDay()
-      if (cronTime.isBefore(moment().add(1, 'hour'))) cronTime.add(1, 'hour')
+      const cronTime = moment().add(1, 'hour')
       return { result: true, cronTime }
     }
   }
