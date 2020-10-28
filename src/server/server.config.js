@@ -527,6 +527,18 @@ const conf = convict({
     format: Boolean,
     default: true,
     env: 'OPTIONAL_MOBILE_VERIFIICATION'
+  },
+  fullStoryKey: {
+    doc: 'api key for fullstory gdpr',
+    format: String,
+    default: '',
+    env: 'FULLSTORY_KEY'
+  },
+  amplitudeBasicAuth: {
+    doc: 'basic auth token from api+secret for amplitude gdpr',
+    format: String,
+    default: '',
+    env: 'AMPLITUDE_KEY'
   }
 })
 

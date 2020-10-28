@@ -10,6 +10,7 @@ import conf from '../server.config'
 import addUserSteps from './addUserSteps'
 import createUserVerifier from './verifier'
 import { fishManager } from '../blockchain/stakingModelTasks'
+import fetch from 'cross-fetch'
 
 const adminAuthenticate = (req, res, next) => {
   const { body } = req
@@ -272,10 +273,23 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           .catch(e => ({ mongodb: 'failed' })),
         Mautic.deleteContact(user)
           .then(r => ({ mautic: 'ok' }))
-          .catch(e => ({ mautic: 'failed' }))
+          .catch(e => ({ mautic: 'failed' })),
+        fetch(`https://api.fullstory.com/users/v1/individual/${user.identifier}`, {
+          headers: { Authorization: `Basic ${conf.fullStoryKey}` },
+          method: 'DELETE'
+        })
+          .then(_ => ({ fs: 'ok' }))
+          .catch(e => ({ fs: 'failed' })),
+        fetch(`https://amplitude.com/api/2/deletions/users`, {
+          headers: { Authorization: `Basic ${conf.amplitudeBasicAuth}`, 'Content-Type': 'application/json' },
+          method: 'POST',
+          body: JSON.stringify({ user_ids: [user.identifier], delete_from_org: 'True', ignore_invalid_id: 'True' })
+        })
+          .then(_ => ({ amplitude: 'ok' }))
+          .catch(e => ({ amplitude: 'failed' }))
       ])
 
-      log.info('delete user results', { results })
+      log.info('delete user results', { user, results })
       res.json({ ok: 1, results })
     })
   )
