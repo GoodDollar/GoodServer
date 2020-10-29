@@ -9,9 +9,10 @@ import get from 'lodash/get'
 import * as web3Utils from 'web3-utils'
 import IdentityABI from '@gooddollar/goodcontracts/build/contracts/Identity.min.json'
 import GoodDollarABI from '@gooddollar/goodcontracts/build/contracts/GoodDollar.min.json'
-import UBIABI from '@gooddollar/goodcontracts/build/contracts/FixedUBI.min.json'
+import UBIABI from '@gooddollar/goodcontracts/stakingModel/build/contracts/UBIScheme.min.json'
 import ProxyContractABI from '@gooddollar/goodcontracts/build/contracts/AdminWallet.min.json'
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
+import ModelContractsAddress from '@gooddollar/goodcontracts/stakingModel/releases/deployment.json'
 
 import conf from '../server.config'
 import logger from '../../imports/logger'
@@ -231,7 +232,7 @@ export class Wallet {
       get(ContractsAddress, `${this.network}.GoodDollar`),
       { from: this.address }
     )
-    this.UBIContract = new this.web3.eth.Contract(UBIABI.abi, get(ContractsAddress, `${this.network}.UBI`), {
+    this.UBIContract = new this.web3.eth.Contract(UBIABI.abi, get(ModelContractsAddress, `${this.network}.UBIScheme`), {
       from: this.address
     })
 
@@ -484,6 +485,34 @@ export class Wallet {
     } catch (e) {
       logger.error('Error topWallet', e.message, e, { txHash, address })
       throw e
+    }
+  }
+
+  async fishMulti(toFish: Array<string>): Promise<TransactionReceipt> {
+    try {
+      let encodedCall = this.web3.eth.abi.encodeFunctionCall(
+        {
+          name: 'fishMulti',
+          type: 'function',
+          inputs: [
+            {
+              type: 'address[]',
+              name: '_accounts'
+            }
+          ]
+        },
+        [toFish]
+      )
+      log.info('fishMulti sending tx', { toFish })
+      const transaction = await this.proxyContract.methods.genericCall(this.UBIContract.address, encodedCall, 0)
+      const tx = await this.sendTransaction(transaction)
+      log.info('fishMulti success', { toFish })
+      return tx
+    } catch (exception) {
+      const { message } = exception
+
+      log.error('fishMulti failed', message, exception, { toFish })
+      throw exception
     }
   }
 

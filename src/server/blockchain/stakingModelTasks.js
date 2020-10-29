@@ -399,9 +399,13 @@ class FishingManager {
    * perform the fishMulti TX on the ubiContract
    */
   fishChunk = async tofish => {
-    const fishTX = await AdminWallet.sendTransaction(this.ubiContract.methods.fishMulti(tofish), {}, { gas: 6000000 })
-    const fishEvent = get(fishTX, 'events.TotalFished')
-    const totalFished = fishEvent.returnValues.total.toNumber()
+    const fishTX = await AdminWallet.fishMulti(tofish)
+    const fishEvents = await AdminWallet.UBIContract.getPastEvents('TotalFished', {
+      fromBlock: fishTX.blockNumber,
+      toBlock: fishTX.blockNumber
+    })
+    const fishEvent = fishEvents.find(e => e.transactionHash === fishTX.transactionHash)
+    const totalFished = result(fishEvent, 'returnValues.total.toNumber', 0)
     this.log.info('Fished accounts', { tofish, totalFished, fisherAccount: fishTX.from })
     return { totalFished, fisherAccount: fishTX.from }
   }
