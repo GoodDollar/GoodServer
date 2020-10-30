@@ -6,7 +6,7 @@ import cDaiABI from '@gooddollar/goodcontracts/build/contracts/cDAIMock.min.json
 import ContractsAddress from '@gooddollar/goodcontracts/stakingModel/releases/deployment.json'
 import fetch from 'cross-fetch'
 import AdminWallet from './AdminWallet'
-import { get, chunk, result } from 'lodash'
+import { get, chunk, result, range, flatten } from 'lodash'
 import logger from '../../imports/logger'
 import delay from 'delay'
 import moment from 'moment'
@@ -194,7 +194,7 @@ export class StakingModelManager {
         //wait for funds on sidechain to transfer via bridge
         const transferEvent = await this.waitForBridgeTransfer(sidechainCurBlock, Date.now(), ubiTransfered)
         this.log.info('ubi success: bridge transfer event found', {
-          ubiGenerated: transferEvent.returnValues.value.toString()
+          ubiGenerated: transferEvent.returnValues.value
         })
       }
       sendSlackAlert({ msg: 'success: UBI transfered', ubiTransfered })
@@ -283,9 +283,10 @@ class FishingManager {
    * read events of previous claim epochs
    * we get the start block and end block for searching for possible inactive users
    */
-  getUBICalculatedDays = async () => {
+  getUBICalculatedDays = async forceDaysAgo => {
     const dayFuseBlocks = (60 * 60 * 24) / 5
-    const maxInactiveDays = await this.ubiContract.methods.maxInactiveDays.call().then(_ => _.toNumber())
+    const maxInactiveDays =
+      forceDaysAgo || (await this.ubiContract.methods.maxInactiveDays.call().then(_ => _.toNumber()))
 
     const daysagoBlocks = dayFuseBlocks * (maxInactiveDays + 1)
     const blocksAgo = Math.max((await AdminWallet.web3.eth.getBlockNumber()) - daysagoBlocks, 0)
@@ -300,16 +301,25 @@ class FishingManager {
       this.log.warn('fishManager getPastEvents failed')
       throw e
     })
-    this.log.info('getUBICalculatedDays ubiEvents:', { ubiEvents })
-    const searchStartDay = ubiEvents.find(e => e.returnValues.day.toNumber() === currentUBIDay - maxInactiveDays - 1)
-    const searchEndDay = ubiEvents.find(e => e.returnValues.day.toNumber() === currentUBIDay - maxInactiveDays)
-    this.log.info('getInactiveAccounts got UBICalculatedEvents:', {
+    this.log.info('getUBICalculatedDays ubiEvents:', { ubiEvents: ubiEvents.length })
+
+    //find first day older than maxInactiveDays (ubiEvents is sorted from old to new  so we reverse it)
+    const searchStartDay = ubiEvents
+      .reverse()
+      .find(e => e.returnValues.day.toNumber() <= currentUBIDay - maxInactiveDays)
+
+    //find first day newer than searchStartDay
+    const searchEndDay = ubiEvents.find(
+      e => e.returnValues.day.toNumber() > result(searchStartDay, 'returnValues.day.toNumber', 0)
+    )
+
+    this.log.info('getUBICalculatedDays got UBICalculatedEvents:', {
+      currentUBIDay,
       foundEvents: ubiEvents.length,
       startDay: searchStartDay && searchStartDay.returnValues.day.toNumber(),
-      endDay: searchEndDay && searchEndDay.returnValues.day.toNumber(),
-      searchStartDay: searchStartDay,
-      searchEndDay: searchEndDay,
-      currentUBIDay
+      endDay: searchEndDay && searchEndDay.returnValues.day.toNumber()
+      // searchStartDay: searchStartDay,
+      // searchEndDay: searchEndDay,
     })
     return { searchStartDay, searchEndDay, maxInactiveDays }
   }
@@ -317,8 +327,8 @@ class FishingManager {
   /**
    * users that claimed 14 days(or maxInactiveDays) ago are possible candidates to be inactive
    */
-  getInactiveAccounts = async () => {
-    const { searchStartDay, searchEndDay, maxInactiveDays } = await this.getUBICalculatedDays()
+  getInactiveAccounts = async forceDaysAgo => {
+    const { searchStartDay, searchEndDay, maxInactiveDays } = await this.getUBICalculatedDays(forceDaysAgo)
 
     if (searchStartDay === undefined) {
       this.log.warn('No UBICalculated event found for inactive interval', { maxInactiveDays })
@@ -333,15 +343,26 @@ class FishingManager {
     const claimBlockEnd = result(searchEndDay, 'returnValues.blockNumber.toNumber', claimBlockStart + FUSE_DAY_BLOCKS)
 
     //get candidates
-    const claimEvents = await this.ubiContract
-      .getPastEvents('UBIClaimed', {
-        fromBlock: claimBlockStart,
-        toBlock: claimBlockEnd
-      })
-      .catch(e => {
-        this.log.warn('getInactiveAccounts getPastEvents UBIClaimed failed', e.message)
-        throw e
-      })
+    const chunkSize = FUSE_DAY_BLOCKS / 10
+    const blockChunks = range(claimBlockStart, claimBlockEnd, chunkSize)
+    const claimEvents = flatten(
+      await Promise.all(
+        blockChunks.map(startBlock =>
+          this.ubiContract
+            .getPastEvents('UBIClaimed', {
+              fromBlock: startBlock,
+              toBlock: Math.min(claimBlockEnd, startBlock + chunkSize)
+            })
+            .catch(e => {
+              this.log.warn('getInactiveAccounts getPastEvents UBIClaimed chunk failed', e.message, {
+                startBlock,
+                chunkSize
+              })
+              return []
+            })
+        )
+      )
+    )
 
     this.log.info('getInactiveAccounts got UBIClaimed events', {
       claimBlockStart,
@@ -350,19 +371,20 @@ class FishingManager {
     })
     //check if they are inactive
     let inactiveAccounts = []
+    let inactiveCheckFailed = 0
+    const checkInactive = async e => {
+      const isActive = await this.ubiContract.methods
+        .isActiveUser(e.returnValues.claimer)
+        .call()
+        .catch(e => undefined)
+      if (isActive === undefined) {
+        inactiveCheckFailed += 1
+      }
+      return isActive ? undefined : e.returnValues.claimer
+    }
     for (let eventsChunk of chunk(claimEvents, 100)) {
-      const inactive = (
-        await Promise.all(
-          eventsChunk.map(async e => {
-            const isActive = await this.ubiContract.methods
-              .isActiveUser(e.returnValues.claimer)
-              .call()
-              .catch(e => true)
-            return isActive ? undefined : e.returnValues.claimer
-          })
-        )
-      ).filter(_ => _)
-      this.log.debug('getInactiveAccounts batch:', { inactiveFound: inactive.length })
+      const inactive = (await Promise.all(eventsChunk.map(checkInactive))).filter(_ => _)
+      this.log.debug('getInactiveAccounts batch:', { inactiveCheckFailed, inactiveFound: inactive.length })
       inactiveAccounts = inactiveAccounts.concat(inactive)
     }
 
@@ -377,10 +399,14 @@ class FishingManager {
    * perform the fishMulti TX on the ubiContract
    */
   fishChunk = async tofish => {
-    const fishTX = await AdminWallet.sendTransaction(this.ubiContract.methods.fishMulti(tofish), {}, { gas: 6000000 })
-    const fishEvent = get(fishTX, 'events.TotalFished')
-    const totalFished = fishEvent.returnValues.total.toNumber()
-    this.log.info('Fished accounts', { tofish, totalFished, fisherAccount: fishTX.from, fishEvents: fishTX.events })
+    const fishTX = await AdminWallet.fishMulti(tofish)
+    const fishEvents = await AdminWallet.UBIContract.getPastEvents('TotalFished', {
+      fromBlock: fishTX.blockNumber,
+      toBlock: fishTX.blockNumber
+    })
+    const fishEvent = fishEvents.find(e => e.transactionHash === fishTX.transactionHash)
+    const totalFished = result(fishEvent, 'returnValues.total.toNumber', 0)
+    this.log.info('Fished accounts', { tofish, totalFished, fisherAccount: fishTX.from })
     return { totalFished, fisherAccount: fishTX.from }
   }
 
@@ -411,19 +437,18 @@ class FishingManager {
     return fishers
   }
 
-  run = async () => {
+  run = async forceDaysAgo => {
     try {
-      const inactive = await this.getInactiveAccounts()
+      const inactive = await this.getInactiveAccounts(forceDaysAgo)
       const fishers = await this.fish(inactive)
       const cronTime = await this.getNextDay()
-      return { result: true, cronTime, fishers }
+      return { result: true, cronTime, fishers, inactive: inactive.length }
     } catch (exception) {
       const { message } = exception
       this.log.error('fishing task failed:', message, exception)
       sendSlackAlert({ msg: 'failure: fishing failed', error: message })
 
-      const cronTime = await this.getNextDay()
-      if (cronTime.isBefore(moment().add(1, 'hour'))) cronTime.add(1, 'hour')
+      const cronTime = moment().add(1, 'hour')
       return { result: true, cronTime }
     }
   }

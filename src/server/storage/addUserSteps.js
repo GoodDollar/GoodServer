@@ -63,7 +63,7 @@ const updateMauticRecord = async (userRecord: UserRecord, utmString: string, log
   }
 
   logger.debug('updateMauticRecord utm:', { utmString, utmFields })
-  const mauticRecord = await Mautic.createContact(fieldsForMautic).catch(e => {
+  const mauticRecord = await Mautic.createContact(fieldsForMautic, logger).catch(e => {
     logger.error('updateMauticRecord Create Mautic Record Failed', e.message, e, { fieldsForMautic, userRecord })
     throw e
   })

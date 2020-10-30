@@ -9,6 +9,14 @@ import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import addUserSteps from './addUserSteps'
 import createUserVerifier from './verifier'
+import { fishManager } from '../blockchain/stakingModelTasks'
+import fetch from 'cross-fetch'
+
+const adminAuthenticate = (req, res, next) => {
+  const { body } = req
+  if (body.password !== conf.gundbPassword) return res.json({ ok: 0 })
+  next()
+}
 
 const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
   /**
@@ -265,10 +273,23 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           .catch(e => ({ mongodb: 'failed' })),
         Mautic.deleteContact(user)
           .then(r => ({ mautic: 'ok' }))
-          .catch(e => ({ mautic: 'failed' }))
+          .catch(e => ({ mautic: 'failed' })),
+        fetch(`https://api.fullstory.com/users/v1/individual/${user.identifier}`, {
+          headers: { Authorization: `Basic ${conf.fullStoryKey}` },
+          method: 'DELETE'
+        })
+          .then(_ => ({ fs: 'ok' }))
+          .catch(e => ({ fs: 'failed' })),
+        fetch(`https://amplitude.com/api/2/deletions/users`, {
+          headers: { Authorization: `Basic ${conf.amplitudeBasicAuth}`, 'Content-Type': 'application/json' },
+          method: 'POST',
+          body: JSON.stringify({ user_ids: [user.identifier], delete_from_org: 'True', ignore_invalid_id: 'True' })
+        })
+          .then(_ => ({ amplitude: 'ok' }))
+          .catch(e => ({ amplitude: 'failed' }))
       ])
 
-      log.info('delete user results', { results })
+      log.info('delete user results', { user, results })
       res.json({ ok: 1, results })
     })
   )
@@ -296,9 +317,9 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
 
   app.post(
     '/admin/user/get',
+    adminAuthenticate,
     wrapAsync(async (req, res, next) => {
       const { body } = req
-      if (body.password !== conf.gundbPassword) return res.json({ ok: 0 })
       let user = {}
       if (body.email) user = await storage.getUsersByEmail(sha3(body.email))
       if (body.mobile) user = await storage.getUsersByMobile(sha3(body.mobile))
@@ -310,9 +331,9 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
 
   app.post(
     '/admin/user/list',
+    adminAuthenticate,
     wrapAsync(async (req, res, next) => {
       const { body } = req
-      if (body.password !== conf.gundbPassword) return res.json({ ok: 0 })
       let done = jsonres => {
         res.json(jsonres)
       }
@@ -322,13 +343,30 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
 
   app.post(
     '/admin/user/delete',
+    adminAuthenticate,
     wrapAsync(async (req, res, next) => {
       const { body } = req
       let result = {}
-      if (body.password !== conf.gundbPassword) return res.json({ ok: 0 })
       if (body.identifier) result = await storage.deleteUser(body)
 
       res.json({ ok: 1, result })
+    })
+  )
+
+  app.post(
+    '/admin/model/fish',
+    adminAuthenticate,
+    wrapAsync(async (req, res, next) => {
+      const { body, log } = req
+      const { daysAgo } = body
+      if (!daysAgo) return res.json({ ok: 0, error: 'missing daysAgo' })
+      log.debug('fishing request', { daysAgo })
+      fishManager
+        .run(daysAgo)
+        .then(fishResult => log.info('fishing request result:', { fishResult }))
+        .catch(e => log.error('fish request failed', { daysAgo }))
+
+      res.json({ ok: 1 })
     })
   )
 }
