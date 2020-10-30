@@ -7,114 +7,138 @@ import { assign, merge, get, pick, omit, isPlainObject, isArray, mapValues, once
 import Config from '../../server.config'
 import logger from '../../../imports/logger'
 
-const LIVENESS_PASSED = 0
+export const ZoomAPIError = {
+  FacemapNotFound: 'facemapNotFound',
+  LivenessCheckFailed: 'livenessCheckFailed'
+}
 
 class ZoomAPI {
   http = null
   defaultMinimalMatchLevel = null
+  defaultSearchIndexName = null
 
   constructor(Config, httpFactory, logger) {
-    const { zoomMinimalMatchLevel } = Config
+    const { zoomMinimalMatchLevel, zoomSearchIndexName } = Config
     const httpClientOptions = this._configureClient(Config, logger)
 
     this.logger = logger
     this.http = httpFactory(httpClientOptions)
     this.defaultMinimalMatchLevel = Number(zoomMinimalMatchLevel)
+    this.defaultSearchIndexName = zoomSearchIndexName
 
     this._configureRequests()
     this._configureResponses()
   }
 
   async getSessionToken(customLogger = null) {
-    let [response, exception] = await this._sendRequest('get', '/session-token', { customLogger })
+    const response = await this.http.get('/session-token', { customLogger })
 
-    if (!exception && !get(response, 'sessionToken')) {
-      exception = new Error('No sessionToken in the FaceTec API response')
+    if (!get(response, 'sessionToken')) {
+      const exception = new Error('No sessionToken in the FaceTec API response')
+
       assign(exception, { response })
-    }
-
-    if (exception) {
       throw exception
     }
 
     return response
   }
 
-  async submitEnrollment(payload, customLogger = null) {
-    let [response, exception] = await this._sendRequest('post', '/enrollment', payload, { customLogger })
-    const { message, isEnrolled } = response
-    const [isLivenessPassed, reasonOfFailure] = this._checkLivenessStatus(response)
-
-    if (exception || !isLivenessPassed || !isEnrolled) {
-      if (/enrollment\s+already\s+exists/i.test(message)) {
-        response.subCode = 'nameCollision'
-      }
-
-      if (!exception) {
-        exception = new Error(reasonOfFailure)
-      }
-
-      assign(exception, { response, message: reasonOfFailure })
-      throw exception
-    }
-
-    return response
-  }
-
-  // eslint-disable-next-line require-await
   async readEnrollment(enrollmentIdentifier, customLogger = null) {
-    return this._faceMapRequest('get', enrollmentIdentifier, customLogger)
-  }
+    let response
 
-  // eslint-disable-next-line require-await
-  async disposeEnrollment(enrollmentIdentifier, customLogger = null) {
-    return this._faceMapRequest('delete', enrollmentIdentifier, customLogger)
-  }
+    try {
+      response = await this.http.get('/enrollment-3d/:enrollmentIdentifier', {
+        customLogger,
+        params: { enrollmentIdentifier }
+      })
+    } catch (exception) {
+      const { message } = exception
 
-  async faceSearch(payload, minimalMatchLevel: number = null, customLogger = null) {
-    let minMatchLevel = minimalMatchLevel
-    let [response, exception] = await this._sendRequest('post', '/search', payload, { customLogger })
-
-    if (exception) {
-      let livenessCheckFailed = false
-
-      if ('livenessStatus' in response) {
-        const [isLivenessPassed, reasonOfFailure] = this._checkLivenessStatus(response)
-
-        livenessCheckFailed = !isLivenessPassed
-
-        if (livenessCheckFailed) {
-          exception.message = reasonOfFailure
-        }
-      } else {
-        livenessCheckFailed = /must\s+have.+?liveness\s+proven/i.test(response.message)
-      }
-
-      if (livenessCheckFailed) {
-        response.subCode = 'livenessCheckFailed'
+      if (/no\s+entry\s+found/i.test(message)) {
+        exception.name = ZoomAPIError.FacemapNotFound
       }
 
       throw exception
     }
+
+    return response
+  }
+
+  async submitEnrollment(enrollmentIdentifier, faceSnapshot, customLogger = null) {
+    const payload = {
+      ...pick(faceSnapshot, 'sessionId', 'faceScan', 'auditTrailImage', 'lowQualityAuditTrailImage'),
+      externalDatabaseRefID: enrollmentIdentifier
+    }
+
+    const response = await this.http.post('post', '/enrollment-3d', payload, { customLogger })
+    const isLivenessPassed = this.isLivenessCheckPassed(response)
+    const { success, faceScanSecurityChecks } = response
+
+    const {
+      auditTrailVerificationCheckSucceeded,
+      replayCheckSucceeded,
+      sessionTokenCheckSucceeded
+    } = faceScanSecurityChecks
+
+    if (!success) {
+      let message = 'FaceMap was not enrolled'
+
+      if (!sessionTokenCheckSucceeded) {
+        message += ' because the session token is missing or was failed to be checked'
+      } else if (!replayCheckSucceeded) {
+        message += ' because the replay check was failed'
+      } else if (!isLivenessPassed) {
+        message = 'Liveness could not be determined'
+
+        if (!auditTrailVerificationCheckSucceeded) {
+          message += ' because the photoshoots evaluated to be of poor quality'
+        }
+      }
+
+      const exception = new Error(message + '.')
+
+      if (!isLivenessPassed) {
+        exception.name = ZoomAPIError.LivenessCheckFailed
+      }
+
+      assign(exception, { response })
+      throw exception
+    }
+
+    return response
+  }
+
+  // eslint-disable-line require-await
+  async indexEnrollment(enrollmentIdentifier, indexName = null, customLogger = null) {
+    return this._3dDbRequest('enroll', enrollmentIdentifier, indexName, null, customLogger)
+  }
+
+  // eslint-disable-next-line require-await
+  async readEnrollmentIndex(enrollmentIdentifier, indexName = null, customLogger = null) {
+    return this._3dDbIndexRequest('get', enrollmentIdentifier, indexName, customLogger)
+  }
+
+  // eslint-disable-next-line require-await
+  async removeEnrollmentFromIndex(enrollmentIdentifier, indexName = null, customLogger = null) {
+    return this._3dDbIndexRequest('delete', enrollmentIdentifier, indexName, customLogger)
+  }
+
+  // eslint-disable-next-line require-await
+  async faceSearch(enrollmentIdentifier, minimalMatchLevel: number = null, indexName = null, customLogger = null) {
+    let minMatchLevel = minimalMatchLevel
 
     if (null === minMatchLevel) {
       minMatchLevel = this.defaultMinimalMatchLevel
     }
 
-    if (minMatchLevel) {
-      const { results = [] } = response
-      minMatchLevel = Number(minMatchLevel)
-
-      response.results = results.filter(({ matchLevel }) => Number(matchLevel) >= minMatchLevel)
-    }
-
-    return response
+    return this._3dDbRequest('search', enrollmentIdentifier, indexName, { minMatchLevel }, customLogger)
   }
 
   isLivenessCheckPassed(response) {
-    const { livenessStatus } = response
+    const { faceScanSecurityChecks } = response || {}
+    const { faceScanLivenessCheckSucceeded } = faceScanSecurityChecks || {}
 
-    return LIVENESS_PASSED === livenessStatus
+    return true === faceScanLivenessCheckSucceeded
   }
 
   _configureClient(Config, logger) {
@@ -187,11 +211,11 @@ class ZoomAPI {
 
   async _responseInterceptor(response) {
     const zoomResponse = this._transformResponse(response)
-    const { success, errorMessage } = zoomResponse
+    const { error, errorMessage } = zoomResponse
 
     this._logResponse('Received response from Zoom API:', response)
 
-    if (false === success) {
+    if (true === error) {
       const exception = new Error(errorMessage || 'FaceTec API response is empty')
 
       exception.response = zoomResponse
@@ -255,6 +279,62 @@ class ZoomAPI {
     }
   }
 
+  _getDatabaseIndex(indexName = null) {
+    let databaseIndex = indexName
+
+    if (null === indexName) {
+      databaseIndex = this.defaultSearchIndexName
+    }
+
+    return databaseIndex
+  }
+
+  async _3dDbRequest(operation, enrollmentIdentifier, indexName = null, additionalData = null, customLogger = null) {
+    let response
+    const databaseIndex = this._getDatabaseIndex(indexName)
+
+    const payload = {
+      externalDatabaseRefID: enrollmentIdentifier,
+      groupName: databaseIndex,
+      ...(additionalData || {})
+    }
+
+    try {
+      response = await this.http.post(`/3d-db/${operation}`, payload, { customLogger })
+    } catch (exception) {
+      const { message } = exception
+
+      if (/enrollment\s+does\s+not\s+exist/i.test(message)) {
+        exception.name = ZoomAPIError.FacemapNotFound
+      }
+
+      throw exception
+    }
+
+    return response
+  }
+
+  async _3dDbIndexRequest(method, enrollmentIdentifier, indexName = null, customLogger = null) {
+    const databaseIndex = this._getDatabaseIndex(indexName)
+
+    const payload = {
+      identifier: enrollmentIdentifier,
+      groupName: databaseIndex
+    }
+
+    const response = await this.http.post(`/3d-db/${method}`, payload, { customLogger })
+    const { success } = response
+
+    if (false === success) {
+      const exception = new Error('An enrollment does not exist for this externalDatabaseRefID.')
+
+      assign(exception, { response, name: ZoomAPIError.FacemapNotFound })
+      throw exception
+    }
+
+    return response
+  }
+
   _createLoggingSafeCopy(payload) {
     if (isArray(payload)) {
       return payload.map(item => this._createLoggingSafeCopy(item))
@@ -264,69 +344,9 @@ class ZoomAPI {
       return payload
     }
 
-    return mapValues(omit(payload, 'faceMap', 'auditTrailImage', 'lowQualityAuditTrailImage'), payloadField =>
+    return mapValues(omit(payload, 'faceMapBase64', 'auditTrailBase64'), payloadField =>
       this._createLoggingSafeCopy(payloadField)
     )
-  }
-
-  async _sendRequest(method, endpoint, payloadOrOptions = null, options = null) {
-    let response
-    let exception
-
-    try {
-      response = await this.http[method](...filter([endpoint, payloadOrOptions, options]))
-    } catch (apiException) {
-      exception = apiException
-      response = apiException.response
-
-      if (!response) {
-        throw apiException
-      }
-    }
-
-    return [response, exception]
-  }
-
-  async _faceMapRequest(method, enrollmentIdentifier, customLogger = null) {
-    let [response, exception] = await this._sendRequest(method, '/enrollment/:enrollmentIdentifier', {
-      customLogger,
-      params: { enrollmentIdentifier }
-    })
-
-    const { message } = response
-
-    if (/no\s+entry\s+found/i.test(message)) {
-      if (!exception) {
-        exception = new Error(message)
-        exception.response = response
-      }
-
-      response.subCode = 'facemapNotFound'
-    }
-
-    if (exception) {
-      throw exception
-    }
-
-    return response
-  }
-
-  _checkLivenessStatus(response) {
-    const { glasses, message, isLowQuality } = response
-    const isLivenessPassed = this.isLivenessCheckPassed(response)
-
-    let errorMessage = null
-
-    if (!isLivenessPassed) {
-      errorMessage = message
-
-      if (isLowQuality) {
-        errorMessage = 'Liveness could not be determined because '
-        errorMessage += 'the photoshoots evaluated to be of poor quality.'
-      }
-    }
-
-    return [isLivenessPassed, errorMessage]
   }
 }
 

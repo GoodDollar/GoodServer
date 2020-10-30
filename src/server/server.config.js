@@ -7,7 +7,9 @@ import dotenv from 'dotenv'
 import getNetworks from './networks'
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
 
-import { version } from '../../package.json'
+import { version, description } from '../../package.json'
+
+export const appName = description.replace(/\s*server\s*/i, '')
 
 let dotenvPath = '.env'
 
@@ -275,6 +277,12 @@ const conf = convict({
     format: Number,
     env: 'ZOOM_MINIMAL_MATCHLEVEL',
     default: 1
+  },
+  zoomSearchIndexName: {
+    doc: 'FaceTec 3d DB search index name',
+    format: '*',
+    env: 'ZOOM_SEARCH_INDEX_NAME',
+    default: appName
   },
   zoomServerBaseUrl: {
     doc: 'FaceTec Managed Testing API URL',
