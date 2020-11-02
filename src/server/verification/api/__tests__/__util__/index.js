@@ -1,15 +1,51 @@
-import { failedLivenessMessage, enrollmentNotFoundMessage } from '../../ZoomAPI'
+import {
+  failedLivenessMessage,
+  failedEnrollmentMessage,
+  enrollmentNotFoundMessage,
+  enrollmentAlreadyExistsMessage
+} from '../../ZoomAPI'
 
 export default zoomServiceMock => {
   const serviceErrorMessage = 'Request failed with status code 500'
-
-  const failedEnrollmentMessage = 'The FaceMap was not enrolled because Liveness could not be determined.'
-  const failedSearchMessage = '3D FaceMaps that are used with Search APIs must have had Liveness Proven.'
-  const enrollmentDisposedMessage = 'The entry in the database for this enrollmentIdentifier was successfully deleted'
-  const duplicateFoundMessage = `Duplicate exists for FaceMap you're trying to enroll.`
   const duplicateEnrollmentIdentifier = 'another-one-fake-enrollment-identifier'
+  const dbInternalEnrollmentAlreadyExists = `An enrollment already exists for this externalDatabaseRefID.`
+  const dbInternalEnrollmentDoesntExists = 'An enrollment does not exist for this externalDatabaseRefID.'
 
   const enrollmentUri = enrollmentIdentifier => `/enrollment-3d/${encodeURIComponent(enrollmentIdentifier)}`
+
+  const successResponse = { success: true, error: false }
+
+  const mockErrorResponse = message => ({
+    error: true,
+    errorMessage: message,
+    success: false
+  })
+
+  const faceScanResponse = (operation, response = {}, reasonFlags = {}) =>
+    zoomServiceMock.onPost(`/${operation}-3d`).reply(200, {
+      faceScanSecurityChecks: {
+        replayCheckSucceeded: true,
+        sessionTokenCheckSucceeded: true,
+        auditTrailVerificationCheckSucceeded: true,
+        faceScanLivenessCheckSucceeded: true,
+        ...reasonFlags
+      },
+      success: true,
+      error: false,
+      ...response
+    })
+
+  const dbSuccessResponse = (operation, response = {}) =>
+    zoomServiceMock.onPost(`/3d-db/${operation}`).reply(200, {
+      ...successResponse,
+      ...response
+    })
+
+  const dbFailedResponse = (operation, message = null) => {
+    const mockedResponse = message ? mockErrorResponse(message) : { success: false, error: false }
+
+    zoomServiceMock.onPost(`/3d-db/${operation}`).reply(200, mockedResponse)
+  }
 
   const mockSuccessSessionToken = sessionToken =>
     zoomServiceMock.onGet('/session-token').reply(200, {
@@ -19,11 +55,7 @@ export default zoomServiceMock => {
     })
 
   const mockFailedSessionToken = (withMessage = null) =>
-    zoomServiceMock.onGet('/session-token').reply(403, {
-      error: true,
-      errorMessage: withMessage,
-      success: false
-    })
+    zoomServiceMock.onGet('/session-token').reply(403, mockErrorResponse(withMessage))
 
   const mockEnrollmentFound = enrollmentIdentifier =>
     zoomServiceMock.onGet(enrollmentUri(enrollmentIdentifier)).reply(200, {
@@ -41,20 +73,6 @@ export default zoomServiceMock => {
       error: true
     })
 
-  const faceScanResponse = (operation, response = {}, reasonFlags = {}) =>
-    zoomServiceMock.onPost(`/${operation}-3d`).reply(200, {
-      faceScanSecurityChecks: {
-        replayCheckSucceeded: true,
-        sessionTokenCheckSucceeded: true,
-        auditTrailVerificationCheckSucceeded: true,
-        faceScanLivenessCheckSucceeded: true,
-        ...reasonFlags
-      },
-      success: true,
-      error: false,
-      ...response
-    })
-
   const mockSuccessLivenessCheck = () => faceScanResponse('liveness')
 
   const mockFailedLivenessCheck = (withReasonFlags = {}) => {
@@ -65,120 +83,70 @@ export default zoomServiceMock => {
 
     faceScanResponse('liveness', { success: false }, reasonFlags)
   }
-  /*
 
-  const mockEmptyResultsFaceSearch = () =>
-    zoomServiceMock.onPost('/search').reply(200, {
-      meta: {
-        ok: true,
-        code: 200,
-        mode: 'dev',
-        message: 'The search request was processed successfully.'
-      },
-      data: {
-        results: [],
-        sourceFaceMap: {
-          isReplayFaceMap: false
-        }
-      }
-    })
+  const mockSuccessIndexEnrollment = () => dbSuccessResponse('enroll')
+
+  const mockFailedIndexEnrollment = message => dbFailedResponse('enroll', message)
+
+  const mockEnrollmentNotExistsDuringIndex = () => dbFailedResponse('enroll', dbInternalEnrollmentDoesntExists)
+
+  const mockSuccessReadEnrollmentIndex = () => dbSuccessResponse('get')
+
+  const mockFailedReadEnrollmentIndex = message => dbFailedResponse('get', message)
+
+  // 3d-db/get doesn't returns 'An enrollment does not exist' just success: false
+  const mockEnrollmentNotExistsDuringReadIndex = () => dbFailedResponse('get')
+
+  const mockSuccessRemoveEnrollmentFromIndex = () => dbSuccessResponse('delete')
+
+  const mockFailedRemoveEnrollmentFromIndex = message => dbFailedResponse('delete', message)
+
+  // 3d-db/delete doesn't returns 'An enrollment does not exist' just success: false
+  const mockEnrollmentNotExistsDuringRemoveFromIndex = () => dbFailedResponse('delete')
+
+  const mockServiceErrorDuringRemoveFromIndex = () => zoomServiceMock.onPost('/3d-db/delete').reply(500)
+
+  const mockEmptyResultsFaceSearch = () => dbSuccessResponse('search', { results: [] })
 
   const mockDuplicateFound = () =>
-    zoomServiceMock.onPost('/search').reply(200, {
-      meta: {
-        ok: true,
-        code: 200,
-        mode: 'dev',
-        message: 'The search request was processed successfully.'
-      },
-      data: {
-        results: [
-          {
-            enrollmentIdentifier: duplicateEnrollmentIdentifier,
-            matchLevel: '1',
-            auditTrailImage: 'data:image/png:FaKEimagE=='
-          }
-        ]
-      }
+    dbSuccessResponse('search', {
+      results: [
+        {
+          identifier: duplicateEnrollmentIdentifier,
+          matchLevel: 10
+        }
+      ]
     })
 
-  const mockFailedSearch = () =>
-    zoomServiceMock.onPost('/search').reply(200, {
-      meta: {
-        ok: false,
-        code: 400,
-        mode: 'dev',
-        message: '3D FaceMaps that are used with Search APIs must have had Liveness Proven.'
-      },
-      data: {
-        glasses: false,
-        sessionTokenStatus: 1,
-        faceMapType: 0,
-        livenessStatus: 1,
-        isLowQuality: false
-      }
-    })
+  const mockFailedSearch = message => dbFailedResponse('search', message)
+
+  const mockEnrollmentNotExistsDuringSearch = () => dbFailedResponse('search', dbInternalEnrollmentDoesntExists)
 
   const mockSuccessEnrollment = enrollmentIdentifier =>
-    zoomServiceMock.onPost('/enrollment').reply(200, {
-      meta: {
-        ok: true,
-        code: 200,
-        mode: 'dev',
-        message: 'The FaceMap was successfully enrolled.'
-      },
-      data: {
-        createdDate: '2019-09-16T17:30:40+00:00',
-        enrollmentIdentifier,
-        faceMapType: 0,
-        glasses: false,
-        isEnrolled: true,
-        isLowQuality: false,
-        isReplayFaceMap: false,
-        livenessStatus: 0
-      }
+    faceScanResponse('enrollment', {
+      externalDatabaseRefID: enrollmentIdentifier
     })
 
-  const mockFailedEnrollment = (enrollmentIdentifier, customResponse = {}) =>
-    zoomServiceMock.onPost('/enrollment').reply(200, {
-      meta: {
-        ok: true,
-        code: 200,
-        mode: 'dev',
-        message: failedEnrollmentMessage
-      },
-      data: {
-        auditTrailVerificationMessage: '...',
-        auditTrailVerificationStatus: 0,
-        createdDate: '2019-09-16T17:30:40+00:00',
-        enrollmentIdentifier,
-        errorMessageFromZoomServer: null,
-        errorStatusFromZoomServer: 0,
-        faceMapType: 1,
-        glasses: false,
-        isEnrolled: false,
-        isLowQuality: false,
-        isReplayFaceMap: false,
-        livenessStatus: null,
-        ...customResponse
-      }
-    })
+  const mockFailedEnrollment = (enrollmentIdentifier, withReasonFlags = {}) => {
+    const reasonFlags = {
+      faceScanLivenessCheckSucceeded: false,
+      ...withReasonFlags
+    }
 
-    zoomServiceMock.onDelete(enrollmentUri(enrollmentIdentifier)).reply(200, {
-      meta: {
-        ok: true,
-        code: 200,
-        mode: 'dev',
-        message: enrollmentNotFoundMessage
-      }
-    })
+    const response = {
+      success: false,
+      externalDatabaseRefID: enrollmentIdentifier
+    }
+
+    faceScanResponse('enrollment', response, reasonFlags)
   }
 
-  const mockServiceErrorHappenedWhileDisposing = enrollmentIdentifier =>
-    zoomServiceMock.onDelete(enrollmentUri(enrollmentIdentifier)).reply(500)*/
+  const mockEnrollmentAlreadyExists = () =>
+    zoomServiceMock.onPost('/enrollment-3d').reply(200, mockErrorResponse(dbInternalEnrollmentAlreadyExists))
 
   return {
     enrollmentUri,
+    mockErrorResponse,
     serviceErrorMessage,
 
     mockSuccessSessionToken,
@@ -190,20 +158,31 @@ export default zoomServiceMock => {
 
     failedLivenessMessage,
     mockSuccessLivenessCheck,
-    mockFailedLivenessCheck
+    mockFailedLivenessCheck,
 
-    /*mockEmptyResultsFaceSearch,
-    mockDuplicateFound,
+    mockSuccessIndexEnrollment,
+    mockFailedIndexEnrollment,
+    mockEnrollmentNotExistsDuringIndex,
+
+    mockSuccessReadEnrollmentIndex,
+    mockFailedReadEnrollmentIndex,
+    mockEnrollmentNotExistsDuringReadIndex,
+
+    mockSuccessRemoveEnrollmentFromIndex,
+    mockFailedRemoveEnrollmentFromIndex,
+    mockEnrollmentNotExistsDuringRemoveFromIndex,
+    mockServiceErrorDuringRemoveFromIndex,
+
     duplicateEnrollmentIdentifier,
-    duplicateFoundMessage,
+    mockEmptyResultsFaceSearch,
+    mockDuplicateFound,
     mockFailedSearch,
-    failedSearchMessage,
+    mockEnrollmentNotExistsDuringSearch,
 
+    failedEnrollmentMessage,
+    enrollmentAlreadyExistsMessage,
     mockSuccessEnrollment,
     mockFailedEnrollment,
-    failedEnrollmentMessage,
-
-    enrollmentDisposedMessage,
-    mockServiceErrorHappenedWhileDisposing*/
+    mockEnrollmentAlreadyExists
   }
 }

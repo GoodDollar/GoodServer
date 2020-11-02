@@ -14,8 +14,11 @@ export const ZoomAPIError = {
   NameCollision: 'nameCollision'
 }
 
+export const failedEnrollmentMessage = 'FaceMap could not be enrolled'
 export const failedLivenessMessage = 'Liveness could not be determined'
 export const enrollmentNotFoundMessage = 'An enrollment does not exists for this enrollment identifier'
+export const enrollmentAlreadyExistsMessage = 'An enrollment already exists for this enrollment identifier'
+
 export const faceSnapshotFields = ['sessionId', 'faceScan', 'auditTrailImage', 'lowQualityAuditTrailImage']
 const redactFieldsDuringLogging = ['faceMapBase64', 'auditTrailBase64', ...faceSnapshotFields]
 
@@ -103,9 +106,10 @@ class ZoomAPI {
       const { NameCollision, SecurityCheckFailed } = ZoomAPIError
 
       if (SecurityCheckFailed === name) {
-        message = "FaceMap couldn't be enrolled because the " + lowerFirst(message)
+        message = failedEnrollmentMessage + ' because the ' + lowerFirst(message)
       } else if (/enrollment\s+already\s+exists/i.test(message)) {
         name = NameCollision
+        message = enrollmentAlreadyExistsMessage
       }
 
       assign(exception, { name, message })
