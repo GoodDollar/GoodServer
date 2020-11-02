@@ -12,10 +12,8 @@ export default class EnrollmentSession {
   storage = null
   adminApi = null
   queueApi = null
-  sessionRef = null
 
-  constructor(user, provider, storage, adminApi, queueApi, gun, customLogger = null) {
-    this.gun = gun
+  constructor(user, provider, storage, adminApi, queueApi, customLogger = null) {
     this.user = user
     this.provider = provider
     this.storage = storage
@@ -37,9 +35,6 @@ export default class EnrollmentSession {
     })
 
     try {
-      this.initialize(payload)
-      this.onEnrollmentStarted()
-
       const enrollmentResult = await provider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing, log)
 
       log.info('Enrollment session completed with result:', enrollmentResult)
@@ -55,37 +50,18 @@ export default class EnrollmentSession {
         result.enrollmentResult = response
       }
 
-      this.onEnrollmentFailed(exception)
       if (message.toLowerCase().includes('liveness')) {
         log.warn('Enrollment session failed with exception:', message, exception, { result })
       } else {
         log.error('Enrollment session failed with exception:', message, exception, { result })
       }
-    } finally {
-      this.sessionRef = null
     }
 
     return result
   }
 
-  initialize(payload: any) {
-    const { gun } = this
-    const { sessionId } = payload
-
-    this.sessionRef = gun.session(sessionId)
-    // returning this to allow initialize &
-    // get sessionRef via destructuring in a single call
-    return this
-  }
-
-  onEnrollmentStarted() {
-    const { sessionRef } = this
-
-    sessionRef.put({ isStarted: true })
-  }
-
   onEnrollmentProcessing(processingPayload: IEnrollmentEventPayload) {
-    const { sessionRef, log } = this
+    const { log } = this
 
     if ('isDuplicate' in processingPayload) {
       log.info('Checking for duplicates:', processingPayload)
@@ -94,12 +70,10 @@ export default class EnrollmentSession {
     if ('isEnrolled' in processingPayload) {
       log.info('Checking for liveness and tried to enroll:', processingPayload)
     }
-
-    sessionRef.put(processingPayload)
   }
 
   async onEnrollmentCompleted() {
-    const { sessionRef, user, storage, adminApi, queueApi, log } = this
+    const { user, storage, adminApi, queueApi, log } = this
     const { gdAddress, profilePublickey, loggedInAs } = user
 
     log.info('Whitelisting user:', loggedInAs)
@@ -110,20 +84,6 @@ export default class EnrollmentSession {
       storage.updateUser({ identifier: loggedInAs, isVerified: true })
     ])
 
-    sessionRef.put({ isWhitelisted: true })
     log.info('Successfully whitelisted user:', loggedInAs)
-  }
-
-  onEnrollmentFailed(exception) {
-    const { sessionRef } = this
-    const { message } = exception
-
-    sessionRef.put({
-      isLive: false,
-      isEnrolled: false,
-      isDuplicate: true,
-      isWhitelisted: false,
-      isError: message
-    })
   }
 }

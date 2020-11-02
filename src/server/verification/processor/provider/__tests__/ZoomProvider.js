@@ -166,12 +166,12 @@ describe('ZoomProvider', () => {
     await testEnrollmentServiceError('Network Error')
   })
 
-  test('enrollmentExists() checks enrollment existence', async () => {
+  test('isEnrollmentIndexed() checks enrollment existence', async () => {
     helper.mockEnrollmentFound(enrollmentIdentifier)
-    await expect(ZoomProvider.enrollmentExists(enrollmentIdentifier)).resolves.toBe(true)
+    await expect(ZoomProvider.isEnrollmentIndexed(enrollmentIdentifier)).resolves.toBe(true)
 
     helper.mockEnrollmentNotFound(enrollmentIdentifier)
-    await expect(ZoomProvider.enrollmentExists(enrollmentIdentifier)).resolves.toBe(false)
+    await expect(ZoomProvider.isEnrollmentIndexed(enrollmentIdentifier)).resolves.toBe(false)
   })
 
   test("dispose() removes existing enrollment, doesn't throws for unexisting", async () => {
