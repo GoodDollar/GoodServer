@@ -17,7 +17,7 @@ const enrollmentIdentifier = 'fake-enrollment-identifier'
 
 const payload = {
   sessionId: sessionToken,
-  faceMap: Buffer.alloc(32),
+  faceScan: Buffer.alloc(32),
   auditTrailImage: 'data:image/png:FaKEimagE=='
 }
 

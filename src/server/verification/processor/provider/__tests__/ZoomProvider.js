@@ -14,9 +14,21 @@ const enrollmentIdentifier = 'fake-enrollment-identifier'
 
 const payload = {
   sessionId: sessionToken,
-  faceMap: Buffer.alloc(32),
+  faceScan: Buffer.alloc(32),
   auditTrailImage: 'data:image/png:FaKEimagE==',
   lowQualityAuditTrailImage: 'data:image/png:FaKEimagE=='
+}
+
+const testSuccessfullEnrollment = async (alreadyEnrolled = false) => {
+  const onEnrollmentProcessing = jest.fn()
+  const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).resolves
+
+  await wrappedResponse.toHaveProperty('isVerified', true)
+  await wrappedResponse.toHaveProperty('alreadyEnrolled', alreadyEnrolled)
+
+  expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: true })
+  expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(2, { isDuplicate: false })
+  expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(3, { isEnrolled: true })
 }
 
 const testEnrollmentServiceError = async errorMessage => {
@@ -54,63 +66,42 @@ describe('ZoomProvider', () => {
     expect(ZoomProvider.isPayloadValid({})).toBeFalsy()
   })
 
-  /*test('enroll() returns successfull response if no duplicates found and enrollment was successfull', async () => {
-    helper.mockEmptyResultsFaceSearch()
+  test('enroll() returns successfull response if liveness passed, no duplicates found and enrollment was successfull', async () => {
+    helper.mockEnrollmentNotFound(enrollmentIdentifier)
     helper.mockSuccessEnrollment(enrollmentIdentifier)
+    helper.mockEmptyResultsFaceSearch()
+    helper.mockSuccessIndexEnrollment()
 
-    const onEnrollmentProcessing = jest.fn()
-    const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).resolves
-
-    await wrappedResponse.toHaveProperty('isVerified', true)
-    await wrappedResponse.toHaveProperty('alreadyEnrolled', false)
-
-    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isDuplicate: false })
-    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(2, { isEnrolled: true, isLive: true })
+    await testSuccessfullEnrollment()
   })
 
   test('enroll() returns successfull response if identifier was alreadsy enrolled', async () => {
-    zoomServiceMock.onPost('/search').reply(200, {
-      meta: {
-        ok: true,
-        code: 200,
-        mode: 'dev',
-        message: 'The search request was processed successfully.'
-      },
-      data: {
-        results: [
-          {
-            enrollmentIdentifier,
-            matchLevel: '0',
-            auditTrailImage: 'data:image/png:FaKEimagE=='
-          }
-        ],
-        sourceFaceMap: {
-          isReplayFaceMap: false
-        }
-      }
-    })
+    helper.mockEnrollmentFound(enrollmentIdentifier)
+    helper.mockSuccessLivenessCheck()
+    helper.mockEmptyResultsFaceSearch()
+    helper.mockSuccessIndexEnrollment()
 
-    zoomServiceMock.onPost('/enrollment').reply(200, {
-      meta: {
-        ok: false,
-        code: 400,
-        mode: 'dev',
-        message: 'An enrollment already exists for this enrollmentIdentifier.'
-      }
-    })
+    await testSuccessfullEnrollment(true)
+  })
+
+  test('enroll() throws if liveness check fails', async () => {
+    helper.mockEnrollmentNotFound(enrollmentIdentifier)
+    helper.mockFailedEnrollment(enrollmentIdentifier)
 
     const onEnrollmentProcessing = jest.fn()
-    const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).resolves
+    const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
 
-    await wrappedResponse.toHaveProperty('isVerified', true)
-    await wrappedResponse.toHaveProperty('alreadyEnrolled', true)
+    await wrappedResponse.toThrow(helper.failedLivenessMessage)
+    await wrappedResponse.toHaveProperty('response')
+    await wrappedResponse.toHaveProperty('response.isLive', false)
+    await wrappedResponse.toHaveProperty('response.isVerified', false)
 
-    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isDuplicate: false })
-    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(2, { isEnrolled: true, isLive: true })
+    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: false })
   })
 
   test('enroll() throws if duplicates found', async () => {
-    helper.mockEmptyResultsFaceSearch()
+    helper.mockEnrollmentNotFound(enrollmentIdentifier)
+    helper.mockSuccessEnrollment(enrollmentIdentifier)
     helper.mockDuplicateFound()
 
     const onEnrollmentProcessing = jest.fn()
@@ -121,45 +112,38 @@ describe('ZoomProvider', () => {
     await wrappedResponse.toHaveProperty('response.isDuplicate', true)
     await wrappedResponse.toHaveProperty('response.isVerified', false)
 
-    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isDuplicate: true })
+    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: true })
+    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(2, { isDuplicate: true })
   })
 
-  test('enroll() throws if liveness check fails during duplicates search', async () => {
-    helper.mockFailedSearch()
+  test('enroll() throws if enroll to 3D Database fails', async () => {
+    const { failedEnrollmentMessage } = helper
 
-    const onEnrollmentProcessing = jest.fn()
-    const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
-
-    await wrappedResponse.toThrow(helper.failedSearchMessage)
-    await wrappedResponse.toHaveProperty('response')
-    await wrappedResponse.toHaveProperty('response.isLive', false)
-    await wrappedResponse.toHaveProperty('response.isVerified', false)
-
-    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: false })
-  })
-
-  test('enroll() throws if liveness check fails during enroll', async () => {
+    helper.mockEnrollmentNotFound(enrollmentIdentifier)
+    helper.mockSuccessEnrollment(enrollmentIdentifier)
     helper.mockEmptyResultsFaceSearch()
-    helper.mockFailedEnrollment(enrollmentIdentifier)
+    helper.mockFailedIndexEnrollment(failedEnrollmentMessage)
 
     const onEnrollmentProcessing = jest.fn()
     const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
 
-    await wrappedResponse.toThrow(helper.failedEnrollmentMessage)
+    await wrappedResponse.toThrow(failedEnrollmentMessage)
     await wrappedResponse.toHaveProperty('response')
     await wrappedResponse.toHaveProperty('response.isEnrolled', false)
     await wrappedResponse.toHaveProperty('response.isVerified', false)
-    await wrappedResponse.toHaveProperty('response.isLive', false)
 
-    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isDuplicate: false })
-    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(2, { isEnrolled: false, isLive: false })
+    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: true })
+    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(2, { isDuplicate: false })
+    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(3, { isEnrolled: false })
   })
 
   test('enroll() throws on any Zoom service error and terminates without returning any response or calling callback', async () => {
+    const uri = helper.enrollmentUri(enrollmentIdentifier)
+
     zoomServiceMock
-      .onPost('/search')
+      .onGet(uri)
       .replyOnce(500)
-      .onPost('/search')
+      .onGet(uri)
       .networkErrorOnce()
 
     await testEnrollmentServiceError(helper.serviceErrorMessage)
@@ -167,24 +151,24 @@ describe('ZoomProvider', () => {
   })
 
   test('isEnrollmentIndexed() checks enrollment existence', async () => {
-    helper.mockEnrollmentFound(enrollmentIdentifier)
+    helper.mockSuccessReadEnrollmentIndex()
     await expect(ZoomProvider.isEnrollmentIndexed(enrollmentIdentifier)).resolves.toBe(true)
 
-    helper.mockEnrollmentNotFound(enrollmentIdentifier)
+    helper.mockEnrollmentNotExistsDuringReadIndex()
     await expect(ZoomProvider.isEnrollmentIndexed(enrollmentIdentifier)).resolves.toBe(false)
   })
 
   test("dispose() removes existing enrollment, doesn't throws for unexisting", async () => {
-    helper.mockEnrollmentFound(enrollmentIdentifier)
+    helper.mockSuccessRemoveEnrollmentFromIndex()
     await expect(ZoomProvider.dispose(enrollmentIdentifier)).resolves.toBeUndefined()
 
-    helper.mockEnrollmentNotFound(enrollmentIdentifier)
+    helper.mockEnrollmentNotExistsDuringRemoveFromIndex()
     await expect(ZoomProvider.dispose(enrollmentIdentifier)).resolves.toBeUndefined()
   })
 
   test('dispose() throws on Zoom service error', async () => {
-    helper.mockServiceErrorHappenedWhileDisposing(enrollmentIdentifier)
+    helper.mockServiceErrorDuringRemoveFromIndex()
 
     await expect(ZoomProvider.dispose(enrollmentIdentifier)).rejects.toThrow(helper.serviceErrorMessage)
-  })*/
+  })
 })

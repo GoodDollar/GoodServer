@@ -95,7 +95,7 @@ class ZoomProvider implements IEnrollmentProvider {
       // if identifier already enrolled
       await api[alreadyEnrolled ? 'checkLiveness' : 'submitEnrollment'](...callArgs)
     } catch (exception) {
-      const { name, message } = exception
+      const { name, message, response } = exception
 
       // if liveness / security issues were detected
       if ([LivenessCheckFailed, SecurityCheckFailed].includes(name)) {
@@ -104,7 +104,7 @@ class ZoomProvider implements IEnrollmentProvider {
         // notifying about liveness check failed
         await notifyProcessor({ isLive })
         log.warn(message, { enrollmentIdentifier })
-        throwCustomException(message, { isLive }, faceSearchResponse)
+        throwCustomException(message, { isLive }, response)
       }
 
       // otherwisw just re-throwing exception and stopping processing
@@ -112,7 +112,7 @@ class ZoomProvider implements IEnrollmentProvider {
     }
 
     // notifying about liveness passed or not
-    await notifyProcessor({ isDuplicate })
+    await notifyProcessor({ isLive })
 
     // 3. checking for duplicates
     const { results, ...faceSearchResponse } = await api.faceSearch(
@@ -140,12 +140,10 @@ class ZoomProvider implements IEnrollmentProvider {
     }
 
     // 4. enrolling and indexing uploaded & stored face scan to the 3D Database
-    let isEnrolled = false
+    let isEnrolled = true
 
     try {
       await api.indexEnrollment(enrollmentIdentifier, defaultSearchIndexName, customLogger)
-
-      isEnrolled = true
     } catch (exception) {
       const { response, message } = exception
 
@@ -156,6 +154,8 @@ class ZoomProvider implements IEnrollmentProvider {
       }
 
       // otherwise notifying & throwing enrollment exception
+      isEnrolled = false
+
       await notifyProcessor({ isEnrolled })
       throwCustomException(message, { isEnrolled }, response)
     }
@@ -181,7 +181,7 @@ class ZoomProvider implements IEnrollmentProvider {
       const { message: errMessage } = exception
 
       if (this._isNotIndexedException(enrollmentIdentifier, exception, customLogger)) {
-        return
+        return false
       }
 
       log.warn('Error checking enrollment', { e: exception, errMessage, enrollmentIdentifier })

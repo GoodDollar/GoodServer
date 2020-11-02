@@ -5,6 +5,12 @@ import {
   enrollmentAlreadyExistsMessage
 } from '../../ZoomAPI'
 
+import {
+  duplicateFoundMessage,
+  alreadyEnrolledMessage,
+  successfullyEnrolledMessage
+} from '../../../processor/provider/ZoomProvider'
+
 export default zoomServiceMock => {
   const serviceErrorMessage = 'Request failed with status code 500'
   const duplicateEnrollmentIdentifier = 'another-one-fake-enrollment-identifier'
@@ -67,11 +73,9 @@ export default zoomServiceMock => {
     })
 
   const mockEnrollmentNotFound = enrollmentIdentifier =>
-    zoomServiceMock.onGet(enrollmentUri(enrollmentIdentifier)).reply(200, {
-      errorMessage: 'No entry found in the database for this externalDatabaseRefID.',
-      success: false,
-      error: true
-    })
+    zoomServiceMock
+      .onGet(enrollmentUri(enrollmentIdentifier))
+      .reply(200, mockErrorResponse('No entry found in the database for this externalDatabaseRefID.'))
 
   const mockSuccessLivenessCheck = () => faceScanResponse('liveness')
 
@@ -174,11 +178,14 @@ export default zoomServiceMock => {
     mockServiceErrorDuringRemoveFromIndex,
 
     duplicateEnrollmentIdentifier,
+    duplicateFoundMessage,
     mockEmptyResultsFaceSearch,
     mockDuplicateFound,
     mockFailedSearch,
     mockEnrollmentNotExistsDuringSearch,
 
+    alreadyEnrolledMessage,
+    successfullyEnrolledMessage,
     failedEnrollmentMessage,
     enrollmentAlreadyExistsMessage,
     mockSuccessEnrollment,
