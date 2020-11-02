@@ -2,15 +2,22 @@
 
 import Axios from 'axios'
 import { URL } from 'url'
-import { assign, merge, get, pick, omit, isPlainObject, isArray, mapValues, once, filter } from 'lodash'
+import { assign, get, pick, omit, isPlainObject, isArray, mapValues, once, lowerFirst } from 'lodash'
 
 import Config from '../../server.config'
 import logger from '../../../imports/logger'
 
 export const ZoomAPIError = {
   FacemapNotFound: 'facemapNotFound',
-  LivenessCheckFailed: 'livenessCheckFailed'
+  LivenessCheckFailed: 'livenessCheckFailed',
+  SecurityCheckFailed: 'securityCheckFailed',
+  NameCollision: 'nameCollision'
 }
+
+export const failedLivenessMessage = 'Liveness could not be determined'
+export const enrollmentNotFoundMessage = 'An enrollment does not exists for this enrollment identifier'
+export const faceSnapshotFields = ['sessionId', 'faceScan', 'auditTrailImage', 'lowQualityAuditTrailImage']
+const redactFieldsDuringLogging = ['faceMapBase64', 'auditTrailBase64', ...faceSnapshotFields]
 
 class ZoomAPI {
   http = null
@@ -55,7 +62,10 @@ class ZoomAPI {
       const { message } = exception
 
       if (/no\s+entry\s+found/i.test(message)) {
-        exception.name = ZoomAPIError.FacemapNotFound
+        assign(exception, {
+          name: ZoomAPIError.FacemapNotFound,
+          message: enrollmentNotFoundMessage
+        })
       }
 
       throw exception
@@ -64,44 +74,41 @@ class ZoomAPI {
     return response
   }
 
-  async submitEnrollment(enrollmentIdentifier, faceSnapshot, customLogger = null) {
-    const payload = {
-      ...pick(faceSnapshot, 'sessionId', 'faceScan', 'auditTrailImage', 'lowQualityAuditTrailImage'),
-      externalDatabaseRefID: enrollmentIdentifier
+  async checkLiveness(payload, customLogger = null) {
+    let response
+
+    try {
+      response = await this._faceScanRequest('liveness', payload, null, customLogger)
+    } catch (exception) {
+      const { name, message } = exception
+
+      if (ZoomAPIError.SecurityCheckFailed === name) {
+        exception.message = failedLivenessMessage + ' because the ' + lowerFirst(message)
+      }
+
+      throw exception
     }
 
-    const response = await this.http.post('post', '/enrollment-3d', payload, { customLogger })
-    const isLivenessPassed = this.isLivenessCheckPassed(response)
-    const { success, faceScanSecurityChecks } = response
+    return response
+  }
 
-    const {
-      auditTrailVerificationCheckSucceeded,
-      replayCheckSucceeded,
-      sessionTokenCheckSucceeded
-    } = faceScanSecurityChecks
+  async submitEnrollment(enrollmentIdentifier, payload, customLogger = null) {
+    let response
+    const additionalData = { externalDatabaseRefID: enrollmentIdentifier }
 
-    if (!success) {
-      let message = 'FaceMap was not enrolled'
+    try {
+      response = await this._faceScanRequest('enrollment', payload, additionalData, customLogger)
+    } catch (exception) {
+      let { name, message } = exception
+      const { NameCollision, SecurityCheckFailed } = ZoomAPIError
 
-      if (!sessionTokenCheckSucceeded) {
-        message += ' because the session token is missing or was failed to be checked'
-      } else if (!replayCheckSucceeded) {
-        message += ' because the replay check was failed'
-      } else if (!isLivenessPassed) {
-        message = 'Liveness could not be determined'
-
-        if (!auditTrailVerificationCheckSucceeded) {
-          message += ' because the photoshoots evaluated to be of poor quality'
-        }
+      if (SecurityCheckFailed === name) {
+        message = "FaceMap couldn't be enrolled because the " + lowerFirst(message)
+      } else if (/enrollment\s+already\s+exists/i.test(message)) {
+        name = NameCollision
       }
 
-      const exception = new Error(message + '.')
-
-      if (!isLivenessPassed) {
-        exception.name = ZoomAPIError.LivenessCheckFailed
-      }
-
-      assign(exception, { response })
+      assign(exception, { name, message })
       throw exception
     }
 
@@ -289,6 +296,53 @@ class ZoomAPI {
     return databaseIndex
   }
 
+  async _faceScanRequest(operation, payload, additionalData = null, customLogger = null) {
+    const payloadData = {
+      ...pick(payload, faceSnapshotFields),
+      ...(additionalData || {})
+    }
+
+    const response = await this.http.post(`/${operation}-3d`, payloadData, { customLogger })
+    const { LivenessCheckFailed, SecurityCheckFailed } = ZoomAPIError
+    const isLivenessPassed = this.isLivenessCheckPassed(response)
+    const { success, faceScanSecurityChecks } = response
+
+    const {
+      auditTrailVerificationCheckSucceeded,
+      replayCheckSucceeded,
+      sessionTokenCheckSucceeded
+    } = faceScanSecurityChecks
+
+    if (!success) {
+      let message = `Unknown exception happened during ${operation} request`
+
+      if (!sessionTokenCheckSucceeded) {
+        message = 'Session token is missing or was failed to be checked'
+      } else if (!replayCheckSucceeded) {
+        message = 'Replay check was failed'
+      } else if (!isLivenessPassed) {
+        message = failedLivenessMessage
+
+        if (!auditTrailVerificationCheckSucceeded) {
+          message += ' because the photoshoots evaluated to be of poor quality'
+        }
+      }
+
+      const exception = new Error(message)
+
+      if (!sessionTokenCheckSucceeded || !replayCheckSucceeded) {
+        exception.name = SecurityCheckFailed
+      } else if (!isLivenessPassed) {
+        exception.name = LivenessCheckFailed
+      }
+
+      assign(exception, { response })
+      throw exception
+    }
+
+    return response
+  }
+
   async _3dDbRequest(operation, enrollmentIdentifier, indexName = null, additionalData = null, customLogger = null) {
     let response
     const databaseIndex = this._getDatabaseIndex(indexName)
@@ -305,7 +359,10 @@ class ZoomAPI {
       const { message } = exception
 
       if (/enrollment\s+does\s+not\s+exist/i.test(message)) {
-        exception.name = ZoomAPIError.FacemapNotFound
+        assign(exception, {
+          message: enrollmentNotFoundMessage,
+          name: ZoomAPIError.FacemapNotFound
+        })
       }
 
       throw exception
@@ -326,7 +383,7 @@ class ZoomAPI {
     const { success } = response
 
     if (false === success) {
-      const exception = new Error('An enrollment does not exist for this externalDatabaseRefID.')
+      const exception = new Error(enrollmentNotFoundMessage)
 
       assign(exception, { response, name: ZoomAPIError.FacemapNotFound })
       throw exception
@@ -344,7 +401,7 @@ class ZoomAPI {
       return payload
     }
 
-    return mapValues(omit(payload, 'faceMapBase64', 'auditTrailBase64'), payloadField =>
+    return mapValues(omit(payload, redactFieldsDuringLogging), payloadField =>
       this._createLoggingSafeCopy(payloadField)
     )
   }

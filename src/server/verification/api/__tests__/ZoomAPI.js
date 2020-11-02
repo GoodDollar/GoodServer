@@ -2,7 +2,7 @@
 
 import MockAdapter from 'axios-mock-adapter'
 
-import getZoomAPI from '../ZoomAPI'
+import getZoomAPI, { ZoomAPIError } from '../ZoomAPI'
 import createMockingHelper from './__util__'
 
 const ZoomAPI = getZoomAPI()
@@ -19,24 +19,19 @@ const payload = {
   auditTrailImage: 'data:image/png:FaKEimagE=='
 }
 
-const enrollmentPayload = {
-  enrollmentIdentifier,
-  ...payload
-}
-
-const mockedFaceSearchResults = [
+/*const mockedFaceSearchResults = [
   {
-    enrollmentIdentifier: 'fake-id-1',
+    externalDatabaseRefID: 'fake-id-1',
     matchLevel: '0',
     auditTrailImage: 'data:image/png:FaKEimagE=='
   },
   {
-    enrollmentIdentifier: 'fake-id-2',
+    externalDatabaseRefID: 'fake-id-2',
     matchLevel: '1',
     auditTrailImage: 'data:image/png:FaKEimagE=='
   },
   {
-    enrollmentIdentifier: 'fake-id-3',
+    externalDatabaseRefID: 'fake-id-3',
     matchLevel: '3',
     auditTrailImage: 'data:image/png:FaKEimagE=='
   }
@@ -56,7 +51,7 @@ const mockFaceSearch = () =>
         isReplayFaceMap: false
       }
     }
-  })
+  })*/
 
 describe('ZoomAPI', () => {
   beforeAll(() => {
@@ -79,13 +74,107 @@ describe('ZoomAPI', () => {
   })
 
   test('getSessionToken() should throws if no sessionToken found in the API response', async () => {
-    const message = 'Some error happened on /session-token call'
+    const message = 'Some error happened on GET /session-token call'
 
     helper.mockFailedSessionToken()
     await expect(ZoomAPI.getSessionToken()).rejects.toThrow('Request failed with status code 403')
 
     helper.mockFailedSessionToken(message)
     await expect(ZoomAPI.getSessionToken()).rejects.toThrow(message)
+  })
+
+  test('readEnrollment() should return enrollment data if it found', async () => {
+    helper.mockEnrollmentFound(enrollmentIdentifier)
+
+    const wrappedResponse = expect(ZoomAPI.readEnrollment(enrollmentIdentifier)).resolves
+
+    await wrappedResponse.toHaveProperty('success', true)
+    await wrappedResponse.toHaveProperty('error', false)
+    await wrappedResponse.toHaveProperty('externalDatabaseRefID', enrollmentIdentifier)
+    await wrappedResponse.toHaveProperty('faceMapBase64')
+    await wrappedResponse.toHaveProperty('auditTrailBase64')
+  })
+
+  test('readEnrollment() should throw if enrollment not found', async () => {
+    helper.mockEnrollmentNotFound(enrollmentIdentifier)
+
+    const wrappedResponse = expect(ZoomAPI.readEnrollment(enrollmentIdentifier)).rejects
+
+    await wrappedResponse.toThrow(helper.enrollmentNotFoundMessage)
+    await wrappedResponse.toHaveProperty('name', ZoomAPIError.FacemapNotFound)
+  })
+
+  test('readEnrollment() should throw on unknown/unexpected errors', async () => {
+    const message = 'Some error happened on GET /enrollment-3d call'
+
+    zoomServiceMock.onGet(helper.enrollmentUri(enrollmentIdentifier)).reply(200, {
+      success: false,
+      error: true,
+      errorMessage: message
+    })
+
+    await expect(ZoomAPI.readEnrollment(enrollmentIdentifier)).rejects.toThrow(message)
+  })
+
+  test('checkLiveness() should return success if liveness passed', async () => {
+    helper.mockSuccessLivenessCheck()
+
+    const wrappedResponse = expect(ZoomAPI.checkLiveness(payload)).resolves
+
+    await wrappedResponse.toHaveProperty('success', true)
+    await wrappedResponse.toHaveProperty('error', false)
+  })
+
+  test('checkLiveness() should throw if liveness failed', async () => {
+    helper.mockFailedLivenessCheck()
+
+    const wrappedResponse = expect(ZoomAPI.checkLiveness(payload)).rejects
+
+    await wrappedResponse.toThrow(helper.failedLivenessMessage)
+    await wrappedResponse.toHaveProperty('name', ZoomAPIError.LivenessCheckFailed)
+  })
+
+  test('checkLiveness() should throw with different errors depending the case happened', async () => {
+    const { LivenessCheckFailed, SecurityCheckFailed } = ZoomAPIError
+    const { failedLivenessMessage } = helper
+    let wrappedResponse
+
+    // failed session token
+    helper.mockFailedLivenessCheck({ sessionTokenCheckSucceeded: false })
+    wrappedResponse = expect(ZoomAPI.checkLiveness(payload)).rejects
+    await wrappedResponse.toThrow(
+      failedLivenessMessage + ' because the session token is missing or was failed to be checked'
+    )
+    await wrappedResponse.toHaveProperty('name', SecurityCheckFailed)
+
+    // failed replay check token
+    helper.mockFailedLivenessCheck({ replayCheckSucceeded: false })
+    wrappedResponse = expect(ZoomAPI.checkLiveness(payload)).rejects
+    await wrappedResponse.toThrow(failedLivenessMessage + ' because the replay check was failed')
+    await wrappedResponse.toHaveProperty('name', SecurityCheckFailed)
+
+    // failed photoshoots check
+    helper.mockFailedLivenessCheck({ auditTrailVerificationCheckSucceeded: false })
+    wrappedResponse = expect(ZoomAPI.checkLiveness(payload)).rejects
+    await wrappedResponse.toThrow(failedLivenessMessage + ' because the photoshoots evaluated to be of poor quality')
+    await wrappedResponse.toHaveProperty('name', LivenessCheckFailed)
+  })
+
+  test('checkLiveness() should throw with unknown/unexpected errors', async () => {
+    const unknownErrorMessage = 'Unknown exception happened during liveness request'
+
+    // set all flags to true, so we'll have success: false and unknown reason
+    helper.mockFailedLivenessCheck({ faceScanLivenessCheckSucceeded: true })
+
+    await expect(ZoomAPI.checkLiveness(payload)).rejects.toThrow(unknownErrorMessage)
+
+    zoomServiceMock.onPost('/liveness-3d').reply(200, {
+      success: false,
+      error: true,
+      errorMessage: unknownErrorMessage
+    })
+
+    await expect(ZoomAPI.checkLiveness(payload)).rejects.toThrow(unknownErrorMessage)
   })
 
   /*
@@ -206,16 +295,16 @@ describe('ZoomAPI', () => {
         }
       )
     )
-  })
+  })*/
 
   test('API methods should throw on server / connection errors', async () => {
     zoomServiceMock
-      .onPost('/enrollment')
+      .onPost('/enrollment-3d')
       .networkErrorOnce()
-      .onPost('/enrollment')
+      .onPost('/enrollment-3d')
       .replyOnce(500)
 
-    await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow('Network Error')
-    await expect(ZoomAPI.submitEnrollment(enrollmentPayload)).rejects.toThrow(helper.serviceErrorMessage)
-  })*/
+    await expect(ZoomAPI.submitEnrollment(enrollmentIdentifier, payload)).rejects.toThrow('Network Error')
+    await expect(ZoomAPI.submitEnrollment(enrollmentIdentifier, payload)).rejects.toThrow(helper.serviceErrorMessage)
+  })
 })

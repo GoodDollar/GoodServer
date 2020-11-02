@@ -1,7 +1,7 @@
 // @flow
 import { pick, omit, once } from 'lodash'
 
-import initZoomAPI from '../../api/ZoomAPI.js'
+import initZoomAPI, { faceSnapshotFields } from '../../api/ZoomAPI.js'
 import logger from '../../../../imports/logger'
 
 import { type IEnrollmentProvider } from '../typings'
@@ -16,7 +16,7 @@ class ZoomProvider implements IEnrollmentProvider {
   }
 
   isPayloadValid(payload: any): boolean {
-    return !['faceMap', 'lowQualityAuditTrailImage', 'auditTrailImage'].some(field => !payload[field])
+    return !faceSnapshotFields.some(field => !payload[field])
   }
 
   async issueToken(customLogger = null): Promise<string> {
