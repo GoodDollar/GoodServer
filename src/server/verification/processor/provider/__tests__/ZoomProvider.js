@@ -151,6 +151,7 @@ describe('ZoomProvider', () => {
   test('isEnrollmentIndexed() checks enrollment existence', async () => {
     helper.mockSuccessReadEnrollmentIndex(enrollmentIdentifier)
     await expect(ZoomProvider.isEnrollmentIndexed(enrollmentIdentifier)).resolves.toBe(true)
+    zoomServiceMock.reset()
 
     helper.mockEnrollmentNotExistsDuringReadIndex(enrollmentIdentifier)
     await expect(ZoomProvider.isEnrollmentIndexed(enrollmentIdentifier)).resolves.toBe(false)
@@ -159,6 +160,7 @@ describe('ZoomProvider', () => {
   test("dispose() removes existing enrollment, doesn't throws for unexisting", async () => {
     helper.mockSuccessRemoveEnrollmentFromIndex(enrollmentIdentifier)
     await expect(ZoomProvider.dispose(enrollmentIdentifier)).resolves.toBeUndefined()
+    zoomServiceMock.reset()
 
     helper.mockEnrollmentNotExistsDuringRemoveFromIndex(enrollmentIdentifier)
     await expect(ZoomProvider.dispose(enrollmentIdentifier)).resolves.toBeUndefined()

@@ -161,8 +161,8 @@ describe('EnrollmentProcessor', () => {
   test("enroll() proxies provider's response, updates session and whitelists user on success", async () => {
     helper.mockEnrollmentNotFound(enrollmentIdentifier)
     helper.mockSuccessEnrollment(enrollmentIdentifier)
-    helper.mockEmptyResultsFaceSearch()
-    helper.mock3dDatabaseEnrollmentSuccess()
+    helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
+    helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
 
     const { gdAddress, profilePublickey, loggedInAs } = user
     const wrappedResponse = expect(enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)).resolves
@@ -179,7 +179,7 @@ describe('EnrollmentProcessor', () => {
   test("enroll() proxies provider's error and sets error + non-whitelisted state in the session", async () => {
     helper.mockEnrollmentNotFound(enrollmentIdentifier)
     helper.mockSuccessEnrollment(enrollmentIdentifier)
-    helper.mockDuplicateFound()
+    helper.mockDuplicateFound(enrollmentIdentifier)
 
     const wrappedResponse = expect(enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)).resolves
 
@@ -196,7 +196,7 @@ describe('EnrollmentProcessor', () => {
   })
 
   test("enqueueDisposal() de-whitelists user if it's whitelisted", async () => {
-    helper.mockSuccessReadEnrollmentIndex()
+    helper.mockSuccessReadEnrollmentIndex(enrollmentIdentifier)
     isVerifiedMock.mockResolvedValueOnce(true)
 
     await expect(enrollmentProcessor.enqueueDisposal(user, enrollmentIdentifier, signature)).resolves.toBeUndefined()
@@ -204,15 +204,16 @@ describe('EnrollmentProcessor', () => {
   })
 
   test('enqueueDisposal() disposes enrollment immediately if KEEP_FACE_VERIFICATION_RECORDS = 0', async () => {
-    helper.mockSuccessReadEnrollmentIndex()
+    helper.mockSuccessReadEnrollmentIndex(enrollmentIdentifier)
+    helper.mockSuccessRemoveEnrollmentFromIndex(enrollmentIdentifier)
     enrollmentProcessor.keepEnrollments = 0
 
     await expect(enrollmentProcessor.enqueueDisposal(user, enrollmentIdentifier, signature)).resolves.toBeUndefined()
 
-    const [disposeRequest] = zoomServiceMock.history.delete
+    const [, disposeRequest] = zoomServiceMock.history.post
 
     expect(disposeRequest).toBeDefined()
-    expect(JSON.parse(disposeRequest.data)).toHaveProperty('externalDatabaseRefID', enrollmentIdentifier)
+    expect(JSON.parse(disposeRequest.data)).toHaveProperty('identifier', enrollmentIdentifier)
   })
 
   test('enqueueDisposal() fails with invalid signature', async () => {
@@ -222,7 +223,7 @@ describe('EnrollmentProcessor', () => {
   })
 
   test("enqueueDisposal() doesn't enqueues if enrollment isn't exists", async () => {
-    helper.mockEnrollmentNotExistsDuringReadIndex()
+    helper.mockEnrollmentNotExistsDuringReadIndex(enrollmentIdentifier)
 
     await expect(enrollmentProcessor.enqueueDisposal(user, enrollmentIdentifier, signature)).resolves.toBeUndefined()
     expect(enqueueTaskMock).not.toHaveBeenCalled()
@@ -241,7 +242,7 @@ describe('EnrollmentProcessor', () => {
     )
 
     helper.mockSuccessRemoveEnrollmentFromIndex(enrollmentIdentifier)
-    helper.mockServiceErrorHappenedWhileDisposing(enrollmentIdentifier)
+    helper.mockServiceErrorDuringRemoveFromIndex(failedEnrollmentIdentifier)
 
     await expect(enrollmentProcessor.disposeEnqueuedEnrollments(onProcessedMock)).resolves.toBeUndefined()
 
