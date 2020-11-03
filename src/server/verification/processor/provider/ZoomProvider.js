@@ -1,5 +1,5 @@
 // @flow
-import { pick, omit, once, omitBy } from 'lodash'
+import { omit, once, omitBy } from 'lodash'
 
 import initZoomAPI, { faceSnapshotFields, ZoomAPIError } from '../../api/ZoomAPI.js'
 import logger from '../../../../imports/logger'

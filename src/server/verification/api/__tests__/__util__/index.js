@@ -19,6 +19,14 @@ export default zoomServiceMock => {
 
   const enrollmentUri = enrollmentIdentifier => `/enrollment-3d/${encodeURIComponent(enrollmentIdentifier)}`
 
+  const enrollmentPayloadMatcher = enrollmentIdentifier => ({
+    asymmetricMatch(payload) {
+      const { externalDatabaseRefID, identifier } = payload || {}
+
+      return [externalDatabaseRefID, identifier].some(id => id === enrollmentIdentifier)
+    }
+  })
+
   const successResponse = { success: true, error: false }
 
   const mockErrorResponse = message => ({
@@ -27,8 +35,14 @@ export default zoomServiceMock => {
     success: false
   })
 
-  const faceScanResponse = (operation, response = {}, reasonFlags = {}) =>
-    zoomServiceMock.onPost(`/${operation}-3d`).reply(200, {
+  const faceScanResponse = (operation, payloadOrMatcher = null, response = {}, reasonFlags = {}) => {
+    const mockArgs = [`/${operation}-3d`]
+
+    if (payloadOrMatcher) {
+      mockArgs.push(payloadOrMatcher)
+    }
+
+    zoomServiceMock.onPost(...mockArgs).reply(200, {
       faceScanSecurityChecks: {
         replayCheckSucceeded: true,
         sessionTokenCheckSucceeded: true,
@@ -40,17 +54,20 @@ export default zoomServiceMock => {
       error: false,
       ...response
     })
+  }
 
-  const dbSuccessResponse = (operation, response = {}) =>
-    zoomServiceMock.onPost(`/3d-db/${operation}`).reply(200, {
+  const dbSuccessResponse = (operation, enrollmentIdentifier, response = {}) =>
+    zoomServiceMock.onPost(`/3d-db/${operation}`, enrollmentPayloadMatcher(enrollmentIdentifier)).reply(200, {
       ...successResponse,
       ...response
     })
 
-  const dbFailedResponse = (operation, message = null) => {
+  const dbFailedResponse = (operation, enrollmentIdentifier, message = null) => {
     const mockedResponse = message ? mockErrorResponse(message) : { success: false, error: false }
 
-    zoomServiceMock.onPost(`/3d-db/${operation}`).reply(200, mockedResponse)
+    zoomServiceMock
+      .onPost(`/3d-db/${operation}`, enrollmentPayloadMatcher(enrollmentIdentifier))
+      .reply(200, mockedResponse)
   }
 
   const mockSuccessSessionToken = sessionToken =>
@@ -85,35 +102,42 @@ export default zoomServiceMock => {
       ...withReasonFlags
     }
 
-    faceScanResponse('liveness', { success: false }, reasonFlags)
+    faceScanResponse('liveness', null, { success: false }, reasonFlags)
   }
 
-  const mockSuccessIndexEnrollment = () => dbSuccessResponse('enroll')
+  const mockSuccessIndexEnrollment = enrollmentIdentifier => dbSuccessResponse('enroll', enrollmentIdentifier)
 
-  const mockFailedIndexEnrollment = message => dbFailedResponse('enroll', message)
+  const mockFailedIndexEnrollment = (enrollmentIdentifier, message) =>
+    dbFailedResponse('enroll', enrollmentIdentifier, message)
 
-  const mockEnrollmentNotExistsDuringIndex = () => dbFailedResponse('enroll', dbInternalEnrollmentDoesntExists)
+  const mockEnrollmentNotExistsDuringIndex = enrollmentIdentifier =>
+    dbFailedResponse('enroll', enrollmentIdentifier, dbInternalEnrollmentDoesntExists)
 
-  const mockSuccessReadEnrollmentIndex = () => dbSuccessResponse('get')
+  const mockSuccessReadEnrollmentIndex = enrollmentIdentifier => dbSuccessResponse('get', enrollmentIdentifier)
 
-  const mockFailedReadEnrollmentIndex = message => dbFailedResponse('get', message)
+  const mockFailedReadEnrollmentIndex = (enrollmentIdentifier, message) =>
+    dbFailedResponse('get', enrollmentIdentifier, message)
 
   // 3d-db/get doesn't returns 'An enrollment does not exist' just success: false
-  const mockEnrollmentNotExistsDuringReadIndex = () => dbFailedResponse('get')
+  const mockEnrollmentNotExistsDuringReadIndex = enrollmentIdentifier => dbFailedResponse('get', enrollmentIdentifier)
 
-  const mockSuccessRemoveEnrollmentFromIndex = () => dbSuccessResponse('delete')
+  const mockSuccessRemoveEnrollmentFromIndex = enrollmentIdentifier => dbSuccessResponse('delete', enrollmentIdentifier)
 
-  const mockFailedRemoveEnrollmentFromIndex = message => dbFailedResponse('delete', message)
+  const mockFailedRemoveEnrollmentFromIndex = (enrollmentIdentifier, message) =>
+    dbFailedResponse('delete', enrollmentIdentifier, message)
 
   // 3d-db/delete doesn't returns 'An enrollment does not exist' just success: false
-  const mockEnrollmentNotExistsDuringRemoveFromIndex = () => dbFailedResponse('delete')
+  const mockEnrollmentNotExistsDuringRemoveFromIndex = enrollmentIdentifier =>
+    dbFailedResponse('delete', enrollmentIdentifier)
 
-  const mockServiceErrorDuringRemoveFromIndex = () => zoomServiceMock.onPost('/3d-db/delete').reply(500)
+  const mockServiceErrorDuringRemoveFromIndex = enrollmentIdentifier =>
+    zoomServiceMock.onPost('/3d-db/delete', enrollmentPayloadMatcher(enrollmentIdentifier)).reply(500)
 
-  const mockEmptyResultsFaceSearch = () => dbSuccessResponse('search', { results: [] })
+  const mockEmptyResultsFaceSearch = enrollmentIdentifier =>
+    dbSuccessResponse('search', enrollmentIdentifier, { results: [] })
 
-  const mockDuplicateFound = () =>
-    dbSuccessResponse('search', {
+  const mockDuplicateFound = enrollmentIdentifier =>
+    dbSuccessResponse('search', enrollmentIdentifier, {
       results: [
         {
           identifier: duplicateEnrollmentIdentifier,
@@ -122,34 +146,45 @@ export default zoomServiceMock => {
       ]
     })
 
-  const mockFailedSearch = message => dbFailedResponse('search', message)
+  const mockFailedSearch = (enrollmentIdentifier, message) => dbFailedResponse('search', enrollmentIdentifier, message)
 
-  const mockEnrollmentNotExistsDuringSearch = () => dbFailedResponse('search', dbInternalEnrollmentDoesntExists)
+  const mockEnrollmentNotExistsDuringSearch = enrollmentIdentifier =>
+    dbFailedResponse('search', enrollmentIdentifier, dbInternalEnrollmentDoesntExists)
 
   const mockSuccessEnrollment = enrollmentIdentifier =>
-    faceScanResponse('enrollment', {
+    faceScanResponse('enrollment', enrollmentPayloadMatcher(enrollmentIdentifier), {
       externalDatabaseRefID: enrollmentIdentifier
     })
 
   const mockFailedEnrollment = (enrollmentIdentifier, withReasonFlags = {}) => {
+    const payloadMatcher = enrollmentPayloadMatcher(enrollmentIdentifier)
+
     const reasonFlags = {
       faceScanLivenessCheckSucceeded: false,
       ...withReasonFlags
     }
 
     const response = {
-      success: false,
-      externalDatabaseRefID: enrollmentIdentifier
+      externalDatabaseRefID: enrollmentIdentifier,
+      success: false
     }
 
-    faceScanResponse('enrollment', response, reasonFlags)
+    faceScanResponse('enrollment', payloadMatcher, response, reasonFlags)
   }
 
-  const mockEnrollmentAlreadyExists = () =>
-    zoomServiceMock.onPost('/enrollment-3d').reply(200, mockErrorResponse(dbInternalEnrollmentAlreadyExists))
+  const mockEnrollmentAlreadyExists = enrollmentIdentifier =>
+    zoomServiceMock
+      .onPost('/enrollment-3d', enrollmentPayloadMatcher(enrollmentIdentifier))
+      .reply(200, mockErrorResponse(dbInternalEnrollmentAlreadyExists))
+
+  const mock3dDatabaseEnrollmentSuccess = mockSuccessIndexEnrollment
+
+  const mock3dDatabaseEnrollmentFailed = enrollmentIdentifier =>
+    mockFailedIndexEnrollment(enrollmentIdentifier, failedEnrollmentMessage)
 
   return {
     enrollmentUri,
+    enrollmentPayloadMatcher,
     mockErrorResponse,
     serviceErrorMessage,
 
@@ -190,6 +225,9 @@ export default zoomServiceMock => {
     enrollmentAlreadyExistsMessage,
     mockSuccessEnrollment,
     mockFailedEnrollment,
-    mockEnrollmentAlreadyExists
+    mockEnrollmentAlreadyExists,
+
+    mock3dDatabaseEnrollmentSuccess,
+    mock3dDatabaseEnrollmentFailed
   }
 }

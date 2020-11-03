@@ -4,7 +4,6 @@ import MockAdapter from 'axios-mock-adapter'
 import { assign, omit, invokeMap } from 'lodash'
 
 import createEnrollmentProcessor, { DISPOSE_ENROLLMENTS_TASK } from '../EnrollmentProcessor'
-import { GunDBPublic } from '../../../gun/gun-middleware'
 import AdminWallet from '../../../blockchain/AdminWallet'
 import { ClaimQueue } from '../../../claimQueue/claimQueueAPI'
 
@@ -22,9 +21,6 @@ const removeDelayedTasksMock = jest.fn()
 const failDelayedTasksMock = jest.fn()
 
 // GUN mocks
-const updateSessionMock = jest.fn()
-const getSessionRefMock = jest.fn()
-const getSessionRefImplementation = GunDBPublic.session
 const setWhitelistedImplementation = ClaimQueue.setWhitelisted
 
 // queue mocks
@@ -50,7 +46,7 @@ const signature =
 
 const payload = {
   sessionId: 'fake-session-id',
-  faceMap: Buffer.alloc(32),
+  faceScan: Buffer.alloc(32),
   auditTrailImage: 'data:image/png:FaKEimagE==',
   lowQualityAuditTrailImage: 'data:image/png:FaKEimagE=='
 }
@@ -70,7 +66,6 @@ describe('EnrollmentProcessor', () => {
   const { keepEnrollments } = enrollmentProcessor
 
   beforeAll(() => {
-    GunDBPublic.session = getSessionRefMock
     AdminWallet.whitelistUser = whitelistUserMock
     AdminWallet.removeWhitelisted = removeWhitelistedMock
     AdminWallet.isVerified = isVerifiedMock
@@ -86,11 +81,11 @@ describe('EnrollmentProcessor', () => {
     isVerifiedMock.mockResolvedValue(false)
     hasTasksQueuedMock.mockReturnValue(false)
     enqueueTaskMock.mockResolvedValue({ _id: 'fake-task-id' })
-    getSessionRefMock.mockImplementation(() => ({ put: updateSessionMock }))
 
     invokeMap(
       [
         updateUserMock,
+
         fetchTasksForProcessingMock,
         failDelayedTasksMock,
         removeDelayedTasksMock,
@@ -105,14 +100,12 @@ describe('EnrollmentProcessor', () => {
     invokeMap(
       [
         updateUserMock,
+
         hasTasksQueuedMock,
         enqueueTaskMock,
         fetchTasksForProcessingMock,
         failDelayedTasksMock,
         removeDelayedTasksMock,
-
-        updateSessionMock,
-        getSessionRefMock,
 
         whitelistInQueueMock,
 
@@ -124,13 +117,11 @@ describe('EnrollmentProcessor', () => {
     )
 
     zoomServiceMock.reset()
-    zoomServiceMock.resetHistory()
   })
 
   afterAll(() => {
     const restoreWalletMethods = ['whitelistUser', 'removeWhitelisted', 'isVerified']
 
-    GunDBPublic.session = getSessionRefImplementation
     ClaimQueue.whitelistUser = setWhitelistedImplementation
     restoreWalletMethods.forEach(method => (AdminWallet[method] = AdminWallet.constructor.prototype[method]))
 
@@ -150,7 +141,7 @@ describe('EnrollmentProcessor', () => {
     await testValidation(enrollmentProcessor.validate(user, enrollmentIdentifier, omit(payload, 'sessionId')))
   })
 
-  /*test('validate() fails if user is being deleted', async () => {
+  test('validate() fails if user is being deleted', async () => {
     hasTasksQueuedMock.mockReturnValueOnce(true)
 
     await testValidation(
@@ -168,8 +159,10 @@ describe('EnrollmentProcessor', () => {
   })
 
   test("enroll() proxies provider's response, updates session and whitelists user on success", async () => {
-    helper.mockEmptyResultsFaceSearch()
+    helper.mockEnrollmentNotFound(enrollmentIdentifier)
     helper.mockSuccessEnrollment(enrollmentIdentifier)
+    helper.mockEmptyResultsFaceSearch()
+    helper.mock3dDatabaseEnrollmentSuccess()
 
     const { gdAddress, profilePublickey, loggedInAs } = user
     const wrappedResponse = expect(enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)).resolves
@@ -178,18 +171,14 @@ describe('EnrollmentProcessor', () => {
     await wrappedResponse.toHaveProperty('success', true)
     await wrappedResponse.toHaveProperty('enrollmentResult.isVerified', true)
 
-    expect(getSessionRefMock).toHaveBeenCalledWith(payload.sessionId)
-    expect(updateSessionMock).toHaveBeenNthCalledWith(1, { isStarted: true })
-    expect(updateSessionMock).toHaveBeenNthCalledWith(2, { isDuplicate: false })
-    expect(updateSessionMock).toHaveBeenNthCalledWith(3, { isEnrolled: true, isLive: true })
-    expect(updateSessionMock).toHaveBeenNthCalledWith(4, { isWhitelisted: true })
-
     expect(updateUserMock).toHaveBeenCalledWith({ identifier: loggedInAs, isVerified: true })
     expect(whitelistInQueueMock).toHaveBeenCalledWith(user, storageMock, expect.anything())
     expect(whitelistUserMock).toHaveBeenCalledWith(gdAddress, profilePublickey)
   })
 
   test("enroll() proxies provider's error and sets error + non-whitelisted state in the session", async () => {
+    helper.mockEnrollmentNotFound(enrollmentIdentifier)
+    helper.mockSuccessEnrollment(enrollmentIdentifier)
     helper.mockDuplicateFound()
 
     const wrappedResponse = expect(enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)).resolves
@@ -197,29 +186,17 @@ describe('EnrollmentProcessor', () => {
     await wrappedResponse.toHaveProperty('success', false)
     await wrappedResponse.toHaveProperty('error', helper.duplicateFoundMessage)
     await wrappedResponse.toHaveProperty('enrollmentResult.isVerified', false)
-
-    expect(getSessionRefMock).toHaveBeenCalledWith(payload.sessionId)
-    expect(updateSessionMock).toHaveBeenNthCalledWith(1, { isStarted: true })
-    expect(updateSessionMock).toHaveBeenNthCalledWith(2, { isDuplicate: true })
-
-    expect(updateSessionMock).toHaveBeenNthCalledWith(3, {
-      isLive: false,
-      isDuplicate: true,
-      isEnrolled: false,
-      isWhitelisted: false,
-      isError: helper.duplicateFoundMessage
-    })
   })
 
   test('enqueueDisposal() enqueues disposal task', async () => {
-    helper.mockEnrollmentFound(enrollmentIdentifier)
+    helper.mockSuccessReadEnrollmentIndex()
 
     await expect(enrollmentProcessor.enqueueDisposal(user, enrollmentIdentifier, signature)).resolves.toBeUndefined()
     expect(enqueueTaskMock).toHaveBeenCalledWith(DISPOSE_ENROLLMENTS_TASK, enrollmentIdentifier)
   })
 
   test("enqueueDisposal() de-whitelists user if it's whitelisted", async () => {
-    helper.mockEnrollmentFound(enrollmentIdentifier)
+    helper.mockSuccessReadEnrollmentIndex()
     isVerifiedMock.mockResolvedValueOnce(true)
 
     await expect(enrollmentProcessor.enqueueDisposal(user, enrollmentIdentifier, signature)).resolves.toBeUndefined()
@@ -227,7 +204,7 @@ describe('EnrollmentProcessor', () => {
   })
 
   test('enqueueDisposal() disposes enrollment immediately if KEEP_FACE_VERIFICATION_RECORDS = 0', async () => {
-    helper.mockEnrollmentFound(enrollmentIdentifier)
+    helper.mockSuccessReadEnrollmentIndex()
     enrollmentProcessor.keepEnrollments = 0
 
     await expect(enrollmentProcessor.enqueueDisposal(user, enrollmentIdentifier, signature)).resolves.toBeUndefined()
@@ -235,7 +212,7 @@ describe('EnrollmentProcessor', () => {
     const [disposeRequest] = zoomServiceMock.history.delete
 
     expect(disposeRequest).toBeDefined()
-    expect(disposeRequest.url).toBe(helper.enrollmentUri(enrollmentIdentifier))
+    expect(JSON.parse(disposeRequest.data)).toHaveProperty('externalDatabaseRefID', enrollmentIdentifier)
   })
 
   test('enqueueDisposal() fails with invalid signature', async () => {
@@ -245,7 +222,7 @@ describe('EnrollmentProcessor', () => {
   })
 
   test("enqueueDisposal() doesn't enqueues if enrollment isn't exists", async () => {
-    helper.mockEnrollmentNotFound(enrollmentIdentifier)
+    helper.mockEnrollmentNotExistsDuringReadIndex()
 
     await expect(enrollmentProcessor.enqueueDisposal(user, enrollmentIdentifier, signature)).resolves.toBeUndefined()
     expect(enqueueTaskMock).not.toHaveBeenCalled()
@@ -263,8 +240,8 @@ describe('EnrollmentProcessor', () => {
       }))
     )
 
-    helper.mockEnrollmentFound(enrollmentIdentifier)
-    helper.mockServiceErrorHappenedWhileDisposing(failedEnrollmentIdentifier)
+    helper.mockSuccessRemoveEnrollmentFromIndex(enrollmentIdentifier)
+    helper.mockServiceErrorHappenedWhileDisposing(enrollmentIdentifier)
 
     await expect(enrollmentProcessor.disposeEnqueuedEnrollments(onProcessedMock)).resolves.toBeUndefined()
 
@@ -277,5 +254,5 @@ describe('EnrollmentProcessor', () => {
 
     expect(failDelayedTasksMock).toHaveBeenCalledWith([taskId(failedEnrollmentIdentifier)])
     expect(removeDelayedTasksMock).toHaveBeenCalledWith([taskId(enrollmentIdentifier)])
-  })*/
+  })
 })

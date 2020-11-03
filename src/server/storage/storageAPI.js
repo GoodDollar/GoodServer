@@ -332,11 +332,11 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
   app.post(
     '/admin/user/list',
     adminAuthenticate,
-    wrapAsync(async (req, res, next) => {
-      const { body } = req
+    wrapAsync(async (_, res) => {
       let done = jsonres => {
         res.json(jsonres)
       }
+
       storage.listUsers(done)
     })
   )

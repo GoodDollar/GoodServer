@@ -1,6 +1,7 @@
 // @flow
 
 import MockAdapter from 'axios-mock-adapter'
+import allSettled from 'promise.allsettled'
 
 import config from '../../../server.config'
 import getZoomAPI, { ZoomAPIError } from '../ZoomAPI'
@@ -93,7 +94,7 @@ describe('ZoomAPI', () => {
     helper.mockFailedLivenessCheck()
     helper.mockFailedEnrollment(enrollmentIdentifier)
 
-    await Promise.all(
+    await allSettled(
       [ZoomAPI.checkLiveness(payload), ZoomAPI.submitEnrollment(enrollmentIdentifier, payload)].map(async promise => {
         const wrappedResponse = expect(promise).rejects
 
@@ -109,7 +110,7 @@ describe('ZoomAPI', () => {
     let wrappedResponse
 
     const shouldThrowWith = (name, message) =>
-      Promise.all(
+      allSettled(
         [ZoomAPI.checkLiveness(payload), ZoomAPI.submitEnrollment(enrollmentIdentifier, payload)].map(
           async (promise, index) => {
             let prefix = failedLivenessMessage
@@ -164,7 +165,7 @@ describe('ZoomAPI', () => {
     const messages = operations.map(operation => `Unknown exception happened during ${operation} request`)
 
     const shouldThrowWithUnknownError = () =>
-      Promise.all(
+      allSettled(
         [
           ZoomAPI.checkLiveness(payload),
           ZoomAPI.submitEnrollment(enrollmentIdentifier, payload)
@@ -185,11 +186,11 @@ describe('ZoomAPI', () => {
   })
 
   test('enrollments index (add / read / remove) methods should return success', async () => {
-    helper.mockSuccessIndexEnrollment()
-    helper.mockSuccessReadEnrollmentIndex()
-    helper.mockSuccessRemoveEnrollmentFromIndex()
+    helper.mockSuccessIndexEnrollment(enrollmentIdentifier)
+    helper.mockSuccessReadEnrollmentIndex(enrollmentIdentifier)
+    helper.mockSuccessRemoveEnrollmentFromIndex(enrollmentIdentifier)
 
-    await Promise.all(
+    await allSettled(
       [
         ZoomAPI.indexEnrollment(enrollmentIdentifier, indexName),
         ZoomAPI.readEnrollmentIndex(enrollmentIdentifier, indexName),
@@ -206,12 +207,12 @@ describe('ZoomAPI', () => {
   test('enrollments index (add / read / remove / search) methods should use default index', async () => {
     const { zoomSearchIndexName } = config
 
-    helper.mockSuccessIndexEnrollment()
-    helper.mockSuccessReadEnrollmentIndex()
-    helper.mockSuccessRemoveEnrollmentFromIndex()
-    helper.mockEmptyResultsFaceSearch()
+    helper.mockSuccessIndexEnrollment(enrollmentIdentifier)
+    helper.mockSuccessReadEnrollmentIndex(enrollmentIdentifier)
+    helper.mockSuccessRemoveEnrollmentFromIndex(enrollmentIdentifier)
+    helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
 
-    await Promise.all([
+    await allSettled([
       ZoomAPI.indexEnrollment(enrollmentIdentifier),
       ZoomAPI.readEnrollmentIndex(enrollmentIdentifier),
       ZoomAPI.removeEnrollmentFromIndex(enrollmentIdentifier),
@@ -224,12 +225,12 @@ describe('ZoomAPI', () => {
   })
 
   test("enrollments index (add / read / remove / search) methods should throw in enrollment doesn't exists", async () => {
-    helper.mockEnrollmentNotExistsDuringIndex()
-    helper.mockEnrollmentNotExistsDuringReadIndex()
-    helper.mockEnrollmentNotExistsDuringRemoveFromIndex()
-    helper.mockEnrollmentNotExistsDuringSearch()
+    helper.mockEnrollmentNotExistsDuringIndex(enrollmentIdentifier)
+    helper.mockEnrollmentNotExistsDuringReadIndex(enrollmentIdentifier)
+    helper.mockEnrollmentNotExistsDuringRemoveFromIndex(enrollmentIdentifier)
+    helper.mockEnrollmentNotExistsDuringSearch(enrollmentIdentifier)
 
-    await Promise.all(
+    await allSettled(
       [
         ZoomAPI.indexEnrollment(enrollmentIdentifier, indexName),
         ZoomAPI.readEnrollmentIndex(enrollmentIdentifier, indexName),
@@ -246,12 +247,12 @@ describe('ZoomAPI', () => {
 
     const [failedIndexMessage, failedReadIndexMessage, failedRemoveMessage, failedSearchMessage] = failedMessages
 
-    helper.mockFailedIndexEnrollment(failedIndexMessage)
-    helper.mockFailedReadEnrollmentIndex(failedReadIndexMessage)
-    helper.mockFailedRemoveEnrollmentFromIndex(failedRemoveMessage)
-    helper.mockFailedSearch(failedSearchMessage)
+    helper.mockFailedIndexEnrollment(enrollmentIdentifier, failedIndexMessage)
+    helper.mockFailedReadEnrollmentIndex(enrollmentIdentifier, failedReadIndexMessage)
+    helper.mockFailedRemoveEnrollmentFromIndex(enrollmentIdentifier, failedRemoveMessage)
+    helper.mockFailedSearch(enrollmentIdentifier, failedSearchMessage)
 
-    await Promise.all(
+    await allSettled(
       [
         ZoomAPI.indexEnrollment(enrollmentIdentifier, indexName),
         ZoomAPI.readEnrollmentIndex(enrollmentIdentifier, indexName),
@@ -262,7 +263,7 @@ describe('ZoomAPI', () => {
   })
 
   test('faceSearch() should return enrollments with match levels', async () => {
-    helper.mockDuplicateFound()
+    helper.mockDuplicateFound(enrollmentIdentifier)
 
     const promise = ZoomAPI.faceSearch(enrollmentIdentifier, matchLevel, indexName)
     const wrappedResponse = expect(promise).resolves
@@ -283,7 +284,7 @@ describe('ZoomAPI', () => {
   test('faceSearch() should use default match level', async () => {
     const { zoomMinimalMatchLevel } = config
 
-    helper.mockEmptyResultsFaceSearch()
+    helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
     await ZoomAPI.faceSearch(enrollmentIdentifier)
 
     zoomServiceMock.history.post.forEach(({ data }) => {
@@ -311,10 +312,12 @@ describe('ZoomAPI', () => {
   })
 
   test('API methods should throw on server / connection errors', async () => {
+    const payloadMatcher = helper.enrollmentPayloadMatcher(enrollmentIdentifier)
+
     zoomServiceMock
-      .onPost('/enrollment-3d')
+      .onPost('/enrollment-3d', payloadMatcher)
       .networkErrorOnce()
-      .onPost('/enrollment-3d')
+      .onPost('/enrollment-3d', payloadMatcher)
       .replyOnce(500)
 
     await expect(ZoomAPI.submitEnrollment(enrollmentIdentifier, payload)).rejects.toThrow('Network Error')
