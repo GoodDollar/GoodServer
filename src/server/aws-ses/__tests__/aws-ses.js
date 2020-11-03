@@ -1,3 +1,4 @@
+// @flow
 import MockSES from 'aws-sdk/clients/ses'
 import { sendTemplateEmail } from '../aws-ses'
 import conf from '../../server.config'
@@ -27,7 +28,7 @@ describe('sendTemplateEmail', () => {
     }
 
     const recipientEmail = 'some@email.com'
-    const result = await sendTemplateEmail(recipientEmail, templateData)
+    await sendTemplateEmail(recipientEmail, templateData)
     expect(mSes.sendTemplatedEmail).toBeCalledWith({
       Source: conf.awsSesSourceVerificationEmail,
       Destination: {
