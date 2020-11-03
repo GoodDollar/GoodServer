@@ -13,6 +13,7 @@ import requestTimeout from '../utils/timeout'
 import OTP from '../../imports/otp'
 import conf from '../server.config'
 import { Mautic } from '../mautic/mauticAPI'
+import { sendTemplateEmail } from '../aws-ses/aws-ses'
 import W3Helper from '../utils/W3Helper'
 import gdToWei from '../utils/gdToWei'
 import txManager from '../utils/tx-manager'
@@ -318,7 +319,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
             mobile: hashedNewMobile
           }),
           user.createdDate && //keep temporary field if user is signing up
-            storage.model.updateOne({ identifier: user.loggedInAs }, { $unset: { 'otp.mobile': true } })
+          storage.model.updateOne({ identifier: user.loggedInAs }, { $unset: { 'otp.mobile': true } })
         ])
       }
 
@@ -472,13 +473,15 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
         if (!user.isEmailConfirmed || isEmailChanged) {
           try {
-            await Mautic.sendVerificationEmail(
-              {
-                ...userRec,
-                mauticId: tempMauticId || mauticId
-              },
-              code
-            )
+            const { fullName } = userRec
+            if (!code || !fullName || !email) {
+              throw new Error('missing input for sending verification email')
+            }
+            const templateData = {
+              firstname: fullName,
+              code: parseInt(code)
+            }
+            await sendTemplateEmail(email, templateData)
             log.debug('sent new user email validation code', code)
           } catch (e) {
             log.error('failed sending email verification to user:', e.message, e, { userRec, code })
@@ -572,10 +575,10 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
         const [, , signedEmail] = await Promise.all([
           user.createdDate && //keep temporary field if user is signing up
-            storage.model.updateOne(
-              { identifier: user.loggedInAs },
-              { $unset: { 'otp.email': 1, 'otp.tempMauticId': 1 } }
-            ),
+          storage.model.updateOne(
+            { identifier: user.loggedInAs },
+            { $unset: { 'otp.email': 1, 'otp.tempMauticId': 1 } }
+          ),
           storage.updateUser(updateUserUbj),
           gunPublic.signClaim(req.user.profilePubkey, { hasEmail: hashedNewEmail })
         ])
