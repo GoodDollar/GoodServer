@@ -339,13 +339,13 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
 
       if (existing.length) {
         //prefer oldest verified account
-        const sorted = sortBy(existing, ['isVerified', 'createdDate'])
+        const { torusProvider, fullName } = first(sortBy(existing, ['isVerified', 'createdDate']))
         return res.json({
           ok: 1,
           found: existing.length,
           exists: true,
-          provider: sorted[0].torusProvider,
-          fullName: sorted[0].fullName
+          provider: torusProvider,
+          fullName
         })
       }
 
