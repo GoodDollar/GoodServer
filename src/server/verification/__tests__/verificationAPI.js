@@ -109,6 +109,13 @@ describe('verificationAPI', () => {
         .expect(200, { success: true, isDisposing })
     }
 
+    const testWhitelisted = async () => {
+      const { address, profilePublickey } = await getCreds()
+
+      // checking is user was actrally re-whitelisted in the wallet
+      expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), profilePublickey)
+    }
+
     beforeAll(async () => {
       AdminWallet.whitelistUser = whitelistUserMock
       AdminWallet.isVerified = isVerifiedMock
@@ -304,8 +311,6 @@ describe('verificationAPI', () => {
     })
 
     test('PUT /verify/face/:enrollmentIdentifier skips verification and re-whitelists user was already verified', async () => {
-      const { address, profilePublickey } = await getCreds()
-
       await storage.updateUser({ identifier: userIdentifier, isVerified: true })
 
       await request(server)
@@ -314,12 +319,10 @@ describe('verificationAPI', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200, { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } })
 
-      // checking is user was actrally re-whitelisted in the wallet
-      expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), profilePublickey)
+      await testWhitelisted()
     })
 
     test('PUT /verify/face/:enrollmentIdentifier skips verification and re-whitelists user if request comes from E2E test runs', async () => {
-      const { address, profilePublickey } = await getCreds()
       const currentEnv = Config.env
 
       Config.env = 'development'
@@ -333,10 +336,7 @@ describe('verificationAPI', () => {
           'Mozilla/5.0 (X11; Linux x86_64; Cypress) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36'
         )
         .expect(200, { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } })
-        .then(() => {
-          // checking is user was actrally re-whitelisted in the wallet
-          expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), profilePublickey)
-        })
+        .then(testWhitelisted)
         .finally(() => (Config.env = currentEnv))
     })
 

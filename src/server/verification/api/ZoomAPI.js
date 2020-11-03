@@ -145,13 +145,6 @@ class ZoomAPI {
     return this._3dDbRequest('search', enrollmentIdentifier, indexName, { minMatchLevel }, customLogger)
   }
 
-  isLivenessCheckPassed(response) {
-    const { faceScanSecurityChecks } = response || {}
-    const { faceScanLivenessCheckSucceeded } = faceScanSecurityChecks || {}
-
-    return true === faceScanLivenessCheckSucceeded
-  }
-
   _configureClient(Config, logger) {
     const { zoomLicenseKey, zoomServerBaseUrl } = Config
     const serverURL = new URL(zoomServerBaseUrl)
@@ -308,10 +301,10 @@ class ZoomAPI {
 
     const response = await this.http.post(`/${operation}-3d`, payloadData, { customLogger })
     const { LivenessCheckFailed, SecurityCheckFailed } = ZoomAPIError
-    const isLivenessPassed = this.isLivenessCheckPassed(response)
     const { success, faceScanSecurityChecks } = response
 
     const {
+      faceScanLivenessCheckSucceeded,
       auditTrailVerificationCheckSucceeded,
       replayCheckSucceeded,
       sessionTokenCheckSucceeded
@@ -324,7 +317,7 @@ class ZoomAPI {
         message = 'Session token is missing or was failed to be checked'
       } else if (!replayCheckSucceeded) {
         message = 'Replay check was failed'
-      } else if (!isLivenessPassed) {
+      } else if (!faceScanLivenessCheckSucceeded) {
         message = failedLivenessMessage
 
         if (!auditTrailVerificationCheckSucceeded) {
@@ -336,7 +329,7 @@ class ZoomAPI {
 
       if (!sessionTokenCheckSucceeded || !replayCheckSucceeded) {
         exception.name = SecurityCheckFailed
-      } else if (!isLivenessPassed) {
+      } else if (!faceScanLivenessCheckSucceeded) {
         exception.name = LivenessCheckFailed
       }
 
