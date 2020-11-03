@@ -539,6 +539,36 @@ const conf = convict({
     format: String,
     default: '',
     env: 'AMPLITUDE_KEY'
+  },
+  awsSesAccessKey: {
+    doc: 'aws ses access key for email verification',
+    format: String,
+    default: '',
+    env: 'AWS_SES_ACCESS_KEY'
+  },
+  awsSesSecretAccessKey: {
+    doc: 'aws ses secret access key for email verification',
+    format: String,
+    default: '',
+    env: 'AWS_SES_SECRET_ACCESS_KEY'
+  },
+  awsSesRegion: {
+    doc: 'aws ses region for email verification',
+    format: String,
+    default: 'eu-west-1',
+    env: 'AWS_SES_REGION'
+  },
+  awsSesSourceVerificationEmail: {
+    doc: 'aws ses source verification email',
+    format: String,
+    default: 'GoodDollar <support@gooddollar.org>',
+    env: 'AWS_SES_SOURCE_VERIFICATION_EMAIL'
+  },
+  awsSesTemplateName: {
+    doc: 'aws ses template name verification email',
+    format: String,
+    default: 'VerificationEmail',
+    env: 'AWS_SES_TEMPLATE_NAME'
   }
 })
 
