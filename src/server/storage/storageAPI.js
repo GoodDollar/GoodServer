@@ -23,13 +23,14 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const { user, body, log } = req
-      const identifier = get(body, 'user.identifier') || user.loggedInAs
+      const { loggedInAs } = user
+      const identifier = get(body, 'user.identifier', loggedInAs)
 
       log.debug(`${req.baseUrl} auth:`, { user, body })
 
-      if (user.loggedInAs !== identifier) {
-        log.warn(`Trying to update other user data! ${user.loggedInAs}!==${identifier}`)
-        throw new Error(`Trying to update other user data! ${user.loggedInAs}!==${identifier}`)
+      if (loggedInAs !== identifier) {
+        log.warn(`Trying to update other user data! ${loggedInAs}!==${identifier}`)
+        throw new Error(`Trying to update other user data! ${loggedInAs}!==${identifier}`)
       } else next()
     })
   )
