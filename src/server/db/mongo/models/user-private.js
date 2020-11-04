@@ -15,10 +15,12 @@ export const UserPrivateSchema = new Schema(
       type: String
     },
     email: {
-      type: String
+      type: String,
+      index: { unique: false }
     },
     mobile: {
-      type: String
+      type: String,
+      index: { unique: false }
     },
     jwt: {
       type: String

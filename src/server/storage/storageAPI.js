@@ -1,7 +1,7 @@
 // @flow
 import { Router } from 'express'
 import passport from 'passport'
-import { defaults, omitBy } from 'lodash'
+import { defaults, get, omitBy, sortBy, first } from 'lodash'
 import { sha3 } from 'web3-utils'
 import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync, onlyInEnv } from '../utils/helpers'
@@ -19,6 +19,23 @@ const adminAuthenticate = (req, res, next) => {
 }
 
 const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
+  app.use(
+    ['/user/*'],
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res, next) => {
+      const { user, body, log } = req
+      const { loggedInAs } = user
+      const identifier = get(body, 'user.identifier', loggedInAs)
+
+      log.debug(`${req.baseUrl} auth:`, { user, body })
+
+      if (loggedInAs !== identifier) {
+        log.warn(`Trying to update other user data! ${loggedInAs}!==${identifier}`)
+        throw new Error(`Trying to update other user data! ${loggedInAs}!==${identifier}`)
+      } else next()
+    })
+  )
+
   /**
    * @api {post} /user/add Add user account
    * @apiName Add
@@ -31,7 +48,6 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
    */
   app.post(
     '/user/add',
-    passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const {
         env,
@@ -231,7 +247,6 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
   app.post(
     '/user/start',
     onlyInEnv('production', 'staging', 'test'),
-    passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { user } = req.body
       const { log: logger, user: existingUser } = req
@@ -262,7 +277,6 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
    */
   app.post(
     '/user/delete',
-    passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const { user, log } = req
       log.info('delete user', { user })
@@ -307,11 +321,49 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
    */
   app.get(
     '/user/exists',
-    passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const { user } = req
 
       res.json({ ok: 1, exists: user.createdDate != null, fullName: user.fullName })
+    })
+  )
+
+  /**
+   * @api {post} /userExists returns user registration method
+   * @apiGroup Storage
+   *
+   * @apiSuccess {Number} ok
+   * @apiSuccess {Boolean} exists
+   * @apiSuccess {String} fullName
+   * @apiSuccess {String} provider
+
+
+   * @ignore
+   */
+  app.post(
+    '/userExists',
+    wrapAsync(async (req, res, next) => {
+      const { identifier, email, mobile } = req.body
+      const existing = await storage.model
+        .find({
+          createdDate: { $exists: true },
+          $or: [{ identifier }, { email: email && sha3(email) }, { mobile: mobile && sha3(mobile) }]
+        })
+        .lean()
+
+      if (existing.length) {
+        //prefer oldest verified account
+        const { torusProvider, fullName } = first(sortBy(existing, ['isVerified', 'createdDate']))
+        return res.json({
+          ok: 1,
+          found: existing.length,
+          exists: true,
+          provider: torusProvider,
+          fullName
+        })
+      }
+
+      res.json({ ok: 0 })
     })
   )
 
@@ -333,7 +385,6 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
     '/admin/user/list',
     adminAuthenticate,
     wrapAsync(async (req, res, next) => {
-      const { body } = req
       let done = jsonres => {
         res.json(jsonres)
       }

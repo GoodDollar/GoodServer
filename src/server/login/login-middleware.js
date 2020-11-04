@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken'
 import passport from 'passport'
 import { ExtractJwt, Strategy } from 'passport-jwt'
 import { Router } from 'express'
-import { get, defaults } from 'lodash'
+import { defaults } from 'lodash'
 import moment from 'moment'
 import logger from '../../imports/logger'
 import { wrapAsync } from '../utils/helpers'
@@ -63,22 +63,6 @@ const setup = (app: Router) => {
   passport.use(strategy)
 
   app.use(passport.initialize())
-
-  app.use(
-    ['/user/*'],
-    passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res, next) => {
-      const { user, body, log } = req
-      const identifier = get(body, 'user.identifier') || user.loggedInAs
-
-      log.debug(`${req.baseUrl} auth:`, { user, body })
-
-      if (user.loggedInAs !== identifier) {
-        log.warn(`Trying to update other user data! ${user.loggedInAs}!==${identifier}`)
-        throw new Error(`Trying to update other user data! ${user.loggedInAs}!==${identifier}`)
-      } else next()
-    })
-  )
 
   /**
    * @api {post} /auth/eth Request user token
