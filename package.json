@@ -59,7 +59,7 @@
     "async-lock": "^1.2.4",
     "auto-changelog": "^1.16.4",
     "await-mutex": "^1.0.2",
-    "aws-sdk": "^2.759.0",
+    "aws-sdk": "^2.783.0",
     "axios": "^0.19.2",
     "big-number": "^2.0.0",
     "bip39-light": "^1.0.7",
