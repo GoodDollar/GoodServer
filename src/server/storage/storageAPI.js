@@ -343,6 +343,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
   app.post(
     '/userExists',
     wrapAsync(async (req, res, next) => {
+      const { log } = req
       const { identifier, email, mobile } = req.body
       const existing = await storage.model
         .find({
@@ -351,6 +352,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         })
         .lean()
 
+      log.debug('userExists:', { existing, identifier, email, mobile })
       if (existing.length) {
         //prefer oldest verified account
         const { torusProvider, fullName } = first(sortBy(existing, ['isVerified', 'createdDate']))
@@ -363,7 +365,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         })
       }
 
-      res.json({ ok: 0 })
+      res.json({ ok: 0, exists: false })
     })
   )
 
