@@ -8,8 +8,11 @@ const region = conf.awsSesRegion
 const sourceVerificationEmail = conf.awsSesSourceVerificationEmail
 const templateName = conf.awsSesTemplateName
 
-if (!accessKeyId || !secretAccessKey || !region || !sourceVerificationEmail || !templateName) {
-  throw new Error('Missing AWS configuration')
+let runInEnv = ['production', 'staging', 'test'].includes(conf.env)
+if (runInEnv) {
+  if (!accessKeyId || !secretAccessKey || !region || !sourceVerificationEmail || !templateName) {
+    throw new Error('Missing AWS configuration')
+  }
 }
 
 const SES_CONFIG = {
