@@ -259,6 +259,37 @@ describe('verificationAPI', () => {
       expect(whitelistUserMock).not.toHaveBeenCalled()
     })
 
+    test('PUT /verify/face/:enrollmentIdentifier returns 200 and success: false when unexpected error happens', async () => {
+      const unexpectedError = 'Unexpected error during search'
+
+      helper.mockEnrollmentNotFound(enrollmentIdentifier)
+      helper.mockSuccessEnrollment(enrollmentIdentifier)
+      helper.mockFailedSearch(enrollmentIdentifier, unexpectedError)
+
+      await request(server)
+        .put(enrollmentUri)
+        .send(payload)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200, {
+          success: false,
+          error: unexpectedError,
+          enrollmentResult: {
+            error: true,
+            success: false,
+            isVerified: false,
+            errorMessage: unexpectedError
+          }
+        })
+
+      // to check that user hasn't beed updated nowhere
+      // in the database
+      const { isVerified } = await storage.getUser(userIdentifier)
+
+      expect(isVerified).toBeFalsy()
+      // and in the wallet
+      expect(whitelistUserMock).not.toHaveBeenCalled()
+    })
+
     test('PUT /verify/face/:enrollmentIdentifier returns 400 and success = false when user not approved in the claim queue', async () => {
       // enabling claim queue.
       Config.claimQueueAllowed = 1

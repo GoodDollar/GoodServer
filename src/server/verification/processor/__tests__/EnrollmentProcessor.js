@@ -176,7 +176,7 @@ describe('EnrollmentProcessor', () => {
     expect(whitelistUserMock).toHaveBeenCalledWith(gdAddress, profilePublickey)
   })
 
-  test("enroll() proxies provider's error and sets error + non-whitelisted state in the session", async () => {
+  test("enroll() proxies provider's error", async () => {
     helper.mockEnrollmentNotFound(enrollmentIdentifier)
     helper.mockSuccessEnrollment(enrollmentIdentifier)
     helper.mockDuplicateFound(enrollmentIdentifier)
@@ -185,6 +185,20 @@ describe('EnrollmentProcessor', () => {
 
     await wrappedResponse.toHaveProperty('success', false)
     await wrappedResponse.toHaveProperty('error', helper.duplicateFoundMessage)
+    await wrappedResponse.toHaveProperty('enrollmentResult.isVerified', false)
+  })
+
+  test("enroll() catches unexpected provider's error", async () => {
+    const unexpectedError = 'Unexpected error during search'
+
+    helper.mockEnrollmentNotFound(enrollmentIdentifier)
+    helper.mockSuccessEnrollment(enrollmentIdentifier)
+    helper.mockFailedSearch(enrollmentIdentifier, unexpectedError)
+
+    const wrappedResponse = expect(enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)).resolves
+
+    await wrappedResponse.toHaveProperty('success', false)
+    await wrappedResponse.toHaveProperty('error', unexpectedError)
     await wrappedResponse.toHaveProperty('enrollmentResult.isVerified', false)
   })
 

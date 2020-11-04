@@ -16,6 +16,7 @@ export default zoomServiceMock => {
   const duplicateEnrollmentIdentifier = 'another-one-fake-enrollment-identifier'
   const dbInternalEnrollmentAlreadyExists = `An enrollment already exists for this externalDatabaseRefID.`
   const dbInternalEnrollmentDoesntExists = 'An enrollment does not exist for this externalDatabaseRefID.'
+  const searchIndexNotInitializedMessage = 'Tried to search a groupName when that groupName does not exist.'
 
   const enrollmentUri = enrollmentIdentifier => `/enrollment-3d/${encodeURIComponent(enrollmentIdentifier)}`
 
@@ -148,6 +149,9 @@ export default zoomServiceMock => {
 
   const mockFailedSearch = (enrollmentIdentifier, message) => dbFailedResponse('search', enrollmentIdentifier, message)
 
+  const mockSearchIndexNotInitialized = enrollmentIdentifier =>
+    mockFailedSearch(enrollmentIdentifier, searchIndexNotInitializedMessage)
+
   const mockEnrollmentNotExistsDuringSearch = enrollmentIdentifier =>
     dbFailedResponse('search', enrollmentIdentifier, dbInternalEnrollmentDoesntExists)
 
@@ -214,10 +218,12 @@ export default zoomServiceMock => {
 
     duplicateEnrollmentIdentifier,
     duplicateFoundMessage,
+    searchIndexNotInitializedMessage,
     mockEmptyResultsFaceSearch,
     mockDuplicateFound,
     mockFailedSearch,
     mockEnrollmentNotExistsDuringSearch,
+    mockSearchIndexNotInitialized,
 
     alreadyEnrolledMessage,
     successfullyEnrolledMessage,

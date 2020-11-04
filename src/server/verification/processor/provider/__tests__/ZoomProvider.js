@@ -31,13 +31,18 @@ const testSuccessfullEnrollment = async (alreadyEnrolled = false) => {
   expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(3, { isEnrolled: true })
 }
 
-const testEnrollmentServiceError = async errorMessage => {
-  const onEnrollmentProcessing = jest.fn()
+const testEnrollmentError = async (errorMessage, onProcessingMock = null) => {
+  const onEnrollmentProcessing = onProcessingMock || jest.fn()
   const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
 
   await wrappedResponse.toThrow(errorMessage)
   await wrappedResponse.not.toHaveProperty('response')
+}
 
+const testEnrollmentServiceError = async errorMessage => {
+  const onEnrollmentProcessing = jest.fn()
+
+  await testEnrollmentError(errorMessage, onEnrollmentProcessing)
   expect(onEnrollmentProcessing).not.toHaveBeenCalled()
 }
 
@@ -137,6 +142,7 @@ describe('ZoomProvider', () => {
 
   test('enroll() throws on any Zoom service error and terminates without returning any response or calling callback', async () => {
     const uri = helper.enrollmentUri(enrollmentIdentifier)
+    const unexpectedError = 'Unexpected error during search'
 
     zoomServiceMock
       .onGet(uri)
@@ -146,6 +152,14 @@ describe('ZoomProvider', () => {
 
     await testEnrollmentServiceError(helper.serviceErrorMessage)
     await testEnrollmentServiceError('Network Error')
+
+    zoomServiceMock.reset()
+
+    helper.mockEnrollmentNotFound(enrollmentIdentifier)
+    helper.mockSuccessEnrollment(enrollmentIdentifier)
+    helper.mockFailedSearch(unexpectedError)
+
+    await testEnrollmentError(unexpectedError)
   })
 
   test('isEnrollmentIndexed() checks enrollment existence', async () => {
