@@ -2,11 +2,11 @@
 import SES from 'aws-sdk/clients/ses'
 import conf from '../server.config'
 
-const accessKeyId = conf.awsSesAccessKey || null
-const secretAccessKey = conf.awsSesSecretAccessKey || null
-const region = conf.awsSesRegion || null
-const sourceVerificationEmail = conf.awsSesSourceVerificationEmail || null
-const templateName = conf.awsSesTemplateName || null
+const accessKeyId = conf.awsSesAccessKey
+const secretAccessKey = conf.awsSesSecretAccessKey
+const region = conf.awsSesRegion
+const sourceVerificationEmail = conf.awsSesSourceVerificationEmail
+const templateName = conf.awsSesTemplateName
 
 if (!accessKeyId || !secretAccessKey || !region || !sourceVerificationEmail || !templateName) {
   throw new Error('Missing AWS configuration')
