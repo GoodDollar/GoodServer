@@ -134,15 +134,35 @@ class ZoomAPI {
     return this._3dDbIndexRequest('delete', enrollmentIdentifier, indexName, customLogger)
   }
 
-  // eslint-disable-next-line require-await
   async faceSearch(enrollmentIdentifier, minimalMatchLevel: number = null, indexName = null, customLogger = null) {
     let minMatchLevel = minimalMatchLevel
+    let response
 
     if (null === minMatchLevel) {
       minMatchLevel = this.defaultMinimalMatchLevel
     }
 
-    return this._3dDbRequest('search', enrollmentIdentifier, indexName, { minMatchLevel }, customLogger)
+    try {
+      response = await this._3dDbRequest('search', enrollmentIdentifier, indexName, { minMatchLevel }, customLogger)
+    } catch (exception) {
+      // checking is the reason of error is index wasn't initialized yet
+      // that means there just no enrollment were added
+
+      // for some other kind of reason re-throwing an exception
+      if (!/groupName\s+does\s+not\s+exist/i.test(exception.message)) {
+        throw exception
+      }
+
+      // if it's because empty, non-initialized index - will
+      // ignore the error an return empty results
+      response = {
+        success: true,
+        error: false,
+        results: []
+      }
+    }
+
+    return response
   }
 
   _configureClient(Config, logger) {

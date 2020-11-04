@@ -43,6 +43,7 @@ export default class EnrollmentSession {
       Object.assign(result, { enrollmentResult })
     } catch (exception) {
       const { response, message } = exception
+      const logLevel = message.toLowerCase().includes('liveness') ? 'warn' : 'error'
 
       result = { success: false, error: message }
 
@@ -50,11 +51,7 @@ export default class EnrollmentSession {
         result.enrollmentResult = response
       }
 
-      if (message.toLowerCase().includes('liveness')) {
-        log.warn('Enrollment session failed with exception:', message, exception, { result })
-      } else {
-        log.error('Enrollment session failed with exception:', message, exception, { result })
-      }
+      log[logLevel]('Enrollment session failed with exception:', message, exception, { result })
     }
 
     return result

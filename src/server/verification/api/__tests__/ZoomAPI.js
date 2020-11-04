@@ -292,6 +292,16 @@ describe('ZoomAPI', () => {
     })
   })
 
+  test("faceSearch() should return empty results if index doesn't initialized yet", async () => {
+    helper.mockFailedSearch(enrollmentIdentifier, 'Tried to search a groupName when that groupName does not exist.')
+
+    const wrappedResponse = expect(ZoomAPI.faceSearch(enrollmentIdentifier)).resolves
+
+    await wrappedResponse.toHaveProperty('success', true)
+    await wrappedResponse.toHaveProperty('error', false)
+    await wrappedResponse.toHaveProperty('results', [])
+  })
+
   test('submitEnrollment() should enroll face and return enrollment identifier', async () => {
     helper.mockSuccessEnrollment(enrollmentIdentifier)
 
