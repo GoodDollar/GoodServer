@@ -41,7 +41,7 @@ describe('sendTemplateEmail', () => {
   })
 
   it('should throw if templateData is missing firstname param', async () => {
-    const mSes = new MockSES();
+    const mSes = new MockSES()
     mSes.sendTemplatedEmail().promise.mockReturnValue({
       ResponseMetadata: { RequestId: '78ecb4ef-2f7d-4d97-89e7-ccd56423f802' },
       MessageId: '01020175847408e6-057f405d-f09d-46ce-85eb-811528988332-000000'
@@ -56,7 +56,7 @@ describe('sendTemplateEmail', () => {
     expect(error.message).toEqual(`Invalid templateData ${JSON.stringify(templateData)}`)
   })
   it('should throw if templateData is missing code param', async () => {
-    const mSes = new MockSES();
+    const mSes = new MockSES()
     mSes.sendTemplatedEmail().promise.mockReturnValue({
       ResponseMetadata: { RequestId: '78ecb4ef-2f7d-4d97-89e7-ccd56423f802' },
       MessageId: '01020175847408e6-057f405d-f09d-46ce-85eb-811528988332-000000'

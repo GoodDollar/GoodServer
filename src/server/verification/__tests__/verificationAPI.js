@@ -16,6 +16,9 @@ import createEnrollmentProcessor, { DISPOSE_ENROLLMENTS_TASK } from '../processo
 import { getToken, getCreds } from '../../__util__/'
 import createMockingHelper from '../api/__tests__/__util__'
 
+import * as awsSes from '../../aws-ses/aws-ses'
+
+
 describe('verificationAPI', () => {
   let server
   const { skipEmailVerification, claimQueueAllowed } = Config
@@ -454,6 +457,12 @@ describe('verificationAPI', () => {
   })
 
   test('/verify/sendemail with creds', async () => {
+    // eslint-disable-next-line import/namespace
+    awsSes.sendTemplateEmail = jest.fn().mockReturnValue({
+      ResponseMetadata: { RequestId: '78ecb4ef-2f7d-4d97-89e7-ccd56423f802' },
+      MessageId: '01020175847408e6-057f405d-f09d-46ce-85eb-811528988332-000000'
+    })
+
     const token = await getToken(server)
 
     await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
@@ -481,9 +490,16 @@ describe('verificationAPI', () => {
     const dbUser = await storage.getUser(userIdentifier)
 
     expect(dbUser.emailVerificationCode).toBeTruthy()
+    awsSes.sendTemplateEmail.mockRestore()
   })
 
   test('/verify/sendemail should fail with 429 status - too many requests (rate limiter)', async () => {
+    // eslint-disable-next-line import/namespace
+    awsSes.sendTemplateEmail = jest.fn().mockReturnValue({
+      ResponseMetadata: { RequestId: '78ecb4ef-2f7d-4d97-89e7-ccd56423f802' },
+      MessageId: '01020175847408e6-057f405d-f09d-46ce-85eb-811528988332-000000'
+    })
+
     await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
 
     const user = await storage.updateUser({
@@ -510,6 +526,7 @@ describe('verificationAPI', () => {
     }
 
     expect(isFailsWithRateLimit).toBeTruthy()
+    awsSes.sendTemplateEmail.mockRestore()
   })
 
   test('/verify/w3/email without auth creds -> 401', () => {
