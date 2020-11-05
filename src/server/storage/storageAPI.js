@@ -1,7 +1,7 @@
 // @flow
 import { Router } from 'express'
 import passport from 'passport'
-import { defaults, get, omitBy, sortBy, first } from 'lodash'
+import { defaults, get, omitBy, sortBy, last } from 'lodash'
 import { sha3 } from 'web3-utils'
 import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync, onlyInEnv } from '../utils/helpers'
@@ -355,13 +355,16 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
       log.debug('userExists:', { existing, identifier, email, mobile })
       if (existing.length) {
         //prefer oldest verified account
-        const { torusProvider, fullName } = first(sortBy(existing, ['isVerified', 'createdDate']))
+        const bestExisting = last(sortBy(existing, [e => e.identifier === identifier, 'isVerified', 'createdDate']))
         return res.json({
           ok: 1,
           found: existing.length,
           exists: true,
-          provider: torusProvider,
-          fullName
+          provider: bestExisting.torusProvider,
+          identifier: identifier === bestExisting.identifier,
+          email: email && sha3(email) === bestExisting.email,
+          mobile: mobile && sha3(mobile) === bestExisting.mobile,
+          fullName: bestExisting.fullName
         })
       }
 
