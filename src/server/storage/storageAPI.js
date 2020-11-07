@@ -345,23 +345,24 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
     wrapAsync(async (req, res, next) => {
       const { log } = req
       const { identifier, email, mobile } = req.body
+      const identifierLC = identifier.toLowerCase()
       const existing = await storage.model
         .find({
           createdDate: { $exists: true },
-          $or: [{ identifier }, { email: email && sha3(email) }, { mobile: mobile && sha3(mobile) }]
+          $or: [{ identifier: identifierLC }, { email: email && sha3(email) }, { mobile: mobile && sha3(mobile) }]
         })
         .lean()
 
-      log.debug('userExists:', { existing, identifier, email, mobile })
+      log.debug('userExists:', { existing, identifier, identifierLC, email, mobile })
       if (existing.length) {
         //prefer oldest verified account
-        const bestExisting = last(sortBy(existing, [e => e.identifier === identifier, 'isVerified', 'createdDate']))
+        const bestExisting = last(sortBy(existing, [e => e.identifier === identifierLC, 'isVerified', 'createdDate']))
         return res.json({
           ok: 1,
           found: existing.length,
           exists: true,
           provider: bestExisting.torusProvider,
-          identifier: identifier === bestExisting.identifier,
+          identifier: identifierLC === bestExisting.identifier,
           email: email && sha3(email) === bestExisting.email,
           mobile: mobile && sha3(mobile) === bestExisting.mobile,
           fullName: bestExisting.fullName
