@@ -287,6 +287,10 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           .catch(e => ({ mongodb: 'failed' })),
         storage
           .getCountMauticId(user.mauticId)
+          .then(count => {
+            log.info('getCountMauticId', { count, mauticId: user.mauticId })
+            return count
+          })
           .catch(e => {
             log.warn('getCountMauticId failed:', e.message, e)
             return 1

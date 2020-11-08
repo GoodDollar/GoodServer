@@ -194,7 +194,7 @@ class UserPrivate {
    * @returns {Promise<*>}
    */
   async getCountMauticId(mauticId: number): Promise<number> {
-    return await this.model.countDocuments({ mauticId }).lean()
+    return await this.model.countDocuments({ mauticId })
   }
 
   /**
