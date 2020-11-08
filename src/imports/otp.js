@@ -56,8 +56,9 @@ export default new (class {
       return await service.verifications.create(payload)
     } catch (exception) {
       const { message } = exception
+      const logFunc = message === 'Max send attempts reached' ? 'warn' : 'error'
 
-      log.error('Error sending OTP:', message, exception, { mobile })
+      log[logFunc]('Error sending OTP:', message, exception, { mobile })
       throw exception
     }
   }
