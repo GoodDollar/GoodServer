@@ -285,8 +285,14 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         (user.identifier ? storage.deleteUser(user) : Promise.reject())
           .then(r => ({ mongodb: 'ok' }))
           .catch(e => ({ mongodb: 'failed' })),
-        Mautic.deleteContact(user)
-          .then(r => ({ mautic: 'ok' }))
+        storage
+          .getCountMauticId(user.mauticId)
+          .catch(e => {
+            log.warn('getCountMauticId failed:', e.message, e)
+            return 1
+          })
+          .then(count => (count === 1 ? Mautic.deleteContact(user) : count))
+          .then(r => ({ mautic: r > 1 ? 'okMultiNotDeleted' : 'ok' }))
           .catch(e => ({ mautic: 'failed' })),
         fetch(`https://api.fullstory.com/users/v1/individual/${user.identifier}`, {
           headers: { Authorization: `Basic ${conf.fullStoryKey}` },
