@@ -203,31 +203,15 @@ describe('EnrollmentProcessor', () => {
   })
 
   test('enqueueDisposal() enqueues disposal task', async () => {
-    helper.mockSuccessReadEnrollmentIndex()
-
     await expect(enrollmentProcessor.enqueueDisposal(user, enrollmentIdentifier, signature)).resolves.toBeUndefined()
     expect(enqueueTaskMock).toHaveBeenCalledWith(DISPOSE_ENROLLMENTS_TASK, enrollmentIdentifier)
   })
 
   test("enqueueDisposal() de-whitelists user if it's whitelisted", async () => {
-    helper.mockSuccessReadEnrollmentIndex(enrollmentIdentifier)
     isVerifiedMock.mockResolvedValueOnce(true)
 
     await expect(enrollmentProcessor.enqueueDisposal(user, enrollmentIdentifier, signature)).resolves.toBeUndefined()
     expect(removeWhitelistedMock).toHaveBeenCalledWith(user.gdAddress)
-  })
-
-  test('enqueueDisposal() disposes enrollment immediately if KEEP_FACE_VERIFICATION_RECORDS = 0', async () => {
-    helper.mockSuccessReadEnrollmentIndex(enrollmentIdentifier)
-    helper.mockSuccessRemoveEnrollmentFromIndex(enrollmentIdentifier)
-    enrollmentProcessor.keepEnrollments = 0
-
-    await expect(enrollmentProcessor.enqueueDisposal(user, enrollmentIdentifier, signature)).resolves.toBeUndefined()
-
-    const [, disposeRequest] = zoomServiceMock.history.post
-
-    expect(disposeRequest).toBeDefined()
-    expect(JSON.parse(disposeRequest.data)).toHaveProperty('identifier', enrollmentIdentifier)
   })
 
   test('enqueueDisposal() fails with invalid signature', async () => {
@@ -236,20 +220,14 @@ describe('EnrollmentProcessor', () => {
     )
   })
 
-  test("enqueueDisposal() doesn't enqueues if enrollment isn't exists", async () => {
-    helper.mockEnrollmentNotExistsDuringReadIndex(enrollmentIdentifier)
-
-    await expect(enrollmentProcessor.enqueueDisposal(user, enrollmentIdentifier, signature)).resolves.toBeUndefined()
-    expect(enqueueTaskMock).not.toHaveBeenCalled()
-  })
-
   test('disposeEnqueuedEnrollments() calls callback, fails unsuccessfull tasks and removes successfull tasks from queue', async () => {
+    const unexistingEnrollmentIdentifier = 'unexisting-enrollment-identifier'
     const failedEnrollmentIdentifier = 'failed-enrollment-identifier'
     const taskId = identifier => `${identifier}-task-id`
     const onProcessedMock = jest.fn()
 
     fetchTasksForProcessingMock.mockResolvedValueOnce(
-      [failedEnrollmentIdentifier, enrollmentIdentifier].map(identifier => ({
+      [unexistingEnrollmentIdentifier, failedEnrollmentIdentifier, enrollmentIdentifier].map(identifier => ({
         _id: taskId(identifier),
         subject: identifier
       }))
@@ -257,10 +235,13 @@ describe('EnrollmentProcessor', () => {
 
     helper.mockSuccessRemoveEnrollmentFromIndex(enrollmentIdentifier)
     helper.mockServiceErrorDuringRemoveFromIndex(failedEnrollmentIdentifier)
+    helper.mockEnrollmentNotExistsDuringReadIndex(unexistingEnrollmentIdentifier)
+    ;[enrollmentIdentifier, failedEnrollmentIdentifier].forEach(helper.mockSuccessReadEnrollmentIndex)
 
     await expect(enrollmentProcessor.disposeEnqueuedEnrollments(onProcessedMock)).resolves.toBeUndefined()
 
     expect(onProcessedMock).toHaveBeenCalledWith(enrollmentIdentifier)
+    expect(onProcessedMock).toHaveBeenCalledWith(unexistingEnrollmentIdentifier)
     expect(onProcessedMock).toHaveBeenCalledWith(failedEnrollmentIdentifier, expect.any(Error))
     expect(onProcessedMock).toHaveBeenCalledWith(
       failedEnrollmentIdentifier,
@@ -268,6 +249,9 @@ describe('EnrollmentProcessor', () => {
     )
 
     expect(failDelayedTasksMock).toHaveBeenCalledWith([taskId(failedEnrollmentIdentifier)])
-    expect(removeDelayedTasksMock).toHaveBeenCalledWith([taskId(enrollmentIdentifier)])
+
+    expect(removeDelayedTasksMock).toHaveBeenCalledWith(
+      [unexistingEnrollmentIdentifier, enrollmentIdentifier].map(taskId)
+    )
   })
 })

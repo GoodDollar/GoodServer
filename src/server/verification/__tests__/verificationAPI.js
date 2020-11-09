@@ -385,22 +385,6 @@ describe('verificationAPI', () => {
       )
     })
 
-    test("DELETE /verify/face/:enrollmentIdentifier returns 200 and success = true but disposes enrollment immediately if KEEP_FACE_VERIFICATION_RECORDS isn't set", async () => {
-      helper.mockSuccessReadEnrollmentIndex(enrollmentIdentifier)
-      helper.mockSuccessRemoveEnrollmentFromIndex(enrollmentIdentifier)
-      enrollmentProcessor.keepEnrollments = 0
-
-      await request(server)
-        .delete(enrollmentUri)
-        .query({ signature })
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200, { success: true })
-
-      await expect(storage.hasTasksQueued(DISPOSE_ENROLLMENTS_TASK, { subject: enrollmentIdentifier })).resolves.toBe(
-        false
-      )
-    })
-
     test('DELETE /verify/face/:enrollmentIdentifier returns 400 and success = false if signature is invalid', async () => {
       helper.mockSuccessReadEnrollmentIndex(enrollmentIdentifier)
 

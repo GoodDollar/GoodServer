@@ -136,21 +136,6 @@ class EnrollmentProcessor {
       throw signerException
     }
 
-    const isEnrollmentIndexed = await provider.isEnrollmentIndexed(enrollmentIdentifier, customLogger)
-
-    if (!isEnrollmentIndexed) {
-      log.info("Enrollment doesn't indexed in the 3D Database, skipping disposal", { enrollmentIdentifier })
-      return
-    }
-
-    if (keepEnrollments <= 0) {
-      const logMsg = "KEEP_FACE_VERIFICATION_RECORDS env variable isn't set, disposing enrollment immediately"
-
-      log.info(logMsg, { enrollmentIdentifier })
-      await provider.dispose(enrollmentIdentifier, customLogger)
-      return
-    }
-
     try {
       // dont pass user to task records to keep privacy
       const task = await storage.enqueueTask(DISPOSE_ENROLLMENTS_TASK, enrollmentIdentifier)
@@ -171,9 +156,10 @@ class EnrollmentProcessor {
   ): Promise<void> {
     const { storage, keepEnrollments, logger } = this
     const log = customLogger || logger
+    const enqueuedAtFilters = {}
 
-    const enqueuedAtFilters = {
-      createdAt: {
+    if (keepEnrollments > 0) {
+      enqueuedAtFilters.createdAt = {
         $lte: moment()
           .subtract(keepEnrollments, 'hours')
           .toDate()
@@ -225,16 +211,23 @@ class EnrollmentProcessor {
     onProcessed: (identifier: string, exception?: Error) => void,
     customLogger: any
   ): Promise<void> {
-    const { provider, storage } = this
-    const tasksFailed = []
+    const { provider, storage, logger } = this
+    const log = customLogger || logger
     const tasksSucceeded = []
+    const tasksFailed = []
 
     await Promise.all(
       disposalBatch.map(async task => {
         const { _id: taskId, subject: enrollmentIdentifier } = task
 
         try {
-          await provider.dispose(enrollmentIdentifier, customLogger)
+          const isEnrollmentIndexed = await provider.isEnrollmentIndexed(enrollmentIdentifier, customLogger)
+
+          if (isEnrollmentIndexed) {
+            await provider.dispose(enrollmentIdentifier, customLogger)
+          } else {
+            log.info("Enrollment doesn't indexed in the 3D Database, skipping disposal", { enrollmentIdentifier })
+          }
 
           tasksSucceeded.push(taskId)
           onProcessed(enrollmentIdentifier)
