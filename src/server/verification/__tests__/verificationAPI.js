@@ -18,7 +18,6 @@ import createMockingHelper from '../api/__tests__/__util__'
 
 import * as awsSes from '../../aws-ses/aws-ses'
 
-
 describe('verificationAPI', () => {
   let server
   const { skipEmailVerification, claimQueueAllowed } = Config
@@ -373,21 +372,6 @@ describe('verificationAPI', () => {
 
       await expect(storage.hasTasksQueued(DISPOSE_ENROLLMENTS_TASK, { subject: enrollmentIdentifier })).resolves.toBe(
         true
-      )
-    })
-
-    test("DELETE /verify/face/:enrollmentIdentifier returns 200 and success = true but disposes enrollment immediately if KEEP_FACE_VERIFICATION_RECORDS isn't set", async () => {
-      helper.mockEnrollmentFound(enrollmentIdentifier)
-      enrollmentProcessor.keepEnrollments = 0
-
-      await request(server)
-        .delete(enrollmentUri)
-        .query({ signature })
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200, { success: true })
-
-      await expect(storage.hasTasksQueued(DISPOSE_ENROLLMENTS_TASK, { subject: enrollmentIdentifier })).resolves.toBe(
-        false
       )
     })
 
