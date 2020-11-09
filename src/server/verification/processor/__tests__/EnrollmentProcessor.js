@@ -217,7 +217,6 @@ describe('EnrollmentProcessor', () => {
   })
 
   test("enqueueDisposal() de-whitelists user if it's whitelisted", async () => {
-    helper.mockEnrollmentFound(enrollmentIdentifier)
     isVerifiedMock.mockResolvedValueOnce(true)
 
     await expect(enrollmentProcessor.enqueueDisposal(user, enrollmentIdentifier, signature)).resolves.toBeUndefined()

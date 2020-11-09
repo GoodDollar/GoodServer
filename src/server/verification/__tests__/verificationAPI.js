@@ -362,8 +362,6 @@ describe('verificationAPI', () => {
     })
 
     test('DELETE /verify/face/:enrollmentIdentifier returns 200, success = true and enqueues disposal task if enrollment exists, signature is valid and KEEP_FACE_VERIFICATION_RECORDS is set', async () => {
-      helper.mockEnrollmentFound(enrollmentIdentifier)
-
       await request(server)
         .delete(enrollmentUri)
         .query({ signature })
@@ -376,8 +374,6 @@ describe('verificationAPI', () => {
     })
 
     test('DELETE /verify/face/:enrollmentIdentifier returns 400 and success = false if signature is invalid', async () => {
-      helper.mockEnrollmentFound(enrollmentIdentifier)
-
       await request(server)
         .delete(enrollmentUri)
         .query({ signature: 'invalid signature' })
