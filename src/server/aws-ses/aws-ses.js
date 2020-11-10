@@ -8,7 +8,8 @@ const region = conf.awsSesRegion
 const sourceVerificationEmail = conf.awsSesSourceVerificationEmail
 const templateName = conf.awsSesTemplateName
 
-let runInEnv = ['production', 'staging', 'test'].includes(conf.env)
+const runInEnv = ['production', 'staging'].includes(conf.env)
+
 if (runInEnv) {
   if (!accessKeyId || !secretAccessKey || !region || !sourceVerificationEmail || !templateName) {
     throw new Error('Missing AWS configuration')
@@ -66,5 +67,6 @@ export const sendTemplateEmail = async (recipientEmail: string, templateData: Ob
     },
     TemplateData: templateDataStr
   }
+
   return ses.sendTemplatedEmail(params).promise()
 }

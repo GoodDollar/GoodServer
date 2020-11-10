@@ -18,7 +18,6 @@ import createMockingHelper from '../api/__tests__/__util__'
 
 import * as awsSes from '../../aws-ses/aws-ses'
 
-
 describe('verificationAPI', () => {
   let server
   const { skipEmailVerification, claimQueueAllowed } = Config
@@ -363,8 +362,6 @@ describe('verificationAPI', () => {
     })
 
     test('DELETE /verify/face/:enrollmentIdentifier returns 200, success = true and enqueues disposal task if enrollment exists, signature is valid and KEEP_FACE_VERIFICATION_RECORDS is set', async () => {
-      helper.mockEnrollmentFound(enrollmentIdentifier)
-
       await request(server)
         .delete(enrollmentUri)
         .query({ signature })
@@ -376,24 +373,7 @@ describe('verificationAPI', () => {
       )
     })
 
-    test("DELETE /verify/face/:enrollmentIdentifier returns 200 and success = true but disposes enrollment immediately if KEEP_FACE_VERIFICATION_RECORDS isn't set", async () => {
-      helper.mockEnrollmentFound(enrollmentIdentifier)
-      enrollmentProcessor.keepEnrollments = 0
-
-      await request(server)
-        .delete(enrollmentUri)
-        .query({ signature })
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200, { success: true })
-
-      await expect(storage.hasTasksQueued(DISPOSE_ENROLLMENTS_TASK, { subject: enrollmentIdentifier })).resolves.toBe(
-        false
-      )
-    })
-
     test('DELETE /verify/face/:enrollmentIdentifier returns 400 and success = false if signature is invalid', async () => {
-      helper.mockEnrollmentFound(enrollmentIdentifier)
-
       await request(server)
         .delete(enrollmentUri)
         .query({ signature: 'invalid signature' })

@@ -139,21 +139,6 @@ class EnrollmentProcessor {
       throw signerException
     }
 
-    const enrollmentExists = await provider.enrollmentExists(enrollmentIdentifier, customLogger)
-
-    if (!enrollmentExists) {
-      log.info("Enrollment doesn't exists, skipping disposal", { enrollmentIdentifier })
-      return
-    }
-
-    if (keepEnrollments <= 0) {
-      const logMsg = "KEEP_FACE_VERIFICATION_RECORDS env variable isn't set, disposing enrollment immediately"
-
-      log.info(logMsg, { enrollmentIdentifier })
-      await provider.dispose(enrollmentIdentifier, customLogger)
-      return
-    }
-
     try {
       // dont pass user to task records to keep privacy
       const task = await storage.enqueueTask(DISPOSE_ENROLLMENTS_TASK, enrollmentIdentifier)
@@ -175,8 +160,10 @@ class EnrollmentProcessor {
     const { storage, keepEnrollments, logger } = this
     const log = customLogger || logger
 
-    const enqueuedAtFilters = {
-      createdAt: {
+    const enqueuedAtFilters = {}
+
+    if (keepEnrollments > 0) {
+      enqueuedAtFilters.createdAt = {
         $lte: moment()
           .subtract(keepEnrollments, 'hours')
           .toDate()
@@ -228,16 +215,23 @@ class EnrollmentProcessor {
     onProcessed: (identifier: string, exception?: Error) => void,
     customLogger: any
   ): Promise<void> {
-    const { provider, storage } = this
-    const tasksFailed = []
+    const { provider, storage, logger } = this
+    const log = customLogger || logger
     const tasksSucceeded = []
+    const tasksFailed = []
 
     await Promise.all(
       disposalBatch.map(async task => {
         const { _id: taskId, subject: enrollmentIdentifier } = task
 
         try {
-          await provider.dispose(enrollmentIdentifier, customLogger)
+          const enrollmentExists = await provider.enrollmentExists(enrollmentIdentifier, customLogger)
+
+          if (!enrollmentExists) {
+            log.info("Enrollment doesn't exists, skipping disposal", { enrollmentIdentifier })
+          } else {
+            await provider.dispose(enrollmentIdentifier, customLogger)
+          }
 
           tasksSucceeded.push(taskId)
           onProcessed(enrollmentIdentifier)
