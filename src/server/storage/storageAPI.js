@@ -352,7 +352,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
     '/userExists',
     wrapAsync(async (req, res, next) => {
       const { log } = req
-      const { identifier, email, mobile } = req.body
+      const { identifier = '', email, mobile } = req.body
       const identifierLC = identifier.toLowerCase()
       const existing = await storage.model
         .find({
