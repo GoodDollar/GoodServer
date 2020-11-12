@@ -250,7 +250,7 @@ export class StakingModelManager {
   }
 }
 
-const fundManager = new StakingModelManager()
+export const fundManager = new StakingModelManager()
 
 /**
  * a manager to make sure we fish inactive users
@@ -457,7 +457,7 @@ class FishingManager {
   }
 }
 
-const fishManager = new FishingManager()
+export const fishManager = new FishingManager()
 
 class StakingModelTask {
   // using context allowing us to manipulate task execution
@@ -483,7 +483,7 @@ class StakingModelTask {
   async run() {}
 }
 
-class CollectFundsTask extends StakingModelTask {
+export class CollectFundsTask extends StakingModelTask {
   get schedule() {
     return config.stakeTaskCron
   }
@@ -497,7 +497,7 @@ class CollectFundsTask extends StakingModelTask {
   }
 }
 
-class FishInactiveTask extends StakingModelTask {
+export class FishInactiveTask extends StakingModelTask {
   get schedule() {
     return config.fishTaskCron
   }
@@ -510,7 +510,3 @@ class FishInactiveTask extends StakingModelTask {
     return fishManager.run()
   }
 }
-
-const collectFundsTask = new CollectFundsTask()
-const fishInactiveTask = new FishInactiveTask()
-export { collectFundsTask, fishInactiveTask, fundManager, fishManager }

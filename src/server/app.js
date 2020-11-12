@@ -29,7 +29,7 @@ const startApp = async () => {
   const app = express()
 
   app.use(express.static('public'))
-  middlewares(app, 'prod')
+  middlewares(app)
   return app
 }
 

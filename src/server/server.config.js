@@ -432,14 +432,26 @@ const conf = convict({
     env: 'FACEBOOK_GRAPH_API_URL',
     default: 'https://graph.facebook.com'
   },
+  fishTaskDisabled: {
+    doc: 'Disables fishing cron task (default true)',
+    format: Boolean,
+    env: 'FISH_TASK_DISABLED',
+    default: false
+  },
   fishTaskCron: {
     doc: 'cron string for fishing task',
     format: String,
     env: 'FISH_TASK_CRON',
     default: '0 0 * * * *'
   },
+  stakeTaskDisabled: {
+    doc: 'Disables staking model cron task (default true)',
+    format: Boolean,
+    env: 'STAKE_TASK_DISABLED',
+    default: false
+  },
   stakeTaskCron: {
-    doc: 'cron string for fishing task',
+    doc: 'cron string for staking model task',
     format: String,
     env: 'STAKE_TASK_CRON',
     default: '0 0 * * * *'
