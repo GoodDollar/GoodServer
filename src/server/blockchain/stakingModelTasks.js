@@ -56,7 +56,7 @@ export class StakingModelManager {
       const fundsTX = await AdminWallet.sendTransactionMainnet(
         this.managerContract.methods.transferInterest(this.stakingAddress),
         { onTransactionHash: h => (txHash = h) },
-        { gas: 500000 } //force fixed gas price, tx should take around 450k
+        { gas: 700000 } //force fixed gas price, tx should take around 450k
       )
       const fundsEvent = get(fundsTX, 'events.FundsTransferred')
       this.log.info('transferInterest result event', { fundsEvent })
