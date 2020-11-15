@@ -378,12 +378,6 @@ const conf = convict({
     env: 'FUSE_API',
     default: 'https://explorer.fuse.io'
   },
-  web3SiteUrl: {
-    doc: 'Web3 site url',
-    format: 'url',
-    env: 'WEB3_SITE_URL',
-    default: 'https://inivtation.herokuapp.com'
-  },
   rateLimitMinutes: {
     doc: 'Amount of minutes used for request rate limiter',
     format: '*',
@@ -401,18 +395,6 @@ const conf = convict({
     format: Boolean,
     env: 'ETORO',
     default: false
-  },
-  autoApproveW3: {
-    doc: 'should new user be automatically approved on w3',
-    format: '*',
-    env: 'AUTO_APPROVE_W3',
-    default: true
-  },
-  enableInvites: {
-    doc: 'enable w3',
-    format: '*',
-    env: 'ENABLE_INVITES',
-    default: true
   },
   topAdminsOnStartup: {
     doc: 'call topAdmins in adminwallet smart contract',

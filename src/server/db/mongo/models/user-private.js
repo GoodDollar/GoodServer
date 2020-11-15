@@ -28,9 +28,6 @@ export const UserPrivateSchema = new Schema(
     loginToken: {
       type: String
     },
-    w3Token: {
-      type: String
-    },
     smsValidated: {
       type: Boolean
     },
@@ -71,10 +68,6 @@ export const UserPrivateSchema = new Schema(
     },
     isCompleted: {
       whiteList: {
-        type: Boolean,
-        default: false
-      },
-      w3Record: {
         type: Boolean,
         default: false
       },

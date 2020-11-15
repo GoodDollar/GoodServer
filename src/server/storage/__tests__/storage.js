@@ -13,12 +13,10 @@ jest.setTimeout(30000)
 describe('storageAPI', () => {
   const isCompletedAllFalse = {
     whiteList: false,
-    w3Record: false,
     topWallet: false
   }
   const isCompletedAllTrue = {
     whiteList: true,
-    w3Record: true,
     topWallet: false
   }
   const user: UserRecord = {
@@ -87,14 +85,6 @@ describe('storageAPI', () => {
     }
 
     expect(userIsCompleted.whiteList).toBeTruthy()
-  })
-
-  test('check updateW3Record', async () => {
-    const creds = await getCreds(true)
-    let userRecord = { ...creds, ...user, gdAddress: creds.address }
-    await addUserSteps.updateW3Record(userRecord, console)
-    const userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')
-    expect(userIsCompleted.w3Record).toBeTruthy()
   })
 
   test('check isCompletedAllTrue', async () => {
