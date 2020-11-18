@@ -402,7 +402,7 @@ class FishingManager {
    * perform the fishMulti TX on the ubiContract
    */
   fishChunk = async tofish => {
-    const fishTX = await AdminWallet.fishMulti(tofish)
+    const fishTX = await AdminWallet.fishMulti(tofish, this.log)
     const fishEvents = await AdminWallet.UBIContract.getPastEvents('TotalFished', {
       fromBlock: fishTX.blockNumber,
       toBlock: fishTX.blockNumber
