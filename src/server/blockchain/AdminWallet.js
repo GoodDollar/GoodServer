@@ -506,7 +506,7 @@ export class Wallet {
       log.info('fishMulti sending tx', { toFish })
       const transaction = await this.proxyContract.methods.genericCall(this.UBIContract.address, encodedCall, 0)
       const tx = await this.sendTransaction(transaction)
-      log.info('fishMulti success', { toFish })
+      log.info('fishMulti success', { toFish, tx: tx.transactionHash })
       return tx
     } catch (exception) {
       const { message } = exception
