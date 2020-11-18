@@ -357,7 +357,7 @@ export class Wallet {
         [address]
       )
       const transaction = await this.proxyContract.methods.genericCall(this.identityContract.address, encodedCall, 0)
-      const tx = await this.sendTransaction(transaction)
+      const tx = await this.sendTransaction(transaction, {}, { gas: 500000 })
       log.info('authenticated user', { address, tx })
       return tx
     } catch (exception) {
@@ -488,7 +488,7 @@ export class Wallet {
     }
   }
 
-  async fishMulti(toFish: Array<string>): Promise<TransactionReceipt> {
+  async fishMulti(toFish: Array<string>, logger = log): Promise<TransactionReceipt> {
     try {
       let encodedCall = this.web3.eth.abi.encodeFunctionCall(
         {
@@ -503,15 +503,15 @@ export class Wallet {
         },
         [toFish]
       )
-      log.info('fishMulti sending tx', { toFish })
+      logger.info('fishMulti sending tx', { encodedCall, toFish })
       const transaction = await this.proxyContract.methods.genericCall(this.UBIContract.address, encodedCall, 0)
-      const tx = await this.sendTransaction(transaction)
-      log.info('fishMulti success', { toFish, tx: tx.transactionHash })
+      const tx = await this.sendTransaction(transaction, {}, { gas: 2000000 }, false, logger)
+      logger.info('fishMulti success', { toFish, tx: tx.transactionHash })
       return tx
     } catch (exception) {
       const { message } = exception
 
-      log.error('fishMulti failed', message, exception, { toFish })
+      logger.error('fishMulti failed', message, exception, { toFish })
       throw exception
     }
   }
