@@ -409,7 +409,7 @@ class FishingManager {
     })
     const fishEvent = fishEvents.find(e => e.transactionHash === fishTX.transactionHash)
     const totalFished = result(fishEvent, 'returnValues.total.toNumber', 0)
-    this.log.info('Fished accounts', { tofish, totalFished, fisherAccount: fishTX.from })
+    this.log.info('Fished accounts', { tofish, totalFished, fisherAccount: fishTX.from, tx: fishTX.transactionHash })
     return { totalFished, fisherAccount: fishTX.from }
   }
 
