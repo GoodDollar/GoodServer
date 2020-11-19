@@ -6,3 +6,4 @@ export const MODEL_USER_PRIVATE = `userprivate_${envId}`
 export const MODEL_DELAYED_TASK = `delayedtask_${envId}`
 export const MODEL_WALLET_NONCE = 'walletnonce'
 export const MODEL_PROPERTIES = `server_properties_${envId}`
+export const MODEL_FACE_VERIFICATIONS = `face_verification_${envId}`
