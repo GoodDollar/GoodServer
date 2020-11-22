@@ -15,7 +15,7 @@ const testUser = { identifier: '00', fullName: testUserName, email: 'test@test.t
 jest.setTimeout(30000)
 
 describe('UserPrivate', () => {
-  const { model: userModel, taskModel } = storage
+  const { model: userModel, taskModel, faceVerificationsModel } = storage
 
   const testTasksExists = async isExists =>
     expect(taskModel.exists({ taskName: testTaskName, subject: testTaskSubject })).resolves.toBe(isExists)
@@ -52,6 +52,7 @@ describe('UserPrivate', () => {
 
   beforeEach(async () => {
     await taskModel.deleteMany({ taskName: testTaskName })
+    await faceVerificationsModel.deleteMany({})
   })
 
   afterAll(async () => {
@@ -191,6 +192,27 @@ describe('UserPrivate', () => {
     let users = await storage.listUsers()
 
     expect(users.length >= listUsers.length).toBeTruthy()
+  })
+
+  it('Should add a new Face Verifications Document', async () => {
+    // const now = Date.now()
+    const enrollmentIdentifier = 'f0D7A688489Ab3079491d407A03BF16e5B027b2c'
+    // const FV = {
+    //   lastFVDate: now,
+    //   enrollmentIdentifier
+    // }
+
+    await storage.upsertFaceVerificationRecord(enrollmentIdentifier)
+    const result = await faceVerificationsModel.findOne({ enrollmentIdentifier })
+    expect(result.enrollmentIdentifier).toEqual(enrollmentIdentifier)
+  })
+
+  it('Should get a Face Verifications record ny enrollmentIdentifier', async () => {
+    const enrollmentIdentifier = 'f0D7A688489Ab3079491d407A03BF16e5B027b2c'
+    await storage.upsertFaceVerificationRecord(enrollmentIdentifier)
+    const result = await storage.getFaceVerificationsByEnrollmentIdentifier(enrollmentIdentifier)
+    expect(result).toBeObject()
+    expect(result.enrollmentIdentifier).toEqual(enrollmentIdentifier)
   })
 
   it('Should add delayed task', async () => {

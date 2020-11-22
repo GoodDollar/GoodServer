@@ -3,17 +3,19 @@ import { v4 as uuidv4 } from 'uuid'
 import { get } from 'lodash'
 
 import UserPrivateModel from './models/user-private'
+import FaceVerificationsModel from './models/faceVerifications'
 import DelayedTaskModel, { DelayedTaskStatus } from './models/delayed-task'
 import logger from '../../../imports/logger'
 
-import { type UserRecord, type DelayedTaskRecord } from '../../../imports/types'
+import { type UserRecord, type DelayedTaskRecord, type FaceVerificationsRecord } from '../../../imports/types'
 
 class UserPrivate {
-  constructor(model, taskModel, logger) {
+  constructor(model, taskModel, faceVerificationsModel, logger) {
     this.logger = logger
 
     this.model = model
     this.taskModel = taskModel
+    this.faceVerificationsModel = faceVerificationsModel
   }
 
   /**
@@ -326,6 +328,30 @@ class UserPrivate {
       throw exception
     }
   }
+
+  async upsertFaceVerificationRecord(enrollmentIdentifier: string): Promise<FaceVerificationsRecord> {
+    const { faceVerificationsModel } = this
+
+    // TODO: determine right date (Date.now is not good enough)
+    const result = await faceVerificationsModel.updateOne(
+      { enrollmentIdentifier },
+      { $set: { enrollmentIdentifier, lastFVDate: Date.now() } },
+      { upsert: true }
+    )
+
+    return result
+  }
+
+  async getFaceVerificationsByEnrollmentIdentifier(enrollmentIdentifier) {
+    const { faceVerificationsModel } = this
+    const result = await faceVerificationsModel.findOne({ enrollmentIdentifier })
+    return result
+  }
 }
 
-export default new UserPrivate(UserPrivateModel, DelayedTaskModel, logger.child({ from: 'UserDBPrivate' }))
+export default new UserPrivate(
+  UserPrivateModel,
+  DelayedTaskModel,
+  FaceVerificationsModel,
+  logger.child({ from: 'UserDBPrivate' })
+)

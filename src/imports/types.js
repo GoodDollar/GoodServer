@@ -27,6 +27,12 @@ export type DelayedTaskRecord = {
   status: DelayedTaskStatusType
 }
 
+export type FaceVerificationsRecord = {
+  _id: any,
+  lastFVDate: Date,
+  enrollmentIdentifier: string
+}
+
 export type JWTRecord = {
   method: 'eth',
   loggedInAs: string,
