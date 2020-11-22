@@ -14,13 +14,14 @@ export default class EnrollmentSession {
   queueApi = null
   sessionRef = null
 
-  constructor(user, provider, storage, adminApi, queueApi, gun, customLogger = null) {
+  constructor(user, provider, storage, adminApi, queueApi, gun, enrollmentIdentifier, customLogger = null) {
     this.gun = gun
     this.user = user
     this.provider = provider
     this.storage = storage
     this.adminApi = adminApi
     this.queueApi = queueApi
+    this.enrollmentIdentifier = enrollmentIdentifier
     this.log = customLogger || log
 
     bindAll(this, 'onEnrollmentProcessing')
@@ -99,7 +100,7 @@ export default class EnrollmentSession {
   }
 
   async onEnrollmentCompleted() {
-    const { sessionRef, user, storage, adminApi, queueApi, log } = this
+    const { sessionRef, user, storage, adminApi, queueApi, enrollmentIdentifier, log } = this
     const { gdAddress, profilePublickey, loggedInAs } = user
 
     log.info('Whitelisting user:', loggedInAs)
@@ -107,7 +108,8 @@ export default class EnrollmentSession {
     await Promise.all([
       queueApi.setWhitelisted(user, storage, log),
       adminApi.whitelistUser(gdAddress, profilePublickey),
-      storage.updateUser({ identifier: loggedInAs, isVerified: true })
+      storage.updateUser({ identifier: loggedInAs, isVerified: true }),
+      storage.upsertFaceVerificationRecord(enrollmentIdentifier)
     ])
 
     sessionRef.put({ isWhitelisted: true })

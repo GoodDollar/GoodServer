@@ -139,7 +139,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         // if user is already verified, we're skipping enroillment logic
         if (user.isVerified || disableFaceVerification || allowDuplicatedFaceRecords || isE2ERunning) {
           // creating enrollment session manually for this user
-          const enrollmentSession = enrollmentProcessor.createEnrollmentSession(user, log)
+          const enrollmentSession = enrollmentProcessor.createEnrollmentSession(user, enrollmentIdentifier, log)
           // to access user's session reference in the Gun
           const { sessionRef } = enrollmentSession.initialize(payload)
 
