@@ -31,7 +31,7 @@ export class DisposeEnrollmentsPeriodicTask {
         if (disposeEnrollment.status !== 'failed') arr.push(disposeEnrollment.enrollmentIdentifier)
         return arr
       }, [])
-      logger.info('Removing disposed FV Rcords from DB')
+      logger.info(`Removing ${enrollmentIdentifiers.length} disposed FV Records from DB`)
       const result = await this.removeRecords(enrollmentIdentifiers)
       return result
     } catch (error) {
@@ -61,7 +61,6 @@ export class DisposeEnrollmentsPeriodicTask {
       return fvRecord.enrollmentIdentifier
     })
 
-    await AdminWallet.ready
     logger.info('Enrollment Ids to dispose:', enrollmentIds)
     const enrollmentProcessor = createEnrollmentProcessor(UserDBPrivate, logger)
     const disposedEnrollments = await enrollmentProcessor.disposeEnrollments(enrollmentIds)

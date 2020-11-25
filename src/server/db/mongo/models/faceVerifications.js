@@ -3,13 +3,15 @@ import { MODEL_FACE_VERIFICATIONS } from './constants'
 
 export const FaceVerificationsSchema = new Schema({
   lastFVDate: {
-    type: Date
+    type: Date,
+    index: true,
+    required: true
   },
   enrollmentIdentifier: {
-    type: String
+    type: String,
+    index: { unique: true },
+    required: true
   }
 })
-FaceVerificationsSchema.index({ lastFVDate: 1 }) // schema level
-FaceVerificationsSchema.index({ enrollmentIdentifier: 1 }, { unique: true }) // schema level
 
 export default mongoose.model(MODEL_FACE_VERIFICATIONS, FaceVerificationsSchema)

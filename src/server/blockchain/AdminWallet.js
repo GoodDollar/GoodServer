@@ -371,7 +371,7 @@ export class Wallet {
   async getAuthenticationPeriod(): Promise<number> {
     try {
       const result = await this.identityContract.methods.authenticationPeriod().call()
-      return result.toString()
+      return result.toNumber()
     } catch (exception) {
       const { message } = exception
       log.error('Error getAuthenticationPeriod', message, exception)

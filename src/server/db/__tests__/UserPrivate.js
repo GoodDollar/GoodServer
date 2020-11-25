@@ -215,7 +215,7 @@ describe('UserPrivate', () => {
     expect(result.enrollmentIdentifier).toEqual(enrollmentIdentifier)
   })
 
-  it('Should get a Face Verifications record by before specific date', async () => {
+  it('Should get a Face Verifications record before specific date', async () => {
     // enrollment identifiers
     const enrollmentIdentifierBeforeDate = 'f0D7A688489Ab3079491d407A03BF16e5B027b2c'
     const enrollmentIdentifierAfterDate = 'f0D7A688489Ab3079491d407A03BF16e5B027b2a'
