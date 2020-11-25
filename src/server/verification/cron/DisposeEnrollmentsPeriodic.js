@@ -24,7 +24,8 @@ export class DisposeEnrollmentsPeriodicTask {
       const authenticationPeriod = await this.getAuthenticationPeriod()
       logger.info('Authentication period found', authenticationPeriod)
       const fvRecords = await this.getFVRecords(authenticationPeriod)
-      logger.info(`Fetched ${fvRecords.length} FV records from db`)
+      logger.info('Fetched FV records from db', fvRecords.length)
+      if (fvRecords.length === 0) return
       const disposeEnrollments = await this.disposeEnrollments(fvRecords)
       logger.info(`Performed Dispose Enrollment for ${disposeEnrollments.length} enrollmentIds`)
       const enrollmentIdentifiers = disposeEnrollments.reduce((arr, disposeEnrollment) => {

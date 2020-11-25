@@ -73,6 +73,7 @@ describe('verificationAPI', () => {
 
     const payload = {
       sessionId: sessionToken,
+      enrollmentIdentifier,
       faceMap: Buffer.alloc(32),
       auditTrailImage: 'data:image/png:FaKEimagE==',
       lowQualityAuditTrailImage: 'data:image/png:FaKEimagE=='

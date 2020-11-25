@@ -14,14 +14,14 @@ export default class EnrollmentSession {
   queueApi = null
   sessionRef = null
 
-  constructor(user, provider, storage, adminApi, queueApi, gun, enrollmentIdentifier, customLogger = null) {
+  constructor(user, provider, storage, adminApi, queueApi, gun, customLogger = null) {
     this.gun = gun
     this.user = user
     this.provider = provider
     this.storage = storage
     this.adminApi = adminApi
     this.queueApi = queueApi
-    this.enrollmentIdentifier = enrollmentIdentifier
+    this.enrollmentIdentifier = ''
     this.log = customLogger || log
 
     bindAll(this, 'onEnrollmentProcessing')
@@ -74,6 +74,7 @@ export default class EnrollmentSession {
     const { sessionId } = payload
 
     this.sessionRef = gun.session(sessionId)
+    this.enrollmentIdentifier = payload.enrollmentIdentifier
     // returning this to allow initialize &
     // get sessionRef via destructuring in a single call
     return this
