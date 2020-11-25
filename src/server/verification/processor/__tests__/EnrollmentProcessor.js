@@ -262,4 +262,28 @@ describe('EnrollmentProcessor', () => {
       [unexistingEnrollmentIdentifier, enrollmentIdentifier].map(taskId)
     )
   })
+
+  test('disposeEnrollments() dispose enrollmentIdentifiers from provider', async () => {
+    const failedEnrollmentIdentifier = 'failed-enrollment-identifier'
+    const unexistingEnrollmentIdentifier = 'unexisting-enrollment-identifier'
+    helper.mockEnrollmentFound(enrollmentIdentifier)
+    helper.mockEnrollmentNotFound(unexistingEnrollmentIdentifier)
+    helper.mockEnrollmentFound(failedEnrollmentIdentifier)
+    helper.mockServiceErrorHappenedWhileDisposing(failedEnrollmentIdentifier)
+
+    const enrollmentIdentifiers = [enrollmentIdentifier, unexistingEnrollmentIdentifier, failedEnrollmentIdentifier]
+
+    const disposedEnrollments = await enrollmentProcessor.disposeEnrollments(enrollmentIdentifiers)
+
+    expect(disposedEnrollments).toBeArrayOfSize(3)
+    expect(disposedEnrollments[0]).toBeObject()
+    expect(disposedEnrollments[1]).toBeObject()
+    expect(disposedEnrollments[2]).toBeObject()
+    expect(disposedEnrollments[0].enrollmentIdentifier).toEqual(enrollmentIdentifier)
+    expect(disposedEnrollments[0].status).toEqual('success')
+    expect(disposedEnrollments[1].enrollmentIdentifier).toEqual(unexistingEnrollmentIdentifier)
+    expect(disposedEnrollments[1].status).toEqual('notExists')
+    expect(disposedEnrollments[2].enrollmentIdentifier).toEqual(failedEnrollmentIdentifier)
+    expect(disposedEnrollments[2].status).toEqual('failed')
+  })
 })

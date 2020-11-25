@@ -9,7 +9,7 @@ export const FaceVerificationsSchema = new Schema({
     type: String
   }
 })
-FaceVerificationsSchema.index({ lastFVDate: 1 }, { unique: true }) // schema level
+FaceVerificationsSchema.index({ lastFVDate: 1 }) // schema level
 FaceVerificationsSchema.index({ enrollmentIdentifier: 1 }, { unique: true }) // schema level
 
 export default mongoose.model(MODEL_FACE_VERIFICATIONS, FaceVerificationsSchema)

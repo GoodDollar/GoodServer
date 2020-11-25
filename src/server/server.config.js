@@ -444,6 +444,12 @@ const conf = convict({
     env: 'DBUPDATE_TASK_CRON',
     default: '0 0 0 * * *'
   },
+  enrollDisposalCron: {
+    doc: 'cron string for enroll disposal periodic task',
+    format: String,
+    env: 'DISPOSE_ENROLLMENTS_TASK_CRON',
+    default: '0 0 0 * * *'
+  },
   torusNetwork: {
     doc: 'Torus network. Default: ropsten (mainnet, kovan, fuse, etoro, production, develop)',
     format: ['mainnet', 'ropsten', 'kovan', 'fuse', 'etoro', 'production', 'develop'],

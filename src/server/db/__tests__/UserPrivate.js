@@ -207,12 +207,84 @@ describe('UserPrivate', () => {
     expect(result.enrollmentIdentifier).toEqual(enrollmentIdentifier)
   })
 
-  it('Should get a Face Verifications record ny enrollmentIdentifier', async () => {
+  it('Should get a Face Verifications record by enrollmentIdentifier', async () => {
     const enrollmentIdentifier = 'f0D7A688489Ab3079491d407A03BF16e5B027b2c'
     await storage.upsertFaceVerificationRecord(enrollmentIdentifier)
     const result = await storage.getFaceVerificationsByEnrollmentIdentifier(enrollmentIdentifier)
     expect(result).toBeObject()
     expect(result.enrollmentIdentifier).toEqual(enrollmentIdentifier)
+  })
+
+  it('Should get a Face Verifications record by before specific date', async () => {
+    // enrollment identifiers
+    const enrollmentIdentifierBeforeDate = 'f0D7A688489Ab3079491d407A03BF16e5B027b2c'
+    const enrollmentIdentifierAfterDate = 'f0D7A688489Ab3079491d407A03BF16e5B027b2a'
+    const date = new Date('2020-10-08')
+    // stubs
+    const stubBeforeDate = {
+      enrollmentIdentifier: enrollmentIdentifierBeforeDate,
+      lastFVDate: new Date('2020-10-04')
+    }
+    const stubAfterDate = {
+      enrollmentIdentifier: enrollmentIdentifierAfterDate,
+      lastFVDate: new Date('2020-10-15')
+    }
+
+    const stubsArr = [stubBeforeDate, stubAfterDate]
+    // insert stubs to DB
+    await faceVerificationsModel.insertMany(stubsArr)
+
+    // assert number of objects in DB
+    const count = await faceVerificationsModel.count()
+    expect(count).toEqual(stubsArr.length)
+
+    // invoke tested function
+    const result = await storage.getFaceVerificationsBeforeDate(date)
+
+    // assertions
+    expect(result.length).toEqual(1)
+    expect(result[0].enrollmentIdentifier).toEqual(stubBeforeDate.enrollmentIdentifier)
+    expect(result[0].lastFVDate).toEqual(stubBeforeDate.lastFVDate)
+  })
+
+  it('Should delete multiple records by enrollmentIdentifiers', async () => {
+    // enrollment identifiers
+    const enrollmentIdentifier1 = 'f0D7A688489Ab3079491d407A03BF16e5B027b2c'
+    const enrollmentIdentifier2 = 'f0D7A688489Ab3079491d407A03BF16e5B027b2a'
+    const enrollmentIdentifier3 = 'f0D7A688489Ab3079491d407A03BF16e5B027b2b'
+    // stubs
+    const stub1 = {
+      enrollmentIdentifier: enrollmentIdentifier1,
+      lastFVDate: new Date('2020-10-04')
+    }
+    const stub2 = {
+      enrollmentIdentifier: enrollmentIdentifier2,
+      lastFVDate: new Date('2020-10-15')
+    }
+    const stub3 = {
+      enrollmentIdentifier: enrollmentIdentifier3,
+      lastFVDate: new Date('2020-10-16')
+    }
+
+    const stubsArr = [stub1, stub2, stub3]
+    // insert stubs to DB
+    await faceVerificationsModel.insertMany(stubsArr)
+
+    // assert number of objects in DB
+    let count = await faceVerificationsModel.count()
+    expect(count).toEqual(stubsArr.length)
+
+    const enrollmentIdentifiers = [enrollmentIdentifier1, enrollmentIdentifier2]
+    // invoke tested function
+    const result = await storage.deleteFaceVerificationsByEnrollmentIdentifiers(enrollmentIdentifiers)
+
+    // assertions
+    expect(result).toBeObject()
+    expect(result.ok).toEqual(1)
+    expect(result.n).toEqual(2)
+
+    count = await faceVerificationsModel.count()
+    expect(count).toEqual(stubsArr.length - result.n)
   })
 
   it('Should add delayed task', async () => {

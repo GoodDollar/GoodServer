@@ -347,6 +347,18 @@ class UserPrivate {
     const result = await faceVerificationsModel.findOne({ enrollmentIdentifier })
     return result
   }
+
+  async getFaceVerificationsBeforeDate(date: Date) {
+    const { faceVerificationsModel } = this
+    const result = await faceVerificationsModel.find({ lastFVDate: { $lt: date } })
+    return result
+  }
+
+  async deleteFaceVerificationsByEnrollmentIdentifiers(enrollmentIdentifiers) {
+    const { faceVerificationsModel } = this
+    const result = await faceVerificationsModel.deleteMany({ enrollmentIdentifier: { $in: enrollmentIdentifiers } })
+    return result
+  }
 }
 
 export default new UserPrivate(

@@ -368,7 +368,7 @@ export class Wallet {
     }
   }
 
-  async getAuthenticationPeriod(): Promise<TransactionReceipt> {
+  async getAuthenticationPeriod(): Promise<number> {
     try {
       const result = await this.identityContract.methods.authenticationPeriod().call()
       return result.toString()

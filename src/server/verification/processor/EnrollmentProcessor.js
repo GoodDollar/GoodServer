@@ -250,6 +250,28 @@ class EnrollmentProcessor {
       await storage.failDelayedTasks(tasksFailed)
     }
   }
+
+  async disposeEnrollments(enrollmentIdentifiers) {
+    const { provider, logger } = this
+    const promises = await enrollmentIdentifiers.map(async enrollmentIdentifier => {
+      try {
+        const enrollmentExists = await provider.enrollmentExists(enrollmentIdentifier, logger)
+
+        if (!enrollmentExists) {
+          logger.info("Enrollment doesn't exists, skipping disposal", { enrollmentIdentifier })
+          return { enrollmentIdentifier, status: 'notExists' }
+        } else {
+          await provider.dispose(enrollmentIdentifier, logger)
+          logger.info('Enrollment disposed', { enrollmentIdentifier })
+          return { enrollmentIdentifier, status: 'success' }
+        }
+      } catch (error) {
+        logger.warn('Enrollment disposal failed', { enrollmentIdentifier })
+        return { enrollmentIdentifier, status: 'failed', error }
+      }
+    })
+    return await Promise.all(promises)
+  }
 }
 
 const enrollmentProcessors = new WeakMap()

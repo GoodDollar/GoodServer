@@ -21,6 +21,7 @@ import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollments
 import addClaimQueueMiddlewares from './claimQueue/claimQueueAPI'
 import { FishInactiveTask, CollectFundsTask } from './blockchain/stakingModelTasks'
 import './db/cron/dbUpdateTask' // import to register the task
+import './verification/cron/DisposeEnrollmentsPeriodic' // import to register the task
 import Config from './server.config'
 
 const rootLogger = logger.child({ from: 'Server' })
