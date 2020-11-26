@@ -386,12 +386,6 @@ const conf = convict({
     env: 'FUSE_API',
     default: 'https://explorer.fuse.io'
   },
-  web3SiteUrl: {
-    doc: 'Web3 site url',
-    format: 'url',
-    env: 'WEB3_SITE_URL',
-    default: 'https://inivtation.herokuapp.com'
-  },
   rateLimitMinutes: {
     doc: 'Amount of minutes used for request rate limiter',
     format: '*',
@@ -409,18 +403,6 @@ const conf = convict({
     format: Boolean,
     env: 'ETORO',
     default: false
-  },
-  autoApproveW3: {
-    doc: 'should new user be automatically approved on w3',
-    format: '*',
-    env: 'AUTO_APPROVE_W3',
-    default: true
-  },
-  enableInvites: {
-    doc: 'enable w3',
-    format: '*',
-    env: 'ENABLE_INVITES',
-    default: true
   },
   topAdminsOnStartup: {
     doc: 'call topAdmins in adminwallet smart contract',
@@ -440,14 +422,26 @@ const conf = convict({
     env: 'FACEBOOK_GRAPH_API_URL',
     default: 'https://graph.facebook.com'
   },
+  fishTaskDisabled: {
+    doc: 'Disables fishing cron task (default true)',
+    format: Boolean,
+    env: 'FISH_TASK_DISABLED',
+    default: false
+  },
   fishTaskCron: {
     doc: 'cron string for fishing task',
     format: String,
     env: 'FISH_TASK_CRON',
     default: '0 0 * * * *'
   },
+  stakeTaskDisabled: {
+    doc: 'Disables staking model cron task (default true)',
+    format: Boolean,
+    env: 'STAKE_TASK_DISABLED',
+    default: false
+  },
   stakeTaskCron: {
-    doc: 'cron string for fishing task',
+    doc: 'cron string for staking model task',
     format: String,
     env: 'STAKE_TASK_CRON',
     default: '0 0 * * * *'
@@ -547,6 +541,36 @@ const conf = convict({
     format: String,
     default: '',
     env: 'AMPLITUDE_KEY'
+  },
+  awsSesAccessKey: {
+    doc: 'aws ses access key for email verification',
+    format: String,
+    default: '',
+    env: 'AWS_SES_ACCESS_KEY'
+  },
+  awsSesSecretAccessKey: {
+    doc: 'aws ses secret access key for email verification',
+    format: String,
+    default: '',
+    env: 'AWS_SES_SECRET_ACCESS_KEY'
+  },
+  awsSesRegion: {
+    doc: 'aws ses region for email verification',
+    format: String,
+    default: 'eu-west-1',
+    env: 'AWS_SES_REGION'
+  },
+  awsSesSourceVerificationEmail: {
+    doc: 'aws ses source verification email',
+    format: String,
+    default: 'GoodDollar <support@gooddollar.org>',
+    env: 'AWS_SES_SOURCE_VERIFICATION_EMAIL'
+  },
+  awsSesTemplateName: {
+    doc: 'aws ses template name verification email',
+    format: String,
+    default: 'VerificationEmail',
+    env: 'AWS_SES_TEMPLATE_NAME'
   }
 })
 

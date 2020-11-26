@@ -249,7 +249,6 @@ describe('EnrollmentProcessor', () => {
     )
 
     expect(failDelayedTasksMock).toHaveBeenCalledWith([taskId(failedEnrollmentIdentifier)])
-
     expect(removeDelayedTasksMock).toHaveBeenCalledWith(
       [unexistingEnrollmentIdentifier, enrollmentIdentifier].map(taskId)
     )

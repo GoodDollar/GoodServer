@@ -58,7 +58,7 @@ export const Mautic = new (class {
           redactedBody = omit(body, 'mnemonic')
         }
 
-        log.error('Mautic Error:', e.message, e, { url, body: redactedBody })
+        log.warn('Mautic Error:', e.message, e, { url, body: redactedBody })
 
         throw e
       })
@@ -112,7 +112,7 @@ export const Mautic = new (class {
     } catch (e) {
       //sometimes duplicate record exists and causes exception, lets try to update instead
       const duplicateId = await this.deleteDuplicate(undefined, mauticId).catch(e =>
-        log.error('updateContact deleteduplicate failed:', e.message, e)
+        log.warn('updateContact deleteduplicate failed:', e.message, e)
       )
       if (duplicateId) {
         log.warn('updateContact: found duplicate contact, deleted and updated', { keptId: duplicateId })
@@ -134,7 +134,7 @@ export const Mautic = new (class {
 
   async deleteDuplicate(email, mauticId) {
     if (mauticId) {
-      const contact = await this.getContact(mauticId)
+      const contact = await this.getContact(mauticId).catch(e => {})
 
       email = get(contact, 'contact.fields.all.email')
     }
@@ -184,7 +184,7 @@ export const Mautic = new (class {
     const tags = [newuserTag]
 
     if (user.email === undefined) {
-      log.error('failed creating contact, no email.', 'Email is required', new Error('Email is required'), { user })
+      log.warn('failed creating contact, no email.', 'Email is required', new Error('Email is required'), { user })
       return Promise.reject('failed creating contact. no email.')
     }
 
@@ -201,7 +201,7 @@ export const Mautic = new (class {
     } catch (e) {
       //sometimes duplicate record exists and causes exception, lets try to update instead
       const duplicateId = await this.deleteDuplicate(user.email).catch(e =>
-        log.error('createContact deleteduplicate failed:', e.message, e)
+        log.warn('createContact deleteduplicate failed:', e.message, e)
       )
       if (duplicateId) {
         mauticRecord = await this.updateContact(duplicateId, { ...user, tags })

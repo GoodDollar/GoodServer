@@ -187,6 +187,17 @@ class UserPrivate {
   }
 
   /**
+   * Get users with mauticId, so we know if we can delete mautic record if only 1 record exists
+   *
+   * @param {string} identifier
+   *
+   * @returns {Promise<*>}
+   */
+  async getCountMauticId(mauticId: number): Promise<number> {
+    return await this.model.countDocuments({ mauticId })
+  }
+
+  /**
    * Enqueues delayed task to the user's tasks queue
    *
    * @param {string} userIdentifier

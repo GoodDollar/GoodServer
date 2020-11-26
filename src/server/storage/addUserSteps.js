@@ -5,7 +5,6 @@ import AdminWallet from '../blockchain/AdminWallet'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
 import { type UserRecord } from '../../imports/types'
 import { Mautic } from '../mautic/mauticAPI'
-import W3Helper from '../utils/W3Helper'
 
 const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
   if (!conf.disableFaceVerification) {
@@ -76,40 +75,6 @@ const updateMauticRecord = async (userRecord: UserRecord, utmString: string, log
   return mauticId
 }
 
-const updateW3Record = async (user: any, logger: any) => {
-  if (conf.env !== 'test' && conf.enableInvites === false) {
-    return
-  }
-  let userDB = await UserDBPrivate.getUser(user.identifier)
-  const w3Record = get(userDB, 'isCompleted.w3Record', false)
-  if (!w3Record) {
-    const web3Record = await W3Helper.registerUser(user).catch(e => {
-      logger.error('updateW3Record error registering user to w3', e.message, e, { user })
-    })
-    if (web3Record && web3Record.login_token && web3Record.wallet_token) {
-      await UserDBPrivate.updateUser({
-        identifier: user.identifier,
-        loginToken: web3Record.login_token,
-        w3Token: web3Record.wallet_token,
-        'isCompleted.w3Record': true
-      })
-      logger.debug('updateW3Record got web3 user records', { web3Record, user })
-    } else {
-      logger.error('updateW3Record empty w3 response', '', null, { user })
-
-      // supress error while running locally
-      if (!conf.walletUrl.includes('localhost:')) {
-        throw new Error('empty w3 response')
-      }
-    }
-    return {
-      loginToken: web3Record.login_token,
-      w3Token: web3Record.wallet_token
-    }
-  }
-  return userDB
-}
-
 const topUserWallet = async (userRecord: UserRecord, logger: any) => {
   let user = await UserDBPrivate.getUser(userRecord.identifier)
   const topWallet = get(user, 'isCompleted.topWallet', false)
@@ -131,7 +96,6 @@ const topUserWallet = async (userRecord: UserRecord, logger: any) => {
 
 export default {
   topUserWallet,
-  updateW3Record,
   updateMauticRecord,
   addUserToWhiteList
 }

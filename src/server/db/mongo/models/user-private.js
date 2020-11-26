@@ -15,18 +15,17 @@ export const UserPrivateSchema = new Schema(
       type: String
     },
     email: {
-      type: String
+      type: String,
+      index: { unique: false }
     },
     mobile: {
-      type: String
+      type: String,
+      index: { unique: false }
     },
     jwt: {
       type: String
     },
     loginToken: {
-      type: String
-    },
-    w3Token: {
       type: String
     },
     smsValidated: {
@@ -56,7 +55,8 @@ export const UserPrivateSchema = new Schema(
       type: String
     },
     createdDate: {
-      type: Date
+      type: Date,
+      index: true
     },
     magiclink: {
       type: String
@@ -69,10 +69,6 @@ export const UserPrivateSchema = new Schema(
     },
     isCompleted: {
       whiteList: {
-        type: Boolean,
-        default: false
-      },
-      w3Record: {
         type: Boolean,
         default: false
       },

@@ -56,7 +56,7 @@ export class StakingModelManager {
       const fundsTX = await AdminWallet.sendTransactionMainnet(
         this.managerContract.methods.transferInterest(this.stakingAddress),
         { onTransactionHash: h => (txHash = h) },
-        { gas: 500000 } //force fixed gas price, tx should take around 450k
+        { gas: 700000 } //force fixed gas price, tx should take around 450k
       )
       const fundsEvent = get(fundsTX, 'events.FundsTransferred')
       this.log.info('transferInterest result event', { fundsEvent })
@@ -250,7 +250,7 @@ export class StakingModelManager {
   }
 }
 
-const fundManager = new StakingModelManager()
+export const fundManager = new StakingModelManager()
 
 /**
  * a manager to make sure we fish inactive users
@@ -301,23 +301,26 @@ class FishingManager {
       this.log.warn('fishManager getPastEvents failed')
       throw e
     })
-    this.log.info('getUBICalculatedDays ubiEvents:', { ubiEvents: ubiEvents.length })
+    this.log.info('getUBICalculatedDays ubiEvents:', {
+      ubiEvents: ubiEvents.length,
+      ubiEventDays: ubiEvents.map(_ => result(_, 'returnValues.day.toNumber'))
+    })
 
     //find first day older than maxInactiveDays (ubiEvents is sorted from old to new  so we reverse it)
     const searchStartDay = ubiEvents
       .reverse()
       .find(e => e.returnValues.day.toNumber() <= currentUBIDay - maxInactiveDays)
 
+    const startDay = result(searchStartDay, 'returnValues.day.toNumber', 0)
     //find first day newer than searchStartDay
-    const searchEndDay = ubiEvents.find(
-      e => e.returnValues.day.toNumber() > result(searchStartDay, 'returnValues.day.toNumber', 0)
-    )
+    const searchEndDay = ubiEvents.reverse().find(e => e.returnValues.day.toNumber() > startDay)
+    const endDay = result(searchEndDay, 'returnValues.day.toNumber', 0)
 
     this.log.info('getUBICalculatedDays got UBICalculatedEvents:', {
       currentUBIDay,
       foundEvents: ubiEvents.length,
-      startDay: searchStartDay && searchStartDay.returnValues.day.toNumber(),
-      endDay: searchEndDay && searchEndDay.returnValues.day.toNumber()
+      startDay,
+      endDay
       // searchStartDay: searchStartDay,
       // searchEndDay: searchEndDay,
     })
@@ -399,14 +402,14 @@ class FishingManager {
    * perform the fishMulti TX on the ubiContract
    */
   fishChunk = async tofish => {
-    const fishTX = await AdminWallet.fishMulti(tofish)
+    const fishTX = await AdminWallet.fishMulti(tofish, this.log)
     const fishEvents = await AdminWallet.UBIContract.getPastEvents('TotalFished', {
       fromBlock: fishTX.blockNumber,
       toBlock: fishTX.blockNumber
     })
     const fishEvent = fishEvents.find(e => e.transactionHash === fishTX.transactionHash)
     const totalFished = result(fishEvent, 'returnValues.total.toNumber', 0)
-    this.log.info('Fished accounts', { tofish, totalFished, fisherAccount: fishTX.from })
+    this.log.info('Fished accounts', { tofish, totalFished, fisherAccount: fishTX.from, tx: fishTX.transactionHash })
     return { totalFished, fisherAccount: fishTX.from }
   }
 
@@ -454,7 +457,7 @@ class FishingManager {
   }
 }
 
-const fishManager = new FishingManager()
+export const fishManager = new FishingManager()
 
 class StakingModelTask {
   // using context allowing us to manipulate task execution
@@ -480,7 +483,7 @@ class StakingModelTask {
   async run() {}
 }
 
-class CollectFundsTask extends StakingModelTask {
+export class CollectFundsTask extends StakingModelTask {
   get schedule() {
     return config.stakeTaskCron
   }
@@ -494,7 +497,7 @@ class CollectFundsTask extends StakingModelTask {
   }
 }
 
-class FishInactiveTask extends StakingModelTask {
+export class FishInactiveTask extends StakingModelTask {
   get schedule() {
     return config.fishTaskCron
   }
@@ -507,7 +510,3 @@ class FishInactiveTask extends StakingModelTask {
     return fishManager.run()
   }
 }
-
-const collectFundsTask = new CollectFundsTask()
-const fishInactiveTask = new FishInactiveTask()
-export { collectFundsTask, fishInactiveTask, fundManager, fishManager }

@@ -13,9 +13,7 @@ import requestTimeout from '../utils/timeout'
 import OTP from '../../imports/otp'
 import conf from '../server.config'
 import { Mautic } from '../mautic/mauticAPI'
-import W3Helper from '../utils/W3Helper'
-import gdToWei from '../utils/gdToWei'
-import txManager from '../utils/tx-manager'
+import { sendTemplateEmail } from '../aws-ses/aws-ses'
 
 import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 
@@ -462,13 +460,15 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
         if (!user.isEmailConfirmed || isEmailChanged) {
           try {
-            await Mautic.sendVerificationEmail(
-              {
-                ...userRec,
-                mauticId: tempMauticId || mauticId
-              },
-              code
-            )
+            const { fullName } = userRec
+            if (!code || !fullName || !email) {
+              throw new Error('missing input for sending verification email')
+            }
+            const templateData = {
+              firstname: fullName,
+              code: parseInt(code)
+            }
+            await sendTemplateEmail(email, templateData)
             log.debug('sent new user email validation code', code)
           } catch (e) {
             log.error('failed sending email verification to user:', e.message, e, { userRec, code })
@@ -574,250 +574,6 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       }
 
       return res.json({ ok: 0, error: 'nothing to do' })
-    })
-  )
-
-  /**
-   * @api {get} /verify/w3/email Verify email to be equal with email provided by token from web3
-   * @apiName Web3 Email Verify
-   * @apiGroup Verification
-   *
-   * @apiParam {String} email
-   * @apiParam {String} token
-   *
-   * @apiSuccess {Number} ok
-   * @apiSuccess {String} message
-   * @ignore
-   */
-  app.post(
-    '/verify/w3/email',
-    passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res, next) => {
-      const log = req.log
-
-      const { body, user: currentUser } = req
-      const email: string = body.email
-      const token: string = body.token
-
-      if (!email || !token) {
-        log.warn('email and w3Token is required', { email, token })
-
-        return res.status(422).json({
-          ok: -1,
-          message: 'email and w3Token is required'
-        })
-      }
-
-      let w3User
-
-      try {
-        w3User = await W3Helper.getUser(token)
-      } catch (e) {
-        log.error('Fetch web3 user error', e.message, e)
-      }
-
-      let status = 422
-      const responsePayload = {
-        ok: -1,
-        message: 'Wrong web3 token or email'
-      }
-
-      if (w3User && w3User.email === email) {
-        currentUser.email = w3User.email
-        const mauticContact = await Mautic.createContact(currentUser)
-        const mauticId = mauticContact.contact.id
-        await storage.updateUser({
-          identifier: currentUser.loggedInAs,
-          mauticId,
-          email,
-          otp: { ...currentUser.otp, email },
-          isEmailConfirmed: true
-        })
-
-        responsePayload.ok = 1
-        delete responsePayload.message
-
-        status = 200
-      }
-
-      res.status(status).json(responsePayload)
-    })
-  )
-
-  /**
-   * @api {get} /verify/w3/logintoken get W3 login token for current user
-   * @apiName Get W3 Login Token
-   * @apiGroup Verification
-   *
-   * @apiSuccess {Number} ok
-   * @apiSuccess {String} loginToken
-   * @ignore
-   */
-  app.get(
-    '/verify/w3/logintoken',
-    passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res, next) => {
-      const { user } = req
-      const logger = req.log
-
-      if (conf.enableInvites === false) res.json({ ok: 0, message: 'invites disabled' })
-
-      //we no longer hold user email so can't call updateW3Record outside signup
-      //const w3Record = await addUserSteps.updateW3Record(user, logger) //make sure w3 registration was done
-      // let loginToken = w3Record.loginToken
-      let loginToken = user.loginToken
-
-      //we no longer hold user email so can't call getLoginOrWalletToken outside signup
-      // if (!loginToken) {
-      //   const w3Data = await W3Helper.getLoginOrWalletToken(user)
-
-      //   if (w3Data && w3Data.login_token) {
-      //     loginToken = w3Data.login_token
-
-      //     storage.updateUser({ ...user, loginToken })
-      //   }
-      // }
-
-      logger.info('loginToken', { loginToken })
-
-      res.json({
-        ok: +Boolean(loginToken),
-        loginToken
-      })
-    })
-  )
-
-  /**
-   * @api {get} /verify/bonuses check if there is available bonuses to charge on user's wallet and do it
-   * @apiName Web3 Charge Bonuses
-   * @apiGroup Verification
-   *
-   * @apiSuccess {Number} ok
-   * @ignore
-   */
-  app.get(
-    '/verify/w3/bonuses',
-    passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res, next) => {
-      const log = req.log
-
-      const { user: currentUser } = req
-
-      if (conf.enableInvites === false) res.json({ ok: 0, message: 'invites disabled' })
-
-      const isUserWhitelisted = await AdminWallet.isVerified(currentUser.gdAddress)
-
-      log.info('currentUser', { currentUser })
-      log.info('isUserWhitelisted', { isUserWhitelisted })
-
-      if (!isUserWhitelisted) {
-        return res.status(200).json({
-          ok: 0,
-          message: 'User should be verified to get bonuses'
-        })
-      }
-
-      let wallet_token = currentUser.w3Token
-
-      log.info('wallet token from user rec', { wallet_token })
-
-      /* we no longer hold user email, so we cant call getLoginOrWalletToken not in signup
-      if (!wallet_token) {
-        const w3Data = await W3Helper.getLoginOrWalletToken(currentUser)
-
-        log.info('wallet token response data from w3 site', { w3Data })
-        log.info('wallet token from w3 site', { walletToken: w3Data && w3Data.wallet_token })
-
-        if (w3Data && w3Data.wallet_token) {
-          wallet_token = w3Data.wallet_token
-
-          storage.updateUser({ identifier: currentUser.loggedInAs, w3Token: w3Data.wallet_token })
-        }
-      }*/
-
-      if (!wallet_token) {
-        return res.status(400).json({
-          ok: -1,
-          message: 'Missed W3 token'
-        })
-      }
-
-      const isQueueLocked = await txManager.isLocked(currentUser.gdAddress)
-
-      log.info('Is Queue Locked', { isQueueLocked })
-
-      if (isQueueLocked) {
-        return res.status(200).json({
-          ok: 1,
-          message: 'The bonuses are in minting process'
-        })
-      }
-
-      //start lock before checking bonus status to prevent race condition
-      const { release, fail } = await txManager.lock(currentUser.gdAddress, 0)
-
-      const w3User = await W3Helper.getUser(wallet_token).catch(e => {
-        log.error('failed fetching w3 user', e.message, e, { wallet_token, currentUser })
-        return false
-      })
-
-      if (!w3User) {
-        release()
-
-        return res.status(400).json({
-          ok: -1,
-          message: 'Missed bonuses data'
-        })
-      }
-
-      const bonus = w3User.bonus
-      const redeemedBonus = w3User.redeemed_bonus
-      const toRedeem = +bonus - +redeemedBonus
-
-      if (toRedeem <= 0) {
-        release()
-
-        return res.status(200).json({
-          ok: 1,
-          message: 'There is no bonuses yet'
-        })
-      }
-
-      const toRedeemInWei = gdToWei(toRedeem)
-
-      log.debug('user address and bonus', {
-        address: currentUser.gdAddress,
-        bonus: toRedeem,
-        bonusInWei: toRedeemInWei
-      })
-
-      // initiate smart contract to send bonus to user
-      AdminWallet.redeemBonuses(currentUser.gdAddress, toRedeemInWei, {
-        onTransactionHash: hash => {
-          log.info('Bonus redeem - hash created', { currentUser, hash })
-        },
-        onReceipt: async r => {
-          log.info('Bonus redeem - receipt received', r)
-
-          await W3Helper.informW3ThatBonusCharged(toRedeem, wallet_token)
-
-          release()
-        },
-        onError: e => {
-          log.error('Bonuses charge failed', e.message, e, { currentUser })
-
-          fail()
-
-          return res.status(400).json({
-            ok: -1,
-            message: 'Failed to redeem bonuses for user'
-          })
-        }
-      })
-
-      return res.status(200).json({
-        ok: 1
-      })
     })
   )
 

@@ -1,7 +1,7 @@
 // @flow
 import { Router } from 'express'
 import passport from 'passport'
-import { defaults, omitBy } from 'lodash'
+import { defaults, first, get, omitBy, sortBy } from 'lodash'
 import { sha3 } from 'web3-utils'
 import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync, onlyInEnv } from '../utils/helpers'
@@ -19,6 +19,23 @@ const adminAuthenticate = (req, res, next) => {
 }
 
 const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
+  app.use(
+    ['/user/*'],
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res, next) => {
+      const { user, body, log } = req
+      const { loggedInAs } = user
+      const identifier = get(body, 'user.identifier', loggedInAs)
+
+      log.debug(`${req.baseUrl} auth:`, { user, body })
+
+      if (loggedInAs !== identifier) {
+        log.warn(`Trying to update other user data! ${loggedInAs}!==${identifier}`)
+        throw new Error(`Trying to update other user data! ${loggedInAs}!==${identifier}`)
+      } else next()
+    })
+  )
+
   /**
    * @api {post} /user/add Add user account
    * @apiName Add
@@ -31,7 +48,6 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
    */
   app.post(
     '/user/add',
-    passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const {
         env,
@@ -55,6 +71,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         // (torus maps identifier such as email and mobile to private/public key pairs)
         const verifier = createUserVerifier(userRecord, userPayload, logger)
 
+        //this modifies userRecord with smsValidated/isEmailConfirmed
         await verifier.verifySignInIdentifiers()
 
         // check that user email/mobile sent is the same as the ones verified
@@ -100,7 +117,6 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
             ? userRecord.isCompleted
             : {
                 whiteList: false,
-                w3Record: false,
                 topWallet: false
               }
         })
@@ -147,18 +163,6 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           signUpPromises.push(p3)
         }
 
-        // const web3RecordP = addUserSteps
-        //   .updateW3Record(userRecordWithPII, logger)
-        //   .then(r => {
-        //     logger.debug('updateW3Record success')
-        //     return r
-        //   })
-        //   .catch(e => {
-        //     logger.error('updateW3Record failed', e.message, e, { userRecordWithPII })
-        //     throw new Error('Failed adding user to w3')
-        //   })
-        // signUpPromises.push(web3RecordP)
-
         const p4 = addUserSteps
           .topUserWallet(userRecord, logger)
           .then(isTopWallet => {
@@ -204,12 +208,8 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           })
         }
 
-        // const web3Record = await web3RecordP
-
         res.json({
           ok: 1
-          // loginToken: web3Record && web3Record.loginToken,
-          // w3Token: web3Record && web3Record.w3Token
         })
       } catch (e) {
         logger.warn('user signup failed', e.message, e)
@@ -231,7 +231,6 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
   app.post(
     '/user/start',
     onlyInEnv('production', 'staging', 'test'),
-    passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { user } = req.body
       const { log: logger, user: existingUser } = req
@@ -262,18 +261,25 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
    */
   app.post(
     '/user/delete',
-    passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const { user, log } = req
       log.info('delete user', { user })
+
+      //first get number of accounts using same mauticId before we delete the account
+      const mauticCount = await storage.getCountMauticId(user.mauticId).catch(e => {
+        log.warn('getCountMauticId failed:', e.message, e)
+        return 1
+      })
 
       const results = await Promise.all([
         (user.identifier ? storage.deleteUser(user) : Promise.reject())
           .then(r => ({ mongodb: 'ok' }))
           .catch(e => ({ mongodb: 'failed' })),
-        Mautic.deleteContact(user)
-          .then(r => ({ mautic: 'ok' }))
-          .catch(e => ({ mautic: 'failed' })),
+        mauticCount > 1
+          ? Promise.resolve({ mautic: 'okMultiNotDeleted' })
+          : Mautic.deleteContact(user)
+              .then(r => ({ mautic: 'ok' }))
+              .catch(e => ({ mautic: 'failed' })),
         fetch(`https://api.fullstory.com/users/v1/individual/${user.identifier}`, {
           headers: { Authorization: `Basic ${conf.fullStoryKey}` },
           method: 'DELETE'
@@ -307,11 +313,62 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
    */
   app.get(
     '/user/exists',
-    passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const { user } = req
 
       res.json({ ok: 1, exists: user.createdDate != null, fullName: user.fullName })
+    })
+  )
+
+  /**
+   * @api {post} /userExists returns user registration method
+   * @apiGroup Storage
+   *
+   * @apiSuccess {Number} ok
+   * @apiSuccess {Boolean} exists
+   * @apiSuccess {String} fullName
+   * @apiSuccess {String} provider
+
+
+   * @ignore
+   */
+  app.post(
+    '/userExists',
+    wrapAsync(async (req, res, next) => {
+      const { log } = req
+      const { identifier = '', email, mobile } = req.body
+      const identifierLC = identifier.toLowerCase()
+      const existing = await storage.model
+        .find({
+          createdDate: { $exists: true },
+          $or: [{ identifier: identifierLC }, { email: email && sha3(email) }, { mobile: mobile && sha3(mobile) }]
+        })
+        .lean()
+
+      //sort by importance
+      const existingSorted = sortBy(existing, [
+        e => e.identifier === identifierLC,
+        'isVerified',
+        'createdDate'
+      ]).reverse()
+      log.debug('userExists:', { existingSorted, existing, identifier, identifierLC, email, mobile })
+
+      if (existing.length) {
+        //prefer oldest verified account
+        const bestExisting = first(existingSorted)
+        return res.json({
+          ok: 1,
+          found: existing.length,
+          exists: true,
+          provider: bestExisting.torusProvider,
+          identifier: identifierLC === bestExisting.identifier,
+          email: email && sha3(email) === bestExisting.email,
+          mobile: mobile && sha3(mobile) === bestExisting.mobile,
+          fullName: bestExisting.fullName
+        })
+      }
+
+      res.json({ ok: 0, exists: false })
     })
   )
 
@@ -332,13 +389,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
   app.post(
     '/admin/user/list',
     adminAuthenticate,
-    wrapAsync(async (_, res) => {
-      let done = jsonres => {
-        res.json(jsonres)
-      }
-
-      storage.listUsers(done)
-    })
+    wrapAsync(async (_, res) => storage.listUsers(list => res.json(list)))
   )
 
   app.post(

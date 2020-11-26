@@ -19,16 +19,28 @@ import logger, { addRequestLogger } from '../imports/logger'
 import VerificationAPI from './verification/verification'
 import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
 import addClaimQueueMiddlewares from './claimQueue/claimQueueAPI'
-import { fishInactiveTask, collectFundsTask } from './blockchain/stakingModelTasks'
-import './db/cron/dbUpdateTask' //import to register the task
+import { FishInactiveTask, CollectFundsTask } from './blockchain/stakingModelTasks'
+import './db/cron/dbUpdateTask' // import to register the task
 import Config from './server.config'
 
 const rootLogger = logger.child({ from: 'Server' })
+const { env, fishTaskDisabled, stakeTaskDisabled } = Config
 
-export default async (app: Router, env: any) => {
+const stakingModelTasks = [
+  {
+    task: CollectFundsTask,
+    disabled: stakeTaskDisabled
+  },
+  {
+    task: FishInactiveTask,
+    disabled: fishTaskDisabled
+  }
+]
+
+export default async (app: Router) => {
   const corsConfig = {
     credentials: true,
-    origin: Config.env === 'production' ? /\.gooddollar\.org$/ : true
+    origin: env === 'production' ? /\.gooddollar\.org$/ : true
   }
 
   // parse application/x-www-form-urlencoded
@@ -65,8 +77,13 @@ export default async (app: Router, env: any) => {
   CronTasksRunner.registerTask(disposeEnrollmentsTask)
 
   if (contractsVersion >= '2.0.0') {
-    CronTasksRunner.registerTask(collectFundsTask)
-    CronTasksRunner.registerTask(fishInactiveTask)
+    for (let { task, disabled } of stakingModelTasks) {
+      if (disabled) {
+        continue
+      }
+
+      CronTasksRunner.registerTask(new task())
+    }
   }
 
   CronTasksRunner.startTasks()
