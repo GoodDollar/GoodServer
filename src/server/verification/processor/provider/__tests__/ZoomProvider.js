@@ -31,19 +31,19 @@ const testSuccessfullEnrollment = async (alreadyEnrolled = false) => {
   expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(3, { isEnrolled: true })
 }
 
-const testEnrollmentError = async (errorMessage, onProcessingMock = null) => {
-  const onEnrollmentProcessing = onProcessingMock || jest.fn()
-  const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
+const testEnrollmentError = async errorMessage => {
+  const onProcessingMock = jest.fn()
+  const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onProcessingMock)).rejects
 
   await wrappedResponse.toThrow(errorMessage)
-  await wrappedResponse.not.toHaveProperty('response')
+  return { onProcessingMock, wrappedResponse }
 }
 
 const testEnrollmentServiceError = async errorMessage => {
-  const onEnrollmentProcessing = jest.fn()
+  const { onProcessingMock, wrappedResponse } = await testEnrollmentError(errorMessage)
 
-  await testEnrollmentError(errorMessage, onEnrollmentProcessing)
-  expect(onEnrollmentProcessing).not.toHaveBeenCalled()
+  await wrappedResponse.not.toHaveProperty('response')
+  expect(onProcessingMock).not.toHaveBeenCalled()
 }
 
 describe('ZoomProvider', () => {
@@ -157,7 +157,7 @@ describe('ZoomProvider', () => {
 
     helper.mockEnrollmentNotFound(enrollmentIdentifier)
     helper.mockSuccessEnrollment(enrollmentIdentifier)
-    helper.mockFailedSearch(unexpectedError)
+    helper.mockFailedSearch(enrollmentIdentifier, unexpectedError)
 
     await testEnrollmentError(unexpectedError)
   })
