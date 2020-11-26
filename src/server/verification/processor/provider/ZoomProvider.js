@@ -1,5 +1,5 @@
 // @flow
-import { omit, once, omitBy } from 'lodash'
+import { omit, once, omitBy, assign } from 'lodash'
 
 import initZoomAPI, { faceSnapshotFields, ZoomAPIError } from '../../api/ZoomAPI.js'
 import logger from '../../../../imports/logger'
@@ -13,6 +13,7 @@ export const alreadyEnrolledMessage = 'The FaceMap was already enrolled.'
 class ZoomProvider implements IEnrollmentProvider {
   api = null
   logger = null
+  _apiFeatures = null
 
   constructor(api, logger) {
     this.api = api
@@ -208,6 +209,17 @@ class ZoomProvider implements IEnrollmentProvider {
       log.warn('Error disposing enrollment', { e: exception, errMessage, enrollmentIdentifier })
       throw exception
     }
+  }
+
+  async _supportsFeature(feature: string): Promise<boolean> {
+    let { _apiFeatures, api } = this
+
+    if (!_apiFeatures) {
+      _apiFeatures = await api.getAPIFeatures()
+      assign(this, { _apiFeatures })
+    }
+
+    return _apiFeatures.includes(feature)
   }
 
   _isNotIndexedException(enrollmentIdentifier, exception, customLogger) {
