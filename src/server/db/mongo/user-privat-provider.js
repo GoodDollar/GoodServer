@@ -17,7 +17,7 @@ class UserPrivate {
   }
 
   /**
-   * Is dublicate User
+   * Is duplicate User
    *
    * @param {UserRecord} user
    *
@@ -51,7 +51,7 @@ class UserPrivate {
   }
 
   /**
-   * Create or update user privat date
+   * Create or update user private date
    *
    * @param {UserRecord} user
    *
@@ -198,7 +198,7 @@ class UserPrivate {
   }
 
   /**
-   * Enqueues delayed task to the user's tasks queue
+   * Enqueue delayed task to the user's tasks queue
    *
    * @param {string} userIdentifier
    * @param {string} taskName
@@ -221,7 +221,7 @@ class UserPrivate {
   }
 
   /**
-   * Checks if there exists tasks of the type specifid and matching optional filters
+   * Checks if there exists tasks of the type specified and matching optional filters
    * @param {string} taskName
    * @param {object} filters
    */
@@ -232,7 +232,7 @@ class UserPrivate {
   }
 
   /**
-   * Fetches tasks of the type specifid with optional filtering and locks them by setting running status
+   * Fetches tasks of the type specified with optional filtering and locks them by setting running status
    *
    * @param {string} taskName
    * @param {object} filters
