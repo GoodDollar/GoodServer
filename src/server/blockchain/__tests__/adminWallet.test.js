@@ -47,6 +47,12 @@ describe('adminwallet', () => {
     expect(lastAuth).toBeGreaterThan(0)
   })
 
+  test('adminWallet get authenticationPeriod', async () => {
+    const result = await AdminWallet.getAuthenticationPeriod()
+    // TODO: change this from hardcoded value maybe?
+    expect(parseInt(result)).toEqual(14)
+  })
+
   test('adminWallet can blacklist user', async () => {
     const unverifiedAddress = generateWalletAddress()
 
