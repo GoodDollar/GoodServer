@@ -19,7 +19,7 @@ export const DISPOSE_ENROLLMENTS_TASK = 'verification/dispose_enrollments'
 
 // count of chunks pending tasks should (approximately) be split to
 const DISPOSE_BATCH_AMOUNT = 10
-// minimal & maximal chuk sizes
+// minimal & maximal chunk sizes
 const DISPOSE_BATCH_MINIMAL = 10
 const DISPOSE_BATCH_MAXIMAL = 50
 
@@ -90,7 +90,7 @@ class EnrollmentProcessor {
     } catch (exception) {
       const error = exception.message
 
-      log.warn("Coundn't check disposal state for enrollment", { enrollmentIdentifier, error })
+      log.warn("couldn't check disposal state for enrollment", { enrollmentIdentifier, error })
       throw exception
     }
   }
@@ -117,7 +117,7 @@ class EnrollmentProcessor {
     const isUserWhitelisted = await adminApi.isVerified(gdAddress)
 
     if (isUserWhitelisted) {
-      log.info('Walllet is whitelisted, making user non-whitelisted', { gdAddress })
+      log.info('Wallet is whitelisted, making user non-whitelisted', { gdAddress })
       await adminApi.removeWhitelisted(gdAddress)
     }
 
@@ -140,7 +140,7 @@ class EnrollmentProcessor {
     }
 
     try {
-      // dont pass user to task records to keep privacy
+      // don't pass user to task records to keep privacy
       const task = await storage.enqueueTask(DISPOSE_ENROLLMENTS_TASK, enrollmentIdentifier)
 
       log.info('Enqueued enrollment disposal task', { enrollmentIdentifier, taskId: task._id })
