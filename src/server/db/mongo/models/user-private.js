@@ -55,7 +55,8 @@ export const UserPrivateSchema = new Schema(
       type: String
     },
     createdDate: {
-      type: Date
+      type: Date,
+      index: true
     },
     magiclink: {
       type: String
