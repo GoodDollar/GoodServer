@@ -12,7 +12,8 @@ import { GunDBPublic } from '../../gun/gun-middleware'
 import makeServer from '../../server-test'
 import { delay } from '../../utils/timeout'
 
-import createEnrollmentProcessor, { DISPOSE_ENROLLMENTS_TASK } from '../processor/EnrollmentProcessor'
+import createEnrollmentProcessor from '../processor/EnrollmentProcessor'
+import { DISPOSE_ENROLLMENTS_TASK } from '../../cron/taskUtil'
 import { getToken, getCreds } from '../../__util__/'
 import createMockingHelper from '../api/__tests__/__util__'
 
@@ -73,6 +74,7 @@ describe('verificationAPI', () => {
 
     const payload = {
       sessionId: sessionToken,
+      enrollmentIdentifier,
       faceMap: Buffer.alloc(32),
       auditTrailImage: 'data:image/png:FaKEimagE==',
       lowQualityAuditTrailImage: 'data:image/png:FaKEimagE=='
@@ -122,7 +124,7 @@ describe('verificationAPI', () => {
       // but enrollment process wasn't started
       expect(updateSessionMock).not.toHaveBeenCalledWith({ isStarted: true })
 
-      // and user was actrally re-whitelisted in the wallet
+      // and user was actually re-whitelisted in the wallet
       expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), profilePublickey)
     }
 
@@ -145,7 +147,7 @@ describe('verificationAPI', () => {
 
     beforeEach(async () => {
       await storage.updateUser({ identifier: userIdentifier, isVerified: false, claimQueue: null })
-      await storage.taskModel.deleteMany({ subject: enrollmentIdentifier })
+      await storage.taskModel.deleteMany({})
 
       enrollmentProcessor.keepEnrollments = 24
       isVerifiedMock.mockResolvedValue(false)
@@ -223,7 +225,7 @@ describe('verificationAPI', () => {
     })
 
     test('PUT /verify/face/:enrollmentIdentifier returns 400 if user is being deleted', async () => {
-      await storage.enqueueTask(DISPOSE_ENROLLMENTS_TASK, enrollmentIdentifier)
+      await storage.enqueueTask(DISPOSE_ENROLLMENTS_TASK, { enrollmentIdentifier, executeAt: 'account-removal' })
 
       await request(server)
         .put(enrollmentUri)
@@ -232,7 +234,7 @@ describe('verificationAPI', () => {
         .expect(400, { success: false, error: 'Facemap record with same identifier is being deleted.' })
     })
 
-    test('PUT /verify/face/:enrollmentIdentifier returns 200 and success: true when verification was successfull', async () => {
+    test('PUT /verify/face/:enrollmentIdentifier returns 200 and success: true when verification was successful', async () => {
       helper.mockEmptyResultsFaceSearch()
       helper.mockSuccessEnrollment(enrollmentIdentifier)
 
@@ -250,7 +252,7 @@ describe('verificationAPI', () => {
       expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), profilePublickey)
     })
 
-    test("PUT /verify/face/:enrollmentIdentifier returns 200 and success: false when verification wasn't successfull", async () => {
+    test("PUT /verify/face/:enrollmentIdentifier returns 200 and success: false when verification wasn't successful", async () => {
       helper.mockDuplicateFound()
 
       await request(server)
@@ -368,9 +370,11 @@ describe('verificationAPI', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200, { success: true })
 
-      await expect(storage.hasTasksQueued(DISPOSE_ENROLLMENTS_TASK, { subject: enrollmentIdentifier })).resolves.toBe(
-        true
-      )
+      await expect(
+        storage.hasTasksQueued(DISPOSE_ENROLLMENTS_TASK, {
+          subject: { enrollmentIdentifier: enrollmentIdentifier, executeAt: 'account-removal' }
+        })
+      ).resolves.toBe(true)
     })
 
     test('DELETE /verify/face/:enrollmentIdentifier returns 400 and success = false if signature is invalid', async () => {

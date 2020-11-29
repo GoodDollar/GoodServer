@@ -141,7 +141,7 @@ class EnrollmentProcessor {
 
     try {
       // don't pass user to task records to keep privacy
-      const task = scheduleDisposalTask(storage, enrollmentIdentifier, 'account-removal')
+      const task = await scheduleDisposalTask(storage, enrollmentIdentifier, 'account-removal')
 
       log.info('Enqueued enrollment disposal task', { enrollmentIdentifier, taskId: task._id })
     } catch (exception) {
