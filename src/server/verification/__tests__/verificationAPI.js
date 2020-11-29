@@ -132,6 +132,9 @@ describe('verificationAPI', () => {
       await storage.taskModel.deleteMany({ subject: enrollmentIdentifier })
 
       enrollmentProcessor.keepEnrollments = 24
+      delete enrollmentProcessor.provider._apiFeatures
+      helper.mockServerRunning()
+
       isVerifiedMock.mockResolvedValue(false)
     })
 

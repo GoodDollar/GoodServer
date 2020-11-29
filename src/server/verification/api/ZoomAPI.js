@@ -14,6 +14,11 @@ export const ZoomAPIError = {
   NameCollision: 'nameCollision'
 }
 
+export const ZoomAPIFeature = {
+  DisposeEnrollment: 'delete-enrollment-3d',
+  ImportLegacyFacemaps: 'import-v8-facemap'
+}
+
 export const failedEnrollmentMessage = 'FaceMap could not be enrolled'
 export const failedLivenessMessage = 'Liveness could not be determined'
 export const enrollmentNotFoundMessage = 'An enrollment does not exists for this enrollment identifier'
@@ -40,6 +45,12 @@ class ZoomAPI {
     this._configureResponses()
   }
 
+  async getAPIFeatures(customLogger = null) {
+    const response = await this.http.get('/status', { customLogger })
+
+    return get(response, 'extra', [])
+  }
+
   async getSessionToken(customLogger = null) {
     const response = await this.http.get('/session-token', { customLogger })
 
@@ -53,28 +64,14 @@ class ZoomAPI {
     return response
   }
 
+  // eslint-disable-next-line require-await
   async readEnrollment(enrollmentIdentifier, customLogger = null) {
-    let response
+    return this._enrollmentRequest('get', enrollmentIdentifier, customLogger)
+  }
 
-    try {
-      response = await this.http.get('/enrollment-3d/:enrollmentIdentifier', {
-        customLogger,
-        params: { enrollmentIdentifier }
-      })
-    } catch (exception) {
-      const { message } = exception
-
-      if (/no\s+entry\s+found/i.test(message)) {
-        assign(exception, {
-          name: ZoomAPIError.FacemapNotFound,
-          message: enrollmentNotFoundMessage
-        })
-      }
-
-      throw exception
-    }
-
-    return response
+  // eslint-disable-next-line require-await
+  async disposeEnrollment(enrollmentIdentifier, customLogger = null) {
+    return this._enrollmentRequest('delete', enrollmentIdentifier, customLogger)
   }
 
   async checkLiveness(payload, customLogger = null) {
@@ -311,6 +308,30 @@ class ZoomAPI {
     }
 
     return databaseIndex
+  }
+
+  async _enrollmentRequest(operation, enrollmentIdentifier, customLogger = null) {
+    let response
+
+    try {
+      response = await this.http[operation]('/enrollment-3d/:enrollmentIdentifier', {
+        customLogger,
+        params: { enrollmentIdentifier }
+      })
+    } catch (exception) {
+      const { message } = exception
+
+      if (/(no\s+entry\s+found|no\s+records\s+were)/i.test(message)) {
+        assign(exception, {
+          name: ZoomAPIError.FacemapNotFound,
+          message: enrollmentNotFoundMessage
+        })
+      }
+
+      throw exception
+    }
+
+    return response
   }
 
   async _faceScanRequest(operation, payload, additionalData = null, customLogger = null) {

@@ -1,7 +1,7 @@
 // @flow
-import { omit, once, omitBy } from 'lodash'
+import { omit, once, omitBy, assign, slice, bindAll } from 'lodash'
 
-import initZoomAPI, { faceSnapshotFields, ZoomAPIError } from '../../api/ZoomAPI.js'
+import initZoomAPI, { faceSnapshotFields, ZoomAPIError, ZoomAPIFeature } from '../../api/ZoomAPI.js'
 import logger from '../../../../imports/logger'
 
 import { type IEnrollmentProvider } from '../typings'
@@ -13,10 +13,13 @@ export const alreadyEnrolledMessage = 'The FaceMap was already enrolled.'
 class ZoomProvider implements IEnrollmentProvider {
   api = null
   logger = null
+  _apiFeatures = null
 
   constructor(api, logger) {
     this.api = api
     this.logger = logger
+
+    bindAll(this, ['_supportsFeature', '_handleNotExistsException', '_isNotExistsException'])
   }
 
   isPayloadValid(payload: any): boolean {
@@ -35,7 +38,7 @@ class ZoomProvider implements IEnrollmentProvider {
     onEnrollmentProcessing: (payload: IEnrollmentEventPayload) => void | Promise<void>,
     customLogger = null
   ): Promise<any> {
-    const { api, logger } = this
+    const { api, logger, _supportsFeature } = this
     const log = customLogger || logger
     const { defaultMinimalMatchLevel, defaultSearchIndexName } = api
     const { LivenessCheckFailed, SecurityCheckFailed, FacemapNotFound } = ZoomAPIError
@@ -63,6 +66,8 @@ class ZoomProvider implements IEnrollmentProvider {
     }
 
     let alreadyEnrolled
+    // checking is API supports delete enrollment endpoint
+    const isDisposeSupported = await _supportsFeature(ZoomAPIFeature.DisposeEnrollment)
 
     // 1. checking if facescan already uploaded & enrolled
     try {
@@ -83,17 +88,30 @@ class ZoomProvider implements IEnrollmentProvider {
 
     try {
       const callArgs = [enrollmentIdentifier, payload, customLogger]
+      const enroll = () => api.submitEnrollment(...callArgs)
 
-      // if already enrolled, will call checkLiveness which
-      // doesn't need enrollmentIdentifier arguments
+      // if already enrolled, will call checkLiveness
+      // this is need because enroll doesn't re-checks facemap/images
+      // for liveness if identifier already enrolled
       if (alreadyEnrolled) {
-        callArgs.splice(0, 1)
-      }
+        // it doesn't need enrollmentIdentifier param,
+        // so we're slicing it from the start of the args
+        await api.checkLiveness(...slice(callArgs, 1))
 
-      // if not enrolled/stored yet - calling enroll. otherwise, calling liveness check
-      // this is need because enroll doesn't re-checks facemap/images for liveness
-      // if identifier already enrolled
-      await api[alreadyEnrolled ? 'checkLiveness' : 'submitEnrollment'](...callArgs)
+        // if api supports delete enrollment endpoint
+        if (isDisposeSupported) {
+          // then we're refreshing enrolled facemap with the data just received
+          // firstly, removing snapshot enrolled before
+          await this.dispose(enrollmentIdentifier)
+          // then enrolling it with the new data already verified for liveness
+          await enroll()
+          // setting enrolled flag to false as we re-enrolled the facemap
+          alreadyEnrolled = false
+        }
+      } else {
+        // if not enrolled/stored yet - just calling enroll.
+        await enroll()
+      }
     } catch (exception) {
       const { name, message, response } = exception
 
@@ -171,7 +189,7 @@ class ZoomProvider implements IEnrollmentProvider {
   }
 
   async isEnrollmentIndexed(enrollmentIdentifier: string, customLogger = null): Promise<boolean> {
-    const { api, logger } = this
+    const { api, logger, _isNotExistsException } = this
     const log = customLogger || logger
     const { defaultSearchIndexName } = api
 
@@ -180,7 +198,7 @@ class ZoomProvider implements IEnrollmentProvider {
     } catch (exception) {
       const { message: errMessage } = exception
 
-      if (this._isNotIndexedException(enrollmentIdentifier, exception, customLogger)) {
+      if (_isNotExistsException(enrollmentIdentifier, exception, customLogger)) {
         return false
       }
 
@@ -192,16 +210,46 @@ class ZoomProvider implements IEnrollmentProvider {
   }
 
   async dispose(enrollmentIdentifier: string, customLogger = null): Promise<void> {
-    const { api, logger } = this
-    const log = customLogger || logger
+    const { api, _handleNotExistsException, _supportsFeature } = this
     const { defaultSearchIndexName } = api
+    // checking is API supports delete enrollment endpoint
+    const isDisposeSupported = await _supportsFeature(ZoomAPIFeature.DisposeEnrollment)
+
+    // eslint-disable-next-line require-await
+    await _handleNotExistsException(enrollmentIdentifier, customLogger, async () =>
+      api.removeEnrollmentFromIndex(enrollmentIdentifier, defaultSearchIndexName, customLogger)
+    )
+
+    // if delete enrollment supported, removig also facemap from the DB
+    if (isDisposeSupported) {
+      // eslint-disable-next-line require-await
+      await _handleNotExistsException(enrollmentIdentifier, customLogger, async () =>
+        api.disposeEnrollment(enrollmentIdentifier, customLogger)
+      )
+    }
+  }
+
+  async _supportsFeature(feature: string): Promise<boolean> {
+    let { _apiFeatures, api } = this
+
+    if (!_apiFeatures) {
+      _apiFeatures = await api.getAPIFeatures()
+      assign(this, { _apiFeatures })
+    }
+
+    return _apiFeatures.includes(feature)
+  }
+
+  async _handleNotExistsException(enrollmentIdentifier, customLogger = null, operation): Promise<void> {
+    const { _isNotExistsException, logger } = this
+    const log = customLogger || logger
 
     try {
-      await api.removeEnrollmentFromIndex(enrollmentIdentifier, defaultSearchIndexName, customLogger)
+      await operation()
     } catch (exception) {
       const { message: errMessage } = exception
 
-      if (this._isNotIndexedException(enrollmentIdentifier, exception, customLogger)) {
+      if (_isNotExistsException(enrollmentIdentifier, exception, customLogger)) {
         return
       }
 
@@ -210,7 +258,7 @@ class ZoomProvider implements IEnrollmentProvider {
     }
   }
 
-  _isNotIndexedException(enrollmentIdentifier, exception, customLogger) {
+  _isNotExistsException(enrollmentIdentifier, exception, customLogger) {
     const log = customLogger || this.logger
     const isNotIndexed = ZoomAPIError.FacemapNotFound === exception.name
 

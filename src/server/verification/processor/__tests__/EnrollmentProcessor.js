@@ -63,7 +63,6 @@ const testValidation = async (validationPromise, errorMessage = 'Invalid input')
 
 describe('EnrollmentProcessor', () => {
   const enrollmentProcessor = createEnrollmentProcessor(storageMock)
-  const { keepEnrollments } = enrollmentProcessor
 
   beforeAll(() => {
     AdminWallet.whitelistUser = whitelistUserMock
@@ -76,11 +75,12 @@ describe('EnrollmentProcessor', () => {
   })
 
   beforeEach(() => {
-    enrollmentProcessor.keepEnrollments = 24
-
     isVerifiedMock.mockResolvedValue(false)
     hasTasksQueuedMock.mockReturnValue(false)
     enqueueTaskMock.mockResolvedValue({ _id: 'fake-task-id' })
+
+    delete enrollmentProcessor.provider._apiFeatures
+    helper.mockServerRunning()
 
     invokeMap(
       [
@@ -125,7 +125,6 @@ describe('EnrollmentProcessor', () => {
     ClaimQueue.whitelistUser = setWhitelistedImplementation
     restoreWalletMethods.forEach(method => (AdminWallet[method] = AdminWallet.constructor.prototype[method]))
 
-    assign(enrollmentProcessor, { keepEnrollments })
     zoomServiceMock.restore()
     zoomServiceMock = null
     helper = null

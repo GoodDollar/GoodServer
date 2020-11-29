@@ -1,10 +1,11 @@
 // @flow
 
 import MockAdapter from 'axios-mock-adapter'
+import { toUpper, upperFirst } from 'lodash'
 import allSettled from 'promise.allsettled'
 
 import config from '../../../server.config'
-import getZoomAPI, { ZoomAPIError } from '../ZoomAPI'
+import getZoomAPI, { ZoomAPIError, ZoomAPIFeature } from '../ZoomAPI'
 import createMockingHelper from './__util__'
 
 const ZoomAPI = getZoomAPI()
@@ -34,6 +35,43 @@ describe('ZoomAPI', () => {
     zoomServiceMock.restore()
     zoomServiceMock = null
     helper = null
+  })
+
+  const testNotFoundException = async response => {
+    await response.toThrow(helper.enrollmentNotFoundMessage)
+    await response.toHaveProperty('name', ZoomAPIError.FacemapNotFound)
+  }
+
+  const testEnrollmentNotExistsDuringRemove = async () => {
+    const wrappedResponse = expect(ZoomAPI.disposeEnrollment(enrollmentIdentifier)).rejects
+
+    await testNotFoundException(wrappedResponse)
+  }
+
+  const mockEnrollmentServiceError = (enrollmentIdentifier, operation) => {
+    const message = `Some error happened on ${toUpper(operation)} /enrollment-3d call`
+
+    zoomServiceMock[`on${upperFirst(operation)}`](helper.enrollmentUri(enrollmentIdentifier)).reply(
+      200,
+      helper.mockErrorResponse(message)
+    )
+
+    return message
+  }
+
+  test('getAPIFeatures() should return empty array on the testing API / standard server', async () => {
+    helper.mockServerRunning()
+
+    await expect(ZoomAPI.getAPIFeatures()).resolves.toEqual([])
+  })
+
+  test('getAPIFeatures() should return array with "delete-enrollment-3d" item on the custom server', async () => {
+    helper.mockServerSupportsDeleteEnrollment()
+
+    const wrappedResponse = expect(ZoomAPI.getAPIFeatures()).resolves
+
+    await wrappedResponse.toBeInstanceOf(Array)
+    await wrappedResponse.toContain(ZoomAPIFeature.DisposeEnrollment)
   })
 
   test('getSessionToken() should return session token', async () => {
@@ -69,16 +107,36 @@ describe('ZoomAPI', () => {
 
     const wrappedResponse = expect(ZoomAPI.readEnrollment(enrollmentIdentifier)).rejects
 
-    await wrappedResponse.toThrow(helper.enrollmentNotFoundMessage)
-    await wrappedResponse.toHaveProperty('name', ZoomAPIError.FacemapNotFound)
+    await testNotFoundException(wrappedResponse)
   })
 
   test('readEnrollment() should throw on unknown / service errors', async () => {
-    const message = 'Some error happened on GET /enrollment-3d call'
-
-    zoomServiceMock.onGet(helper.enrollmentUri(enrollmentIdentifier)).reply(200, helper.mockErrorResponse(message))
+    const message = mockEnrollmentServiceError(enrollmentIdentifier, 'get')
 
     await expect(ZoomAPI.readEnrollment(enrollmentIdentifier)).rejects.toThrow(message)
+  })
+
+  test('disposeEnrollment() should return success if it found', async () => {
+    helper.mockSuccessRemoveEnrollment(enrollmentIdentifier)
+
+    const wrappedResponse = expect(ZoomAPI.disposeEnrollment(enrollmentIdentifier)).resolves
+
+    await wrappedResponse.toHaveProperty('success', true)
+    await wrappedResponse.toHaveProperty('error', false)
+  })
+
+  test('disposeEnrollment() should throw if enrollment not found', async () => {
+    helper.mockEnrollmentNotExistsDuringRemove(enrollmentIdentifier)
+    await testEnrollmentNotExistsDuringRemove()
+
+    helper.mockNoRecorsFoundDuringRemoveEnrollment(enrollmentIdentifier)
+    await testEnrollmentNotExistsDuringRemove()
+  })
+
+  test('disposeEnrollment() should throw on unknown / service errors', async () => {
+    const message = mockEnrollmentServiceError(enrollmentIdentifier, 'delete')
+
+    await expect(ZoomAPI.disposeEnrollment(enrollmentIdentifier)).rejects.toThrow(message)
   })
 
   test('checkLiveness() should return success if liveness passed', async () => {
