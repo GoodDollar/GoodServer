@@ -338,10 +338,17 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
       const { log } = req
       const { identifier = '', email, mobile } = req.body
       const identifierLC = identifier.toLowerCase()
+
+      const queryOrs = [
+        { identifier: identifierLC },
+        { email: email && sha3(email) },
+        { mobile: mobile && sha3(mobile) }
+      ].filter(or => Object.values(or)[0] != null)
+
       const existing = await storage.model
         .find({
-          createdDate: { $exists: true },
-          $or: [{ identifier: identifierLC }, { email: email && sha3(email) }, { mobile: mobile && sha3(mobile) }]
+          $or: queryOrs,
+          createdDate: { $exists: true }
         })
         .lean()
 
@@ -351,6 +358,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         'isVerified',
         'createdDate'
       ]).reverse()
+
       log.debug('userExists:', { existingSorted, existing, identifier, identifierLC, email, mobile })
 
       if (existing.length) {
