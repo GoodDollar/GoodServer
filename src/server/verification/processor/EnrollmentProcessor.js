@@ -13,9 +13,9 @@ import { type IEnrollmentProvider } from './typings'
 import { type DelayedTaskRecord } from '../../../imports/types'
 
 import EnrollmentSession from './EnrollmentSession'
-import getZoomProvider from './provider/ZoomProvider'
+import { scheduleDisposalTask, DISPOSE_ENROLLMENTS_TASK } from '../../cron/taskUtil'
 
-export const DISPOSE_ENROLLMENTS_TASK = 'verification/dispose_enrollments'
+import getZoomProvider from './provider/ZoomProvider'
 
 // count of chunks pending tasks should (approximately) be split to
 const DISPOSE_BATCH_AMOUNT = 10
@@ -82,7 +82,7 @@ class EnrollmentProcessor {
 
     try {
       const isDisposing = await storage.hasTasksQueued(DISPOSE_ENROLLMENTS_TASK, {
-        subject: enrollmentIdentifier
+        subject: { enrollmentIdentifier, executeAt: 'account-removal' }
       })
 
       log.info('Got disposal state for enrollment', { enrollmentIdentifier, isDisposing })
@@ -141,7 +141,7 @@ class EnrollmentProcessor {
 
     try {
       // don't pass user to task records to keep privacy
-      const task = await storage.enqueueTask(DISPOSE_ENROLLMENTS_TASK, enrollmentIdentifier)
+      const task = scheduleDisposalTask(storage, enrollmentIdentifier, 'account-removal')
 
       log.info('Enqueued enrollment disposal task', { enrollmentIdentifier, taskId: task._id })
     } catch (exception) {
@@ -160,14 +160,28 @@ class EnrollmentProcessor {
     const { storage, keepEnrollments, logger } = this
     const log = customLogger || logger
 
-    const enqueuedAtFilters = {}
+    const authenticationPeriod = await AdminWallet.getAuthenticationPeriod()
+
+    const deletedAccountFilters = { 'subject.executeAt': 'account-removal' }
 
     if (keepEnrollments > 0) {
-      enqueuedAtFilters.createdAt = {
+      deletedAccountFilters.createdAt = {
         $lte: moment()
           .subtract(keepEnrollments, 'hours')
           .toDate()
       }
+    }
+
+    const enqueuedAtFilters = {
+      $or: [
+        deletedAccountFilters,
+        {
+          'subject.executeAt': 'auth-period',
+          createdAt: moment()
+            .subtract(authenticationPeriod, 'days')
+            .toDate()
+        }
+      ]
     }
 
     try {
@@ -222,8 +236,8 @@ class EnrollmentProcessor {
 
     await Promise.all(
       disposalBatch.map(async task => {
-        const { _id: taskId, subject: enrollmentIdentifier } = task
-
+        const { _id: taskId, subject } = task
+        const { enrollmentIdentifier } = subject
         try {
           const enrollmentExists = await provider.enrollmentExists(enrollmentIdentifier, customLogger)
 

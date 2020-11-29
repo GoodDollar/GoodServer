@@ -3,7 +3,8 @@
 import MockAdapter from 'axios-mock-adapter'
 import { assign, omit, invokeMap } from 'lodash'
 
-import createEnrollmentProcessor, { DISPOSE_ENROLLMENTS_TASK } from '../EnrollmentProcessor'
+import createEnrollmentProcessor from '../EnrollmentProcessor'
+import { DISPOSE_ENROLLMENTS_TASK } from '../../../cron/taskUtil'
 import { GunDBPublic } from '../../../gun/gun-middleware'
 import AdminWallet from '../../../blockchain/AdminWallet'
 import { ClaimQueue } from '../../../claimQueue/claimQueueAPI'
@@ -20,6 +21,7 @@ const hasTasksQueuedMock = jest.fn()
 const fetchTasksForProcessingMock = jest.fn()
 const removeDelayedTasksMock = jest.fn()
 const failDelayedTasksMock = jest.fn()
+const cancelTasksQueuedMock = jest.fn()
 
 // GUN mocks
 const updateSessionMock = jest.fn()
@@ -34,6 +36,7 @@ const whitelistInQueueMock = jest.fn()
 const whitelistUserMock = jest.fn()
 const removeWhitelistedMock = jest.fn()
 const isVerifiedMock = jest.fn()
+const getAuthenticationPeriodMock = jest.fn()
 
 const storageMock = {
   updateUser: updateUserMock,
@@ -41,7 +44,8 @@ const storageMock = {
   enqueueTask: enqueueTaskMock,
   fetchTasksForProcessing: fetchTasksForProcessingMock,
   removeDelayedTasks: removeDelayedTasksMock,
-  failDelayedTasks: failDelayedTasksMock
+  failDelayedTasks: failDelayedTasksMock,
+  cancelTasksQueued: cancelTasksQueuedMock
 }
 
 const enrollmentIdentifier = 'f0D7A688489Ab3079491d407A03BF16e5B027b2c'
@@ -74,6 +78,7 @@ describe('EnrollmentProcessor', () => {
     AdminWallet.whitelistUser = whitelistUserMock
     AdminWallet.removeWhitelisted = removeWhitelistedMock
     AdminWallet.isVerified = isVerifiedMock
+    AdminWallet.getAuthenticationPeriod = getAuthenticationPeriodMock
     ClaimQueue.setWhitelisted = whitelistInQueueMock
 
     zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
@@ -86,7 +91,9 @@ describe('EnrollmentProcessor', () => {
     isVerifiedMock.mockResolvedValue(false)
     hasTasksQueuedMock.mockReturnValue(false)
     enqueueTaskMock.mockResolvedValue({ _id: 'fake-task-id' })
+    cancelTasksQueuedMock.mockReturnValue({ _id: 'fake-task-id' })
     getSessionRefMock.mockImplementation(() => ({ put: updateSessionMock }))
+    getAuthenticationPeriodMock.mockReturnValue(14)
 
     invokeMap(
       [
@@ -110,7 +117,7 @@ describe('EnrollmentProcessor', () => {
         fetchTasksForProcessingMock,
         failDelayedTasksMock,
         removeDelayedTasksMock,
-
+        cancelTasksQueuedMock,
         updateSessionMock,
         getSessionRefMock,
 
@@ -118,6 +125,7 @@ describe('EnrollmentProcessor', () => {
 
         whitelistUserMock,
         isVerifiedMock,
+        getAuthenticationPeriodMock,
         removeWhitelistedMock
       ],
       'mockReset'
@@ -213,7 +221,10 @@ describe('EnrollmentProcessor', () => {
 
   test('enqueueDisposal() enqueues disposal task', async () => {
     await expect(enrollmentProcessor.enqueueDisposal(user, enrollmentIdentifier, signature)).resolves.toBeUndefined()
-    expect(enqueueTaskMock).toHaveBeenCalledWith(DISPOSE_ENROLLMENTS_TASK, enrollmentIdentifier)
+    expect(enqueueTaskMock).toHaveBeenCalledWith(DISPOSE_ENROLLMENTS_TASK, {
+      enrollmentIdentifier,
+      executeAt: 'account-removal'
+    })
   })
 
   test("enqueueDisposal() de-whitelists user if it's whitelisted", async () => {
@@ -229,37 +240,38 @@ describe('EnrollmentProcessor', () => {
     )
   })
 
-  test('disposeEnqueuedEnrollments() calls callback, fails unsuccessfull tasks and removes successfull tasks from queue', async () => {
+  test('disposeEnqueuedEnrollments() calls callback, fails unsuccessful tasks and removes successful tasks from queue', async () => {
     const failedEnrollmentIdentifier = 'failed-enrollment-identifier'
-    const unexistingEnrollmentIdentifier = 'unexisting-enrollment-identifier'
+    const nonexistingEnrollmentIdentifier = 'nonexisting-enrollment-identifier'
     const taskId = identifier => `${identifier}-task-id`
     const onProcessedMock = jest.fn()
-
+    getAuthenticationPeriodMock.mockResolvedValueOnce(14)
     fetchTasksForProcessingMock.mockResolvedValueOnce(
-      [unexistingEnrollmentIdentifier, failedEnrollmentIdentifier, enrollmentIdentifier].map(identifier => ({
+      [nonexistingEnrollmentIdentifier, failedEnrollmentIdentifier, enrollmentIdentifier].map(identifier => ({
         _id: taskId(identifier),
-        subject: identifier
+        subject: { enrollmentIdentifier: identifier, executeAt: 'account-removal' }
       }))
     )
 
     helper.mockEnrollmentFound(enrollmentIdentifier)
-    helper.mockEnrollmentNotFound(unexistingEnrollmentIdentifier)
+    helper.mockEnrollmentNotFound(nonexistingEnrollmentIdentifier)
     helper.mockEnrollmentFound(failedEnrollmentIdentifier)
     helper.mockServiceErrorHappenedWhileDisposing(failedEnrollmentIdentifier)
 
     await expect(enrollmentProcessor.disposeEnqueuedEnrollments(onProcessedMock)).resolves.toBeUndefined()
 
     expect(onProcessedMock).toHaveBeenCalledWith(enrollmentIdentifier)
-    expect(onProcessedMock).toHaveBeenCalledWith(unexistingEnrollmentIdentifier)
+    expect(onProcessedMock).toHaveBeenCalledWith(nonexistingEnrollmentIdentifier)
     expect(onProcessedMock).toHaveBeenCalledWith(failedEnrollmentIdentifier, expect.any(Error))
     expect(onProcessedMock).toHaveBeenCalledWith(
       failedEnrollmentIdentifier,
       expect.objectContaining({ message: helper.serviceErrorMessage })
     )
 
+    expect(getAuthenticationPeriodMock).toHaveBeenCalledTimes(1)
     expect(failDelayedTasksMock).toHaveBeenCalledWith([taskId(failedEnrollmentIdentifier)])
     expect(removeDelayedTasksMock).toHaveBeenCalledWith(
-      [unexistingEnrollmentIdentifier, enrollmentIdentifier].map(taskId)
+      [nonexistingEnrollmentIdentifier, enrollmentIdentifier].map(taskId)
     )
   })
 })

@@ -2,6 +2,7 @@
 import { bindAll, omit } from 'lodash'
 import { type IEnrollmentEventPayload } from './typings'
 import logger from '../../../imports/logger'
+import { scheduleDisposalTask } from '../../cron/taskUtil'
 
 const log = logger.child({ from: 'EnrollmentSession' })
 
@@ -13,6 +14,7 @@ export default class EnrollmentSession {
   adminApi = null
   queueApi = null
   sessionRef = null
+  enrollmentIdentifier = null
 
   constructor(user, provider, storage, adminApi, queueApi, gun, customLogger = null) {
     this.gun = gun
@@ -73,6 +75,7 @@ export default class EnrollmentSession {
     const { sessionId } = payload
 
     this.sessionRef = gun.session(sessionId)
+    this.enrollmentIdentifier = payload.enrollmentIdentifier
     // returning this to allow initialize &
     // get sessionRef via destructuring in a single call
     return this
@@ -99,7 +102,7 @@ export default class EnrollmentSession {
   }
 
   async onEnrollmentCompleted() {
-    const { sessionRef, user, storage, adminApi, queueApi, log } = this
+    const { sessionRef, user, storage, adminApi, queueApi, enrollmentIdentifier, log } = this
     const { gdAddress, profilePublickey, loggedInAs } = user
 
     log.info('Whitelisting user:', loggedInAs)
@@ -107,7 +110,8 @@ export default class EnrollmentSession {
     await Promise.all([
       queueApi.setWhitelisted(user, storage, log),
       adminApi.whitelistUser(gdAddress, profilePublickey),
-      storage.updateUser({ identifier: loggedInAs, isVerified: true })
+      storage.updateUser({ identifier: loggedInAs, isVerified: true }),
+      scheduleDisposalTask(storage, enrollmentIdentifier, 'auth-period')
     ])
 
     sessionRef.put({ isWhitelisted: true })

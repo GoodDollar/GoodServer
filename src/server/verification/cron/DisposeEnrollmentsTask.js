@@ -5,7 +5,8 @@ import { bindAll } from 'lodash'
 import logger from '../../../imports/logger'
 import Config from '../../server.config'
 
-import createEnrollmentProcessor, { DISPOSE_ENROLLMENTS_TASK } from '../processor/EnrollmentProcessor'
+import createEnrollmentProcessor from '../processor/EnrollmentProcessor'
+import { DISPOSE_ENROLLMENTS_TASK } from '../../cron/taskUtil'
 
 class DisposeEnrollmentsTask {
   schedule = null
