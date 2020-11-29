@@ -5,7 +5,7 @@ import storage from '../mongo/user-privat-provider'
 import mongoose from '../mongo-db'
 import { pick, keys } from 'lodash'
 
-import { DelayedTaskStatus } from '../mongo/models/delayed-task'
+import DelayedTaskModel, { DelayedTaskStatus } from '../mongo/models/delayed-task'
 
 const testUserName = 'mongo_test'
 const testTaskName = 'mongo_test'
@@ -58,7 +58,7 @@ describe('UserPrivate', () => {
     await userModel.deleteMany({ fullName: new RegExp(testUserName, 'i') })
   })
 
-  it('Should monogo connect', async () => {
+  it('Should mongo connect', async () => {
     expect(mongoose.connection.readyState).toBeTruthy()
   })
 
@@ -215,6 +215,23 @@ describe('UserPrivate', () => {
     await testHasTasksQueued()
   })
 
+  it('Should cancel an enqueued task', async () => {
+    // check before add (both raw query and hasTasksQueued() should return false)
+    await testHasTasksQueued()
+    // enqueue task to cancel
+    await storage.enqueueTask(testTaskName, testTaskSubject)
+    // find enqueued task
+    const enqueuedTaskBeforeCancel = await DelayedTaskModel.findOne({ taskName: testTaskName })
+    // assert that enqueued task exists
+    expect(enqueuedTaskBeforeCancel).toBeObject()
+    // cancel enqueued task
+    await storage.cancelTasksQueued(testTaskName, { subject: testTaskSubject })
+    // find enqueued task
+    const enqueuedTaskAfterCancel = await DelayedTaskModel.findOne({ taskName: testTaskName })
+    // assert enqueued task doesn't exist'
+    expect(enqueuedTaskAfterCancel).toBeNull()
+  })
+
   it('Should fetch tasks', async () => {
     const { _id } = await storage.enqueueTask(testTaskName, testTaskSubject)
 
@@ -271,7 +288,7 @@ describe('UserPrivate', () => {
     const { Complete, Failed } = DelayedTaskStatus
     const { _id } = await storage.enqueueTask(testTaskName, testTaskSubject)
 
-    // we sholdn't be able to update status for task aren't locked via fetchTasksForProcessing()
+    // we shouldn't be able to update status for task aren't locked via fetchTasksForProcessing()
     await storage.failDelayedTasks([_id])
     await storage.completeDelayedTasks([_id])
 

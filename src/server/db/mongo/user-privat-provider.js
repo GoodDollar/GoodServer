@@ -232,6 +232,16 @@ class UserPrivate {
   }
 
   /**
+   * cancel queued task
+   * @param {string} taskName
+   * @param {object} filters
+   */
+  async cancelTasksQueued(taskName: string, filters: object = {}): Promise<void> {
+    const { taskModel } = this
+    await taskModel.deleteOne({ ...filters, taskName })
+  }
+
+  /**
    * Fetches tasks of the type specified with optional filtering and locks them by setting running status
    *
    * @param {string} taskName
