@@ -1,6 +1,7 @@
 // @flow
 
 import MockAdapter from 'axios-mock-adapter'
+import { first } from 'lodash'
 
 import getZoomProvider from '../ZoomProvider'
 import createMockingHelper from '../../../api/__tests__/__util__'
@@ -46,10 +47,23 @@ const testEnrollmentServiceError = async errorMessage => {
   expect(onProcessingMock).not.toHaveBeenCalled()
 }
 
+const testRemoveEnrollmentCalled = () => {
+  // 1sdt delete should be DELETE /enrollment-3d/<id> (remove existing enrollment)
+  const deleteRequest = first(zoomServiceMock.history.delete)
+
+  expect(deleteRequest).not.toBeUndefined()
+  expect(deleteRequest).toHaveProperty('url', helper.enrollmentUri(enrollmentIdentifier))
+}
+
 describe('ZoomProvider', () => {
   beforeAll(() => {
     zoomServiceMock = new MockAdapter(ZoomProvider.api.http)
     helper = createMockingHelper(zoomServiceMock)
+  })
+
+  beforeEach(() => {
+    delete ZoomProvider._apiFeatures
+    helper.mockServerRunning()
   })
 
   afterEach(() => zoomServiceMock.reset())
@@ -59,6 +73,11 @@ describe('ZoomProvider', () => {
     zoomServiceMock = null
     helper = null
   })
+
+  const mockCustomServer = () => {
+    zoomServiceMock.reset()
+    helper.mockServerSupportsDeleteEnrollment()
+  }
 
   test('issueToken() should return session token', async () => {
     helper.mockSuccessSessionToken(sessionToken)
@@ -77,16 +96,39 @@ describe('ZoomProvider', () => {
     helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
     helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
 
-    await testSuccessfullEnrollment()
+    await testSuccessfullEnrollment(false) // should return alreadyEnrolled = false
   })
 
-  test('enroll() returns successfull response if identifier was alreadsy enrolled', async () => {
+  test('enroll() returns successfull response if identifier was already enrolled', async () => {
     helper.mockEnrollmentFound(enrollmentIdentifier)
     helper.mockSuccessLivenessCheck(enrollmentIdentifier)
     helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
     helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
 
-    await testSuccessfullEnrollment(true)
+    await testSuccessfullEnrollment(true) // should return alreadyEnrolled = true
+  })
+
+  test('enroll() re-enrolls if custom server is used and identifier was already enrolled', async () => {
+    mockCustomServer()
+
+    helper.mockEnrollmentFound(enrollmentIdentifier)
+    helper.mockSuccessLivenessCheck(enrollmentIdentifier)
+    helper.mockSuccessRemoveEnrollmentFromIndex(enrollmentIdentifier)
+    helper.mockSuccessRemoveEnrollment(enrollmentIdentifier)
+    helper.mockSuccessEnrollment(enrollmentIdentifier)
+    helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
+    helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
+
+    await testSuccessfullEnrollment() // should return alreadyEnrolled = false
+
+    const [, , postRequest] = zoomServiceMock.history.post
+
+    testRemoveEnrollmentCalled() // check id DELETE /enrollment-3d/<id> called
+
+    expect(postRequest).not.toBeUndefined() // 3rd post should be POST /enrollment-3d (re-enroll)
+    expect(postRequest).toHaveProperty('data')
+    expect(postRequest).toHaveProperty('url', '/enrollment-3d')
+    expect(JSON.parse(postRequest.data)).toHaveProperty('externalDatabaseRefID', enrollmentIdentifier)
   })
 
   test('enroll() throws if liveness check fails', async () => {
@@ -178,6 +220,16 @@ describe('ZoomProvider', () => {
 
     helper.mockEnrollmentNotExistsDuringRemoveFromIndex(enrollmentIdentifier)
     await expect(ZoomProvider.dispose(enrollmentIdentifier)).resolves.toBeUndefined()
+  })
+
+  test('dispose() removes existing enrollment also from the external DB (not from the index only) on the custom server', async () => {
+    mockCustomServer()
+
+    helper.mockSuccessRemoveEnrollmentFromIndex(enrollmentIdentifier)
+    helper.mockSuccessRemoveEnrollment(enrollmentIdentifier)
+
+    await expect(ZoomProvider.dispose(enrollmentIdentifier)).resolves.toBeUndefined()
+    testRemoveEnrollmentCalled()
   })
 
   test('dispose() throws on Zoom service error', async () => {

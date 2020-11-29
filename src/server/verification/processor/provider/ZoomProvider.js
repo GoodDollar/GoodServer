@@ -105,6 +105,8 @@ class ZoomProvider implements IEnrollmentProvider {
           await this.dispose(enrollmentIdentifier)
           // then enrolling it with the new data already verified for liveness
           await enroll()
+          // setting enrolled flag to false as we re-enrolled the facemap
+          alreadyEnrolled = false
         }
       } else {
         // if not enrolled/stored yet - just calling enroll.

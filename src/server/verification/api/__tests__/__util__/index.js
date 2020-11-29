@@ -1,8 +1,11 @@
+import { isArray, upperFirst } from 'lodash'
+
 import {
   failedLivenessMessage,
   failedEnrollmentMessage,
   enrollmentNotFoundMessage,
-  enrollmentAlreadyExistsMessage
+  enrollmentAlreadyExistsMessage,
+  ZoomAPIFeature
 } from '../../ZoomAPI'
 
 import {
@@ -36,6 +39,25 @@ export default zoomServiceMock => {
     success: false
   })
 
+  const statusResponse = (withFeatures = null) => {
+    const response = {
+      ...successResponse,
+      running: true
+    }
+
+    if (isArray(withFeatures)) {
+      response.extra = withFeatures
+    }
+
+    zoomServiceMock.onGet('/status').reply(200, response)
+  }
+
+  const notFoundResponse = (enrollmentIdentifier, operation) =>
+    zoomServiceMock['on' + upperFirst(operation)](enrollmentUri(enrollmentIdentifier)).reply(
+      200,
+      mockErrorResponse('No entry found in the database for this externalDatabaseRefID.')
+    )
+
   const faceScanResponse = (operation, payloadOrMatcher = null, response = {}, reasonFlags = {}) => {
     const mockArgs = [`/${operation}-3d`]
 
@@ -51,8 +73,7 @@ export default zoomServiceMock => {
         faceScanLivenessCheckSucceeded: true,
         ...reasonFlags
       },
-      success: true,
-      error: false,
+      ...successResponse,
       ...response
     })
   }
@@ -71,11 +92,14 @@ export default zoomServiceMock => {
       .reply(200, mockedResponse)
   }
 
+  const mockServerRunning = () => statusResponse()
+
+  const mockServerSupportsDeleteEnrollment = () => statusResponse([ZoomAPIFeature.DisposeEnrollment])
+
   const mockSuccessSessionToken = sessionToken =>
     zoomServiceMock.onGet('/session-token').reply(200, {
-      error: false,
       sessionToken,
-      success: true
+      ...successResponse
     })
 
   const mockFailedSessionToken = (withMessage = null) =>
@@ -86,14 +110,20 @@ export default zoomServiceMock => {
       externalDatabaseRefID: enrollmentIdentifier,
       faceMapBase64: Buffer.alloc(32).toString(),
       auditTrailBase64: 'data:image/png:FaKEimagE==',
-      success: true,
-      error: false
+      ...successResponse
     })
 
-  const mockEnrollmentNotFound = enrollmentIdentifier =>
+  const mockEnrollmentNotFound = enrollmentIdentifier => notFoundResponse(enrollmentIdentifier, 'get')
+
+  const mockSuccessRemoveEnrollment = enrollmentIdentifier =>
+    zoomServiceMock.onDelete(enrollmentUri(enrollmentIdentifier)).reply(200, successResponse)
+
+  const mockEnrollmentNotExistsDuringRemove = enrollmentIdentifier => notFoundResponse(enrollmentIdentifier, 'delete')
+
+  const mockNoRecorsFoundDuringRemoveEnrollment = enrollmentIdentifier =>
     zoomServiceMock
-      .onGet(enrollmentUri(enrollmentIdentifier))
-      .reply(200, mockErrorResponse('No entry found in the database for this externalDatabaseRefID.'))
+      .onDelete(enrollmentUri(enrollmentIdentifier))
+      .reply(200, mockErrorResponse('No records were deleted for the externalDatabaseRefID'))
 
   const mockSuccessLivenessCheck = () => faceScanResponse('liveness')
 
@@ -192,12 +222,19 @@ export default zoomServiceMock => {
     mockErrorResponse,
     serviceErrorMessage,
 
+    mockServerRunning,
+    mockServerSupportsDeleteEnrollment,
+
     mockSuccessSessionToken,
     mockFailedSessionToken,
 
     enrollmentNotFoundMessage,
     mockEnrollmentFound,
     mockEnrollmentNotFound,
+
+    mockSuccessRemoveEnrollment,
+    mockEnrollmentNotExistsDuringRemove,
+    mockNoRecorsFoundDuringRemoveEnrollment,
 
     failedLivenessMessage,
     mockSuccessLivenessCheck,

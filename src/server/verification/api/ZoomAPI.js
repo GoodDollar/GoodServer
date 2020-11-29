@@ -45,6 +45,12 @@ class ZoomAPI {
     this._configureResponses()
   }
 
+  async getAPIFeatures(customLogger = null) {
+    const response = await this.http.get('/status', { customLogger })
+
+    return get(response, 'extra', [])
+  }
+
   async getSessionToken(customLogger = null) {
     const response = await this.http.get('/session-token', { customLogger })
 
@@ -56,12 +62,6 @@ class ZoomAPI {
     }
 
     return response
-  }
-
-  async getAPIFeatures(customLogger = null) {
-    const response = await this.http.get('/status', { customLogger })
-
-    return get(response, 'extra', [])
   }
 
   // eslint-disable-next-line require-await
