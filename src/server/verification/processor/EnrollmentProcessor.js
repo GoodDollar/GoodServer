@@ -90,7 +90,7 @@ class EnrollmentProcessor {
     } catch (exception) {
       const error = exception.message
 
-      log.warn("couldn't check disposal state for enrollment", { enrollmentIdentifier, error })
+      log.warn("Couldn't check disposal state for enrollment", { enrollmentIdentifier, error })
       throw exception
     }
   }
