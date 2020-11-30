@@ -147,7 +147,7 @@ describe('verificationAPI', () => {
 
     beforeEach(async () => {
       await storage.updateUser({ identifier: userIdentifier, isVerified: false, claimQueue: null })
-      await storage.taskModel.deleteMany({})
+      await storage.taskModel.deleteMany({ "subject.enrollmentIdentifier": enrollmentIdentifier })
 
       enrollmentProcessor.keepEnrollments = 24
       isVerifiedMock.mockResolvedValue(false)
