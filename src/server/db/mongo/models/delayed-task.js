@@ -53,5 +53,7 @@ export const DelayedTaskSchema = new Schema({
 
 DelayedTaskSchema.index({ taskName: 1, status: 1 })
 DelayedTaskSchema.index({ createdAt: -1, taskName: 1, status: 1 })
+DelayedTaskSchema.index({ createdAt: 1, 'subject.executeAt': 1 })
+DelayedTaskSchema.index({ 'subject.enrollmentIdentifier': 1, 'subject.executeAt': 1 })
 
 export default mongoose.model(MODEL_DELAYED_TASK, DelayedTaskSchema)
