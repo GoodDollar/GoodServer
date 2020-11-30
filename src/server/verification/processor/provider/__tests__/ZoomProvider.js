@@ -61,11 +61,6 @@ describe('ZoomProvider', () => {
     helper = createMockingHelper(zoomServiceMock)
   })
 
-  beforeEach(() => {
-    delete ZoomProvider._apiFeatures
-    helper.mockServerRunning()
-  })
-
   afterEach(() => zoomServiceMock.reset())
 
   afterAll(() => {

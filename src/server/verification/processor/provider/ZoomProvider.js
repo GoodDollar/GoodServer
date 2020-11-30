@@ -1,7 +1,7 @@
 // @flow
-import { omit, once, omitBy, assign, slice, bindAll } from 'lodash'
+import { omit, once, omitBy, assign, bindAll } from 'lodash'
 
-import initZoomAPI, { faceSnapshotFields, ZoomAPIError, ZoomAPIFeature } from '../../api/ZoomAPI.js'
+import initZoomAPI, { faceSnapshotFields, ZoomAPIError } from '../../api/ZoomAPI.js'
 import logger from '../../../../imports/logger'
 
 import { type IEnrollmentProvider } from '../typings'
@@ -13,7 +13,6 @@ export const alreadyEnrolledMessage = 'The FaceMap was already enrolled.'
 class ZoomProvider implements IEnrollmentProvider {
   api = null
   logger = null
-  _apiFeatures = null
 
   constructor(api, logger) {
     this.api = api
@@ -225,17 +224,6 @@ class ZoomProvider implements IEnrollmentProvider {
         log.warn("ZoOm server doesn't supports removing enrollments", { enrollmentIdentifier })
       }
     }
-  }
-
-  async _supportsFeature(feature: string): Promise<boolean> {
-    let { _apiFeatures, api } = this
-
-    if (!_apiFeatures) {
-      _apiFeatures = await api.getAPIFeatures()
-      assign(this, { _apiFeatures })
-    }
-
-    return _apiFeatures.includes(feature)
   }
 
   async _handleNotExistsException(enrollmentIdentifier, customLogger = null, operation): Promise<void> {

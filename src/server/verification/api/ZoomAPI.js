@@ -15,11 +15,6 @@ export const ZoomAPIError = {
   NameCollision: 'nameCollision'
 }
 
-export const ZoomAPIFeature = {
-  DisposeEnrollment: 'delete-enrollment-3d',
-  ImportLegacyFacemaps: 'import-v8-facemap'
-}
-
 export const failedEnrollmentMessage = 'FaceMap could not be enrolled'
 export const failedLivenessMessage = 'Liveness could not be determined'
 export const failedMatchMessage = 'FaceMap could not be 3D-matched and updated'
@@ -45,12 +40,6 @@ class ZoomAPI {
 
     this._configureRequests()
     this._configureResponses()
-  }
-
-  async getAPIFeatures(customLogger = null) {
-    const response = await this.http.get('/status', { customLogger })
-
-    return get(response, 'extra', [])
   }
 
   async getSessionToken(customLogger = null) {

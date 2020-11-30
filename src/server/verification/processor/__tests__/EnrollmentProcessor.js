@@ -79,9 +79,6 @@ describe('EnrollmentProcessor', () => {
     hasTasksQueuedMock.mockReturnValue(false)
     enqueueTaskMock.mockResolvedValue({ _id: 'fake-task-id' })
 
-    delete enrollmentProcessor.provider._apiFeatures
-    helper.mockServerRunning()
-
     invokeMap(
       [
         updateUserMock,

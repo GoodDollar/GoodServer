@@ -5,7 +5,7 @@ import { toUpper, upperFirst } from 'lodash'
 import allSettled from 'promise.allsettled'
 
 import config from '../../../server.config'
-import getZoomAPI, { ZoomAPIError, ZoomAPIFeature } from '../ZoomAPI'
+import getZoomAPI, { ZoomAPIError } from '../ZoomAPI'
 import createMockingHelper from './__util__'
 
 const ZoomAPI = getZoomAPI()
@@ -42,12 +42,6 @@ describe('ZoomAPI', () => {
     await response.toHaveProperty('name', ZoomAPIError.FacemapNotFound)
   }
 
-  const testEnrollmentNotExistsDuringRemove = async () => {
-    const wrappedResponse = expect(ZoomAPI.disposeEnrollment(enrollmentIdentifier)).rejects
-
-    await testNotFoundException(wrappedResponse)
-  }
-
   const mockEnrollmentServiceError = (enrollmentIdentifier, operation) => {
     const message = `Some error happened on ${toUpper(operation)} /enrollment-3d call`
 
@@ -58,21 +52,6 @@ describe('ZoomAPI', () => {
 
     return message
   }
-
-  test('getAPIFeatures() should return empty array on the testing API / standard server', async () => {
-    helper.mockServerRunning()
-
-    await expect(ZoomAPI.getAPIFeatures()).resolves.toEqual([])
-  })
-
-  test('getAPIFeatures() should return array with "delete-enrollment-3d" item on the custom server', async () => {
-    helper.mockServerSupportsDeleteEnrollment()
-
-    const wrappedResponse = expect(ZoomAPI.getAPIFeatures()).resolves
-
-    await wrappedResponse.toBeInstanceOf(Array)
-    await wrappedResponse.toContain(ZoomAPIFeature.DisposeEnrollment)
-  })
 
   test('getSessionToken() should return session token', async () => {
     helper.mockSuccessSessionToken(sessionToken)
@@ -127,10 +106,16 @@ describe('ZoomAPI', () => {
 
   test('disposeEnrollment() should throw if enrollment not found', async () => {
     helper.mockEnrollmentNotExistsDuringRemove(enrollmentIdentifier)
-    await testEnrollmentNotExistsDuringRemove()
 
-    helper.mockNoRecorsFoundDuringRemoveEnrollment(enrollmentIdentifier)
-    await testEnrollmentNotExistsDuringRemove()
+    const wrappedResponse = expect(ZoomAPI.disposeEnrollment(enrollmentIdentifier)).rejects
+
+    await testNotFoundException(wrappedResponse)
+  })
+
+  test("disposeEnrollment() should throw if isn't supported by the server", async () => {
+    helper.mockRemoveEnrollmentNotSupported(enrollmentIdentifier)
+
+    await expect(ZoomAPI.disposeEnrollment(enrollmentIdentifier)).rejects.toThrow(/enrollment\s+already\s+exists/i)
   })
 
   test('disposeEnrollment() should throw on unknown / service errors', async () => {
@@ -148,12 +133,17 @@ describe('ZoomAPI', () => {
     await wrappedResponse.toHaveProperty('error', false)
   })
 
-  test('checkLiveness() / submitEnrollment() should throw if liveness failed', async () => {
+  test('checkLiveness() / submitEnrollment() / updateEnrollment() should throw if liveness failed', async () => {
     helper.mockFailedLivenessCheck()
     helper.mockFailedEnrollment(enrollmentIdentifier)
+    helper.mockFailedUpdateEnrollment(enrollmentIdentifier)
 
     await allSettled(
-      [ZoomAPI.checkLiveness(payload), ZoomAPI.submitEnrollment(enrollmentIdentifier, payload)].map(async promise => {
+      [
+        ZoomAPI.checkLiveness(payload),
+        ZoomAPI.submitEnrollment(enrollmentIdentifier, payload),
+        ZoomAPI.updateEnrollment(enrollmentIdentifier, payload)
+      ].map(async promise => {
         const wrappedResponse = expect(promise).rejects
 
         await wrappedResponse.toThrow(helper.failedLivenessMessage)
@@ -162,27 +152,29 @@ describe('ZoomAPI', () => {
     )
   })
 
-  test('checkLiveness() / submitEnrollment() should throw with different errors depending the case happened', async () => {
+  test('checkLiveness() / submitEnrollment() / updateEnrollment() should throw with different errors depending the case happened', async () => {
     const { LivenessCheckFailed, SecurityCheckFailed } = ZoomAPIError
     const { failedLivenessMessage, failedEnrollmentMessage } = helper
     let wrappedResponse
 
     const shouldThrowWith = (name, message) =>
       allSettled(
-        [ZoomAPI.checkLiveness(payload), ZoomAPI.submitEnrollment(enrollmentIdentifier, payload)].map(
-          async (promise, index) => {
-            let prefix = failedLivenessMessage
+        [
+          ZoomAPI.checkLiveness(payload),
+          ZoomAPI.submitEnrollment(enrollmentIdentifier, payload),
+          ZoomAPI.updateEnrollment(enrollmentIdentifier, payload)
+        ].map(async (promise, index) => {
+          let prefix = failedLivenessMessage
 
-            if (index && name === SecurityCheckFailed) {
-              prefix = failedEnrollmentMessage
-            }
-
-            wrappedResponse = expect(promise).rejects
-
-            await wrappedResponse.toThrow(`${prefix} because the ${message}`)
-            await wrappedResponse.toHaveProperty('name', name)
+          if (index && name === SecurityCheckFailed) {
+            prefix = failedEnrollmentMessage
           }
-        )
+
+          wrappedResponse = expect(promise).rejects
+
+          await wrappedResponse.toThrow(`${prefix} because the ${message}`)
+          await wrappedResponse.toHaveProperty('name', name)
+        })
       )
 
     const fixture = [
@@ -211,6 +203,7 @@ describe('ZoomAPI', () => {
         promise.then(async () => {
           helper.mockFailedLivenessCheck(flags)
           helper.mockFailedEnrollment(enrollmentIdentifier, flags)
+          helper.mockFailedUpdateEnrollment(enrollmentIdentifier, false, flags)
 
           await shouldThrowWith(name, message)
         }),
@@ -218,21 +211,23 @@ describe('ZoomAPI', () => {
     )
   })
 
-  test('checkLiveness() / submitEnrollment() should throw with unknown / service errors', async () => {
-    const operations = ['liveness', 'enrollment']
+  test('checkLiveness() / submitEnrollment() / updateEnrollment() should throw with unknown / service errors', async () => {
+    const operations = ['liveness', 'enrollment', 'match-3d']
     const messages = operations.map(operation => `Unknown exception happened during ${operation} request`)
 
     const shouldThrowWithUnknownError = () =>
       allSettled(
         [
           ZoomAPI.checkLiveness(payload),
-          ZoomAPI.submitEnrollment(enrollmentIdentifier, payload)
+          ZoomAPI.submitEnrollment(enrollmentIdentifier, payload),
+          ZoomAPI.updateEnrollment(enrollmentIdentifier, payload)
         ].map((promise, index) => expect(promise).rejects.toThrow(messages[index]))
       )
 
     // set all flags to true, so we'll have success: false and unknown reason
     helper.mockFailedLivenessCheck({ faceScanLivenessCheckSucceeded: true })
     helper.mockFailedEnrollment(enrollmentIdentifier, { faceScanLivenessCheckSucceeded: true })
+    helper.mockFailedUpdateEnrollment(enrollmentIdentifier, false, { faceScanLivenessCheckSucceeded: true })
 
     await shouldThrowWithUnknownError()
 
@@ -377,6 +372,25 @@ describe('ZoomAPI', () => {
 
     await wrappedResponse.toThrow(helper.enrollmentAlreadyExistsMessage)
     await wrappedResponse.toHaveProperty('name', ZoomAPIError.NameCollision)
+  })
+
+  test('updateEnrollment() should match/update face and return enrollment identifier', async () => {
+    helper.mockSuccessUpdateEnrollment(enrollmentIdentifier)
+
+    const wrappedResponse = expect(ZoomAPI.updateEnrollment(enrollmentIdentifier, payload)).resolves
+
+    await wrappedResponse.toHaveProperty('success', true)
+    await wrappedResponse.toHaveProperty('error', false)
+    await wrappedResponse.toHaveProperty('externalDatabaseRefID', enrollmentIdentifier)
+  })
+
+  test("updateEnrollment() should throw if faceMap doesn't match", async () => {
+    helper.mockFailedUpdateEnrollment(enrollmentIdentifier, true)
+
+    const wrappedResponse = expect(ZoomAPI.updateEnrollment(enrollmentIdentifier, payload)).rejects
+
+    await wrappedResponse.toThrow(/face\s+map.+?doesn.t\s+match/i)
+    await wrappedResponse.toHaveProperty('name', ZoomAPIError.FacemapDoesNotMatch)
   })
 
   test('API methods should throw on server / connection errors', async () => {
