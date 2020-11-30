@@ -19,7 +19,7 @@ class ZoomProvider implements IEnrollmentProvider {
     this.api = api
     this.logger = logger
 
-    bindAll(this, ['_supportsFeature', '_handleNotExistsException', '_isNotExistsException'])
+    bindAll(this, ['_handleNotExistsException', '_isNotExistsException'])
   }
 
   isPayloadValid(payload: any): boolean {
@@ -38,10 +38,13 @@ class ZoomProvider implements IEnrollmentProvider {
     onEnrollmentProcessing: (payload: IEnrollmentEventPayload) => void | Promise<void>,
     customLogger = null
   ): Promise<any> {
-    const { api, logger, _supportsFeature } = this
+    const { api, logger } = this
     const log = customLogger || logger
     const { defaultMinimalMatchLevel, defaultSearchIndexName } = api
-    const { LivenessCheckFailed, SecurityCheckFailed, FacemapNotFound } = ZoomAPIError
+    const { LivenessCheckFailed, SecurityCheckFailed, FacemapNotFound, FacemapDoesNotMatch } = ZoomAPIError
+
+    let isEnrolled = true
+    let alreadyEnrolled
 
     // send event to onEnrollmentProcessing
     const notifyProcessor = async eventPayload => onEnrollmentProcessing(eventPayload)
@@ -65,9 +68,14 @@ class ZoomProvider implements IEnrollmentProvider {
       throw exception
     }
 
-    let alreadyEnrolled
-    // checking is API supports delete enrollment endpoint
-    const isDisposeSupported = await _supportsFeature(ZoomAPIFeature.DisposeEnrollment)
+    const onEnrollmentFailed = async exception => {
+      const { response, message } = exception
+
+      isEnrolled = false
+
+      await notifyProcessor({ isEnrolled })
+      throwCustomException(message, { isEnrolled }, response)
+    }
 
     // 1. checking if facescan already uploaded & enrolled
     try {
@@ -87,33 +95,20 @@ class ZoomProvider implements IEnrollmentProvider {
     let isLive = true
 
     try {
-      const callArgs = [enrollmentIdentifier, payload, customLogger]
-      const enroll = () => api.submitEnrollment(...callArgs)
+      // if already enrolled, will call /match-3d
+      // othwerise (if not enrolled/stored yet) - /enroll
+      const methodToInvoke = (alreadyEnrolled ? 'update' : 'submit') + 'Enrollment'
 
-      // if already enrolled, will call checkLiveness
-      // this is need because enroll doesn't re-checks facemap/images
-      // for liveness if identifier already enrolled
-      if (alreadyEnrolled) {
-        // it doesn't need enrollmentIdentifier param,
-        // so we're slicing it from the start of the args
-        await api.checkLiveness(...slice(callArgs, 1))
-
-        // if api supports delete enrollment endpoint
-        if (isDisposeSupported) {
-          // then we're refreshing enrolled facemap with the data just received
-          // firstly, removing snapshot enrolled before
-          await this.dispose(enrollmentIdentifier)
-          // then enrolling it with the new data already verified for liveness
-          await enroll()
-          // setting enrolled flag to false as we re-enrolled the facemap
-          alreadyEnrolled = false
-        }
-      } else {
-        // if not enrolled/stored yet - just calling enroll.
-        await enroll()
-      }
+      await api[methodToInvoke](enrollmentIdentifier, payload, customLogger)
     } catch (exception) {
       const { name, message, response } = exception
+
+      // if facemap doesn't match we won't show retry screen
+      if (FacemapDoesNotMatch === name) {
+        // so we'll reject with isEnrolled: false instead
+        // to show the error screen on app side immediately
+        await onEnrollmentFailed(exception)
+      }
 
       // if liveness / security issues were detected
       if ([LivenessCheckFailed, SecurityCheckFailed].includes(name)) {
@@ -125,7 +120,7 @@ class ZoomProvider implements IEnrollmentProvider {
         throwCustomException(message, { isLive }, response)
       }
 
-      // otherwisw just re-throwing exception and stopping processing
+      // otherwise just re-throwing exception and stopping processing
       throw exception
     }
 
@@ -157,25 +152,20 @@ class ZoomProvider implements IEnrollmentProvider {
       throwCustomException(duplicateFoundMessage, { isDuplicate }, faceSearchResponse)
     }
 
-    // 4. enrolling and indexing uploaded & stored face scan to the 3D Database
-    let isEnrolled = true
+    // 4. if not alreadyEnrolled - indexing uploaded & stored face scan to the 3D Database
+    if (!alreadyEnrolled) {
+      try {
+        await api.indexEnrollment(enrollmentIdentifier, defaultSearchIndexName, customLogger)
+      } catch (exception) {
+        // if exception has no response (e.g. no conneciton or service error)
+        // just rethrowing it and stopping enrollment
+        if (!exception.response) {
+          throw exception
+        }
 
-    try {
-      await api.indexEnrollment(enrollmentIdentifier, defaultSearchIndexName, customLogger)
-    } catch (exception) {
-      const { response, message } = exception
-
-      // if exception has no response (e.g. no conneciton or service error)
-      // just rethrowing it and stopping enrollment
-      if (!response) {
-        throw exception
+        // otherwise notifying & throwing enrollment exception
+        await onEnrollmentFailed(exception)
       }
-
-      // otherwise notifying & throwing enrollment exception
-      isEnrolled = false
-
-      await notifyProcessor({ isEnrolled })
-      throwCustomException(message, { isEnrolled }, response)
     }
 
     // preparing corresponding success message depinding of the alreadyEnrolled status
@@ -210,22 +200,30 @@ class ZoomProvider implements IEnrollmentProvider {
   }
 
   async dispose(enrollmentIdentifier: string, customLogger = null): Promise<void> {
-    const { api, _handleNotExistsException, _supportsFeature } = this
+    const { api, _handleNotExistsException, logger } = this
     const { defaultSearchIndexName } = api
-    // checking is API supports delete enrollment endpoint
-    const isDisposeSupported = await _supportsFeature(ZoomAPIFeature.DisposeEnrollment)
+    const log = customLogger || logger
 
     // eslint-disable-next-line require-await
     await _handleNotExistsException(enrollmentIdentifier, customLogger, async () =>
       api.removeEnrollmentFromIndex(enrollmentIdentifier, defaultSearchIndexName, customLogger)
     )
 
-    // if delete enrollment supported, removig also facemap from the DB
-    if (isDisposeSupported) {
+    // trying to remove also facemap from the DB
+    try {
       // eslint-disable-next-line require-await
       await _handleNotExistsException(enrollmentIdentifier, customLogger, async () =>
         api.disposeEnrollment(enrollmentIdentifier, customLogger)
       )
+    } catch (exception) {
+      const { message: errMessage } = exception
+
+      // if delete enrollment isn't supported by the server it will try to enroll
+      // it check is enrollment already exists then validates input payload
+      // so one of 'already exists' or 'facescan not valid' will be thrown
+      if (/(enrollment\s+already\s+exists|faceScan\s+.+?not\s+valid)/i.test(errMessage)) {
+        log.warn("ZoOm server doesn't supports removing enrollments", { enrollmentIdentifier })
+      }
     }
   }
 

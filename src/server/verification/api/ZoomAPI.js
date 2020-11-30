@@ -9,6 +9,7 @@ import logger from '../../../imports/logger'
 
 export const ZoomAPIError = {
   FacemapNotFound: 'facemapNotFound',
+  FacemapDoesNotMatch: 'facemapNotMatch',
   LivenessCheckFailed: 'livenessCheckFailed',
   SecurityCheckFailed: 'securityCheckFailed',
   NameCollision: 'nameCollision'
@@ -21,6 +22,7 @@ export const ZoomAPIFeature = {
 
 export const failedEnrollmentMessage = 'FaceMap could not be enrolled'
 export const failedLivenessMessage = 'Liveness could not be determined'
+export const failedMatchMessage = 'FaceMap could not be 3D-matched and updated'
 export const enrollmentNotFoundMessage = 'An enrollment does not exists for this enrollment identifier'
 export const enrollmentAlreadyExistsMessage = 'An enrollment already exists for this enrollment identifier'
 
@@ -110,6 +112,26 @@ class ZoomAPI {
       }
 
       assign(exception, { name, message })
+      throw exception
+    }
+
+    return response
+  }
+
+  async updateEnrollment(enrollmentIdentifier, payload, customLogger = null) {
+    let response
+    const additionalData = { externalDatabaseRefID: enrollmentIdentifier }
+
+    try {
+      response = await this._faceScanRequest('match-3d', payload, additionalData, customLogger)
+    } catch (exception) {
+      const { name, message } = exception
+      const { FacemapDoesNotMatch, SecurityCheckFailed } = ZoomAPIError
+
+      if ([FacemapDoesNotMatch, SecurityCheckFailed].includes(name)) {
+        exception.message = failedMatchMessage + ' because the ' + lowerFirst(message)
+      }
+
       throw exception
     }
 
@@ -341,8 +363,8 @@ class ZoomAPI {
     }
 
     const response = await this.http.post(`/${operation}-3d`, payloadData, { customLogger })
-    const { LivenessCheckFailed, SecurityCheckFailed } = ZoomAPIError
-    const { success, faceScanSecurityChecks } = response
+    const { LivenessCheckFailed, SecurityCheckFailed, FacemapDoesNotMatch } = ZoomAPIError
+    const { success, faceScanSecurityChecks, matchLevel } = response
 
     const {
       faceScanLivenessCheckSucceeded,
@@ -351,6 +373,8 @@ class ZoomAPI {
       sessionTokenCheckSucceeded
     } = faceScanSecurityChecks
 
+    const isFaceMapDoesntMatch = 'matchLevel' in response && Number(matchLevel) < 10
+
     if (!success) {
       let message = `Unknown exception happened during ${operation} request`
 
@@ -358,6 +382,8 @@ class ZoomAPI {
         message = 'Session token is missing or was failed to be checked'
       } else if (!replayCheckSucceeded) {
         message = 'Replay check was failed'
+      } else if (isFaceMapDoesntMatch) {
+        message = "Face map you're trying to enroll doesn't match the already enrolled one"
       } else if (!faceScanLivenessCheckSucceeded) {
         message = failedLivenessMessage
 
@@ -367,14 +393,17 @@ class ZoomAPI {
       }
 
       const exception = new Error(message)
+      let { name } = exception
 
       if (!sessionTokenCheckSucceeded || !replayCheckSucceeded) {
-        exception.name = SecurityCheckFailed
+        name = SecurityCheckFailed
+      } else if (isFaceMapDoesntMatch) {
+        name = FacemapDoesNotMatch
       } else if (!faceScanLivenessCheckSucceeded) {
-        exception.name = LivenessCheckFailed
+        name = LivenessCheckFailed
       }
 
-      assign(exception, { response })
+      assign(exception, { name, response })
       throw exception
     }
 

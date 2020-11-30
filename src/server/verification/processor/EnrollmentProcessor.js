@@ -105,7 +105,7 @@ class EnrollmentProcessor {
   }
 
   async enqueueDisposal(user: any, enrollmentIdentifier: string, signature: string, customLogger = null) {
-    const { storage, provider, adminApi, keepEnrollments, logger } = this
+    const { storage, adminApi, logger } = this
     const log = customLogger || logger
 
     log.info('Requested disposal for enrollment', { enrollmentIdentifier })
