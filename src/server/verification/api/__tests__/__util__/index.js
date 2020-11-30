@@ -3,6 +3,7 @@ import { isArray, upperFirst } from 'lodash'
 import {
   failedLivenessMessage,
   failedEnrollmentMessage,
+  failedMatchMessage,
   enrollmentNotFoundMessage,
   enrollmentAlreadyExistsMessage
 } from '../../ZoomAPI'
@@ -272,6 +273,7 @@ export default zoomServiceMock => {
     mockFailedEnrollment,
     mockEnrollmentAlreadyExists,
 
+    failedMatchMessage,
     mockSuccessUpdateEnrollment,
     mockFailedUpdateEnrollment,
 

@@ -230,6 +230,7 @@ describe('EnrollmentProcessor', () => {
     )
 
     helper.mockSuccessRemoveEnrollmentFromIndex(enrollmentIdentifier)
+    helper.mockRemoveEnrollmentNotSupported(enrollmentIdentifier)
     helper.mockServiceErrorDuringRemoveFromIndex(failedEnrollmentIdentifier)
     helper.mockEnrollmentNotExistsDuringReadIndex(unexistingEnrollmentIdentifier)
     ;[enrollmentIdentifier, failedEnrollmentIdentifier].forEach(helper.mockSuccessReadEnrollmentIndex)

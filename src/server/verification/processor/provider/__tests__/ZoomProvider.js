@@ -1,10 +1,11 @@
 // @flow
 
 import MockAdapter from 'axios-mock-adapter'
-import { first } from 'lodash'
+import { first, fromPairs, keys } from 'lodash'
 
 import getZoomProvider from '../ZoomProvider'
 import createMockingHelper from '../../../api/__tests__/__util__'
+import { levelConfigs } from '../../../../../imports/logger/options'
 
 const ZoomProvider = getZoomProvider()
 let helper
@@ -19,6 +20,8 @@ const payload = {
   auditTrailImage: 'data:image/png:FaKEimagE==',
   lowQualityAuditTrailImage: 'data:image/png:FaKEimagE=='
 }
+
+const createLoggerMock = () => fromPairs(['log', ...keys(levelConfigs.levels)].map(logFn => [logFn, jest.fn()]))
 
 const testSuccessfullEnrollment = async (alreadyEnrolled = false) => {
   const onEnrollmentProcessing = jest.fn()
@@ -47,12 +50,12 @@ const testEnrollmentServiceError = async errorMessage => {
   expect(onProcessingMock).not.toHaveBeenCalled()
 }
 
-const testRemoveEnrollmentCalled = () => {
-  // 1sdt delete should be DELETE /enrollment-3d/<id> (remove existing enrollment)
-  const deleteRequest = first(zoomServiceMock.history.delete)
+const testSuccessfullEnrollmentDispose = async (enrollmentIdentifier, withCustomServer = false, loggerMock = null) => {
+  const _ = withCustomServer
+  const mockFn = `mock${_ ? 'Success' : ''}RemoveEnrollment${_ ? '' : 'NotSupported'}`
 
-  expect(deleteRequest).not.toBeUndefined()
-  expect(deleteRequest).toHaveProperty('url', helper.enrollmentUri(enrollmentIdentifier))
+  helper[mockFn](enrollmentIdentifier)
+  await expect(ZoomProvider.dispose(enrollmentIdentifier, loggerMock)).resolves.toBeUndefined()
 }
 
 describe('ZoomProvider', () => {
@@ -68,11 +71,6 @@ describe('ZoomProvider', () => {
     zoomServiceMock = null
     helper = null
   })
-
-  const mockCustomServer = () => {
-    zoomServiceMock.reset()
-    helper.mockServerSupportsDeleteEnrollment()
-  }
 
   test('issueToken() should return session token', async () => {
     helper.mockSuccessSessionToken(sessionToken)
@@ -91,39 +89,29 @@ describe('ZoomProvider', () => {
     helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
     helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
 
-    await testSuccessfullEnrollment(false) // should return alreadyEnrolled = false
+    // should return alreadyEnrolled = false
+    await testSuccessfullEnrollment(false)
   })
 
-  test('enroll() returns successfull response if identifier was already enrolled', async () => {
+  test('enroll() calls match 3d and skips indexing if already enrolled', async () => {
     helper.mockEnrollmentFound(enrollmentIdentifier)
-    helper.mockSuccessLivenessCheck(enrollmentIdentifier)
+    helper.mockSuccessUpdateEnrollment(enrollmentIdentifier)
     helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
-    helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
 
-    await testSuccessfullEnrollment(true) // should return alreadyEnrolled = true
-  })
+    // should return alreadyEnrolled = true
+    await testSuccessfullEnrollment(true)
 
-  test('enroll() re-enrolls if custom server is used and identifier was already enrolled', async () => {
-    mockCustomServer()
+    const { post: postHistory } = zoomServiceMock.history
+    const postRequest = first(postHistory)
 
-    helper.mockEnrollmentFound(enrollmentIdentifier)
-    helper.mockSuccessLivenessCheck(enrollmentIdentifier)
-    helper.mockSuccessRemoveEnrollmentFromIndex(enrollmentIdentifier)
-    helper.mockSuccessRemoveEnrollment(enrollmentIdentifier)
-    helper.mockSuccessEnrollment(enrollmentIdentifier)
-    helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
-    helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
-
-    await testSuccessfullEnrollment() // should return alreadyEnrolled = false
-
-    const [, , postRequest] = zoomServiceMock.history.post
-
-    testRemoveEnrollmentCalled() // check id DELETE /enrollment-3d/<id> called
-
-    expect(postRequest).not.toBeUndefined() // 3rd post should be POST /enrollment-3d (re-enroll)
+    // 1nd post should be POST /match-3d-3d (match & update facemap)
+    expect(postRequest).not.toBeUndefined()
     expect(postRequest).toHaveProperty('data')
-    expect(postRequest).toHaveProperty('url', '/enrollment-3d')
+    expect(postRequest).toHaveProperty('url', '/match-3d-3d')
     expect(JSON.parse(postRequest.data)).toHaveProperty('externalDatabaseRefID', enrollmentIdentifier)
+
+    // no indexing requests should be in the calls history
+    postHistory.forEach(({ url }) => expect(url).not.toEqual('/3d-db/enroll'))
   })
 
   test('enroll() throws if liveness check fails', async () => {
@@ -139,6 +127,21 @@ describe('ZoomProvider', () => {
     await wrappedResponse.toHaveProperty('response.isVerified', false)
 
     expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: false })
+  })
+
+  test('enroll() throws if already enrolled and facemap not match', async () => {
+    helper.mockEnrollmentFound(enrollmentIdentifier)
+    helper.mockFailedUpdateEnrollment(enrollmentIdentifier, true)
+
+    const onEnrollmentProcessing = jest.fn()
+    const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
+
+    await wrappedResponse.toThrow(helper.failedMatchMessage)
+    await wrappedResponse.toHaveProperty('response')
+    await wrappedResponse.toHaveProperty('response.isEnrolled', false)
+    await wrappedResponse.toHaveProperty('response.isVerified', false)
+
+    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isEnrolled: false })
   })
 
   test('enroll() throws if duplicates found', async () => {
@@ -210,21 +213,35 @@ describe('ZoomProvider', () => {
 
   test("dispose() removes existing enrollment, doesn't throws for unexisting", async () => {
     helper.mockSuccessRemoveEnrollmentFromIndex(enrollmentIdentifier)
-    await expect(ZoomProvider.dispose(enrollmentIdentifier)).resolves.toBeUndefined()
-    zoomServiceMock.reset()
+    await testSuccessfullEnrollmentDispose(enrollmentIdentifier)
 
+    zoomServiceMock.reset()
     helper.mockEnrollmentNotExistsDuringRemoveFromIndex(enrollmentIdentifier)
-    await expect(ZoomProvider.dispose(enrollmentIdentifier)).resolves.toBeUndefined()
+    await testSuccessfullEnrollmentDispose(enrollmentIdentifier)
   })
 
-  test('dispose() removes existing enrollment also from the external DB (not from the index only) on the custom server', async () => {
-    mockCustomServer()
+  test("dispose() logs if ZoOm server doesn't support remove enrollment", async () => {
+    const loggerMock = createLoggerMock()
 
     helper.mockSuccessRemoveEnrollmentFromIndex(enrollmentIdentifier)
-    helper.mockSuccessRemoveEnrollment(enrollmentIdentifier)
+    await testSuccessfullEnrollmentDispose(enrollmentIdentifier, false, loggerMock)
 
-    await expect(ZoomProvider.dispose(enrollmentIdentifier)).resolves.toBeUndefined()
-    testRemoveEnrollmentCalled()
+    expect(loggerMock.warn).toBeCalledWith("ZoOm server doesn't supports removing enrollments", {
+      enrollmentIdentifier
+    })
+  })
+
+  test('dispose() removes existing enrollment from the external DB on the custom server', async () => {
+    const loggerMock = createLoggerMock()
+
+    helper.mockSuccessRemoveEnrollmentFromIndex(enrollmentIdentifier)
+    await testSuccessfullEnrollmentDispose(enrollmentIdentifier, true, loggerMock)
+
+    const deleteRequest = first(zoomServiceMock.history.delete)
+
+    expect(deleteRequest).not.toBeUndefined()
+    expect(deleteRequest).toHaveProperty('url', helper.enrollmentUri(enrollmentIdentifier))
+    expect(loggerMock.warn).not.toBeCalledWith("ZoOm server doesn't supports removing enrollments")
   })
 
   test('dispose() throws on Zoom service error', async () => {

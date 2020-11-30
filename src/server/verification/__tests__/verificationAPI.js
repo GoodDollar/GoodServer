@@ -401,9 +401,6 @@ describe('verificationAPI', () => {
     })
 
     test('GET /verify/face/:enrollmentIdentifier returns isDisposing = true if face snapshot has been enqueued for the disposal', async () => {
-      helper.mockSuccessReadEnrollmentIndex(enrollmentIdentifier)
-      helper.mockSuccessRemoveEnrollmentFromIndex(enrollmentIdentifier)
-
       await request(server)
         .delete(enrollmentUri)
         .query({ signature })
