@@ -13,7 +13,7 @@ import makeServer from '../../server-test'
 import { delay } from '../../utils/timeout'
 
 import createEnrollmentProcessor from '../processor/EnrollmentProcessor'
-import { DISPOSE_ENROLLMENTS_TASK } from '../../cron/taskUtil'
+import { scheduleDisposalTask, DISPOSE_ENROLLMENTS_TASK } from '../../cron/taskUtil'
 import { getToken, getCreds } from '../../__util__/'
 import createMockingHelper from '../api/__tests__/__util__'
 
@@ -147,7 +147,7 @@ describe('verificationAPI', () => {
 
     beforeEach(async () => {
       await storage.updateUser({ identifier: userIdentifier, isVerified: false, claimQueue: null })
-      await storage.taskModel.deleteMany({ "subject.enrollmentIdentifier": enrollmentIdentifier })
+      await storage.taskModel.deleteMany({ 'subject.enrollmentIdentifier': enrollmentIdentifier })
 
       enrollmentProcessor.keepEnrollments = 24
       isVerifiedMock.mockResolvedValue(false)
@@ -225,7 +225,8 @@ describe('verificationAPI', () => {
     })
 
     test('PUT /verify/face/:enrollmentIdentifier returns 400 if user is being deleted', async () => {
-      await storage.enqueueTask(DISPOSE_ENROLLMENTS_TASK, { enrollmentIdentifier, executeAt: 'account-removal' })
+      const executeAt = 'account-removal'
+      await scheduleDisposalTask(storage, enrollmentIdentifier, executeAt)
 
       await request(server)
         .put(enrollmentUri)
