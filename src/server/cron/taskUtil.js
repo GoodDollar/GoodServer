@@ -6,5 +6,6 @@ export const scheduleDisposalTask = async (storage, enrollmentIdentifier, execut
     'subject.enrollmentIdentifier': enrollmentIdentifier,
     'subject.executeAt': executeAt
   })
-  return await storage.enqueueTask(DISPOSE_ENROLLMENTS_TASK, { enrollmentIdentifier, executeAt })
+
+  return storage.enqueueTask(DISPOSE_ENROLLMENTS_TASK, { enrollmentIdentifier, executeAt })
 }
