@@ -1,6 +1,6 @@
 //@flow
 import { v4 as uuidv4 } from 'uuid'
-import { get } from 'lodash'
+import { get, isArray, isBoolean, isString } from 'lodash'
 
 import UserPrivateModel from './models/user-private'
 import DelayedTaskModel, { DelayedTaskStatus } from './models/delayed-task'
@@ -171,8 +171,7 @@ class UserPrivate {
    * @returns {Promise<*>}
    */
   async listUsers(fields: any = {}): Promise<UserRecord> {
-    const res = this.model.find({}, { email: 1, identifier: 1, ...fields }).lean()
-    return res
+    return await this.model.find({}, { email: 1, identifier: 1, ...fields }).lean()
   }
 
   /**
@@ -251,14 +250,14 @@ class UserPrivate {
   async fetchTasksForProcessing(taskName: string, filters: object = {}): Promise<DelayedTaskRecord[]> {
     const lockId = uuidv4()
     const { taskModel, logger } = this
-    const { Running, Complete } = DelayedTaskStatus
+    const { Locked, Complete } = DelayedTaskStatus
 
     try {
       await taskModel.updateMany(
         // selecting tasks which aren't locked or completed by taskName and other filters
-        { ...filters, status: { $nin: [Running, Complete] }, taskName },
+        { ...filters, status: { $nin: [Locked, Complete] }, taskName },
         // setting unique (for each fetchTasksForProcessing() call) lockId
-        { status: Running, lockId }
+        { status: Locked, lockId }
       )
 
       // queries aren't Promises in mongoose so we couldn't just
@@ -281,12 +280,32 @@ class UserPrivate {
   }
 
   /**
+   * Unlocks delayed tasks in the queue
+   *
+   * @param {string[]} tasksIdentifiers
+   */
+  async unlockDelayedTasks(taskNameOrIdentifiers: string | string[], filters: object = {}): Promise<void> {
+    const taskName = taskNameOrIdentifiers
+    const { Pending } = DelayedTaskStatus
+
+    if (isArray(taskNameOrIdentifiers)) {
+      return this._unlockTasks(taskNameOrIdentifiers)
+    }
+
+    if (!isString(taskName)) {
+      return
+    }
+
+    await this._unlockTasksBy({ ...filters, taskName }, Pending)
+  }
+
+  /**
    * Unlocks delayed tasks in the queue and marks them as completed
    *
    * @param {string[]} tasksIdentifiers
    */
   async completeDelayedTasks(tasksIdentifiers: string[]): Promise<void> {
-    await this._unlockRunningTasks(tasksIdentifiers, true)
+    await this._unlockTasks(tasksIdentifiers, true)
   }
 
   /**
@@ -295,7 +314,7 @@ class UserPrivate {
    * @param {string[]} tasksIdentifiers
    */
   async failDelayedTasks(tasksIdentifiers: string[]): Promise<void> {
-    await this._unlockRunningTasks(tasksIdentifiers, false)
+    await this._unlockTasks(tasksIdentifiers, false)
   }
 
   /**
@@ -305,10 +324,10 @@ class UserPrivate {
    */
   async removeDelayedTasks(tasksIdentifiers: string[]): Promise<void> {
     const { taskModel, logger } = this
-    const { Running, Complete } = DelayedTaskStatus
+    const { Locked, Complete } = DelayedTaskStatus
 
     try {
-      await taskModel.deleteMany({ status: { $in: [Running, Complete] }, _id: { $in: tasksIdentifiers } })
+      await taskModel.deleteMany({ status: { $in: [Locked, Complete] }, _id: { $in: tasksIdentifiers } })
     } catch (exception) {
       const { message: errMessage } = exception
       const logPayload = { tasksIdentifiers }
@@ -321,19 +340,30 @@ class UserPrivate {
   /**
    * @private
    */
-  async _unlockRunningTasks(tasksIdentifiers: string[], tasksSucceeded: boolean): Promise<void> {
+  async _unlockTasks(tasksIdentifiers: string[], tasksSucceeded: boolean = null): Promise<void> {
+    const { Complete, Failed, Pending } = DelayedTaskStatus
+    let unlockedStatus = Pending
+
+    if (isBoolean(tasksSucceeded)) {
+      unlockedStatus = tasksSucceeded ? Complete : Failed
+    }
+
+    await this._unlockTasksBy({ _id: { $in: tasksIdentifiers } }, unlockedStatus)
+  }
+
+  /**
+   * @private
+   */
+  async _unlockTasksBy(filters: object, newStatus: string): Promise<void> {
     const { taskModel, logger } = this
-    const { Running, Complete, Failed } = DelayedTaskStatus
+    const { Locked } = DelayedTaskStatus
 
     try {
-      await taskModel.updateMany(
-        { status: Running, _id: { $in: tasksIdentifiers } },
-        { status: tasksSucceeded ? Complete : Failed, lockId: null }
-      )
+      await taskModel.updateMany({ ...filters, status: Locked }, { status: newStatus, lockId: null })
     } catch (exception) {
       const { message: errMessage } = exception
 
-      logger.error("Couldn't unlock and update delayed tasks", errMessage, exception, { tasksIdentifiers })
+      logger.error("Couldn't unlock and update delayed tasks", errMessage, exception, filters)
       throw exception
     }
   }

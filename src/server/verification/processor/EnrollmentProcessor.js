@@ -13,9 +13,9 @@ import { type IEnrollmentProvider } from './typings'
 import { type DelayedTaskRecord } from '../../../imports/types'
 
 import EnrollmentSession from './EnrollmentSession'
-import { scheduleDisposalTask, DISPOSE_ENROLLMENTS_TASK } from '../../cron/taskUtil'
 
 import getZoomProvider from './provider/ZoomProvider'
+import { DisposeAt, scheduleDisposalTask, DISPOSE_ENROLLMENTS_TASK } from '../cron/taskUtil'
 
 // count of chunks pending tasks should (approximately) be split to
 const DISPOSE_BATCH_AMOUNT = 10
@@ -82,7 +82,7 @@ class EnrollmentProcessor {
 
     try {
       const isDisposing = await storage.hasTasksQueued(DISPOSE_ENROLLMENTS_TASK, {
-        subject: { enrollmentIdentifier, executeAt: 'account-removal' }
+        subject: { enrollmentIdentifier, executeAt: DisposeAt.AccountRemoved }
       })
 
       log.info('Got disposal state for enrollment', { enrollmentIdentifier, isDisposing })
@@ -108,7 +108,7 @@ class EnrollmentProcessor {
   }
 
   async enqueueDisposal(user: any, enrollmentIdentifier: string, signature: string, customLogger = null) {
-    const { storage, provider, adminApi, keepEnrollments, logger } = this
+    const { storage, adminApi, logger } = this
     const log = customLogger || logger
 
     log.info('Requested disposal for enrollment', { enrollmentIdentifier })
@@ -141,7 +141,7 @@ class EnrollmentProcessor {
 
     try {
       // don't pass user to task records to keep privacy
-      const task = await scheduleDisposalTask(storage, enrollmentIdentifier, 'account-removal')
+      const task = await scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.AccountRemoved)
 
       log.info('Enqueued enrollment disposal task', { enrollmentIdentifier, taskId: task._id })
     } catch (exception) {
@@ -157,12 +157,12 @@ class EnrollmentProcessor {
     onProcessed: (identifier: string, exception?: Error) => void = noop,
     customLogger = null
   ): Promise<void> {
+    const { Reauthenticate, AccountRemoved } = DisposeAt
     const { storage, keepEnrollments, logger } = this
     const log = customLogger || logger
 
     const authenticationPeriod = await AdminWallet.getAuthenticationPeriod()
-
-    const deletedAccountFilters = { 'subject.executeAt': 'account-removal' }
+    const deletedAccountFilters = { 'subject.executeAt': AccountRemoved }
 
     if (keepEnrollments > 0) {
       deletedAccountFilters.createdAt = {
@@ -176,7 +176,7 @@ class EnrollmentProcessor {
       $or: [
         deletedAccountFilters,
         {
-          'subject.executeAt': 'auth-period',
+          'subject.executeAt': Reauthenticate,
           createdAt: moment()
             .subtract(authenticationPeriod, 'days')
             .toDate()

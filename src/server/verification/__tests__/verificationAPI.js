@@ -13,11 +13,11 @@ import makeServer from '../../server-test'
 import { delay } from '../../utils/timeout'
 
 import createEnrollmentProcessor from '../processor/EnrollmentProcessor'
-import { scheduleDisposalTask, DISPOSE_ENROLLMENTS_TASK } from '../../cron/taskUtil'
 import { getToken, getCreds } from '../../__util__/'
 import createMockingHelper from '../api/__tests__/__util__'
 
 import * as awsSes from '../../aws-ses/aws-ses'
+import { DisposeAt, scheduleDisposalTask, DISPOSE_ENROLLMENTS_TASK, forEnrollment } from '../cron/taskUtil'
 
 describe('verificationAPI', () => {
   let server
@@ -25,11 +25,8 @@ describe('verificationAPI', () => {
   const userIdentifier = '0x7ac080f6607405705aed79675789701a48c76f55'
 
   beforeAll(async done => {
-    // remove claim queue, enable E-Mail verification
-    assign(Config, {
-      claimQueueAllowed: 0,
-      skipEmailVerification: false
-    })
+    // enable E-Mail verification
+    Config.skipEmailVerification = false
 
     jest.setTimeout(50000)
     server = await makeServer(done)
@@ -38,9 +35,12 @@ describe('verificationAPI', () => {
     console.log({ server })
   })
 
-  afterAll(async done => {
-    console.log('afterAll')
+  beforeEach(() => {
+    // disable claim queue
+    Config.claimQueueAllowed = 0
+  })
 
+  afterAll(async done => {
     // restore original config
     Object.assign(Config, { skipEmailVerification, claimQueueAllowed })
     await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
@@ -87,19 +87,28 @@ describe('verificationAPI', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(400, { success: false, error: 'Invalid input' })
 
-    const testVerificationSuccessfull = async () =>
-      request(server)
+    const testVerificationSuccessfull = async (alreadyEnrolled = false) => {
+      await request(server)
         .put(enrollmentUri)
         .send(payload)
         .set('Authorization', `Bearer ${token}`)
         .expect(200, {
           success: true,
           enrollmentResult: {
+            alreadyEnrolled,
             isVerified: true,
-            alreadyEnrolled: false,
-            message: 'The FaceMap was successfully enrolled.'
+            message: `The FaceMap was ${alreadyEnrolled ? 'already' : 'successfully'} enrolled.`
           }
         })
+
+      const { address, profilePublickey } = await getCreds()
+
+      // to check has user been updated in the GUN session
+      expect(updateSessionMock).toHaveBeenCalledWith({ isLive: true, isEnrolled: true })
+      expect(updateSessionMock).toHaveBeenCalledWith({ isWhitelisted: true })
+      // and in the wallet
+      expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), profilePublickey)
+    }
 
     const testUserNotApprovedToClaim = async () =>
       request(server)
@@ -116,13 +125,11 @@ describe('verificationAPI', () => {
 
       // checking that there was access to the user's session
       expect(getSessionRefMock).toHaveBeenCalledWith(payload.sessionId)
+      expect(updateSessionMock).toHaveBeenCalledWith({ isStarted: true })
 
       // verification & whitelisting state were updated
       expect(updateSessionMock).toHaveBeenCalledWith({ isDuplicate: false, isLive: true, isEnrolled: true })
       expect(updateSessionMock).toHaveBeenCalledWith({ isWhitelisted: true })
-
-      // but enrollment process wasn't started
-      expect(updateSessionMock).not.toHaveBeenCalledWith({ isStarted: true })
 
       // and user was actually re-whitelisted in the wallet
       expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), profilePublickey)
@@ -147,7 +154,7 @@ describe('verificationAPI', () => {
 
     beforeEach(async () => {
       await storage.updateUser({ identifier: userIdentifier, isVerified: false, claimQueue: null })
-      await storage.taskModel.deleteMany({ 'subject.enrollmentIdentifier': enrollmentIdentifier })
+      await storage.taskModel.deleteMany(forEnrollment(enrollmentIdentifier))
 
       enrollmentProcessor.keepEnrollments = 24
       isVerifiedMock.mockResolvedValue(false)
@@ -225,8 +232,7 @@ describe('verificationAPI', () => {
     })
 
     test('PUT /verify/face/:enrollmentIdentifier returns 400 if user is being deleted', async () => {
-      const executeAt = 'account-removal'
-      await scheduleDisposalTask(storage, enrollmentIdentifier, executeAt)
+      await scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.AccountRemoved)
 
       await request(server)
         .put(enrollmentUri)
@@ -241,16 +247,10 @@ describe('verificationAPI', () => {
 
       await testVerificationSuccessfull()
 
-      const { address, profilePublickey } = await getCreds()
       const { isVerified } = await storage.getUser(userIdentifier)
 
       // to check has user been updated in the database
       expect(isVerified).toBeTruthy()
-      // in the GUN session
-      expect(updateSessionMock).toHaveBeenCalledWith({ isLive: true, isEnrolled: true })
-      expect(updateSessionMock).toHaveBeenCalledWith({ isWhitelisted: true })
-      // and in the waller
-      expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), profilePublickey)
     })
 
     test("PUT /verify/face/:enrollmentIdentifier returns 200 and success: false when verification wasn't successful", async () => {
@@ -334,16 +334,13 @@ describe('verificationAPI', () => {
       expect(claimQueue).toHaveProperty('status', 'whitelisted')
     })
 
-    test('PUT /verify/face/:enrollmentIdentifier skips verification and re-whitelists user was already verified', async () => {
+    test('PUT /verify/face/:enrollmentIdentifier passes full verification flow even if user was already verified', async () => {
       await storage.updateUser({ identifier: userIdentifier, isVerified: true })
 
-      await request(server)
-        .put(enrollmentUri)
-        .send(payload)
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200, { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } })
+      helper.mockEmptyResultsFaceSearch()
+      helper.mockSuccessEnrollment(enrollmentIdentifier)
 
-      await testVerificationSkipped()
+      await testVerificationSuccessfull()
     })
 
     test('PUT /verify/face/:enrollmentIdentifier skips verification and re-whitelists user if request comes from E2E test runs', async () => {
@@ -364,6 +361,34 @@ describe('verificationAPI', () => {
         .finally(() => (Config.env = currentEnv))
     })
 
+    test('PUT /verify/face/:enrollmentIdentifier skips verification and re-whitelists user if FV disabled', async () => {
+      const currentDisabledState = Config.disableFaceVerification
+
+      Config.disableFaceVerification = true
+
+      await request(server)
+        .put(enrollmentUri)
+        .send(payload)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200, { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } })
+        .then(testVerificationSkipped)
+        .finally(() => (Config.disableFaceVerification = currentDisabledState))
+    })
+
+    test('PUT /verify/face/:enrollmentIdentifier skips verification and re-whitelists user if the dups are allowed', async () => {
+      const currentDupsState = Config.allowDuplicatedFaceRecords
+
+      Config.allowDuplicatedFaceRecords = true
+
+      await request(server)
+        .put(enrollmentUri)
+        .send(payload)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200, { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } })
+        .then(testVerificationSkipped)
+        .finally(() => (Config.allowDuplicatedFaceRecords = currentDupsState))
+    })
+
     test('DELETE /verify/face/:enrollmentIdentifier returns 200, success = true and enqueues disposal task if enrollment exists, signature is valid and KEEP_FACE_VERIFICATION_RECORDS is set', async () => {
       await request(server)
         .delete(enrollmentUri)
@@ -373,7 +398,7 @@ describe('verificationAPI', () => {
 
       await expect(
         storage.hasTasksQueued(DISPOSE_ENROLLMENTS_TASK, {
-          subject: { enrollmentIdentifier: enrollmentIdentifier, executeAt: 'account-removal' }
+          subject: { enrollmentIdentifier: enrollmentIdentifier, executeAt: DisposeAt.AccountRemoved }
         })
       ).resolves.toBe(true)
     })
@@ -424,6 +449,7 @@ describe('verificationAPI', () => {
       .send({ user: { mobile: '+972507311111' } })
       .set('Authorization', `Bearer ${token}`)
       .expect(200, { ok: 1, alreadyVerified: false })
+
     expect(await storage.getByIdentifier(userIdentifier)).toMatchObject({ otp: { mobile: '+972507311111' } })
   })
 

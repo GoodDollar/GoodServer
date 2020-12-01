@@ -136,14 +136,15 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
         await enrollmentProcessor.validate(user, enrollmentIdentifier, payload)
 
-        // if user is already verified, we're skipping enrollment logic
-        if (user.isVerified || disableFaceVerification || allowDuplicatedFaceRecords || isE2ERunning) {
+        // if FV disabled or dups allowed or running Cypress, we're skipping enrollment logic
+        if (disableFaceVerification || allowDuplicatedFaceRecords || isE2ERunning) {
           // creating enrollment session manually for this user
           const enrollmentSession = enrollmentProcessor.createEnrollmentSession(user, log)
           // to access user's session reference in the Gun
-          const { sessionRef } = enrollmentSession.initialize(payload)
+          const { sessionRef } = enrollmentSession.initialize(enrollmentIdentifier, payload)
 
           // immediately publishing isEnrolled to subscribers
+          await enrollmentSession.onEnrollmentStarted()
           sessionRef.put({ isDuplicate: false, isLive: true, isEnrolled: true })
           enrollmentResult = { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } }
 

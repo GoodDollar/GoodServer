@@ -37,6 +37,7 @@ describe('UserPrivate', () => {
         await storage.failDelayedTasks([_id])
         break
       default:
+        await storage.unlockDelayedTasks([_id])
         break
     }
 
@@ -257,7 +258,7 @@ describe('UserPrivate', () => {
     await expect(storage.fetchTasksForProcessing(testTaskName)).resolves.toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          status: DelayedTaskStatus.Running,
+          status: DelayedTaskStatus.Locked,
           lockId: expect.anything()
         })
       ])
@@ -267,10 +268,27 @@ describe('UserPrivate', () => {
     await expect(storage.fetchTasksForProcessing(testTaskName)).resolves.toBeArrayOfSize(0)
   })
 
-  it('Should complete or fail tasks', async () => {
+  it('Should complete/fail/unlock tasks', async () => {
     await testTaskStatusSwitch(DelayedTaskStatus.Complete)
     await taskModel.deleteMany({ taskName: testTaskName })
     await testTaskStatusSwitch(DelayedTaskStatus.Failed)
+    await taskModel.deleteMany({ taskName: testTaskName })
+    await testTaskStatusSwitch(DelayedTaskStatus.Pending)
+  })
+
+  it('Should unlock tasks also by the filters', async () => {
+    await storage.enqueueTask(testTaskName, testTaskSubject)
+    await storage.fetchTasksForProcessing(testTaskName)
+    await storage.unlockDelayedTasks(testTaskName)
+
+    await expect(taskModel.find({ taskName: testTaskName })).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          status: DelayedTaskStatus.Pending,
+          lockId: null
+        })
+      ])
+    )
   })
 
   it('Should unlock failed tasks', async () => {
@@ -284,13 +302,14 @@ describe('UserPrivate', () => {
     await expect(storage.fetchTasksForProcessing(testTaskName)).resolves.toBeArrayOfSize(1)
   })
 
-  it("Complete/fail shouldn't switch pending status", async () => {
+  it("Complete/fail/update shouldn't switch pending status", async () => {
     const { Complete, Failed } = DelayedTaskStatus
     const { _id } = await storage.enqueueTask(testTaskName, testTaskSubject)
 
     // we shouldn't be able to update status for task aren't locked via fetchTasksForProcessing()
     await storage.failDelayedTasks([_id])
     await storage.completeDelayedTasks([_id])
+    await storage.unlockDelayedTasks([_id])
 
     // no complete/failed tasks should be found despite we've called corresponding storage methods
     await expect(

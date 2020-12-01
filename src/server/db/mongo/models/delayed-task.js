@@ -7,7 +7,7 @@ const { ObjectId, Mixed } = Types
 
 export const DelayedTaskStatus = {
   Pending: 'pending',
-  Running: 'running',
+  Locked: 'locked',
   Failed: 'failed',
   Complete: 'complete'
 }

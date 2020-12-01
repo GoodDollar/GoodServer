@@ -4,12 +4,12 @@ import MockAdapter from 'axios-mock-adapter'
 import { assign, omit, invokeMap } from 'lodash'
 
 import createEnrollmentProcessor from '../EnrollmentProcessor'
-import { DISPOSE_ENROLLMENTS_TASK } from '../../../cron/taskUtil'
 import { GunDBPublic } from '../../../gun/gun-middleware'
 import AdminWallet from '../../../blockchain/AdminWallet'
 import { ClaimQueue } from '../../../claimQueue/claimQueueAPI'
 
 import createMockingHelper from '../../api/__tests__/__util__'
+import { DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment } from '../../cron/taskUtil'
 
 let helper
 let zoomServiceMock
@@ -18,10 +18,11 @@ let zoomServiceMock
 const updateUserMock = jest.fn()
 const enqueueTaskMock = jest.fn()
 const hasTasksQueuedMock = jest.fn()
-const fetchTasksForProcessingMock = jest.fn()
-const removeDelayedTasksMock = jest.fn()
 const failDelayedTasksMock = jest.fn()
 const cancelTasksQueuedMock = jest.fn()
+const removeDelayedTasksMock = jest.fn()
+const fetchTasksForProcessingMock = jest.fn()
+const unlockDelayedTasksMock = jest.fn(async () => {})
 
 // GUN mocks
 const updateSessionMock = jest.fn()
@@ -44,10 +45,12 @@ const storageMock = {
   enqueueTask: enqueueTaskMock,
   fetchTasksForProcessing: fetchTasksForProcessingMock,
   removeDelayedTasks: removeDelayedTasksMock,
+  unlockDelayedTasks: unlockDelayedTasksMock,
   failDelayedTasks: failDelayedTasksMock,
   cancelTasksQueued: cancelTasksQueuedMock
 }
 
+const fakeTask = { _id: 'fake-task-id' }
 const enrollmentIdentifier = 'f0D7A688489Ab3079491d407A03BF16e5B027b2c'
 const signature =
   '0xff612279b69900493cec3e5f8707413ad4734aa1748483b61c856d3093bf0c88458e82722365f35dfedf88438ba1419774bbb67527057d9066eba9a548d4fc751b'
@@ -90,8 +93,7 @@ describe('EnrollmentProcessor', () => {
 
     isVerifiedMock.mockResolvedValue(false)
     hasTasksQueuedMock.mockReturnValue(false)
-    enqueueTaskMock.mockResolvedValue({ _id: 'fake-task-id' })
-    cancelTasksQueuedMock.mockReturnValue({ _id: 'fake-task-id' })
+    enqueueTaskMock.mockResolvedValue(fakeTask)
     getSessionRefMock.mockImplementation(() => ({ put: updateSessionMock }))
     getAuthenticationPeriodMock.mockReturnValue(14)
 
@@ -197,6 +199,33 @@ describe('EnrollmentProcessor', () => {
     expect(whitelistUserMock).toHaveBeenCalledWith(gdAddress, profilePublickey)
   })
 
+  test('enroll() enqueues task to auto dispose enrollment once auth period passed on success', async () => {
+    helper.mockEmptyResultsFaceSearch()
+    helper.mockSuccessEnrollment(enrollmentIdentifier)
+
+    await enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)
+
+    expect(enqueueTaskMock).toHaveBeenCalledWith(DISPOSE_ENROLLMENTS_TASK, {
+      enrollmentIdentifier,
+      executeAt: DisposeAt.Reauthenticate
+    })
+  })
+
+  test('enroll() preserves existing tasks for identifier being enrolled', async () => {
+    // success always re-creates the task so we'll reproduce the failed case
+    helper.mockDuplicateFound()
+
+    await enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)
+
+    // check for lock called
+    expect(fetchTasksForProcessingMock).toHaveBeenCalledWith(
+      DISPOSE_ENROLLMENTS_TASK,
+      forEnrollment(enrollmentIdentifier)
+    )
+    // check for unlock called
+    expect(unlockDelayedTasksMock).toHaveBeenCalledWith(DISPOSE_ENROLLMENTS_TASK, forEnrollment(enrollmentIdentifier))
+  })
+
   test("enroll() proxies provider's error and sets error + non-whitelisted state in the session", async () => {
     helper.mockDuplicateFound()
 
@@ -221,9 +250,10 @@ describe('EnrollmentProcessor', () => {
 
   test('enqueueDisposal() enqueues disposal task', async () => {
     await expect(enrollmentProcessor.enqueueDisposal(user, enrollmentIdentifier, signature)).resolves.toBeUndefined()
+
     expect(enqueueTaskMock).toHaveBeenCalledWith(DISPOSE_ENROLLMENTS_TASK, {
       enrollmentIdentifier,
-      executeAt: 'account-removal'
+      executeAt: DisposeAt.AccountRemoved
     })
   })
 
@@ -249,7 +279,7 @@ describe('EnrollmentProcessor', () => {
     fetchTasksForProcessingMock.mockResolvedValueOnce(
       [nonexistingEnrollmentIdentifier, failedEnrollmentIdentifier, enrollmentIdentifier].map(identifier => ({
         _id: taskId(identifier),
-        subject: { enrollmentIdentifier: identifier, executeAt: 'account-removal' }
+        subject: { enrollmentIdentifier: identifier, executeAt: DisposeAt.AccountRemoved }
       }))
     )
 

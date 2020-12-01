@@ -6,7 +6,7 @@ import logger from '../../../imports/logger'
 import Config from '../../server.config'
 
 import createEnrollmentProcessor from '../processor/EnrollmentProcessor'
-import { DISPOSE_ENROLLMENTS_TASK } from '../../cron/taskUtil'
+import { DISPOSE_ENROLLMENTS_TASK } from './taskUtil'
 
 class DisposeEnrollmentsTask {
   schedule = null

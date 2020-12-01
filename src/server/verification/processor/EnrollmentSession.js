@@ -1,8 +1,8 @@
 // @flow
-import { bindAll, omit } from 'lodash'
+import { assign, bindAll, noop, omit } from 'lodash'
 import { type IEnrollmentEventPayload } from './typings'
 import logger from '../../../imports/logger'
-import { scheduleDisposalTask } from '../../cron/taskUtil'
+import { DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment, scheduleDisposalTask } from '../cron/taskUtil'
 
 const log = logger.child({ from: 'EnrollmentSession' })
 
@@ -14,7 +14,7 @@ export default class EnrollmentSession {
   adminApi = null
   queueApi = null
   sessionRef = null
-  enrollmentIdentifier = null
+  enrollmentId = null
 
   constructor(user, provider, storage, adminApi, queueApi, gun, customLogger = null) {
     this.gun = gun
@@ -39,8 +39,8 @@ export default class EnrollmentSession {
     })
 
     try {
-      this.initialize(payload)
-      this.onEnrollmentStarted()
+      this.initialize(enrollmentIdentifier, payload)
+      await this.onEnrollmentStarted()
 
       const enrollmentResult = await provider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing, log)
 
@@ -57,7 +57,8 @@ export default class EnrollmentSession {
         result.enrollmentResult = response
       }
 
-      this.onEnrollmentFailed(exception)
+      await this.onEnrollmentFailed(exception)
+
       if (message.toLowerCase().includes('liveness')) {
         log.warn('Enrollment session failed with exception:', message, exception, { result })
       } else {
@@ -70,21 +71,23 @@ export default class EnrollmentSession {
     return result
   }
 
-  initialize(payload: any) {
+  initialize(enrollmentIdentifier: string, payload: any) {
     const { gun } = this
     const { sessionId } = payload
 
-    this.sessionRef = gun.session(sessionId)
-    this.enrollmentIdentifier = payload.enrollmentIdentifier
     // returning this to allow initialize &
     // get sessionRef via destructuring in a single call
-    return this
+    return assign(this, {
+      enrollmentId: enrollmentIdentifier,
+      sessionRef: gun.session(sessionId)
+    })
   }
 
-  onEnrollmentStarted() {
-    const { sessionRef } = this
+  async onEnrollmentStarted() {
+    const { storage, sessionRef, enrollmentId } = this
 
     sessionRef.put({ isStarted: true })
+    await storage.fetchTasksForProcessing(DISPOSE_ENROLLMENTS_TASK, forEnrollment(enrollmentId))
   }
 
   onEnrollmentProcessing(processingPayload: IEnrollmentEventPayload) {
@@ -102,7 +105,7 @@ export default class EnrollmentSession {
   }
 
   async onEnrollmentCompleted() {
-    const { sessionRef, user, storage, adminApi, queueApi, enrollmentIdentifier, log } = this
+    const { sessionRef, user, storage, adminApi, queueApi, enrollmentId, log } = this
     const { gdAddress, profilePublickey, loggedInAs } = user
 
     log.info('Whitelisting user:', loggedInAs)
@@ -111,16 +114,18 @@ export default class EnrollmentSession {
       queueApi.setWhitelisted(user, storage, log),
       adminApi.whitelistUser(gdAddress, profilePublickey),
       storage.updateUser({ identifier: loggedInAs, isVerified: true }),
-      scheduleDisposalTask(storage, enrollmentIdentifier, 'auth-period')
+      scheduleDisposalTask(storage, enrollmentId, DisposeAt.Reauthenticate)
     ])
 
     sessionRef.put({ isWhitelisted: true })
     log.info('Successfully whitelisted user:', loggedInAs)
   }
 
-  onEnrollmentFailed(exception) {
-    const { sessionRef } = this
+  async onEnrollmentFailed(exception) {
+    const { sessionRef, enrollmentId, storage } = this
     const { message } = exception
+
+    await storage.unlockDelayedTasks(DISPOSE_ENROLLMENTS_TASK, forEnrollment(enrollmentId)).catch(noop)
 
     sessionRef.put({
       isLive: false,
