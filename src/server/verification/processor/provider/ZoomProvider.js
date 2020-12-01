@@ -42,9 +42,6 @@ class ZoomProvider implements IEnrollmentProvider {
     const { defaultMinimalMatchLevel, defaultSearchIndexName } = api
     const { LivenessCheckFailed, SecurityCheckFailed, FacemapNotFound, FacemapDoesNotMatch } = ZoomAPIError
 
-    let isEnrolled = true
-    let alreadyEnrolled
-
     // send event to onEnrollmentProcessing
     const notifyProcessor = async eventPayload => onEnrollmentProcessing(eventPayload)
 
@@ -67,16 +64,9 @@ class ZoomProvider implements IEnrollmentProvider {
       throw exception
     }
 
-    const onEnrollmentFailed = async exception => {
-      const { response, message } = exception
-
-      isEnrolled = false
-
-      await notifyProcessor({ isEnrolled })
-      throwCustomException(message, { isEnrolled }, response)
-    }
-
     // 1. checking if facescan already uploaded & enrolled
+    let alreadyEnrolled
+
     try {
       await api.readEnrollment(enrollmentIdentifier, customLogger)
       alreadyEnrolled = true
@@ -92,6 +82,7 @@ class ZoomProvider implements IEnrollmentProvider {
 
     // 2. performing liveness check and storing facescan / audit trail images (if need)
     let isLive = true
+    let isNotMatch = false
 
     try {
       // if already enrolled, will call /match-3d
@@ -104,9 +95,15 @@ class ZoomProvider implements IEnrollmentProvider {
 
       // if facemap doesn't match we won't show retry screen
       if (FacemapDoesNotMatch === name) {
-        // so we'll reject with isEnrolled: false instead
+        isNotMatch = true
+
+        await notifyProcessor({ isNotMatch })
+        log.warn(message, { enrollmentIdentifier })
+
+        // so we'll reject with isNotMatch: true instead
         // to show the error screen on app side immediately
-        await onEnrollmentFailed(exception)
+        // notifying about liveness check failed
+        throwCustomException(message, { isNotMatch }, response)
       }
 
       // if liveness / security issues were detected
@@ -123,8 +120,8 @@ class ZoomProvider implements IEnrollmentProvider {
       throw exception
     }
 
-    // notifying about liveness passed or not
-    await notifyProcessor({ isLive })
+    // notifying about liveness / match passed or not
+    await notifyProcessor({ isLive, isNotMatch })
 
     // 3. checking for duplicates
     const { results, ...faceSearchResponse } = await api.faceSearch(
@@ -152,18 +149,25 @@ class ZoomProvider implements IEnrollmentProvider {
     }
 
     // 4. if not alreadyEnrolled - indexing uploaded & stored face scan to the 3D Database
+    let isEnrolled = true
+
     if (!alreadyEnrolled) {
       try {
         await api.indexEnrollment(enrollmentIdentifier, defaultSearchIndexName, customLogger)
       } catch (exception) {
+        const { response, message } = exception
+
         // if exception has no response (e.g. no conneciton or service error)
         // just rethrowing it and stopping enrollment
-        if (!exception.response) {
+        if (!response) {
           throw exception
         }
 
         // otherwise notifying & throwing enrollment exception
-        await onEnrollmentFailed(exception)
+        isEnrolled = false
+
+        await notifyProcessor({ isEnrolled })
+        throwCustomException(message, { isEnrolled }, response)
       }
     }
 

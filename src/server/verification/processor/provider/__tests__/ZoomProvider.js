@@ -30,7 +30,7 @@ const testSuccessfullEnrollment = async (alreadyEnrolled = false) => {
   await wrappedResponse.toHaveProperty('isVerified', true)
   await wrappedResponse.toHaveProperty('alreadyEnrolled', alreadyEnrolled)
 
-  expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: true })
+  expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: true, isNotMatch: false })
   expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(2, { isDuplicate: false })
   expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(3, { isEnrolled: true })
 }
@@ -138,10 +138,10 @@ describe('ZoomProvider', () => {
 
     await wrappedResponse.toThrow(helper.failedMatchMessage)
     await wrappedResponse.toHaveProperty('response')
-    await wrappedResponse.toHaveProperty('response.isEnrolled', false)
+    await wrappedResponse.toHaveProperty('response.isNotMatch', true)
     await wrappedResponse.toHaveProperty('response.isVerified', false)
 
-    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isEnrolled: false })
+    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isNotMatch: true })
   })
 
   test('enroll() throws if duplicates found', async () => {
@@ -157,7 +157,7 @@ describe('ZoomProvider', () => {
     await wrappedResponse.toHaveProperty('response.isDuplicate', true)
     await wrappedResponse.toHaveProperty('response.isVerified', false)
 
-    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: true })
+    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: true, isNotMatch: false })
     expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(2, { isDuplicate: true })
   })
 
@@ -175,7 +175,7 @@ describe('ZoomProvider', () => {
     await wrappedResponse.toHaveProperty('response.isEnrolled', false)
     await wrappedResponse.toHaveProperty('response.isVerified', false)
 
-    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: true })
+    expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: true, isNotMatch: false })
     expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(2, { isDuplicate: false })
     expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(3, { isEnrolled: false })
   })
