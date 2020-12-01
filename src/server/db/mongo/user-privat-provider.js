@@ -238,6 +238,7 @@ class UserPrivate {
    */
   async cancelTasksQueued(taskName: string, filters: object = {}): Promise<void> {
     const { taskModel } = this
+
     await taskModel.deleteOne({ ...filters, taskName })
   }
 
