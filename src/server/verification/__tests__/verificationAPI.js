@@ -1,13 +1,12 @@
 import request from 'supertest'
 import MockAdapter from 'axios-mock-adapter'
 
-import { assign, omit, invokeMap } from 'lodash'
+import { assign, omit } from 'lodash'
 
 import Config from '../../server.config'
 
 import storage from '../../db/mongo/user-privat-provider'
 import AdminWallet from '../../blockchain/AdminWallet'
-import { GunDBPublic } from '../../gun/gun-middleware'
 
 import makeServer from '../../server-test'
 import { delay } from '../../utils/timeout'
@@ -54,10 +53,6 @@ describe('verificationAPI', () => {
     const enrollmentProcessor = createEnrollmentProcessor(storage)
     const { keepEnrollments } = enrollmentProcessor
 
-    const updateSessionMock = jest.fn()
-    const getSessionRefMock = jest.fn()
-    const getSessionRefImplementation = GunDBPublic.session
-
     // wallet mocks
     const whitelistUserMock = jest.fn()
     const isVerifiedMock = jest.fn()
@@ -73,7 +68,7 @@ describe('verificationAPI', () => {
 
     const payload = {
       sessionId: sessionToken,
-      faceMap: Buffer.alloc(32),
+      faceScan: Buffer.alloc(32),
       auditTrailImage: 'data:image/png:FaKEimagE==',
       lowQualityAuditTrailImage: 'data:image/png:FaKEimagE=='
     }
@@ -109,23 +104,6 @@ describe('verificationAPI', () => {
           error: 'User not approved to claim, not in queue or still pending'
         })
 
-    const testVerificationSkipped = async () => {
-      const { address, profilePublickey } = await getCreds()
-
-      // checking that there was access to the user's session
-      expect(getSessionRefMock).toHaveBeenCalledWith(payload.sessionId)
-
-      // verification & whitelisting state were updated
-      expect(updateSessionMock).toHaveBeenCalledWith({ isDuplicate: false, isLive: true, isEnrolled: true })
-      expect(updateSessionMock).toHaveBeenCalledWith({ isWhitelisted: true })
-
-      // but enrollment process wasn't started
-      expect(updateSessionMock).not.toHaveBeenCalledWith({ isStarted: true })
-
-      // and user was actrally re-whitelisted in the wallet
-      expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), profilePublickey)
-    }
-
     const testDisposalState = async isDisposing => {
       await request(server)
         .get(enrollmentUri)
@@ -133,8 +111,14 @@ describe('verificationAPI', () => {
         .expect(200, { success: true, isDisposing })
     }
 
+    const testWhitelisted = async () => {
+      const { address, profilePublickey } = await getCreds()
+
+      // checking is user was actrally re-whitelisted in the wallet
+      expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), profilePublickey)
+    }
+
     beforeAll(async () => {
-      GunDBPublic.session = getSessionRefMock
       AdminWallet.whitelistUser = whitelistUserMock
       AdminWallet.isVerified = isVerifiedMock
 
@@ -149,19 +133,16 @@ describe('verificationAPI', () => {
 
       enrollmentProcessor.keepEnrollments = 24
       isVerifiedMock.mockResolvedValue(false)
-      getSessionRefMock.mockImplementation(() => ({ put: updateSessionMock }))
     })
 
     afterEach(() => {
-      invokeMap([updateSessionMock, getSessionRefMock, whitelistUserMock], 'mockReset')
-
+      whitelistUserMock.mockReset()
       zoomServiceMock.reset()
     })
 
     afterAll(() => {
       const restoreWalletMethods = ['whitelistUser', 'isVerified']
 
-      GunDBPublic.session = getSessionRefImplementation
       restoreWalletMethods.forEach(method => (AdminWallet[method] = AdminWallet.constructor.prototype[method]))
 
       assign(enrollmentProcessor, { keepEnrollments })
@@ -204,7 +185,9 @@ describe('verificationAPI', () => {
     })
 
     test('POST /verify/face/session returns 400, success: false if Zoom API fails', async () => {
-      helper.mockFailedSessionToken()
+      const message = 'FaceTec API response is empty'
+
+      helper.mockFailedSessionToken(message)
 
       await request(server)
         .post(sessionUri)
@@ -212,13 +195,13 @@ describe('verificationAPI', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(400, {
           success: false,
-          error: 'FaceTec API response is empty'
+          error: message
         })
     })
 
     test('PUT /verify/face/:enrollmentIdentifier returns 400 when payload is invalid', async () => {
       await testInvalidInput('sessionId') // no sessionId
-      await testInvalidInput('faceMap') // no face map
+      await testInvalidInput('faceScan') // no face map
       await testInvalidInput('auditTrailImage') // no face photoshoots
     })
 
@@ -233,8 +216,10 @@ describe('verificationAPI', () => {
     })
 
     test('PUT /verify/face/:enrollmentIdentifier returns 200 and success: true when verification was successfull', async () => {
-      helper.mockEmptyResultsFaceSearch()
+      helper.mockEnrollmentNotFound(enrollmentIdentifier)
       helper.mockSuccessEnrollment(enrollmentIdentifier)
+      helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
+      helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
 
       await testVerificationSuccessfull()
 
@@ -243,15 +228,14 @@ describe('verificationAPI', () => {
 
       // to check has user been updated in the database
       expect(isVerified).toBeTruthy()
-      // in the GUN session
-      expect(updateSessionMock).toHaveBeenCalledWith({ isLive: true, isEnrolled: true })
-      expect(updateSessionMock).toHaveBeenCalledWith({ isWhitelisted: true })
-      // and in the waller
+      // and in the wallet
       expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), profilePublickey)
     })
 
     test("PUT /verify/face/:enrollmentIdentifier returns 200 and success: false when verification wasn't successfull", async () => {
-      helper.mockDuplicateFound()
+      helper.mockEnrollmentNotFound(enrollmentIdentifier)
+      helper.mockSuccessEnrollment(enrollmentIdentifier)
+      helper.mockDuplicateFound(enrollmentIdentifier)
 
       await request(server)
         .put(enrollmentUri)
@@ -263,25 +247,47 @@ describe('verificationAPI', () => {
           enrollmentResult: {
             isVerified: false,
             isDuplicate: true,
-            code: 200,
-            message: 'The search request was processed successfully.'
+            success: true,
+            error: false
           }
         })
 
-      // checking that duplicate flag was set in the session
-      expect(updateSessionMock).toHaveBeenCalledWith({ isDuplicate: true })
-
       // to check that user hasn't beed updated nowhere
-
       // in the database
       const { isVerified } = await storage.getUser(userIdentifier)
 
       expect(isVerified).toBeFalsy()
+      // and in the wallet
+      expect(whitelistUserMock).not.toHaveBeenCalled()
+    })
 
-      // in the session
-      expect(updateSessionMock).not.toHaveBeenCalledWith({ isLive: true, isEnrolled: true })
-      expect(updateSessionMock).not.toHaveBeenCalledWith({ isWhitelisted: true })
+    test('PUT /verify/face/:enrollmentIdentifier returns 200 and success: false when unexpected error happens', async () => {
+      const unexpectedError = 'Unexpected error during search'
 
+      helper.mockEnrollmentNotFound(enrollmentIdentifier)
+      helper.mockSuccessEnrollment(enrollmentIdentifier)
+      helper.mockFailedSearch(enrollmentIdentifier, unexpectedError)
+
+      await request(server)
+        .put(enrollmentUri)
+        .send(payload)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200, {
+          success: false,
+          error: unexpectedError,
+          enrollmentResult: {
+            error: true,
+            success: false,
+            isVerified: false,
+            errorMessage: unexpectedError
+          }
+        })
+
+      // to check that user hasn't beed updated nowhere
+      // in the database
+      const { isVerified } = await storage.getUser(userIdentifier)
+
+      expect(isVerified).toBeFalsy()
       // and in the wallet
       expect(whitelistUserMock).not.toHaveBeenCalled()
     })
@@ -289,8 +295,10 @@ describe('verificationAPI', () => {
     test('PUT /verify/face/:enrollmentIdentifier returns 400 and success = false when user not approved in the claim queue', async () => {
       // enabling claim queue.
       Config.claimQueueAllowed = 1
-      helper.mockEmptyResultsFaceSearch()
+      helper.mockEnrollmentNotFound(enrollmentIdentifier)
       helper.mockSuccessEnrollment(enrollmentIdentifier)
+      helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
+      helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
 
       // user with empty status
       await testUserNotApprovedToClaim()
@@ -303,8 +311,10 @@ describe('verificationAPI', () => {
     test('PUT /verify/face/:enrollmentIdentifier users approved in the claim queue will be verified as usual', async () => {
       // enabling claim queue.
       Config.claimQueueAllowed = 1
-      helper.mockEmptyResultsFaceSearch()
+      helper.mockEnrollmentNotFound(enrollmentIdentifier)
       helper.mockSuccessEnrollment(enrollmentIdentifier)
+      helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
+      helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
 
       // user with approved status
       await storage.updateUser({ identifier: userIdentifier, claimQueue: { status: 'approved' }, isVerified: false })
@@ -318,8 +328,10 @@ describe('verificationAPI', () => {
     test('PUT /verify/face/:enrollmentIdentifier whitelists user in the claim queue', async () => {
       // enabling claim queue.
       Config.claimQueueAllowed = 1
-      helper.mockEmptyResultsFaceSearch()
+      helper.mockEnrollmentNotFound(enrollmentIdentifier)
       helper.mockSuccessEnrollment(enrollmentIdentifier)
+      helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
+      helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
 
       // set approved status
       await storage.updateUser({ identifier: userIdentifier, claimQueue: { status: 'approved' }, isVerified: false })
@@ -340,7 +352,7 @@ describe('verificationAPI', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200, { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } })
 
-      await testVerificationSkipped()
+      await testWhitelisted()
     })
 
     test('PUT /verify/face/:enrollmentIdentifier skips verification and re-whitelists user if request comes from E2E test runs', async () => {
@@ -357,11 +369,11 @@ describe('verificationAPI', () => {
           'Mozilla/5.0 (X11; Linux x86_64; Cypress) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36'
         )
         .expect(200, { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } })
-        .then(testVerificationSkipped)
+        .then(testWhitelisted)
         .finally(() => (Config.env = currentEnv))
     })
 
-    test('DELETE /verify/face/:enrollmentIdentifier returns 200, success = true and enqueues disposal task if enrollment exists, signature is valid and KEEP_FACE_VERIFICATION_RECORDS is set', async () => {
+    test('DELETE /verify/face/:enrollmentIdentifier returns 200, success = true and enqueues disposal task if signature is valid', async () => {
       await request(server)
         .delete(enrollmentUri)
         .query({ signature })
@@ -389,8 +401,6 @@ describe('verificationAPI', () => {
     })
 
     test('GET /verify/face/:enrollmentIdentifier returns isDisposing = true if face snapshot has been enqueued for the disposal', async () => {
-      helper.mockEnrollmentFound(enrollmentIdentifier)
-
       await request(server)
         .delete(enrollmentUri)
         .query({ signature })
