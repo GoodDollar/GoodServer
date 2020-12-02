@@ -24,8 +24,10 @@ class TaskRunner {
     const { logger, tasks, lock, jobFactory } = this
     const { schedule, name } = task
     const taskName = name || `task/${uuidv4()}`
+
     const taskJob = new jobFactory(schedule, async () => {
       const taskId = uuidv4()
+
       try {
         logger.info('Running cron task. getting lock...', { taskName, taskId })
 
@@ -41,8 +43,7 @@ class TaskRunner {
             setTime: time => {
               logger.info('Cron task setting new schedule', { taskName, schedule: time, taskId })
 
-              taskJob.setTime(time instanceof CronTime ? time : new CronTime(time))
-              taskJob.start()
+              this.setNextTry(taskJob, time)
             },
 
             stop: () => {
@@ -61,18 +62,20 @@ class TaskRunner {
         }
       } catch (exception) {
         const { message: errMessage } = exception
+
         if (errMessage.includes('lock not acquired')) {
-          logger.info('task lock not acquired,probably other worker is doing it', {
+          logger.info('task lock not acquired, probably other worker is doing it', {
             taskName,
             taskId
           })
 
           return
         }
-        logger.error('Cron task failed, retrying later', errMessage, exception, { taskName, taskId, nextTry })
+
         const nextTry = moment().add(1, 'hours')
-        taskJob.setTime(new CronTime(nextTry))
-        taskJob.start()
+
+        logger.error('Cron task failed, retrying later', errMessage, exception, { taskName, taskId, nextTry })
+        this.setNextTry(taskJob, nextTry)
       }
     })
 
@@ -92,6 +95,17 @@ class TaskRunner {
 
     logger.info('Stopping cron tasks', keys(tasks))
     invokeMap(tasks, 'stop')
+  }
+
+  setNextTry(taskJob, time) {
+    let cronTime = time
+
+    if (!(time instanceof CronTime)) {
+      cronTime = new CronTime(time)
+    }
+
+    taskJob.setTime(cronTime)
+    taskJob.start()
   }
 }
 

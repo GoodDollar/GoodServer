@@ -140,34 +140,26 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         if (disableFaceVerification || allowDuplicatedFaceRecords || isE2ERunning) {
           // creating enrollment session manually for this user
           const enrollmentSession = enrollmentProcessor.createEnrollmentSession(user, log)
-          // to access user's session reference in the Gun
-          const { sessionRef } = enrollmentSession.initialize(enrollmentIdentifier, payload)
 
-          // immediately publishing isEnrolled to subscribers
-          await enrollmentSession.onEnrollmentStarted()
-          sessionRef.put({ isDuplicate: false, isLive: true, isEnrolled: true })
+          // calling onEnrollmentStarted() to lock dispose task in the queue
+          await enrollmentSession.onEnrollmentStarted(enrollmentIdentifier)
+
           enrollmentResult = { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } }
 
-          // when FR is enabled and user is already verified,
-          // we need to make sure to whitelist him,
-          // maybe we changed the whitelisting contract and
-          // he is no longer whitelisted there,
-          // so we trust that we already whitelisted him in the past
-          // and whitelist him again in the new contract
-          try {
-            // in the session's lifecycle onEnrollmentCompleted() is called
-            // after enrollment was successfull
-            // it whitelists user in the wallet and updates Gun's session
-            // here we're calling it manually as we've skipped enroll()
-            await enrollmentSession.onEnrollmentCompleted()
-          } catch (exception) {
-            // also we should try...catch manually,
-            // on failure call call onEnrollmentFailed()
-            // for set non-whitelistened and error in the Gun's session
-            enrollmentSession.onEnrollmentFailed(exception)
-            // and rethrow exception for return { success: false } JSON response
-            throw exception
-          }
+          /*
+            1. when FR is enabled and user is already verified,
+              we need to make sure to whitelist him,
+              maybe we changed the whitelisting contract and
+              he is no longer whitelisted there,
+              so we trust that we already whitelisted him in the past
+              and whitelist him again in the new contract
+
+            2. in the session's lifecycle onEnrollmentCompleted() is called
+              after enrollment was successfull
+              it whitelists user in the wallet and updates Gun's session
+              here we're calling it manually as we've skipped enroll()
+          */
+          await enrollmentSession.onEnrollmentCompleted(enrollmentIdentifier)
         } else {
           const isApprovedToClaim = ['approved', 'whitelisted'].includes(get(user, 'claimQueue.status'))
 

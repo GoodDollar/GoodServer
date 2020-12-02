@@ -7,7 +7,9 @@ import dotenv from 'dotenv'
 import getNetworks from './networks'
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
 
-import { version } from '../../package.json'
+import { version, description } from '../../package.json'
+
+export const appName = description.replace(/\s*server\s*/i, '')
 
 let dotenvPath = '.env'
 
@@ -276,11 +278,17 @@ const conf = convict({
     env: 'ZOOM_MINIMAL_MATCHLEVEL',
     default: 1
   },
+  zoomSearchIndexName: {
+    doc: 'FaceTec 3d DB search index name',
+    format: '*',
+    env: 'ZOOM_SEARCH_INDEX_NAME',
+    default: appName
+  },
   zoomServerBaseUrl: {
     doc: 'FaceTec Managed Testing API URL',
     format: '*',
     env: 'ZOOM_SERVER_BASEURL',
-    default: 'https://api.zoomauth.com/api/v2/biometrics'
+    default: 'https://api.facetec.com/api/v3/biometrics'
   },
   zoomLicenseKey: {
     doc: 'Zoom (Face Recognition / Liveness Test API) License key',

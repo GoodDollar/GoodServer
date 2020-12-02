@@ -44,7 +44,10 @@ addLoggerMonitor(logger)
 const printMemory = () => {
   const used = process.memoryUsage()
 
-  logger.debug('Memory usage:', mapValues(used, value => `${Math.round(value / (1 << 20), 2)} MB`))
+  logger.debug(
+    'Memory usage:',
+    mapValues(used, value => `${Math.round(value / (1 << 20), 2)} MB`)
+  )
 }
 
 if ('test' !== env) {

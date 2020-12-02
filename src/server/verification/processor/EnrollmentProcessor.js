@@ -3,7 +3,6 @@ import { chunk, noop } from 'lodash'
 import moment from 'moment'
 
 import Config from '../../server.config'
-import { GunDBPublic } from '../../gun/gun-middleware'
 import AdminWallet from '../../blockchain/AdminWallet'
 import { ClaimQueue } from '../../claimQueue/claimQueueAPI'
 import { recoverPublickey } from '../../utils/eth'
@@ -24,7 +23,6 @@ const DISPOSE_BATCH_MINIMAL = 10
 const DISPOSE_BATCH_MAXIMAL = 50
 
 class EnrollmentProcessor {
-  gun = null
   logger = null
   storage = null
   adminApi = null
@@ -43,10 +41,9 @@ class EnrollmentProcessor {
     return _provider
   }
 
-  constructor(config, storage, adminApi, queueApi, gun, logger) {
+  constructor(config, storage, adminApi, queueApi, logger) {
     const { keepFaceVerificationRecords } = config
 
-    this.gun = gun
     this.logger = logger
     this.storage = storage
     this.adminApi = adminApi
@@ -158,10 +155,10 @@ class EnrollmentProcessor {
     customLogger = null
   ): Promise<void> {
     const { Reauthenticate, AccountRemoved } = DisposeAt
-    const { storage, keepEnrollments, logger } = this
+    const { storage, adminApi, keepEnrollments, logger } = this
     const log = customLogger || logger
 
-    const authenticationPeriod = await AdminWallet.getAuthenticationPeriod()
+    const authenticationPeriod = await adminApi.getAuthenticationPeriod()
     const deletedAccountFilters = { 'subject.executeAt': AccountRemoved }
 
     if (keepEnrollments > 0) {
@@ -216,9 +213,9 @@ class EnrollmentProcessor {
   }
 
   createEnrollmentSession(user, customLogger = null) {
-    const { provider, storage, adminApi, queueApi, gun } = this
+    const { provider, storage, adminApi, queueApi } = this
 
-    return new EnrollmentSession(user, provider, storage, adminApi, queueApi, gun, customLogger)
+    return new EnrollmentSession(user, provider, storage, adminApi, queueApi, customLogger)
   }
 
   /**
@@ -239,12 +236,12 @@ class EnrollmentProcessor {
         const { _id: taskId, subject } = task
         const { enrollmentIdentifier } = subject
         try {
-          const enrollmentExists = await provider.enrollmentExists(enrollmentIdentifier, customLogger)
+          const isEnrollmentIndexed = await provider.isEnrollmentIndexed(enrollmentIdentifier, customLogger)
 
-          if (!enrollmentExists) {
-            log.info("Enrollment doesn't exists, skipping disposal", { enrollmentIdentifier })
-          } else {
+          if (isEnrollmentIndexed) {
             await provider.dispose(enrollmentIdentifier, customLogger)
+          } else {
+            log.info("Enrollment doesn't indexed in the 3D Database, skipping disposal", { enrollmentIdentifier })
           }
 
           tasksSucceeded.push(taskId)
@@ -271,7 +268,7 @@ const enrollmentProcessors = new WeakMap()
 export default (storage, log) => {
   if (!enrollmentProcessors.has(storage)) {
     log = log || logger.child({ from: 'EnrollmentProcessor' })
-    const enrollmentProcessor = new EnrollmentProcessor(Config, storage, AdminWallet, ClaimQueue, GunDBPublic, log)
+    const enrollmentProcessor = new EnrollmentProcessor(Config, storage, AdminWallet, ClaimQueue, log)
 
     enrollmentProcessor.registerProvier(getZoomProvider())
     enrollmentProcessors.set(storage, enrollmentProcessor)

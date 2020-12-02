@@ -1,10 +1,14 @@
 // @flow
-import { pick, omit, once } from 'lodash'
+import { omit, once, omitBy, bindAll } from 'lodash'
 
-import initZoomAPI from '../../api/ZoomAPI.js'
+import initZoomAPI, { faceSnapshotFields, ZoomAPIError } from '../../api/ZoomAPI.js'
 import logger from '../../../../imports/logger'
 
 import { type IEnrollmentProvider } from '../typings'
+
+export const duplicateFoundMessage = `Duplicate exists for FaceMap you're trying to enroll.`
+export const successfullyEnrolledMessage = 'The FaceMap was successfully enrolled.'
+export const alreadyEnrolledMessage = 'The FaceMap was already enrolled.'
 
 class ZoomProvider implements IEnrollmentProvider {
   api = null
@@ -13,10 +17,12 @@ class ZoomProvider implements IEnrollmentProvider {
   constructor(api, logger) {
     this.api = api
     this.logger = logger
+
+    bindAll(this, ['_handleNotExistsException', '_isNotExistsException'])
   }
 
   isPayloadValid(payload: any): boolean {
-    return !['faceMap', 'lowQualityAuditTrailImage', 'auditTrailImage'].some(field => !payload[field])
+    return !faceSnapshotFields.some(field => !payload[field])
   }
 
   async issueToken(customLogger = null): Promise<string> {
@@ -33,6 +39,9 @@ class ZoomProvider implements IEnrollmentProvider {
   ): Promise<any> {
     const { api, logger } = this
     const log = customLogger || logger
+    const { defaultMinimalMatchLevel, defaultSearchIndexName } = api
+    const { LivenessCheckFailed, SecurityCheckFailed, FacemapNotFound, FacemapDoesNotMatch } = ZoomAPIError
+
     // send event to onEnrollmentProcessing
     const notifyProcessor = async eventPayload => onEnrollmentProcessing(eventPayload)
 
@@ -40,10 +49,14 @@ class ZoomProvider implements IEnrollmentProvider {
     // e.g. livenes wasn't passed, duplicate found etc
     const throwCustomException = (customMessage, customResponse, zoomResponse = {}) => {
       const exception = new Error(customMessage)
+      // removing debug fields
+      let redactedResponse = omit(zoomResponse, 'callData', 'additionalSessionData', 'serverInfo')
+
+      // removing all large data (e.g. images , facemaps)
+      redactedResponse = omitBy(redactedResponse, (_, field) => field.endsWith('Base64'))
 
       exception.response = {
-        // removing all large data (e.g. images , facemaps)
-        ...pick(zoomResponse, 'code', 'subCode', 'message'),
+        ...redactedResponse,
         ...customResponse,
         isVerified: false
       }
@@ -51,37 +64,77 @@ class ZoomProvider implements IEnrollmentProvider {
       throw exception
     }
 
-    // 1. checking for duplicates
-    let duplicate
-    let faceSearchResponse
-    const { defaultMinimalMatchLevel } = api
+    // 1. checking if facescan already uploaded & enrolled
+    let alreadyEnrolled
 
     try {
-      const { results, ...response } = await api.faceSearch(payload, defaultMinimalMatchLevel, customLogger)
-
-      faceSearchResponse = response
-      // excluding own enrollmentIdentifier
-      duplicate = results.find(
-        ({ enrollmentIdentifier: matchId }) => matchId.toLowerCase() !== enrollmentIdentifier.toLowerCase()
-      )
+      await api.readEnrollment(enrollmentIdentifier, customLogger)
+      alreadyEnrolled = true
     } catch (exception) {
-      faceSearchResponse = exception.response || {}
+      // if something other that 'FacemapNotFound was thrown - re-throwing
+      if (FacemapNotFound !== exception.name) {
+        throw exception
+      }
 
-      // if liveness issues were detected
-      if ('livenessCheckFailed' === faceSearchResponse.subCode) {
-        const isLive = false
-        const { message } = faceSearchResponse
+      // otherwise, setting alreadyEnrolled to false
+      alreadyEnrolled = false
+    }
+
+    // 2. performing liveness check and storing facescan / audit trail images (if need)
+    let isLive = true
+    let isNotMatch = false
+
+    try {
+      // if already enrolled, will call /match-3d
+      // othwerise (if not enrolled/stored yet) - /enroll
+      const methodToInvoke = (alreadyEnrolled ? 'update' : 'submit') + 'Enrollment'
+
+      await api[methodToInvoke](enrollmentIdentifier, payload, customLogger)
+    } catch (exception) {
+      const { name, message, response } = exception
+
+      // if facemap doesn't match we won't show retry screen
+      if (FacemapDoesNotMatch === name) {
+        isNotMatch = true
+
+        await notifyProcessor({ isNotMatch })
+        log.warn(message, { enrollmentIdentifier })
+
+        // so we'll reject with isNotMatch: true instead
+        // to show the error screen on app side immediately
+        // notifying about liveness check failed
+        throwCustomException(message, { isNotMatch }, response)
+      }
+
+      // if liveness / security issues were detected
+      if ([LivenessCheckFailed, SecurityCheckFailed].includes(name)) {
+        isLive = false
 
         // notifying about liveness check failed
         await notifyProcessor({ isLive })
         log.warn(message, { enrollmentIdentifier })
-
-        throwCustomException(message, { isLive }, faceSearchResponse)
+        throwCustomException(message, { isLive }, response)
       }
 
-      // otherwisw just re-throw exception and stop processing
+      // otherwise just re-throwing exception and stopping processing
       throw exception
     }
+
+    // notifying about liveness / match passed or not
+    await notifyProcessor({ isLive, isNotMatch })
+
+    // 3. checking for duplicates
+    const { results, ...faceSearchResponse } = await api.faceSearch(
+      enrollmentIdentifier,
+      defaultMinimalMatchLevel,
+      defaultSearchIndexName,
+      customLogger
+    )
+
+    // excluding own enrollmentIdentifier
+    const duplicate = results.find(
+      ({ identifier: matchId }) => matchId.toLowerCase() !== enrollmentIdentifier.toLowerCase()
+    )
 
     // if there're at least one record left - we have a duplicate
     const isDuplicate = !!duplicate
@@ -90,74 +143,55 @@ class ZoomProvider implements IEnrollmentProvider {
     await notifyProcessor({ isDuplicate })
 
     if (isDuplicate) {
-      const duplicateFoundMessage = `Duplicate exists for FaceMap you're trying to enroll.`
-
       // if duplicate found - throwing corresponding error
-      duplicate = omit(duplicate, 'auditTrailImage')
       log.warn(duplicateFoundMessage, { duplicate, enrollmentIdentifier })
-
       throwCustomException(duplicateFoundMessage, { isDuplicate }, faceSearchResponse)
     }
 
-    let enrollmentStatus
-    let alreadyEnrolled = false
+    // 4. if not alreadyEnrolled - indexing uploaded & stored face scan to the 3D Database
+    let isEnrolled = true
 
-    // 2. performing enroll
-    try {
-      // returning last respose
-      const { message } = await api.submitEnrollment({ ...payload, enrollmentIdentifier }, customLogger)
+    if (!alreadyEnrolled) {
+      try {
+        await api.indexEnrollment(enrollmentIdentifier, defaultSearchIndexName, customLogger)
+      } catch (exception) {
+        const { response, message } = exception
 
-      enrollmentStatus = message
-    } catch (exception) {
-      const { response, message } = exception
+        // if exception has no response (e.g. no conneciton or service error)
+        // just rethrowing it and stopping enrollment
+        if (!response) {
+          throw exception
+        }
 
-      // if exception has no response (e.g. no conneciton or service error)
-      // just rethrowing it and stopping enrollment
-      if (!response) {
-        throw exception
+        // otherwise notifying & throwing enrollment exception
+        isEnrolled = false
+
+        await notifyProcessor({ isEnrolled })
+        throwCustomException(message, { isEnrolled }, response)
       }
-
-      // if exception has response checking
-      // is subCode non-equals to 'nameCollision'
-      // that we have some enrollment error
-      // (e.g. liveness wasn't passsed, glasses detected, poor quality)
-      if ('nameCollision' !== response.subCode) {
-        const isEnrolled = false
-        const isLive = api.isLivenessCheckPassed(response)
-
-        // then notifying & throwing enrollment exception
-        await notifyProcessor({ isEnrolled, isLive })
-        throwCustomException(message, { isEnrolled, isLive }, response)
-      }
-
-      // otherwise, if subCode equals to 'nameCollision'
-      // that means identifier was already enrolled
-      // as we've already passed dupliucate check
-      // we don't throw anything, but setting alreadyEnrolled flag
-      alreadyEnrolled = true
-
-      // returning 'already enrolled' status
-      enrollmentStatus = 'The FaceMap was already enrolled.'
     }
 
+    // preparing corresponding success message depinding of the alreadyEnrolled status
+    const enrollmentStatus = alreadyEnrolled ? alreadyEnrolledMessage : successfullyEnrolledMessage
+
     // notifying about successfull enrollment
-    await notifyProcessor({ isEnrolled: true, isLive: true })
+    await notifyProcessor({ isEnrolled })
+
     // returning successfull result
     return { isVerified: true, alreadyEnrolled, message: enrollmentStatus }
   }
 
-  async enrollmentExists(enrollmentIdentifier: string, customLogger = null): Promise<boolean> {
-    const { api, logger } = this
+  async isEnrollmentIndexed(enrollmentIdentifier: string, customLogger = null): Promise<boolean> {
+    const { api, logger, _isNotExistsException } = this
     const log = customLogger || logger
+    const { defaultSearchIndexName } = api
 
     try {
-      await api.readEnrollment(enrollmentIdentifier, customLogger)
+      await api.readEnrollmentIndex(enrollmentIdentifier, defaultSearchIndexName, customLogger)
     } catch (exception) {
-      const { response, message: errMessage } = exception
-      const { subCode } = response || {}
+      const { message: errMessage } = exception
 
-      if ('facemapNotFound' === subCode) {
-        log.warn('Enrollment not exists', { enrollmentIdentifier })
+      if (_isNotExistsException(enrollmentIdentifier, exception, customLogger)) {
         return false
       }
 
@@ -169,23 +203,60 @@ class ZoomProvider implements IEnrollmentProvider {
   }
 
   async dispose(enrollmentIdentifier: string, customLogger = null): Promise<void> {
-    const { api, logger } = this
+    const { api, _handleNotExistsException, logger } = this
+    const { defaultSearchIndexName } = api
+    const log = customLogger || logger
+
+    // eslint-disable-next-line require-await
+    await _handleNotExistsException(enrollmentIdentifier, customLogger, async () =>
+      api.removeEnrollmentFromIndex(enrollmentIdentifier, defaultSearchIndexName, customLogger)
+    )
+
+    // trying to remove also facemap from the DB
+    try {
+      // eslint-disable-next-line require-await
+      await _handleNotExistsException(enrollmentIdentifier, customLogger, async () =>
+        api.disposeEnrollment(enrollmentIdentifier, customLogger)
+      )
+    } catch (exception) {
+      const { message: errMessage } = exception
+
+      // if delete enrollment isn't supported by the server it will try to enroll
+      // it check is enrollment already exists then validates input payload
+      // so one of 'already exists' or 'facescan not valid' will be thrown
+      if (/(enrollment\s+already\s+exists|faceScan\s+.+?not\s+valid)/i.test(errMessage)) {
+        log.warn("ZoOm server doesn't supports removing enrollments", { enrollmentIdentifier })
+      }
+    }
+  }
+
+  async _handleNotExistsException(enrollmentIdentifier, customLogger = null, operation): Promise<void> {
+    const { _isNotExistsException, logger } = this
     const log = customLogger || logger
 
     try {
-      await api.disposeEnrollment(enrollmentIdentifier, customLogger)
+      await operation()
     } catch (exception) {
-      const { response, message: errMessage } = exception
-      const { subCode } = response || {}
+      const { message: errMessage } = exception
 
-      if ('facemapNotFound' === subCode) {
-        log.warn('Enrollment not exists', { enrollmentIdentifier })
+      if (_isNotExistsException(enrollmentIdentifier, exception, customLogger)) {
         return
       }
 
       log.warn('Error disposing enrollment', { e: exception, errMessage, enrollmentIdentifier })
       throw exception
     }
+  }
+
+  _isNotExistsException(enrollmentIdentifier, exception, customLogger) {
+    const log = customLogger || this.logger
+    const isNotIndexed = ZoomAPIError.FacemapNotFound === exception.name
+
+    if (isNotIndexed) {
+      log.warn("Enrollment isn't indexed in the 3D Database", { enrollmentIdentifier })
+    }
+
+    return isNotIndexed
   }
 }
 
