@@ -125,7 +125,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       let enrollmentResult
 
       // checking if request aborted to handle cases when connection is slow
-      // and facemap / images were uploaded more that 30sec cousing timeout
+      // and facemap / images were uploaded more that 30sec causing timeout
       if (req.aborted) {
         return
       }
@@ -136,10 +136,13 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
         await enrollmentProcessor.validate(user, enrollmentIdentifier, payload)
 
-        // if user is already verified, we're skipping enroillment logic
-        if (user.isVerified || disableFaceVerification || allowDuplicatedFaceRecords || isE2ERunning) {
+        // if FV disabled or dups allowed or running Cypress, we're skipping enrollment logic
+        if (disableFaceVerification || allowDuplicatedFaceRecords || isE2ERunning) {
           // creating enrollment session manually for this user
-          const enrollmentSession = enrollmentProcessor.createEnrollmentSession(user, log)
+          const enrollmentSession = enrollmentProcessor.createEnrollmentSession(enrollmentIdentifier, user, log)
+
+          // calling onEnrollmentStarted() to lock dispose task in the queue
+          await enrollmentSession.onEnrollmentStarted()
 
           enrollmentResult = { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } }
 

@@ -381,6 +381,18 @@ export class Wallet {
       throw exception
     }
   }
+
+  async getAuthenticationPeriod(): Promise<number> {
+    try {
+      const result = await this.identityContract.methods.authenticationPeriod().call()
+      return result.toNumber()
+    } catch (exception) {
+      const { message } = exception
+      log.error('Error getAuthenticationPeriod', message, exception)
+      throw exception
+    }
+  }
+
   /**
    * blacklist an user in the `Identity` contract
    * @param {string} address

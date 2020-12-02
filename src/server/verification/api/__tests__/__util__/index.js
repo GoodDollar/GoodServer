@@ -1,4 +1,4 @@
-import { isArray, upperFirst } from 'lodash'
+import { upperFirst } from 'lodash'
 
 import {
   failedLivenessMessage,
