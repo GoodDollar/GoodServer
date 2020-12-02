@@ -139,10 +139,10 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         // if FV disabled or dups allowed or running Cypress, we're skipping enrollment logic
         if (disableFaceVerification || allowDuplicatedFaceRecords || isE2ERunning) {
           // creating enrollment session manually for this user
-          const enrollmentSession = enrollmentProcessor.createEnrollmentSession(user, log)
+          const enrollmentSession = enrollmentProcessor.createEnrollmentSession(enrollmentIdentifier, user, log)
 
           // calling onEnrollmentStarted() to lock dispose task in the queue
-          await enrollmentSession.onEnrollmentStarted(enrollmentIdentifier)
+          await enrollmentSession.onEnrollmentStarted()
 
           enrollmentResult = { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } }
 
@@ -159,7 +159,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
               it whitelists user in the wallet and updates Gun's session
               here we're calling it manually as we've skipped enroll()
           */
-          await enrollmentSession.onEnrollmentCompleted(enrollmentIdentifier)
+          await enrollmentSession.onEnrollmentCompleted()
         } else {
           const isApprovedToClaim = ['approved', 'whitelisted'].includes(get(user, 'claimQueue.status'))
 

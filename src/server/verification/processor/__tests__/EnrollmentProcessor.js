@@ -184,8 +184,10 @@ describe('EnrollmentProcessor', () => {
   })
 
   test('enroll() enqueues task to auto dispose enrollment once auth period passed on success', async () => {
-    helper.mockEmptyResultsFaceSearch()
+    helper.mockEnrollmentNotFound(enrollmentIdentifier)
     helper.mockSuccessEnrollment(enrollmentIdentifier)
+    helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
+    helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
 
     await enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)
 
@@ -197,7 +199,9 @@ describe('EnrollmentProcessor', () => {
 
   test('enroll() preserves existing tasks for identifier being enrolled', async () => {
     // success always re-creates the task so we'll reproduce the failed case
-    helper.mockDuplicateFound()
+    helper.mockEnrollmentNotFound(enrollmentIdentifier)
+    helper.mockSuccessEnrollment(enrollmentIdentifier)
+    helper.mockDuplicateFound(enrollmentIdentifier)
 
     await enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)
 
@@ -264,7 +268,6 @@ describe('EnrollmentProcessor', () => {
     const taskId = identifier => `${identifier}-task-id`
     const onProcessedMock = jest.fn()
 
-    getAuthenticationPeriodMock.mockResolvedValueOnce(14)
     fetchTasksForProcessingMock.mockResolvedValueOnce(
       [unexistingEnrollmentIdentifier, failedEnrollmentIdentifier, enrollmentIdentifier].map(identifier => ({
         _id: taskId(identifier),

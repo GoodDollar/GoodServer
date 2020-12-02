@@ -74,19 +74,19 @@ describe('verificationAPI', () => {
       lowQualityAuditTrailImage: 'data:image/png:FaKEimagE=='
     }
 
+    const mockSuccessVerification = () => {
+      helper.mockEnrollmentNotFound(enrollmentIdentifier)
+      helper.mockSuccessEnrollment(enrollmentIdentifier)
+      helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
+      helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
+    }
+
     const testInvalidInput = async withoutField =>
       request(server)
         .put(enrollmentUri)
         .send(omit(payload, withoutField))
         .set('Authorization', `Bearer ${token}`)
         .expect(400, { success: false, error: 'Invalid input' })
-
-    const testWhitelisted = async () => {
-      const { address, profilePublickey } = await getCreds()
-
-      // checking is user was actrally re-whitelisted in the wallet
-      expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), profilePublickey)
-    }
 
     // eslint-disable-next-line require-await
     const testVerificationSuccessfull = async (alreadyEnrolled = false) =>
@@ -118,6 +118,23 @@ describe('verificationAPI', () => {
         .get(enrollmentUri)
         .set('Authorization', `Bearer ${token}`)
         .expect(200, { success: true, isDisposing })
+    }
+
+    const testWhitelisted = async () => {
+      const { address, profilePublickey } = await getCreds()
+
+      // checking is user was actrally re-whitelisted in the wallet
+      expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), profilePublickey)
+    }
+
+    const testNotVerified = async () => {
+      // to check that user hasn't been updated nowhere:
+      // in the database
+      const { isVerified } = await storage.getUser(userIdentifier)
+
+      expect(isVerified).toBeFalsy()
+      // and in the wallet
+      expect(whitelistUserMock).not.toHaveBeenCalled()
     }
 
     beforeAll(async () => {
@@ -218,10 +235,7 @@ describe('verificationAPI', () => {
     })
 
     test('PUT /verify/face/:enrollmentIdentifier returns 200 and success: true when verification was successfull', async () => {
-      helper.mockEnrollmentNotFound(enrollmentIdentifier)
-      helper.mockSuccessEnrollment(enrollmentIdentifier)
-      helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
-      helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
+      mockSuccessVerification()
 
       await testVerificationSuccessfull()
 
@@ -253,13 +267,7 @@ describe('verificationAPI', () => {
           }
         })
 
-      // to check that user hasn't beed updated nowhere
-      // in the database
-      const { isVerified } = await storage.getUser(userIdentifier)
-
-      expect(isVerified).toBeFalsy()
-      // and in the wallet
-      expect(whitelistUserMock).not.toHaveBeenCalled()
+      await testNotVerified()
     })
 
     test('PUT /verify/face/:enrollmentIdentifier returns 200 and success: false when unexpected error happens', async () => {
@@ -284,22 +292,13 @@ describe('verificationAPI', () => {
           }
         })
 
-      // to check that user hasn't beed updated nowhere
-      // in the database
-      const { isVerified } = await storage.getUser(userIdentifier)
-
-      expect(isVerified).toBeFalsy()
-      // and in the wallet
-      expect(whitelistUserMock).not.toHaveBeenCalled()
+      await testNotVerified()
     })
 
     test('PUT /verify/face/:enrollmentIdentifier returns 400 and success = false when user not approved in the claim queue', async () => {
       // enabling claim queue.
       Config.claimQueueAllowed = 1
-      helper.mockEnrollmentNotFound(enrollmentIdentifier)
-      helper.mockSuccessEnrollment(enrollmentIdentifier)
-      helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
-      helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
+      mockSuccessVerification()
 
       // user with empty status
       await testUserNotApprovedToClaim()
@@ -312,10 +311,7 @@ describe('verificationAPI', () => {
     test('PUT /verify/face/:enrollmentIdentifier users approved in the claim queue will be verified as usual', async () => {
       // enabling claim queue.
       Config.claimQueueAllowed = 1
-      helper.mockEnrollmentNotFound(enrollmentIdentifier)
-      helper.mockSuccessEnrollment(enrollmentIdentifier)
-      helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
-      helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
+      mockSuccessVerification()
 
       // user with approved status
       await storage.updateUser({ identifier: userIdentifier, claimQueue: { status: 'approved' }, isVerified: false })
@@ -329,10 +325,7 @@ describe('verificationAPI', () => {
     test('PUT /verify/face/:enrollmentIdentifier whitelists user in the claim queue', async () => {
       // enabling claim queue.
       Config.claimQueueAllowed = 1
-      helper.mockEnrollmentNotFound(enrollmentIdentifier)
-      helper.mockSuccessEnrollment(enrollmentIdentifier)
-      helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
-      helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
+      mockSuccessVerification()
 
       // set approved status
       await storage.updateUser({ identifier: userIdentifier, claimQueue: { status: 'approved' }, isVerified: false })
@@ -347,9 +340,11 @@ describe('verificationAPI', () => {
     test('PUT /verify/face/:enrollmentIdentifier passes full verification flow even if user was already verified', async () => {
       await storage.updateUser({ identifier: userIdentifier, isVerified: true })
 
-      helper.mockEmptyResultsFaceSearch()
-      helper.mockSuccessEnrollment(enrollmentIdentifier)
+      helper.mockEnrollmentFound(enrollmentIdentifier)
+      helper.mockSuccessUpdateEnrollment(enrollmentIdentifier)
+      helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
 
+      await testVerificationSuccessfull(true)
       await testWhitelisted()
     })
 

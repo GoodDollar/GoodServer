@@ -1,5 +1,5 @@
 // @flow
-import { bindAll, noop, omit } from 'lodash'
+import { assign, bindAll, noop, omit } from 'lodash'
 import { type IEnrollmentEventPayload } from './typings'
 import logger from '../../../imports/logger'
 import { DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment, scheduleDisposalTask } from '../cron/taskUtil'
@@ -13,20 +13,25 @@ export default class EnrollmentSession {
   storage = null
   adminApi = null
   queueApi = null
+  enrollmentIdentifier = null
 
-  constructor(user, provider, storage, adminApi, queueApi, customLogger = null) {
-    this.user = user
-    this.provider = provider
-    this.storage = storage
-    this.adminApi = adminApi
-    this.queueApi = queueApi
+  constructor(enrollmentIdentifier, user, provider, storage, adminApi, queueApi, customLogger = null) {
     this.log = customLogger || log
+
+    assign(this, {
+      user,
+      provider,
+      storage,
+      adminApi,
+      queueApi,
+      enrollmentIdentifier
+    })
 
     bindAll(this, 'onEnrollmentProcessing')
   }
 
-  async enroll(enrollmentIdentifier, payload: any): Promise<any> {
-    const { log, user, provider, onEnrollmentProcessing } = this
+  async enroll(payload: any): Promise<any> {
+    const { log, user, provider, enrollmentIdentifier, onEnrollmentProcessing } = this
     let result = { success: true }
 
     log.info('Enrollment session started', {
@@ -36,13 +41,13 @@ export default class EnrollmentSession {
     })
 
     try {
-      await this.onEnrollmentStarted(enrollmentIdentifier)
+      await this.onEnrollmentStarted()
 
       const enrollmentResult = await provider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing, log)
 
       log.info('Enrollment session completed with result:', enrollmentResult)
 
-      await this.onEnrollmentCompleted(enrollmentIdentifier)
+      await this.onEnrollmentCompleted()
       Object.assign(result, { enrollmentResult })
     } catch (exception) {
       const { response, message } = exception
@@ -58,14 +63,17 @@ export default class EnrollmentSession {
       }
 
       log[logLevel]('Enrollment session failed with exception:', message, exception, { result })
-      await this.onEnrollmentFailed(enrollmentIdentifier)
+      await this.onEnrollmentFailed()
     }
 
     return result
   }
 
-  async onEnrollmentStarted(enrollmentIdentifier) {
-    await this._toggleDelayedTask(enrollmentIdentifier)
+  async onEnrollmentStarted() {
+    const { storage, enrollmentIdentifier } = this
+    const filters = forEnrollment(enrollmentIdentifier)
+
+    await storage.fetchTasksForProcessing(DISPOSE_ENROLLMENTS_TASK, filters)
   }
 
   onEnrollmentProcessing(processingPayload: IEnrollmentEventPayload) {
@@ -84,8 +92,8 @@ export default class EnrollmentSession {
     }
   }
 
-  async onEnrollmentCompleted(enrollmentIdentifier) {
-    const { user, storage, adminApi, queueApi, log } = this
+  async onEnrollmentCompleted() {
+    const { user, storage, adminApi, queueApi, log, enrollmentIdentifier } = this
     const { gdAddress, profilePublickey, loggedInAs } = user
 
     log.info('Whitelisting user:', loggedInAs)
@@ -100,21 +108,10 @@ export default class EnrollmentSession {
     log.info('Successfully whitelisted user:', loggedInAs)
   }
 
-  async onEnrollmentFailed(enrollmentIdentifier) {
-    await this._toggleDelayedTask(enrollmentIdentifier, true)
-  }
-
-  // eslint-disable-next-line require-await
-  async _toggleDelayedTask(enrollmentIdentifier, unlock = false) {
-    const { storage } = this
+  async onEnrollmentFailed() {
+    const { storage, enrollmentIdentifier } = this
     const filters = forEnrollment(enrollmentIdentifier)
-    const operation = unlock ? 'unlockDelayedTasks' : 'fetchTasksForProcessing'
-    const taskPromise = storage[operation](DISPOSE_ENROLLMENTS_TASK, filters)
 
-    if (unlock) {
-      return taskPromise.catch(noop)
-    }
-
-    return taskPromise
+    await storage.unlockDelayedTasks(DISPOSE_ENROLLMENTS_TASK, filters)
   }
 }

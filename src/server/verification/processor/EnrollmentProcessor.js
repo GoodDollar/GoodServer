@@ -99,9 +99,9 @@ class EnrollmentProcessor {
   }
 
   async enroll(user: any, enrollmentIdentifier: string, payload: any, customLogger = null): Promise<any> {
-    const session = this.createEnrollmentSession(user, customLogger)
+    const session = this.createEnrollmentSession(enrollmentIdentifier, user, customLogger)
 
-    return session.enroll(enrollmentIdentifier, payload)
+    return session.enroll(payload)
   }
 
   async enqueueDisposal(user: any, enrollmentIdentifier: string, signature: string, customLogger = null) {
@@ -212,10 +212,10 @@ class EnrollmentProcessor {
     }
   }
 
-  createEnrollmentSession(user, customLogger = null) {
+  createEnrollmentSession(enrollmentIdentifier, user, customLogger = null) {
     const { provider, storage, adminApi, queueApi } = this
 
-    return new EnrollmentSession(user, provider, storage, adminApi, queueApi, customLogger)
+    return new EnrollmentSession(enrollmentIdentifier, user, provider, storage, adminApi, queueApi, customLogger)
   }
 
   /**
