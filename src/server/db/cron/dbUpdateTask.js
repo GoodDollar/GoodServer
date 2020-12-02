@@ -39,9 +39,10 @@ export class DBUpdateTask {
    */
   async fixGunTrustProfiles2() {
     await AdminWallet.ready
-    const pkey = AdminWallet.wallets[AdminWallet.addresses[0]].privateKey.slice(2)
     await GunDBPublic.ready
+
     const gooddollarProfile = '~' + GunDBPublic.user.is.pub
+
     logger.info('fixGunTrustProfiles2 GoodDollar profile id:', {
       gooddollarProfile,
       bywalletIdx: await GunDBPublic.user.get('users/bywalletAddress').then(Gun.node.soul)
@@ -59,6 +60,7 @@ export class DBUpdateTask {
       .exec()
 
     let fixedUsers = 0
+
     const processChunk = users => {
       let hasWallet = 0
       const promises = users.map(async user => {
@@ -68,7 +70,9 @@ export class DBUpdateTask {
           .get('walletAddress')
           .get('display')
           .then(null, { wait: 2000 })
+
         const promises = []
+
         if (walletAddress) {
           promises.push(UserPrivateModel.updateOne({ identifier: user.identifier }, { trustIndex: true }))
           fixedUsers += 1
@@ -85,9 +89,11 @@ export class DBUpdateTask {
           logger.warn('fixGunTrustProfiles2 failed user:', e, { walletAddress, user })
           return false
         })
+
         // logger.info('fixGunTrustProfiles2 updated user:', { walletAddress, user })
         return indexRes
       })
+
       return [Promise.all(promises), hasWallet]
     }
 
@@ -96,8 +102,10 @@ export class DBUpdateTask {
       const [res, fixed] = await processChunk(users)
       // logger.debug('fixGunTrustProfiles2 chunk res:', { res })
       const failed = flattenDeep(res).filter(_ => _ === false)
+
       logger.info('fixGunTrustProfiles2 processed chunk:', { users: users.length, failed: failed.length, fixed })
     }
+
     logger.info('fixGunTrustProfiles2 finished:', { totalUsers: docs.length, fixedUsers })
   }
 }
