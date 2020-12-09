@@ -571,6 +571,30 @@ const conf = convict({
     format: String,
     default: 'VerificationEmail',
     env: 'AWS_SES_TEMPLATE_NAME'
+  },
+  cfWorkerVerifyJwtSecret: {
+    doc: 'Cloudflare verify worker JWT secret',
+    format: String,
+    default: '',
+    env: 'CF_WORKER_VERIFY_JWT_SECRET'
+  },
+  cfWorkerVerifyJwtAudience: {
+    doc: 'Cloudflare verify worker JWT audience',
+    format: String,
+    default: '',
+    env: 'CF_WORKER_VERIFY_JWT_AUDIENCE'
+  },
+  cfWorkerVerifyJwtSubject: {
+    doc: 'Cloudflare verify worker JWT subject',
+    format: String,
+    default: '',
+    env: 'CF_WORKER_VERIFY_JWT_SUBJECT'
+  },
+  cfWorkerVerifyUrl: {
+    doc: 'Cloudflare verify worker URL',
+    format: String,
+    default: '',
+    env: 'CF_WORKER_VERIFY_URL'
   }
 })
 
