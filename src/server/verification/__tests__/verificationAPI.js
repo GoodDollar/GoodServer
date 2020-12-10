@@ -50,7 +50,7 @@ describe('verificationAPI', () => {
   describe('face verification', () => {
     let token
     let helper
-    let zoomServiceMock
+    let faceTecServiceMock
     const enrollmentProcessor = createEnrollmentProcessor(storage)
     const { keepEnrollments } = enrollmentProcessor
 
@@ -141,8 +141,8 @@ describe('verificationAPI', () => {
       AdminWallet.whitelistUser = whitelistUserMock
       AdminWallet.isVerified = isVerifiedMock
 
-      zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
-      helper = createMockingHelper(zoomServiceMock)
+      faceTecServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
+      helper = createMockingHelper(faceTecServiceMock)
       token = await getToken(server)
     })
 
@@ -156,7 +156,7 @@ describe('verificationAPI', () => {
 
     afterEach(() => {
       whitelistUserMock.mockReset()
-      zoomServiceMock.reset()
+      faceTecServiceMock.reset()
     })
 
     afterAll(() => {
@@ -165,8 +165,8 @@ describe('verificationAPI', () => {
       restoreWalletMethods.forEach(method => (AdminWallet[method] = AdminWallet.constructor.prototype[method]))
 
       assign(enrollmentProcessor, { keepEnrollments })
-      zoomServiceMock.restore()
-      zoomServiceMock = null
+      faceTecServiceMock.restore()
+      faceTecServiceMock = null
       helper = null
     })
 
@@ -203,7 +203,7 @@ describe('verificationAPI', () => {
         })
     })
 
-    test('POST /verify/face/session returns 400, success: false if Zoom API fails', async () => {
+    test('POST /verify/face/session returns 400, success: false if FaceTec API fails', async () => {
       const message = 'FaceTec API response is empty'
 
       helper.mockFailedSessionToken(message)

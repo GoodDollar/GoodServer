@@ -3,13 +3,13 @@
 import MockAdapter from 'axios-mock-adapter'
 import { first, fromPairs, keys } from 'lodash'
 
-import getZoomProvider from '../ZoomProvider'
+import getFaceTecProvider from '../FaceTecProvider'
 import createMockingHelper from '../../../api/__tests__/__util__'
 import { levelConfigs } from '../../../../../imports/logger/options'
 
-const ZoomProvider = getZoomProvider()
+const FaceTecProvider = getFaceTecProvider()
 let helper
-let zoomServiceMock
+let faceTecServiceMock
 
 const sessionToken = 'fake-session-id'
 const enrollmentIdentifier = 'fake-enrollment-identifier'
@@ -25,7 +25,7 @@ const createLoggerMock = () => fromPairs(['log', ...keys(levelConfigs.levels)].m
 
 const testSuccessfullEnrollment = async (alreadyEnrolled = false) => {
   const onEnrollmentProcessing = jest.fn()
-  const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).resolves
+  const wrappedResponse = expect(FaceTecProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).resolves
 
   await wrappedResponse.toHaveProperty('isVerified', true)
   await wrappedResponse.toHaveProperty('alreadyEnrolled', alreadyEnrolled)
@@ -37,7 +37,7 @@ const testSuccessfullEnrollment = async (alreadyEnrolled = false) => {
 
 const testEnrollmentError = async errorMessage => {
   const onProcessingMock = jest.fn()
-  const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onProcessingMock)).rejects
+  const wrappedResponse = expect(FaceTecProvider.enroll(enrollmentIdentifier, payload, onProcessingMock)).rejects
 
   await wrappedResponse.toThrow(errorMessage)
   return { onProcessingMock, wrappedResponse }
@@ -55,32 +55,32 @@ const testSuccessfullEnrollmentDispose = async (enrollmentIdentifier, withCustom
   const mockFn = `mock${_ ? 'Success' : ''}RemoveEnrollment${_ ? '' : 'NotSupported'}`
 
   helper[mockFn](enrollmentIdentifier)
-  await expect(ZoomProvider.dispose(enrollmentIdentifier, loggerMock)).resolves.toBeUndefined()
+  await expect(FaceTecProvider.dispose(enrollmentIdentifier, loggerMock)).resolves.toBeUndefined()
 }
 
-describe('ZoomProvider', () => {
+describe('FaceTecProvider', () => {
   beforeAll(() => {
-    zoomServiceMock = new MockAdapter(ZoomProvider.api.http)
-    helper = createMockingHelper(zoomServiceMock)
+    faceTecServiceMock = new MockAdapter(FaceTecProvider.api.http)
+    helper = createMockingHelper(faceTecServiceMock)
   })
 
-  afterEach(() => zoomServiceMock.reset())
+  afterEach(() => faceTecServiceMock.reset())
 
   afterAll(() => {
-    zoomServiceMock.restore()
-    zoomServiceMock = null
+    faceTecServiceMock.restore()
+    faceTecServiceMock = null
     helper = null
   })
 
   test('issueToken() should return session token', async () => {
     helper.mockSuccessSessionToken(sessionToken)
 
-    await expect(ZoomProvider.issueToken()).resolves.toEqual(sessionToken)
+    await expect(FaceTecProvider.issueToken()).resolves.toEqual(sessionToken)
   })
 
   test('isValid() validates payload if facemap and images are present', () => {
-    expect(ZoomProvider.isPayloadValid(payload)).toBeTruthy()
-    expect(ZoomProvider.isPayloadValid({})).toBeFalsy()
+    expect(FaceTecProvider.isPayloadValid(payload)).toBeTruthy()
+    expect(FaceTecProvider.isPayloadValid({})).toBeFalsy()
   })
 
   test('enroll() returns successfull response if liveness passed, no duplicates found and enrollment was successfull', async () => {
@@ -101,7 +101,7 @@ describe('ZoomProvider', () => {
     // should return alreadyEnrolled = true
     await testSuccessfullEnrollment(true)
 
-    const { post: postHistory } = zoomServiceMock.history
+    const { post: postHistory } = faceTecServiceMock.history
     const postRequest = first(postHistory)
 
     // 1nd post should be POST /match-3d-3d (match & update facemap)
@@ -119,7 +119,8 @@ describe('ZoomProvider', () => {
     helper.mockFailedEnrollment(enrollmentIdentifier)
 
     const onEnrollmentProcessing = jest.fn()
-    const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
+    const wrappedResponse = expect(FaceTecProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing))
+      .rejects
 
     await wrappedResponse.toThrow(helper.failedLivenessMessage)
     await wrappedResponse.toHaveProperty('response')
@@ -134,7 +135,8 @@ describe('ZoomProvider', () => {
     helper.mockFailedUpdateEnrollment(enrollmentIdentifier, true)
 
     const onEnrollmentProcessing = jest.fn()
-    const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
+    const wrappedResponse = expect(FaceTecProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing))
+      .rejects
 
     await wrappedResponse.toThrow(helper.failedMatchMessage)
     await wrappedResponse.toHaveProperty('response')
@@ -150,7 +152,8 @@ describe('ZoomProvider', () => {
     helper.mockDuplicateFound(enrollmentIdentifier)
 
     const onEnrollmentProcessing = jest.fn()
-    const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
+    const wrappedResponse = expect(FaceTecProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing))
+      .rejects
 
     await wrappedResponse.toThrow(helper.duplicateFoundMessage)
     await wrappedResponse.toHaveProperty('response')
@@ -168,7 +171,8 @@ describe('ZoomProvider', () => {
     helper.mock3dDatabaseEnrollmentFailed(enrollmentIdentifier)
 
     const onEnrollmentProcessing = jest.fn()
-    const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
+    const wrappedResponse = expect(FaceTecProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing))
+      .rejects
 
     await wrappedResponse.toThrow(helper.failedEnrollmentMessage)
     await wrappedResponse.toHaveProperty('response')
@@ -180,11 +184,11 @@ describe('ZoomProvider', () => {
     expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(3, { isEnrolled: false })
   })
 
-  test('enroll() throws on any Zoom service error and terminates without returning any response or calling callback', async () => {
+  test('enroll() throws on any FaceTec service error and terminates without returning any response or calling callback', async () => {
     const uri = helper.enrollmentUri(enrollmentIdentifier)
     const unexpectedError = 'Unexpected error during search'
 
-    zoomServiceMock
+    faceTecServiceMock
       .onGet(uri)
       .replyOnce(500)
       .onGet(uri)
@@ -193,7 +197,7 @@ describe('ZoomProvider', () => {
     await testEnrollmentServiceError(helper.serviceErrorMessage)
     await testEnrollmentServiceError('Network Error')
 
-    zoomServiceMock.reset()
+    faceTecServiceMock.reset()
 
     helper.mockEnrollmentNotFound(enrollmentIdentifier)
     helper.mockSuccessEnrollment(enrollmentIdentifier)
@@ -204,29 +208,29 @@ describe('ZoomProvider', () => {
 
   test('isEnrollmentIndexed() checks enrollment existence', async () => {
     helper.mockSuccessReadEnrollmentIndex(enrollmentIdentifier)
-    await expect(ZoomProvider.isEnrollmentIndexed(enrollmentIdentifier)).resolves.toBe(true)
-    zoomServiceMock.reset()
+    await expect(FaceTecProvider.isEnrollmentIndexed(enrollmentIdentifier)).resolves.toBe(true)
+    faceTecServiceMock.reset()
 
     helper.mockEnrollmentNotExistsDuringReadIndex(enrollmentIdentifier)
-    await expect(ZoomProvider.isEnrollmentIndexed(enrollmentIdentifier)).resolves.toBe(false)
+    await expect(FaceTecProvider.isEnrollmentIndexed(enrollmentIdentifier)).resolves.toBe(false)
   })
 
   test("dispose() removes existing enrollment, doesn't throws for unexisting", async () => {
     helper.mockSuccessRemoveEnrollmentFromIndex(enrollmentIdentifier)
     await testSuccessfullEnrollmentDispose(enrollmentIdentifier)
 
-    zoomServiceMock.reset()
+    faceTecServiceMock.reset()
     helper.mockEnrollmentNotExistsDuringRemoveFromIndex(enrollmentIdentifier)
     await testSuccessfullEnrollmentDispose(enrollmentIdentifier)
   })
 
-  test("dispose() logs if ZoOm server doesn't support remove enrollment", async () => {
+  test("dispose() logs if FaceTec server doesn't support remove enrollment", async () => {
     const loggerMock = createLoggerMock()
 
     helper.mockSuccessRemoveEnrollmentFromIndex(enrollmentIdentifier)
     await testSuccessfullEnrollmentDispose(enrollmentIdentifier, false, loggerMock)
 
-    expect(loggerMock.warn).toBeCalledWith("ZoOm server doesn't supports removing enrollments", {
+    expect(loggerMock.warn).toBeCalledWith("FaceTec server doesn't supports removing enrollments", {
       enrollmentIdentifier
     })
   })
@@ -237,16 +241,16 @@ describe('ZoomProvider', () => {
     helper.mockSuccessRemoveEnrollmentFromIndex(enrollmentIdentifier)
     await testSuccessfullEnrollmentDispose(enrollmentIdentifier, true, loggerMock)
 
-    const deleteRequest = first(zoomServiceMock.history.delete)
+    const deleteRequest = first(faceTecServiceMock.history.delete)
 
     expect(deleteRequest).not.toBeUndefined()
     expect(deleteRequest).toHaveProperty('url', helper.enrollmentUri(enrollmentIdentifier))
-    expect(loggerMock.warn).not.toBeCalledWith("ZoOm server doesn't supports removing enrollments")
+    expect(loggerMock.warn).not.toBeCalledWith("FaceTec server doesn't supports removing enrollments")
   })
 
-  test('dispose() throws on Zoom service error', async () => {
+  test('dispose() throws on FaceTec service error', async () => {
     helper.mockServiceErrorDuringRemoveFromIndex(enrollmentIdentifier)
 
-    await expect(ZoomProvider.dispose(enrollmentIdentifier)).rejects.toThrow(helper.serviceErrorMessage)
+    await expect(FaceTecProvider.dispose(enrollmentIdentifier)).rejects.toThrow(helper.serviceErrorMessage)
   })
 })

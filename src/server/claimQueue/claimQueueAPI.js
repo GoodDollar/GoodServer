@@ -25,7 +25,7 @@ const ClaimQueue = {
       result = storage.updateUser({ identifier, 'claimQueue.status': 'whitelisted' })
     }
 
-    // Mautic calls could took a lot of time and cause ZoOm timeout
+    // Mautic calls could took a lot of time and cause FaceTec timeout
     // so let's do it 'in background'
     // also we won't call mautic if user.mauticId is empty or null
     if (mauticId) {

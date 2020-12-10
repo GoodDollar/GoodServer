@@ -11,7 +11,7 @@ import createMockingHelper from '../../api/__tests__/__util__'
 import { DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment } from '../../cron/taskUtil'
 
 let helper
-let zoomServiceMock
+let faceTecServiceMock
 
 // storage mocks
 const updateUserMock = jest.fn()
@@ -78,8 +78,8 @@ describe('EnrollmentProcessor', () => {
     AdminWallet.getAuthenticationPeriod = getAuthenticationPeriodMock
     ClaimQueue.setWhitelisted = whitelistInQueueMock
 
-    zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
-    helper = createMockingHelper(zoomServiceMock)
+    faceTecServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
+    helper = createMockingHelper(faceTecServiceMock)
   })
 
   beforeEach(() => {
@@ -124,7 +124,7 @@ describe('EnrollmentProcessor', () => {
       'mockReset'
     )
 
-    zoomServiceMock.reset()
+    faceTecServiceMock.reset()
   })
 
   afterAll(() => {
@@ -133,8 +133,8 @@ describe('EnrollmentProcessor', () => {
     ClaimQueue.whitelistUser = setWhitelistedImplementation
     restoreWalletMethods.forEach(method => (AdminWallet[method] = AdminWallet.constructor.prototype[method]))
 
-    zoomServiceMock.restore()
-    zoomServiceMock = null
+    faceTecServiceMock.restore()
+    faceTecServiceMock = null
     helper = null
   })
 

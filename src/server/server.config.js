@@ -272,28 +272,28 @@ const conf = convict({
     env: 'MAUTIC_CLAIM_QUEUE_WHITELISTED_SEG_ID',
     default: '54'
   },
-  zoomMinimalMatchLevel: {
+  faceTecMinimalMatchLevel: {
     doc: 'Minimal FaceTec Match Level threshold to mark enrollment as duplicate',
     format: Number,
-    env: 'ZOOM_MINIMAL_MATCHLEVEL',
+    env: 'FACETEC_MINIMAL_MATCHLEVEL',
     default: 1
   },
-  zoomSearchIndexName: {
+  faceTecSearchIndexName: {
     doc: 'FaceTec 3d DB search index name',
     format: '*',
-    env: 'ZOOM_SEARCH_INDEX_NAME',
+    env: 'FACETEC_SEARCH_INDEX_NAME',
     default: appName
   },
-  zoomServerBaseUrl: {
+  faceTecServerBaseUrl: {
     doc: 'FaceTec Managed Testing API URL',
     format: '*',
-    env: 'ZOOM_SERVER_BASEURL',
+    env: 'FACETEC_SERVER_BASEURL',
     default: 'https://api.facetec.com/api/v3/biometrics'
   },
-  zoomLicenseKey: {
-    doc: 'Zoom (Face Recognition / Liveness Test API) License key',
+  faceTecLicenseKey: {
+    doc: 'FaceTec (Face Recognition / Liveness Test API) License key',
     format: '*',
-    env: 'ZOOM_LICENSE_KEY',
+    env: 'FACETEC_LICENSE_KEY',
     default: ''
   },
   gunPrivateS3: {
@@ -357,13 +357,13 @@ const conf = convict({
     default: '0 0 * * * *'
   },
   disableFaceVerification: {
-    doc: 'Whitelist user once they register, returns already enrolled with no Zoom API interaction',
+    doc: 'Whitelist user once they register, returns already enrolled with no FaceTec API interaction',
     format: Boolean,
     env: 'DISABLE_FACE_VERIFICATION',
     default: false
   },
   allowDuplicatedFaceRecords: {
-    doc: 'Skips duplicates / liveness check during Zoom API interaction',
+    doc: 'Skips duplicates / liveness check during FaceTec API interaction',
     format: Boolean,
     env: 'ALLOW_DUPLICATED_FACE_RECORDS',
     default: false

@@ -1,7 +1,7 @@
 // @flow
 import { omit, once, omitBy, bindAll } from 'lodash'
 
-import initZoomAPI, { faceSnapshotFields, ZoomAPIError } from '../../api/ZoomAPI.js'
+import initFaceTecAPI, { faceSnapshotFields, FaceTecAPIError } from '../../api/FaceTecAPI.js'
 import logger from '../../../../imports/logger'
 
 import { type IEnrollmentProvider } from '../typings'
@@ -10,7 +10,7 @@ export const duplicateFoundMessage = `Duplicate exists for FaceMap you're trying
 export const successfullyEnrolledMessage = 'The FaceMap was successfully enrolled.'
 export const alreadyEnrolledMessage = 'The FaceMap was already enrolled.'
 
-class ZoomProvider implements IEnrollmentProvider {
+class FaceTecProvider implements IEnrollmentProvider {
   api = null
   logger = null
 
@@ -40,17 +40,17 @@ class ZoomProvider implements IEnrollmentProvider {
     const { api, logger } = this
     const log = customLogger || logger
     const { defaultMinimalMatchLevel, defaultSearchIndexName } = api
-    const { LivenessCheckFailed, SecurityCheckFailed, FacemapNotFound, FacemapDoesNotMatch } = ZoomAPIError
+    const { LivenessCheckFailed, SecurityCheckFailed, FacemapNotFound, FacemapDoesNotMatch } = FaceTecAPIError
 
     // send event to onEnrollmentProcessing
     const notifyProcessor = async eventPayload => onEnrollmentProcessing(eventPayload)
 
     // throws custom exception related to the predefined verification cases
     // e.g. livenes wasn't passed, duplicate found etc
-    const throwCustomException = (customMessage, customResponse, zoomResponse = {}) => {
+    const throwCustomException = (customMessage, customResponse, faceTecResponse = {}) => {
       const exception = new Error(customMessage)
       // removing debug fields
-      let redactedResponse = omit(zoomResponse, 'callData', 'additionalSessionData', 'serverInfo')
+      let redactedResponse = omit(faceTecResponse, 'callData', 'additionalSessionData', 'serverInfo')
 
       // removing all large data (e.g. images , facemaps)
       redactedResponse = omitBy(redactedResponse, (_, field) => field.endsWith('Base64'))
@@ -225,7 +225,7 @@ class ZoomProvider implements IEnrollmentProvider {
       // it check is enrollment already exists then validates input payload
       // so one of 'already exists' or 'facescan not valid' will be thrown
       if (/(enrollment\s+already\s+exists|faceScan\s+.+?not\s+valid)/i.test(errMessage)) {
-        log.warn("ZoOm server doesn't supports removing enrollments", { enrollmentIdentifier })
+        log.warn("FaceTec server doesn't supports removing enrollments", { enrollmentIdentifier })
       }
     }
   }
@@ -250,7 +250,7 @@ class ZoomProvider implements IEnrollmentProvider {
 
   _isNotExistsException(enrollmentIdentifier, exception, customLogger) {
     const log = customLogger || this.logger
-    const isNotIndexed = ZoomAPIError.FacemapNotFound === exception.name
+    const isNotIndexed = FaceTecAPIError.FacemapNotFound === exception.name
 
     if (isNotIndexed) {
       log.warn("Enrollment isn't indexed in the 3D Database", { enrollmentIdentifier })
@@ -260,4 +260,4 @@ class ZoomProvider implements IEnrollmentProvider {
   }
 }
 
-export default once(() => new ZoomProvider(initZoomAPI(), logger.child({ from: 'ZoomProvider' })))
+export default once(() => new FaceTecProvider(initFaceTecAPI(), logger.child({ from: 'FaceTecProvider' })))

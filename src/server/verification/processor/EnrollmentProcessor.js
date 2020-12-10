@@ -13,7 +13,7 @@ import { type DelayedTaskRecord } from '../../../imports/types'
 
 import EnrollmentSession from './EnrollmentSession'
 
-import getZoomProvider from './provider/ZoomProvider'
+import getFaceTecProvider from './provider/FaceTecProvider'
 import { DisposeAt, scheduleDisposalTask, DISPOSE_ENROLLMENTS_TASK } from '../cron/taskUtil'
 
 // count of chunks pending tasks should (approximately) be split to
@@ -270,7 +270,7 @@ export default (storage, log) => {
     log = log || logger.child({ from: 'EnrollmentProcessor' })
     const enrollmentProcessor = new EnrollmentProcessor(Config, storage, AdminWallet, ClaimQueue, log)
 
-    enrollmentProcessor.registerProvier(getZoomProvider())
+    enrollmentProcessor.registerProvier(getFaceTecProvider())
     enrollmentProcessors.set(storage, enrollmentProcessor)
   }
 

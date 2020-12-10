@@ -6,15 +6,15 @@ import {
   failedMatchMessage,
   enrollmentNotFoundMessage,
   enrollmentAlreadyExistsMessage
-} from '../../ZoomAPI'
+} from '../../FaceTecAPI'
 
 import {
   duplicateFoundMessage,
   alreadyEnrolledMessage,
   successfullyEnrolledMessage
-} from '../../../processor/provider/ZoomProvider'
+} from '../../../processor/provider/FaceTecProvider'
 
-export default zoomServiceMock => {
+export default faceTecServiceMock => {
   const serviceErrorMessage = 'Request failed with status code 500'
   const duplicateEnrollmentIdentifier = 'another-one-fake-enrollment-identifier'
   const dbInternalEnrollmentAlreadyExists = `An enrollment already exists for this externalDatabaseRefID.`
@@ -40,7 +40,7 @@ export default zoomServiceMock => {
   })
 
   const notFoundResponse = (enrollmentIdentifier, operation) =>
-    zoomServiceMock['on' + upperFirst(operation)](enrollmentUri(enrollmentIdentifier)).reply(
+    faceTecServiceMock['on' + upperFirst(operation)](enrollmentUri(enrollmentIdentifier)).reply(
       200,
       mockErrorResponse('No entry found in the database for this externalDatabaseRefID.')
     )
@@ -52,7 +52,7 @@ export default zoomServiceMock => {
       mockArgs.push(payloadOrMatcher)
     }
 
-    zoomServiceMock.onPost(...mockArgs).reply(200, {
+    faceTecServiceMock.onPost(...mockArgs).reply(200, {
       faceScanSecurityChecks: {
         replayCheckSucceeded: true,
         sessionTokenCheckSucceeded: true,
@@ -66,7 +66,7 @@ export default zoomServiceMock => {
   }
 
   const dbSuccessResponse = (operation, enrollmentIdentifier, response = {}) =>
-    zoomServiceMock.onPost(`/3d-db/${operation}`, enrollmentPayloadMatcher(enrollmentIdentifier)).reply(200, {
+    faceTecServiceMock.onPost(`/3d-db/${operation}`, enrollmentPayloadMatcher(enrollmentIdentifier)).reply(200, {
       ...successResponse,
       ...response
     })
@@ -74,22 +74,22 @@ export default zoomServiceMock => {
   const dbFailedResponse = (operation, enrollmentIdentifier, message = null) => {
     const mockedResponse = message ? mockErrorResponse(message) : { success: false, error: false }
 
-    zoomServiceMock
+    faceTecServiceMock
       .onPost(`/3d-db/${operation}`, enrollmentPayloadMatcher(enrollmentIdentifier))
       .reply(200, mockedResponse)
   }
 
   const mockSuccessSessionToken = sessionToken =>
-    zoomServiceMock.onGet('/session-token').reply(200, {
+    faceTecServiceMock.onGet('/session-token').reply(200, {
       sessionToken,
       ...successResponse
     })
 
   const mockFailedSessionToken = (withMessage = null) =>
-    zoomServiceMock.onGet('/session-token').reply(403, mockErrorResponse(withMessage))
+    faceTecServiceMock.onGet('/session-token').reply(403, mockErrorResponse(withMessage))
 
   const mockEnrollmentFound = enrollmentIdentifier =>
-    zoomServiceMock.onGet(enrollmentUri(enrollmentIdentifier)).reply(200, {
+    faceTecServiceMock.onGet(enrollmentUri(enrollmentIdentifier)).reply(200, {
       externalDatabaseRefID: enrollmentIdentifier,
       faceMapBase64: Buffer.alloc(32).toString(),
       auditTrailBase64: 'data:image/png:FaKEimagE==',
@@ -99,12 +99,12 @@ export default zoomServiceMock => {
   const mockEnrollmentNotFound = enrollmentIdentifier => notFoundResponse(enrollmentIdentifier, 'get')
 
   const mockSuccessRemoveEnrollment = enrollmentIdentifier =>
-    zoomServiceMock.onDelete(enrollmentUri(enrollmentIdentifier)).reply(200, successResponse)
+    faceTecServiceMock.onDelete(enrollmentUri(enrollmentIdentifier)).reply(200, successResponse)
 
   const mockEnrollmentNotExistsDuringRemove = enrollmentIdentifier => notFoundResponse(enrollmentIdentifier, 'delete')
 
   const mockRemoveEnrollmentNotSupported = enrollmentIdentifier =>
-    zoomServiceMock
+    faceTecServiceMock
       .onDelete(enrollmentUri(enrollmentIdentifier))
       .reply(200, mockErrorResponse(dbInternalEnrollmentAlreadyExists))
 
@@ -145,7 +145,7 @@ export default zoomServiceMock => {
     dbFailedResponse('delete', enrollmentIdentifier)
 
   const mockServiceErrorDuringRemoveFromIndex = enrollmentIdentifier =>
-    zoomServiceMock.onPost('/3d-db/delete', enrollmentPayloadMatcher(enrollmentIdentifier)).reply(500)
+    faceTecServiceMock.onPost('/3d-db/delete', enrollmentPayloadMatcher(enrollmentIdentifier)).reply(500)
 
   const mockEmptyResultsFaceSearch = enrollmentIdentifier =>
     dbSuccessResponse('search', enrollmentIdentifier, { results: [] })
@@ -190,7 +190,7 @@ export default zoomServiceMock => {
   }
 
   const mockEnrollmentAlreadyExists = enrollmentIdentifier =>
-    zoomServiceMock
+    faceTecServiceMock
       .onPost('/enrollment-3d', enrollmentPayloadMatcher(enrollmentIdentifier))
       .reply(200, mockErrorResponse(dbInternalEnrollmentAlreadyExists))
 

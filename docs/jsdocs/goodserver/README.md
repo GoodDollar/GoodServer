@@ -4,16 +4,16 @@ GoodDollar Server
 
 - [Login](#login)
 	- [Request user token](#request-user-token)
-	
+
 - [Send](#send)
 	- [Send link email](#send-link-email)
 	- [Send link sms](#send-link-sms)
 	- [Send recovery instructions email](#send-recovery-instructions-email)
-	
+
 - [Storage](#storage)
 	- [Add user account](#add-user-account)
 	- [Delete user account](#delete-user-account)
-	
+
 - [Verification](#verification)
 	- [Verify email code](#verify-email-code)
 	- [Verify users face](#verify-users-face)
@@ -22,7 +22,7 @@ GoodDollar Server
 	- [Sends OTP](#sends-otp)
 	- [Tops Users Wallet if needed](#tops-users-wallet-if-needed)
 	- [Whitelist user](#whitelist-user)
-	
+
 
 
 # Login
@@ -114,7 +114,7 @@ GoodDollar Server
 
 | Name    | Type      | Description                          |
 |---------|-----------|--------------------------------------|
-| zoomId			| String			|  							|
+| faceTecId			| String			|  							|
 
 # Verification
 

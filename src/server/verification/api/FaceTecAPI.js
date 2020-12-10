@@ -7,7 +7,7 @@ import { assign, get, pick, omit, isPlainObject, isArray, mapValues, once, lower
 import Config from '../../server.config'
 import logger from '../../../imports/logger'
 
-export const ZoomAPIError = {
+export const FaceTecAPIError = {
   FacemapNotFound: 'facemapNotFound',
   FacemapDoesNotMatch: 'facemapNotMatch',
   LivenessCheckFailed: 'livenessCheckFailed',
@@ -24,19 +24,19 @@ export const enrollmentAlreadyExistsMessage = 'An enrollment already exists for 
 export const faceSnapshotFields = ['sessionId', 'faceScan', 'auditTrailImage', 'lowQualityAuditTrailImage']
 const redactFieldsDuringLogging = ['faceMapBase64', 'auditTrailBase64', ...faceSnapshotFields]
 
-class ZoomAPI {
+class FaceTecAPI {
   http = null
   defaultMinimalMatchLevel = null
   defaultSearchIndexName = null
 
   constructor(Config, httpFactory, logger) {
-    const { zoomMinimalMatchLevel, zoomSearchIndexName } = Config
+    const { faceTecMinimalMatchLevel, faceTecSearchIndexName } = Config
     const httpClientOptions = this._configureClient(Config, logger)
 
     this.logger = logger
     this.http = httpFactory(httpClientOptions)
-    this.defaultMinimalMatchLevel = Number(zoomMinimalMatchLevel)
-    this.defaultSearchIndexName = zoomSearchIndexName
+    this.defaultMinimalMatchLevel = Number(faceTecMinimalMatchLevel)
+    this.defaultSearchIndexName = faceTecSearchIndexName
 
     this._configureRequests()
     this._configureResponses()
@@ -73,7 +73,7 @@ class ZoomAPI {
     } catch (exception) {
       const { name, message } = exception
 
-      if (ZoomAPIError.SecurityCheckFailed === name) {
+      if (FaceTecAPIError.SecurityCheckFailed === name) {
         exception.message = failedLivenessMessage + ' because the ' + lowerFirst(message)
       }
 
@@ -91,7 +91,7 @@ class ZoomAPI {
       response = await this._faceScanRequest('enrollment', payload, additionalData, customLogger)
     } catch (exception) {
       let { name, message } = exception
-      const { NameCollision, SecurityCheckFailed } = ZoomAPIError
+      const { NameCollision, SecurityCheckFailed } = FaceTecAPIError
 
       if (SecurityCheckFailed === name) {
         message = failedEnrollmentMessage + ' because the ' + lowerFirst(message)
@@ -115,7 +115,7 @@ class ZoomAPI {
       response = await this._faceScanRequest('match-3d', payload, additionalData, customLogger)
     } catch (exception) {
       const { name, message } = exception
-      const { FacemapDoesNotMatch, SecurityCheckFailed } = ZoomAPIError
+      const { FacemapDoesNotMatch, SecurityCheckFailed } = FaceTecAPIError
 
       if ([FacemapDoesNotMatch, SecurityCheckFailed].includes(name)) {
         exception.message = failedMatchMessage + ' because the ' + lowerFirst(message)
@@ -174,15 +174,15 @@ class ZoomAPI {
   }
 
   _configureClient(Config, logger) {
-    const { zoomLicenseKey, zoomServerBaseUrl } = Config
-    const serverURL = new URL(zoomServerBaseUrl)
+    const { faceTecLicenseKey, faceTecServerBaseUrl } = Config
+    const serverURL = new URL(faceTecServerBaseUrl)
     const { username, password } = serverURL
 
     let httpClientOptions = {
       headers: {
         'X-Requested-With': 'XMLHttpRequest',
         'Content-Type': 'application/json',
-        'X-Device-License-Key': zoomLicenseKey
+        'X-Device-License-Key': faceTecLicenseKey
       }
     }
 
@@ -204,7 +204,7 @@ class ZoomAPI {
       baseURL: serverURL.toString()
     }
 
-    logger.debug('Initialized Zoom API client with the options:', httpClientOptions)
+    logger.debug('Initialized FaceTec API client with the options:', httpClientOptions)
     return httpClientOptions
   }
 
@@ -242,32 +242,32 @@ class ZoomAPI {
   }
 
   async _responseInterceptor(response) {
-    const zoomResponse = this._transformResponse(response)
-    const { error, errorMessage } = zoomResponse
+    const faceTecResponse = this._transformResponse(response)
+    const { error, errorMessage } = faceTecResponse
 
-    this._logResponse('Received response from Zoom API:', response)
+    this._logResponse('Received response from FaceTec API:', response)
 
     if (true === error) {
       const exception = new Error(errorMessage || 'FaceTec API response is empty')
 
-      exception.response = zoomResponse
+      exception.response = faceTecResponse
       throw exception
     }
 
-    return zoomResponse
+    return faceTecResponse
   }
 
   async _exceptionInterceptor(exception) {
     const { response, message } = exception
 
     if (response && isPlainObject(response.data)) {
-      this._logResponse('Zoom API exception:', response)
+      this._logResponse('FaceTec API exception:', response)
 
-      const zoomResponse = this._transformResponse(response)
-      const { errorMessage: zoomMessage } = zoomResponse
+      const faceTecResponse = this._transformResponse(response)
+      const { errorMessage: faceTecMessage } = faceTecResponse
 
-      exception.message = zoomMessage || message
-      exception.response = zoomResponse
+      exception.message = faceTecMessage || message
+      exception.response = faceTecResponse
     } else {
       this._logUnexpectedExecption(exception)
 
@@ -287,7 +287,7 @@ class ZoomAPI {
     const logger = customLogger || this.logger
 
     requestCopy.data = this._createLoggingSafeCopy(data)
-    logger.debug('Calling Zoom API:', requestCopy)
+    logger.debug('Calling FaceTec API:', requestCopy)
   }
 
   _logResponse(logMessage, response) {
@@ -305,9 +305,9 @@ class ZoomAPI {
       const { data, status, statusText, config } = response
       const log = config.customLogger || logger
 
-      log.debug('HTTP exception during Zoom API call:', { data, status, statusText })
+      log.debug('HTTP exception during FaceTec API call:', { data, status, statusText })
     } else {
-      logger.debug('Unexpected exception during Zoom API call:', message)
+      logger.debug('Unexpected exception during FaceTec API call:', message)
     }
   }
 
@@ -334,7 +334,7 @@ class ZoomAPI {
 
       if (/(no\s+entry\s+found|no\s+records\s+were)/i.test(message)) {
         assign(exception, {
-          name: ZoomAPIError.FacemapNotFound,
+          name: FaceTecAPIError.FacemapNotFound,
           message: enrollmentNotFoundMessage
         })
       }
@@ -352,7 +352,7 @@ class ZoomAPI {
     }
 
     const response = await this.http.post(`/${operation}-3d`, payloadData, { customLogger })
-    const { LivenessCheckFailed, SecurityCheckFailed, FacemapDoesNotMatch } = ZoomAPIError
+    const { LivenessCheckFailed, SecurityCheckFailed, FacemapDoesNotMatch } = FaceTecAPIError
     const { success, faceScanSecurityChecks, matchLevel } = response
 
     const {
@@ -417,7 +417,7 @@ class ZoomAPI {
       if (/enrollment\s+does\s+not\s+exist/i.test(message)) {
         assign(exception, {
           message: enrollmentNotFoundMessage,
-          name: ZoomAPIError.FacemapNotFound
+          name: FaceTecAPIError.FacemapNotFound
         })
       }
 
@@ -441,7 +441,7 @@ class ZoomAPI {
     if (false === success) {
       const exception = new Error(enrollmentNotFoundMessage)
 
-      assign(exception, { response, name: ZoomAPIError.FacemapNotFound })
+      assign(exception, { response, name: FaceTecAPIError.FacemapNotFound })
       throw exception
     }
 
@@ -463,4 +463,4 @@ class ZoomAPI {
   }
 }
 
-export default once(() => new ZoomAPI(Config, Axios.create, logger.child({ from: 'ZoomAPI' })))
+export default once(() => new FaceTecAPI(Config, Axios.create, logger.child({ from: 'FaceTecAPI' })))

@@ -5,12 +5,12 @@ import { toUpper, upperFirst } from 'lodash'
 import allSettled from 'promise.allsettled'
 
 import config from '../../../server.config'
-import getZoomAPI, { ZoomAPIError } from '../ZoomAPI'
+import getFaceTecAPI, { FaceTecAPIError } from '../FaceTecAPI'
 import createMockingHelper from './__util__'
 
-const ZoomAPI = getZoomAPI()
+const FaceTecAPI = getFaceTecAPI()
 let helper
-let zoomServiceMock
+let faceTecServiceMock
 
 const matchLevel = 10
 const indexName = 'fake-index'
@@ -23,29 +23,29 @@ const payload = {
   auditTrailImage: 'data:image/png:FaKEimagE=='
 }
 
-describe('ZoomAPI', () => {
+describe('FaceTecAPI', () => {
   beforeAll(() => {
-    zoomServiceMock = new MockAdapter(ZoomAPI.http)
-    helper = createMockingHelper(zoomServiceMock)
+    faceTecServiceMock = new MockAdapter(FaceTecAPI.http)
+    helper = createMockingHelper(faceTecServiceMock)
   })
 
-  afterEach(() => zoomServiceMock.reset())
+  afterEach(() => faceTecServiceMock.reset())
 
   afterAll(() => {
-    zoomServiceMock.restore()
-    zoomServiceMock = null
+    faceTecServiceMock.restore()
+    faceTecServiceMock = null
     helper = null
   })
 
   const testNotFoundException = async response => {
     await response.toThrow(helper.enrollmentNotFoundMessage)
-    await response.toHaveProperty('name', ZoomAPIError.FacemapNotFound)
+    await response.toHaveProperty('name', FaceTecAPIError.FacemapNotFound)
   }
 
   const mockEnrollmentServiceError = (enrollmentIdentifier, operation) => {
     const message = `Some error happened on ${toUpper(operation)} /enrollment-3d call`
 
-    zoomServiceMock[`on${upperFirst(operation)}`](helper.enrollmentUri(enrollmentIdentifier)).reply(
+    faceTecServiceMock[`on${upperFirst(operation)}`](helper.enrollmentUri(enrollmentIdentifier)).reply(
       200,
       helper.mockErrorResponse(message)
     )
@@ -56,23 +56,23 @@ describe('ZoomAPI', () => {
   test('getSessionToken() should return session token', async () => {
     helper.mockSuccessSessionToken(sessionToken)
 
-    await expect(ZoomAPI.getSessionToken()).resolves.toHaveProperty('sessionToken', sessionToken)
+    await expect(FaceTecAPI.getSessionToken()).resolves.toHaveProperty('sessionToken', sessionToken)
   })
 
   test('getSessionToken() should throws if no sessionToken found in the API response', async () => {
     const message = 'Some error happened on GET /session-token call'
 
     helper.mockFailedSessionToken()
-    await expect(ZoomAPI.getSessionToken()).rejects.toThrow('Request failed with status code 403')
+    await expect(FaceTecAPI.getSessionToken()).rejects.toThrow('Request failed with status code 403')
 
     helper.mockFailedSessionToken(message)
-    await expect(ZoomAPI.getSessionToken()).rejects.toThrow(message)
+    await expect(FaceTecAPI.getSessionToken()).rejects.toThrow(message)
   })
 
   test('readEnrollment() should return enrollment data if it found', async () => {
     helper.mockEnrollmentFound(enrollmentIdentifier)
 
-    const wrappedResponse = expect(ZoomAPI.readEnrollment(enrollmentIdentifier)).resolves
+    const wrappedResponse = expect(FaceTecAPI.readEnrollment(enrollmentIdentifier)).resolves
 
     await wrappedResponse.toHaveProperty('success', true)
     await wrappedResponse.toHaveProperty('error', false)
@@ -84,7 +84,7 @@ describe('ZoomAPI', () => {
   test('readEnrollment() should throw if enrollment not found', async () => {
     helper.mockEnrollmentNotFound(enrollmentIdentifier)
 
-    const wrappedResponse = expect(ZoomAPI.readEnrollment(enrollmentIdentifier)).rejects
+    const wrappedResponse = expect(FaceTecAPI.readEnrollment(enrollmentIdentifier)).rejects
 
     await testNotFoundException(wrappedResponse)
   })
@@ -92,13 +92,13 @@ describe('ZoomAPI', () => {
   test('readEnrollment() should throw on unknown / service errors', async () => {
     const message = mockEnrollmentServiceError(enrollmentIdentifier, 'get')
 
-    await expect(ZoomAPI.readEnrollment(enrollmentIdentifier)).rejects.toThrow(message)
+    await expect(FaceTecAPI.readEnrollment(enrollmentIdentifier)).rejects.toThrow(message)
   })
 
   test('disposeEnrollment() should return success if it found', async () => {
     helper.mockSuccessRemoveEnrollment(enrollmentIdentifier)
 
-    const wrappedResponse = expect(ZoomAPI.disposeEnrollment(enrollmentIdentifier)).resolves
+    const wrappedResponse = expect(FaceTecAPI.disposeEnrollment(enrollmentIdentifier)).resolves
 
     await wrappedResponse.toHaveProperty('success', true)
     await wrappedResponse.toHaveProperty('error', false)
@@ -107,7 +107,7 @@ describe('ZoomAPI', () => {
   test('disposeEnrollment() should throw if enrollment not found', async () => {
     helper.mockEnrollmentNotExistsDuringRemove(enrollmentIdentifier)
 
-    const wrappedResponse = expect(ZoomAPI.disposeEnrollment(enrollmentIdentifier)).rejects
+    const wrappedResponse = expect(FaceTecAPI.disposeEnrollment(enrollmentIdentifier)).rejects
 
     await testNotFoundException(wrappedResponse)
   })
@@ -115,19 +115,19 @@ describe('ZoomAPI', () => {
   test("disposeEnrollment() should throw if isn't supported by the server", async () => {
     helper.mockRemoveEnrollmentNotSupported(enrollmentIdentifier)
 
-    await expect(ZoomAPI.disposeEnrollment(enrollmentIdentifier)).rejects.toThrow(/enrollment\s+already\s+exists/i)
+    await expect(FaceTecAPI.disposeEnrollment(enrollmentIdentifier)).rejects.toThrow(/enrollment\s+already\s+exists/i)
   })
 
   test('disposeEnrollment() should throw on unknown / service errors', async () => {
     const message = mockEnrollmentServiceError(enrollmentIdentifier, 'delete')
 
-    await expect(ZoomAPI.disposeEnrollment(enrollmentIdentifier)).rejects.toThrow(message)
+    await expect(FaceTecAPI.disposeEnrollment(enrollmentIdentifier)).rejects.toThrow(message)
   })
 
   test('checkLiveness() should return success if liveness passed', async () => {
     helper.mockSuccessLivenessCheck()
 
-    const wrappedResponse = expect(ZoomAPI.checkLiveness(payload)).resolves
+    const wrappedResponse = expect(FaceTecAPI.checkLiveness(payload)).resolves
 
     await wrappedResponse.toHaveProperty('success', true)
     await wrappedResponse.toHaveProperty('error', false)
@@ -140,29 +140,29 @@ describe('ZoomAPI', () => {
 
     await allSettled(
       [
-        ZoomAPI.checkLiveness(payload),
-        ZoomAPI.submitEnrollment(enrollmentIdentifier, payload),
-        ZoomAPI.updateEnrollment(enrollmentIdentifier, payload)
+        FaceTecAPI.checkLiveness(payload),
+        FaceTecAPI.submitEnrollment(enrollmentIdentifier, payload),
+        FaceTecAPI.updateEnrollment(enrollmentIdentifier, payload)
       ].map(async promise => {
         const wrappedResponse = expect(promise).rejects
 
         await wrappedResponse.toThrow(helper.failedLivenessMessage)
-        await wrappedResponse.toHaveProperty('name', ZoomAPIError.LivenessCheckFailed)
+        await wrappedResponse.toHaveProperty('name', FaceTecAPIError.LivenessCheckFailed)
       })
     )
   })
 
   test('checkLiveness() / submitEnrollment() / updateEnrollment() should throw with different errors depending the case happened', async () => {
-    const { LivenessCheckFailed, SecurityCheckFailed } = ZoomAPIError
+    const { LivenessCheckFailed, SecurityCheckFailed } = FaceTecAPIError
     const { failedLivenessMessage, failedEnrollmentMessage } = helper
     let wrappedResponse
 
     const shouldThrowWith = (name, message) =>
       allSettled(
         [
-          ZoomAPI.checkLiveness(payload),
-          ZoomAPI.submitEnrollment(enrollmentIdentifier, payload),
-          ZoomAPI.updateEnrollment(enrollmentIdentifier, payload)
+          FaceTecAPI.checkLiveness(payload),
+          FaceTecAPI.submitEnrollment(enrollmentIdentifier, payload),
+          FaceTecAPI.updateEnrollment(enrollmentIdentifier, payload)
         ].map(async (promise, index) => {
           let prefix = failedLivenessMessage
 
@@ -218,9 +218,9 @@ describe('ZoomAPI', () => {
     const shouldThrowWithUnknownError = () =>
       allSettled(
         [
-          ZoomAPI.checkLiveness(payload),
-          ZoomAPI.submitEnrollment(enrollmentIdentifier, payload),
-          ZoomAPI.updateEnrollment(enrollmentIdentifier, payload)
+          FaceTecAPI.checkLiveness(payload),
+          FaceTecAPI.submitEnrollment(enrollmentIdentifier, payload),
+          FaceTecAPI.updateEnrollment(enrollmentIdentifier, payload)
         ].map((promise, index) => expect(promise).rejects.toThrow(messages[index]))
       )
 
@@ -232,7 +232,7 @@ describe('ZoomAPI', () => {
     await shouldThrowWithUnknownError()
 
     operations.forEach((operation, index) =>
-      zoomServiceMock.onPost(`/${operation}-3d`).reply(200, helper.mockErrorResponse(messages[index]))
+      faceTecServiceMock.onPost(`/${operation}-3d`).reply(200, helper.mockErrorResponse(messages[index]))
     )
 
     await shouldThrowWithUnknownError()
@@ -245,9 +245,9 @@ describe('ZoomAPI', () => {
 
     await allSettled(
       [
-        ZoomAPI.indexEnrollment(enrollmentIdentifier, indexName),
-        ZoomAPI.readEnrollmentIndex(enrollmentIdentifier, indexName),
-        ZoomAPI.removeEnrollmentFromIndex(enrollmentIdentifier, indexName)
+        FaceTecAPI.indexEnrollment(enrollmentIdentifier, indexName),
+        FaceTecAPI.readEnrollmentIndex(enrollmentIdentifier, indexName),
+        FaceTecAPI.removeEnrollmentFromIndex(enrollmentIdentifier, indexName)
       ].map(async promise => {
         const wrappedResponse = expect(promise).resolves
 
@@ -258,7 +258,7 @@ describe('ZoomAPI', () => {
   })
 
   test('enrollments index (add / read / remove / search) methods should use default index', async () => {
-    const { zoomSearchIndexName } = config
+    const { faceTecSearchIndexName } = config
 
     helper.mockSuccessIndexEnrollment(enrollmentIdentifier)
     helper.mockSuccessReadEnrollmentIndex(enrollmentIdentifier)
@@ -266,14 +266,14 @@ describe('ZoomAPI', () => {
     helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
 
     await allSettled([
-      ZoomAPI.indexEnrollment(enrollmentIdentifier),
-      ZoomAPI.readEnrollmentIndex(enrollmentIdentifier),
-      ZoomAPI.removeEnrollmentFromIndex(enrollmentIdentifier),
-      ZoomAPI.faceSearch(enrollmentIdentifier, matchLevel)
+      FaceTecAPI.indexEnrollment(enrollmentIdentifier),
+      FaceTecAPI.readEnrollmentIndex(enrollmentIdentifier),
+      FaceTecAPI.removeEnrollmentFromIndex(enrollmentIdentifier),
+      FaceTecAPI.faceSearch(enrollmentIdentifier, matchLevel)
     ])
 
-    zoomServiceMock.history.post.forEach(({ data }) => {
-      expect(JSON.parse(data)).toHaveProperty('groupName', zoomSearchIndexName)
+    faceTecServiceMock.history.post.forEach(({ data }) => {
+      expect(JSON.parse(data)).toHaveProperty('groupName', faceTecSearchIndexName)
     })
   })
 
@@ -285,10 +285,10 @@ describe('ZoomAPI', () => {
 
     await allSettled(
       [
-        ZoomAPI.indexEnrollment(enrollmentIdentifier, indexName),
-        ZoomAPI.readEnrollmentIndex(enrollmentIdentifier, indexName),
-        ZoomAPI.removeEnrollmentFromIndex(enrollmentIdentifier, indexName),
-        ZoomAPI.faceSearch(enrollmentIdentifier, matchLevel, indexName)
+        FaceTecAPI.indexEnrollment(enrollmentIdentifier, indexName),
+        FaceTecAPI.readEnrollmentIndex(enrollmentIdentifier, indexName),
+        FaceTecAPI.removeEnrollmentFromIndex(enrollmentIdentifier, indexName),
+        FaceTecAPI.faceSearch(enrollmentIdentifier, matchLevel, indexName)
       ].map(promise => expect(promise).rejects.toThrow(helper.enrollmentNotFoundMessage))
     )
   })
@@ -307,10 +307,10 @@ describe('ZoomAPI', () => {
 
     await allSettled(
       [
-        ZoomAPI.indexEnrollment(enrollmentIdentifier, indexName),
-        ZoomAPI.readEnrollmentIndex(enrollmentIdentifier, indexName),
-        ZoomAPI.removeEnrollmentFromIndex(enrollmentIdentifier, indexName),
-        ZoomAPI.faceSearch(enrollmentIdentifier, matchLevel, indexName)
+        FaceTecAPI.indexEnrollment(enrollmentIdentifier, indexName),
+        FaceTecAPI.readEnrollmentIndex(enrollmentIdentifier, indexName),
+        FaceTecAPI.removeEnrollmentFromIndex(enrollmentIdentifier, indexName),
+        FaceTecAPI.faceSearch(enrollmentIdentifier, matchLevel, indexName)
       ].map((promise, index) => expect(promise).rejects.toThrow(failedMessages[index]))
     )
   })
@@ -318,7 +318,7 @@ describe('ZoomAPI', () => {
   test('faceSearch() should return enrollments with match levels', async () => {
     helper.mockDuplicateFound(enrollmentIdentifier)
 
-    const promise = ZoomAPI.faceSearch(enrollmentIdentifier, matchLevel, indexName)
+    const promise = FaceTecAPI.faceSearch(enrollmentIdentifier, matchLevel, indexName)
     const wrappedResponse = expect(promise).resolves
 
     await wrappedResponse.toHaveProperty('success', true)
@@ -335,20 +335,20 @@ describe('ZoomAPI', () => {
   })
 
   test('faceSearch() should use default match level', async () => {
-    const { zoomMinimalMatchLevel } = config
+    const { faceTecMinimalMatchLevel } = config
 
     helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
-    await ZoomAPI.faceSearch(enrollmentIdentifier)
+    await FaceTecAPI.faceSearch(enrollmentIdentifier)
 
-    zoomServiceMock.history.post.forEach(({ data }) => {
-      expect(JSON.parse(data)).toHaveProperty('minMatchLevel', zoomMinimalMatchLevel)
+    faceTecServiceMock.history.post.forEach(({ data }) => {
+      expect(JSON.parse(data)).toHaveProperty('minMatchLevel', faceTecMinimalMatchLevel)
     })
   })
 
   test("faceSearch() should return empty results if index doesn't initialized yet", async () => {
     helper.mockSearchIndexNotInitialized()
 
-    const wrappedResponse = expect(ZoomAPI.faceSearch(enrollmentIdentifier)).resolves
+    const wrappedResponse = expect(FaceTecAPI.faceSearch(enrollmentIdentifier)).resolves
 
     await wrappedResponse.toHaveProperty('success', true)
     await wrappedResponse.toHaveProperty('error', false)
@@ -358,7 +358,7 @@ describe('ZoomAPI', () => {
   test('submitEnrollment() should enroll face and return enrollment identifier', async () => {
     helper.mockSuccessEnrollment(enrollmentIdentifier)
 
-    const wrappedResponse = expect(ZoomAPI.submitEnrollment(enrollmentIdentifier, payload)).resolves
+    const wrappedResponse = expect(FaceTecAPI.submitEnrollment(enrollmentIdentifier, payload)).resolves
 
     await wrappedResponse.toHaveProperty('success', true)
     await wrappedResponse.toHaveProperty('error', false)
@@ -368,16 +368,16 @@ describe('ZoomAPI', () => {
   test('submitEnrollment() should throw if enrollment already exists', async () => {
     helper.mockEnrollmentAlreadyExists(enrollmentIdentifier)
 
-    const wrappedResponse = expect(ZoomAPI.submitEnrollment(enrollmentIdentifier, payload)).rejects
+    const wrappedResponse = expect(FaceTecAPI.submitEnrollment(enrollmentIdentifier, payload)).rejects
 
     await wrappedResponse.toThrow(helper.enrollmentAlreadyExistsMessage)
-    await wrappedResponse.toHaveProperty('name', ZoomAPIError.NameCollision)
+    await wrappedResponse.toHaveProperty('name', FaceTecAPIError.NameCollision)
   })
 
   test('updateEnrollment() should match/update face and return enrollment identifier', async () => {
     helper.mockSuccessUpdateEnrollment(enrollmentIdentifier)
 
-    const wrappedResponse = expect(ZoomAPI.updateEnrollment(enrollmentIdentifier, payload)).resolves
+    const wrappedResponse = expect(FaceTecAPI.updateEnrollment(enrollmentIdentifier, payload)).resolves
 
     await wrappedResponse.toHaveProperty('success', true)
     await wrappedResponse.toHaveProperty('error', false)
@@ -387,22 +387,22 @@ describe('ZoomAPI', () => {
   test("updateEnrollment() should throw if faceMap doesn't match", async () => {
     helper.mockFailedUpdateEnrollment(enrollmentIdentifier, true)
 
-    const wrappedResponse = expect(ZoomAPI.updateEnrollment(enrollmentIdentifier, payload)).rejects
+    const wrappedResponse = expect(FaceTecAPI.updateEnrollment(enrollmentIdentifier, payload)).rejects
 
     await wrappedResponse.toThrow(/face\s+map.+?doesn.t\s+match/i)
-    await wrappedResponse.toHaveProperty('name', ZoomAPIError.FacemapDoesNotMatch)
+    await wrappedResponse.toHaveProperty('name', FaceTecAPIError.FacemapDoesNotMatch)
   })
 
   test('API methods should throw on server / connection errors', async () => {
     const payloadMatcher = helper.enrollmentPayloadMatcher(enrollmentIdentifier)
 
-    zoomServiceMock
+    faceTecServiceMock
       .onPost('/enrollment-3d', payloadMatcher)
       .networkErrorOnce()
       .onPost('/enrollment-3d', payloadMatcher)
       .replyOnce(500)
 
-    await expect(ZoomAPI.submitEnrollment(enrollmentIdentifier, payload)).rejects.toThrow('Network Error')
-    await expect(ZoomAPI.submitEnrollment(enrollmentIdentifier, payload)).rejects.toThrow(helper.serviceErrorMessage)
+    await expect(FaceTecAPI.submitEnrollment(enrollmentIdentifier, payload)).rejects.toThrow('Network Error')
+    await expect(FaceTecAPI.submitEnrollment(enrollmentIdentifier, payload)).rejects.toThrow(helper.serviceErrorMessage)
   })
 })
