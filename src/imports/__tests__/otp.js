@@ -39,7 +39,7 @@ describe('OTP', () => {
     })
 
     it('should send verify request to the worker', async () => {
-      axiosMock.onPost().reply(200, {
+      const mockResult = {
         status: 'pending',
         payee: null,
         date_updated: '2020-12-14T09:28:25Z',
@@ -62,12 +62,10 @@ describe('OTP', () => {
         date_created: '2020-12-14T09:27:59Z',
         service_sid: 'VAf845e805e1ae1aa4553b795a5eac4036',
         channel: 'sms'
-      })
+      }
+      axiosMock.onPost().reply(200, mockResult)
       const result = await OTP.sendOTP(user, options)
-      const payload = JSON.parse(result.config.data)
-      expect(payload).toBeObject()
-      expect(payload.recipient).toEqual(user.mobile)
-      expect(payload.verify).toBeTrue()
+      expect(result).toEqual(mockResult)
     })
   })
 
@@ -78,7 +76,7 @@ describe('OTP', () => {
     })
 
     it('should check OTP code validity', async () => {
-      axiosMock.onPost().reply(200, {
+      const mockResult = {
         status: 'approved',
         payee: null,
         date_updated: '2020-12-14T09:17:46Z',
@@ -90,18 +88,15 @@ describe('OTP', () => {
         date_created: '2020-12-14T09:16:31Z',
         service_sid: 'VAf845e805e1ae1aa4553b795a5eac4036',
         channel: 'sms'
-      })
+      }
+      axiosMock.onPost().reply(200, mockResult)
 
       const user = {
         mobile: '+972507837460'
       }
       const code = 123456
       const result = await OTP.checkOTP(user, code)
-      const payload = JSON.parse(result.config.data)
-      expect(payload).toBeObject()
-      expect(payload.recipient).toEqual(user.mobile)
-      expect(payload.code).toEqual(code)
-      expect(payload.verify).toBeTrue()
+      expect(result).toEqual(mockResult)
     })
   })
 })

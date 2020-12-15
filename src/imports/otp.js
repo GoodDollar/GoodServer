@@ -64,7 +64,7 @@ export default new (class {
 
     try {
       const result = await this.http.post(this.verifyWorkerUrl, payload)
-      return result
+      return result.data
     } catch (exception) {
       const { message } = exception
       const logFunc = message === 'Max send attempts reached' ? 'warn' : 'error'
@@ -86,7 +86,7 @@ export default new (class {
 
     try {
       const result = await this.http.post(this.verifyWorkerUrl, payload)
-      return result
+      return result.data
     } catch (exception) {
       const { message } = exception
 
