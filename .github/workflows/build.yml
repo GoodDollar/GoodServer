@@ -85,7 +85,7 @@ jobs:
 
       - name: run tests and code coverage
         env:
-          MNEMONIC: ${{ env.ADMIN_MNMONIC }}
+          MNEMONIC: ${{ env.ADMIN_MNEMONIC }}
         run: |
           echo "using mnemonic for admin: ${MNEMONIC}"
           npm run coverage -- --silent
