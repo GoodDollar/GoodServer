@@ -49,7 +49,7 @@ describe('fishManager', () => {
     expect(cronTime.isAfter()).toBeTruthy() //crontime in future
     expect(fishers.length).not.toEqual(0) //return the fisher admin account
     //adminwallet contract performs the fishing now, not the admin accounts as previosuly
-    const adminWalletBalance = AdminWallet.tokenContract.methods
+    const adminWalletBalance = await AdminWallet.tokenContract.methods
       .balanceOf(AdminWallet.proxyContract.address)
       .call()
       .then(_ => _.toNumber())
