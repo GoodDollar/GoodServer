@@ -222,7 +222,7 @@ const conf = convict({
     doc: 'mautic URL',
     format: '*',
     env: 'MAUTIC_URL',
-    default: 'WALLET_URL'
+    default: 'https://go.gooddollar.org/api'
   },
   mauticToken: {
     doc: 'mautic token',
