@@ -374,12 +374,6 @@ const conf = convict({
     env: 'SENTRY_DSN',
     default: ''
   },
-  secure_key: {
-    doc: 'Secure key word used to create secure hash by which server can communicate with web3',
-    format: String,
-    env: 'SECURE_KEY',
-    default: null
-  },
   fuse: {
     doc: 'Main url for fuse api',
     format: 'url',
