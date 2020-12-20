@@ -89,6 +89,11 @@ jobs:
         run: |
           echo "using mnemonic for admin: ${MNEMONIC}"
           npm run coverage -- --silent
-          npm run coveralls
+          # npm run coveralls
           npm run build
           pkill -f ganache
+
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
