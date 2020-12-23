@@ -115,13 +115,27 @@ export class Wallet {
     switch (transport) {
       case 'WebSocket':
         provider = conf.ethereumMainnet.websocketWeb3Provider
-        web3Provider = new Web3.providers.WebsocketProvider(provider)
+        web3Provider = new Web3.providers.WebsocketProvider(provider, {
+          headers: [
+            {
+              name: 'Origin',
+              value: 'https://gooddollar.org'
+            }
+          ]
+        })
         break
 
       default:
       case 'HttpProvider':
         provider = conf.ethereumMainnet.httpWeb3Provider
-        web3Provider = new Web3.providers.HttpProvider(provider)
+        web3Provider = new Web3.providers.HttpProvider(provider, {
+          headers: [
+            {
+              name: 'Origin',
+              value: 'https://gooddollar.org'
+            }
+          ]
+        })
         break
     }
     log.debug('mainnet', { web3Provider, provider })
@@ -367,6 +381,18 @@ export class Wallet {
       throw exception
     }
   }
+
+  async getAuthenticationPeriod(): Promise<number> {
+    try {
+      const result = await this.identityContract.methods.authenticationPeriod().call()
+      return result.toNumber()
+    } catch (exception) {
+      const { message } = exception
+      log.error('Error getAuthenticationPeriod', message, exception)
+      throw exception
+    }
+  }
+
   /**
    * blacklist an user in the `Identity` contract
    * @param {string} address

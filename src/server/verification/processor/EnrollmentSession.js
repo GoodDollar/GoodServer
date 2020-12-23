@@ -1,7 +1,8 @@
 // @flow
-import { bindAll, omit } from 'lodash'
+import { assign, bindAll, omit } from 'lodash'
 import { type IEnrollmentEventPayload } from './typings'
 import logger from '../../../imports/logger'
+import { DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment, scheduleDisposalTask } from '../cron/taskUtil'
 
 const log = logger.child({ from: 'EnrollmentSession' })
 
@@ -13,15 +14,19 @@ export default class EnrollmentSession {
   adminApi = null
   queueApi = null
   sessionRef = null
+  enrollmentIdentifier = null
 
   constructor(user, provider, storage, adminApi, queueApi, gun, customLogger = null) {
-    this.gun = gun
-    this.user = user
-    this.provider = provider
-    this.storage = storage
-    this.adminApi = adminApi
-    this.queueApi = queueApi
     this.log = customLogger || log
+
+    assign(this, {
+      gun,
+      user,
+      provider,
+      storage,
+      adminApi,
+      queueApi
+    })
 
     bindAll(this, 'onEnrollmentProcessing')
   }
@@ -37,8 +42,8 @@ export default class EnrollmentSession {
     })
 
     try {
-      this.initialize(payload)
-      this.onEnrollmentStarted()
+      this.initialize(enrollmentIdentifier, payload)
+      await this.onEnrollmentStarted()
 
       const enrollmentResult = await provider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing, log)
 
@@ -55,7 +60,8 @@ export default class EnrollmentSession {
         result.enrollmentResult = response
       }
 
-      this.onEnrollmentFailed(exception)
+      await this.onEnrollmentFailed(exception)
+
       if (message.toLowerCase().includes('liveness')) {
         log.warn('Enrollment session failed with exception:', message, exception, { result })
       } else {
@@ -68,38 +74,46 @@ export default class EnrollmentSession {
     return result
   }
 
-  initialize(payload: any) {
+  initialize(enrollmentIdentifier, payload: any) {
     const { gun } = this
     const { sessionId } = payload
 
+    this.enrollmentIdentifier = enrollmentIdentifier
     this.sessionRef = gun.session(sessionId)
     // returning this to allow initialize &
     // get sessionRef via destructuring in a single call
     return this
   }
 
-  onEnrollmentStarted() {
-    const { sessionRef } = this
+  async onEnrollmentStarted() {
+    const { storage, enrollmentIdentifier, sessionRef } = this
+    const filters = forEnrollment(enrollmentIdentifier)
 
     sessionRef.put({ isStarted: true })
+
+    await storage.fetchTasksForProcessing(DISPOSE_ENROLLMENTS_TASK, filters)
   }
 
   onEnrollmentProcessing(processingPayload: IEnrollmentEventPayload) {
     const { sessionRef, log } = this
+
+    if ('isLive' in processingPayload) {
+      log.info('Checking for liveness, matching and enrolling:', processingPayload)
+    }
 
     if ('isDuplicate' in processingPayload) {
       log.info('Checking for duplicates:', processingPayload)
     }
 
     if ('isEnrolled' in processingPayload) {
-      log.info('Checking for liveness and tried to enroll:', processingPayload)
+      log.info('Adding enrollment to the 3D Database:', processingPayload)
     }
 
     sessionRef.put(processingPayload)
   }
 
   async onEnrollmentCompleted() {
-    const { sessionRef, user, storage, adminApi, queueApi, log } = this
+    const { sessionRef, user, storage, adminApi, queueApi, log, enrollmentIdentifier } = this
     const { gdAddress, profilePublickey, loggedInAs } = user
 
     log.info('Whitelisting user:', loggedInAs)
@@ -107,16 +121,20 @@ export default class EnrollmentSession {
     await Promise.all([
       queueApi.setWhitelisted(user, storage, log),
       adminApi.whitelistUser(gdAddress, profilePublickey),
-      storage.updateUser({ identifier: loggedInAs, isVerified: true })
+      storage.updateUser({ identifier: loggedInAs, isVerified: true }),
+      scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.Reauthenticate)
     ])
 
     sessionRef.put({ isWhitelisted: true })
     log.info('Successfully whitelisted user:', loggedInAs)
   }
 
-  onEnrollmentFailed(exception) {
-    const { sessionRef } = this
+  async onEnrollmentFailed(exception) {
+    const { sessionRef, storage, enrollmentIdentifier } = this
     const { message } = exception
+    const filters = forEnrollment(enrollmentIdentifier)
+
+    await storage.unlockDelayedTasks(DISPOSE_ENROLLMENTS_TASK, filters)
 
     sessionRef.put({
       isLive: false,
