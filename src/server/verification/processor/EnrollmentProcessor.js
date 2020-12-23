@@ -157,11 +157,11 @@ class EnrollmentProcessor {
     onProcessed: (identifier: string, exception?: Error) => void = noop,
     customLogger = null
   ): Promise<void> {
-    const log = customLogger || logger
     const { Reauthenticate, AccountRemoved } = DisposeAt
     const { storage, adminApi, keepEnrollments, logger } = this
     const authenticationPeriod = await adminApi.getAuthenticationPeriod()
     const deletedAccountFilters = { 'subject.executeAt': AccountRemoved }
+    const log = customLogger || logger
 
     if (keepEnrollments > 0) {
       deletedAccountFilters.createdAt = {

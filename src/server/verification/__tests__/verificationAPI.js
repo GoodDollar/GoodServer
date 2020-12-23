@@ -121,9 +121,6 @@ describe('verificationAPI', () => {
       expect(updateSessionMock).toHaveBeenCalledWith({ isDuplicate: false, isLive: true, isEnrolled: true })
       expect(updateSessionMock).toHaveBeenCalledWith({ isWhitelisted: true })
 
-      // but enrollment process wasn't started
-      expect(updateSessionMock).not.toHaveBeenCalledWith({ isStarted: true })
-
       // and user was actrally re-whitelisted in the wallet
       expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), profilePublickey)
     }
@@ -332,16 +329,6 @@ describe('verificationAPI', () => {
 
       // to check has user been updated in the database
       expect(claimQueue).toHaveProperty('status', 'whitelisted')
-    })
-
-    test('PUT /verify/face/:enrollmentIdentifier passes full verification flow even if user was already verified', async () => {
-      await storage.updateUser({ identifier: userIdentifier, isVerified: true })
-
-      helper.mockEnrollmentFound(enrollmentIdentifier)
-      helper.mockSuccessUpdateEnrollment(enrollmentIdentifier)
-      helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
-
-      await testVerificationSkipped()
     })
 
     test('PUT /verify/face/:enrollmentIdentifier skips verification and re-whitelists user if request comes from E2E test runs', async () => {
