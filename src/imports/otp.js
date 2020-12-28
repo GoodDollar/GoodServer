@@ -1,31 +1,43 @@
 // @flow
 import random from 'math-random'
-import Twilio from 'twilio'
-import { startsWith } from 'lodash'
+import jwt from 'jsonwebtoken'
+import Axios from 'axios'
 
 import conf from '../server/server.config'
 import logger from './logger'
 import type { UserRecord } from './types'
 
 export default new (class {
-  constructor(Config, Twilio, logger) {
-    const { twilioAuthID, twilioAuthToken, twilioVerifyID } = Config
+  constructor(Config, jwt, Axios, logger) {
+    const { cfWorkerVerifyJwtSecret, cfWorkerVerifyJwtAudience, cfWorkerVerifyJwtSubject, cfWorkerVerifyUrl } = Config
 
     this.log = logger
 
-    if (!twilioAuthID || !twilioAuthToken || !twilioVerifyID) {
+    if (!cfWorkerVerifyJwtSecret || !cfWorkerVerifyJwtAudience || !cfWorkerVerifyJwtSubject || !cfWorkerVerifyUrl) {
+      this.log.warn('missing cloudflare worker JWT configuration')
       return
     }
 
-    if (!startsWith(twilioAuthID, 'AC') || !startsWith(twilioVerifyID, 'VA')) {
-      return
-    }
+    this.jwt = jwt
+    this.jwtSecret = cfWorkerVerifyJwtSecret
+    this.jwtAudience = cfWorkerVerifyJwtAudience
+    this.jwtSubject = cfWorkerVerifyJwtSubject
+    this.verifyWorkerUrl = cfWorkerVerifyUrl
 
-    const twilio = Twilio(twilioAuthID, twilioAuthToken)
-
-    this.service = twilio.verify.services(twilioVerifyID)
+    this.http = Axios.create(this.getHttpOptions())
   }
 
+  getHttpOptions() {
+    const httpClientOptions = {
+      baseURL: this.verifyWorkerUrl,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + this.generateJWT()
+      }
+    }
+    return httpClientOptions
+  }
   /**
    * Creates an OTP code and returns it as a string
    * @param {number} length - length of OTP code
@@ -45,15 +57,14 @@ export default new (class {
    * @param {object} options - options used to config the method behavior
    * @returns {Promise<object>}
    */
-  async sendOTP(user: UserRecord, options: any = {}): Promise<object> {
-    const { channel = 'sms' } = options
+  async sendOTP(user: UserRecord): Promise<object> {
     const { mobile } = user
-    const { log, service } = this
-    const payload = { to: mobile, channel }
+    const { log } = this
+    const payload = { recipient: mobile, verify: true }
 
     try {
-      this.assertInitialized()
-      return await service.verifications.create(payload)
+      const result = await this.http.post(this.verifyWorkerUrl, payload)
+      return result.data
     } catch (exception) {
       const { message } = exception
       const logFunc = message === 'Max send attempts reached' ? 'warn' : 'error'
@@ -70,12 +81,12 @@ export default new (class {
    */
   async checkOTP(user: UserRecord, code: string): Promise<object> {
     const { mobile } = user
-    const { log, service } = this
-    const options = { to: mobile, code }
+    const { log } = this
+    const payload = { recipient: mobile, code, verify: true }
 
     try {
-      this.assertInitialized()
-      return await service.verificationChecks.create(options)
+      const result = await this.http.post(this.verifyWorkerUrl, payload)
+      return result.data
     } catch (exception) {
       const { message } = exception
 
@@ -84,9 +95,11 @@ export default new (class {
     }
   }
 
-  async assertInitialized() {
-    if (!this.service) {
-      throw new Error("Twilio service isn't initialized. Env vars are missing or invalid")
-    }
+  generateJWT() {
+    const token = this.jwt.sign({ foo: 'bar' }, this.jwtSecret, {
+      audience: this.jwtAudience,
+      subject: this.jwtSubject
+    })
+    return token
   }
-})(conf, Twilio, logger.child({ from: 'Twilio' }))
+})(conf, jwt, Axios, logger.child({ from: 'Twilio' }))
