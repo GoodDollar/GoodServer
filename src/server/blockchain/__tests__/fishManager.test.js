@@ -48,15 +48,20 @@ describe('fishManager', () => {
     expect(result).toBeTruthy() //success
     expect(cronTime.isAfter()).toBeTruthy() //crontime in future
     expect(fishers.length).not.toEqual(0) //return the fisher admin account
-    const balances = await Promise.all(
-      fishers.map(f =>
-        AdminWallet.tokenContract.methods
-          .balanceOf(f)
-          .call()
-          .then(_ => _.toNumber())
-      )
-    )
+    //adminwallet contract performs the fishing now, not the admin accounts as previosuly
+    const adminWalletBalance = await AdminWallet.tokenContract.methods
+      .balanceOf(AdminWallet.proxyContract.address)
+      .call()
+      .then(_ => _.toNumber())
+    // const balances = await Promise.all(
+    //   fishers.map(f =>
+    //     AdminWallet.tokenContract.methods
+    //       .balanceOf(f)
+    //       .call()
+    //       .then(_ => _.toNumber())
+    //   )
+    // )
     const dailyUbi = await fishManager.ubiContract.methods.dailyUbi.call().then(_ => _.toNumber())
-    balances.forEach(b => expect(b).toBeGreaterThanOrEqual(dailyUbi)) //fisher balance should have the daily claim
+    expect(adminWalletBalance).toBeGreaterThanOrEqual(dailyUbi) //fisher balance should have at least the daily claim that was given as bonus
   })
 })

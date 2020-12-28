@@ -222,7 +222,7 @@ const conf = convict({
     doc: 'mautic URL',
     format: '*',
     env: 'MAUTIC_URL',
-    default: 'WALLET_URL'
+    default: 'https://go.gooddollar.org/api'
   },
   mauticToken: {
     doc: 'mautic token',
@@ -373,12 +373,6 @@ const conf = convict({
     format: String,
     env: 'SENTRY_DSN',
     default: ''
-  },
-  secure_key: {
-    doc: 'Secure key word used to create secure hash by which server can communicate with web3',
-    format: String,
-    env: 'SECURE_KEY',
-    default: null
   },
   fuse: {
     doc: 'Main url for fuse api',

@@ -69,6 +69,7 @@ jobs:
       NETWORK: develop
       MNEMONIC: 'myth like bonus scare over problem client lizard pioneer submit female collect'
       ADMIN_MNEMONIC: 'they bus duty candy uncover assault bullet kitchen kit acid spin physical'
+      MAUTIC_BASIC_TOKEN: ${{ secrets.MAUTIC_BASIC_TOKEN }}
       CI: false
     runs-on: ubuntu-latest
     steps:
@@ -84,10 +85,15 @@ jobs:
 
       - name: run tests and code coverage
         env:
-          MNEMONIC: ${{ env.ADMIN_MNMONIC }}
+          MNEMONIC: ${{ env.ADMIN_MNEMONIC }}
         run: |
-          export MNEMONIC=$ADMIN_MNEMONIC
+          echo "using mnemonic for admin: ${MNEMONIC}"
           npm run coverage -- --silent
-          npm run coveralls
+          # npm run coveralls
           npm run build
           pkill -f ganache
+
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
