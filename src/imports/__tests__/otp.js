@@ -63,7 +63,11 @@ describe('OTP', () => {
         service_sid: 'VAf845e805e1ae1aa4553b795a5eac4036',
         channel: 'sms'
       }
-      axiosMock.onPost().reply(200, mockResult)
+      const token = OTP.generateJWT()
+      axiosMock.onPost().reply(config => {
+        expect(config.headers.Authorization).toEqual('Bearer ' + token)
+        return [200, mockResult]
+      })
       const result = await OTP.sendOTP(user, options)
       expect(result).toEqual(mockResult)
     })
@@ -89,7 +93,12 @@ describe('OTP', () => {
         service_sid: 'VAf845e805e1ae1aa4553b795a5eac4036',
         channel: 'sms'
       }
-      axiosMock.onPost().reply(200, mockResult)
+
+      const token = OTP.generateJWT()
+      axiosMock.onPost().reply(config => {
+        expect(config.headers.Authorization).toEqual('Bearer ' + token)
+        return [200, mockResult]
+      })
 
       const user = {
         mobile: '+972507837460'
