@@ -174,9 +174,11 @@ class EnrollmentProcessor {
         deletedAccountFilters,
         {
           'subject.executeAt': Reauthenticate,
-          createdAt: moment()
-            .subtract(authenticationPeriod, 'days')
-            .toDate()
+          createdAt: {
+            $lte: moment()
+              .subtract(authenticationPeriod + 1, 'days') //give extra one day before we delete
+              .toDate()
+          }
         }
       ]
     }
@@ -196,13 +198,14 @@ class EnrollmentProcessor {
 
       log.info('Enqueued disposal tasks fetched and ready to processing', {
         enqueuedTasksCount,
-        disposeBatchSize
+        disposeBatchSize,
+        authenticationPeriod
       })
 
       await chunkedDisposalTasks.reduce(
         (queue, tasksBatch) => queue.then(() => this._executeDisposalBatch(tasksBatch, onProcessed, customLogger)),
         Promise.resolve()
-      )
+      ) //iterate over batches. each batch is executed when previous batch promise resolves
     } catch (exception) {
       const { message: errMessage } = exception
       const logPayload = { e: exception, errMessage }
@@ -241,7 +244,7 @@ class EnrollmentProcessor {
           if (isEnrollmentIndexed) {
             await provider.dispose(enrollmentIdentifier, customLogger)
           } else {
-            log.info("Enrollment doesn't indexed in the 3D Database, skipping disposal", { enrollmentIdentifier })
+            log.info("Enrollment isn't indexed in the 3D Database, skipping disposal", { enrollmentIdentifier })
           }
 
           tasksSucceeded.push(taskId)
