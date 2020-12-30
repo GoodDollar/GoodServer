@@ -182,7 +182,7 @@ class ZoomAPI {
       headers: {
         'X-Requested-With': 'XMLHttpRequest',
         'Content-Type': 'application/json',
-        'X-Device-License-Key': zoomLicenseKey
+        'X-Device-Key': zoomLicenseKey
       }
     }
 
