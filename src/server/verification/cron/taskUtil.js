@@ -1,4 +1,6 @@
 // @flow
+import { escapeRegExp } from 'lodash'
+
 export const DISPOSE_ENROLLMENTS_TASK = 'verification/dispose_enrollments'
 
 export const DisposeAt = {
@@ -6,7 +8,9 @@ export const DisposeAt = {
   AccountRemoved: 'account-removal'
 }
 
-export const forEnrollment = enrollmentIdentifier => ({ 'subject.enrollmentIdentifier': enrollmentIdentifier })
+export const forEnrollment = enrollmentIdentifier => ({
+  'subject.enrollmentIdentifier': new RegExp(escapeRegExp(enrollmentIdentifier), 'i')
+})
 
 // eslint-disable-next-line require-await
 export const scheduleDisposalTask = async (storage, enrollmentIdentifier, executeAt): Promise<DelayedTaskRecord> => {
