@@ -291,7 +291,13 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           method: 'POST',
           body: JSON.stringify({ user_ids: [user.identifier], delete_from_org: 'True', ignore_invalid_id: 'True' })
         })
-          .then(_ => ({ amplitude: 'ok' }))
+          .then(_ => _.text())
+          .then(_ => {
+            log.info('amplitude delete user result', { result: _ })
+            return {
+              amplitude: 'ok'
+            }
+          })
           .catch(e => ({ amplitude: 'failed' }))
       ])
 
