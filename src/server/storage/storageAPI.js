@@ -71,6 +71,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         // (torus maps identifier such as email and mobile to private/public key pairs)
         const verifier = createUserVerifier(userRecord, userPayload, logger)
 
+        //this modifies userRecord with smsValidated/isEmailConfirmed
         await verifier.verifySignInIdentifiers()
 
         // check that user email/mobile sent is the same as the ones verified
@@ -290,7 +291,13 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           method: 'POST',
           body: JSON.stringify({ user_ids: [user.identifier], delete_from_org: 'True', ignore_invalid_id: 'True' })
         })
-          .then(_ => ({ amplitude: 'ok' }))
+          .then(_ => _.text())
+          .then(_ => {
+            log.info('amplitude delete user result', { result: _ })
+            return {
+              amplitude: 'ok'
+            }
+          })
           .catch(e => ({ amplitude: 'failed' }))
       ])
 
@@ -396,12 +403,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
   app.post(
     '/admin/user/list',
     adminAuthenticate,
-    wrapAsync(async (req, res, next) => {
-      let done = jsonres => {
-        res.json(jsonres)
-      }
-      storage.listUsers(done)
-    })
+    wrapAsync(async (_, res) => storage.listUsers(list => res.json(list)))
   )
 
   app.post(

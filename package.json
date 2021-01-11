@@ -1,6 +1,6 @@
 {
   "name": "@gooddollar/goodserver",
-  "version": "1.11.0",
+  "version": "1.15.0-0",
   "description": "GoodDollar Server",
   "main": "src/server/index.js",
   "engines": {
@@ -46,7 +46,7 @@
   "homepage": "https://gooddollar.org",
   "dependencies": {
     "@babel/polyfill": "^7.11.5",
-    "@gooddollar/goodcontracts": "^2.2.3",
+    "@gooddollar/goodcontracts": "^2.2.5",
     "@gooddollar/gun": "^0.2020.910",
     "@gooddollar/gun-pk-auth": "^1.1.0",
     "@sendgrid/mail": "^6.5.5",
@@ -159,6 +159,7 @@
     "optimize-css-assets-webpack-plugin": "^4.0.1",
     "pino-pretty": "^2.6.1",
     "prettier": "^1.19.1",
+    "promise.allsettled": "^1.0.2",
     "style-loader": "^0.23.0",
     "supertest": "^3.4.2",
     "uglifyjs-webpack-plugin": "^1.2.5",

@@ -43,9 +43,7 @@ class Verifications implements VerificationAPI {
       let exception = e
 
       if (e.code === 60202) {
-        exception = new Error(
-          'You have failed 5 verification attempts. ' + 'Please go back and try again in 10 minutes'
-        )
+        exception = new Error('You have failed 5 verification attempts. Please go back and try again in 10 minutes')
       }
 
       throw exception

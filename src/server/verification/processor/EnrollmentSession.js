@@ -1,7 +1,8 @@
 // @flow
-import { bindAll, omit } from 'lodash'
+import { assign, bindAll, noop, omit } from 'lodash'
 import { type IEnrollmentEventPayload } from './typings'
 import logger from '../../../imports/logger'
+import { DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment, scheduleDisposalTask } from '../cron/taskUtil'
 
 const log = logger.child({ from: 'EnrollmentSession' })
 
@@ -12,22 +13,25 @@ export default class EnrollmentSession {
   storage = null
   adminApi = null
   queueApi = null
-  sessionRef = null
+  enrollmentIdentifier = null
 
-  constructor(user, provider, storage, adminApi, queueApi, gun, customLogger = null) {
-    this.gun = gun
-    this.user = user
-    this.provider = provider
-    this.storage = storage
-    this.adminApi = adminApi
-    this.queueApi = queueApi
+  constructor(enrollmentIdentifier, user, provider, storage, adminApi, queueApi, customLogger = null) {
     this.log = customLogger || log
+
+    assign(this, {
+      user,
+      provider,
+      storage,
+      adminApi,
+      queueApi,
+      enrollmentIdentifier
+    })
 
     bindAll(this, 'onEnrollmentProcessing')
   }
 
-  async enroll(enrollmentIdentifier, payload: any): Promise<any> {
-    const { log, user, provider, onEnrollmentProcessing } = this
+  async enroll(payload: any): Promise<any> {
+    const { log, user, provider, enrollmentIdentifier, onEnrollmentProcessing } = this
     let result = { success: true }
 
     log.info('Enrollment session started', {
@@ -37,8 +41,7 @@ export default class EnrollmentSession {
     })
 
     try {
-      this.initialize(payload)
-      this.onEnrollmentStarted()
+      await this.onEnrollmentStarted()
 
       const enrollmentResult = await provider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing, log)
 
@@ -48,82 +51,69 @@ export default class EnrollmentSession {
       Object.assign(result, { enrollmentResult })
     } catch (exception) {
       const { response, message } = exception
+      const logLevel = message.toLowerCase().includes('liveness') ? 'warn' : 'error'
 
-      result = { success: false, error: message }
-
-      if (response) {
-        result.enrollmentResult = response
+      result = {
+        success: false,
+        error: message,
+        enrollmentResult: {
+          ...(response || {}),
+          isVerified: false
+        }
       }
 
-      this.onEnrollmentFailed(exception)
-      if (message.toLowerCase().includes('liveness')) {
-        log.warn('Enrollment session failed with exception:', message, exception, { result })
-      } else {
-        log.error('Enrollment session failed with exception:', message, exception, { result })
-      }
-    } finally {
-      this.sessionRef = null
+      log[logLevel]('Enrollment session failed with exception:', message, exception, { result })
+      await this.onEnrollmentFailed()
     }
 
     return result
   }
 
-  initialize(payload: any) {
-    const { gun } = this
-    const { sessionId } = payload
+  async onEnrollmentStarted() {
+    const { storage, enrollmentIdentifier } = this
+    const filters = forEnrollment(enrollmentIdentifier)
 
-    this.sessionRef = gun.session(sessionId)
-    // returning this to allow initialize &
-    // get sessionRef via destructuring in a single call
-    return this
-  }
-
-  onEnrollmentStarted() {
-    const { sessionRef } = this
-
-    sessionRef.put({ isStarted: true })
+    await storage.fetchTasksForProcessing(DISPOSE_ENROLLMENTS_TASK, filters)
   }
 
   onEnrollmentProcessing(processingPayload: IEnrollmentEventPayload) {
-    const { sessionRef, log } = this
+    const { log } = this
+
+    if ('isLive' in processingPayload) {
+      log.info('Checking for liveness, matching and enrolling:', processingPayload)
+    }
 
     if ('isDuplicate' in processingPayload) {
       log.info('Checking for duplicates:', processingPayload)
     }
 
     if ('isEnrolled' in processingPayload) {
-      log.info('Checking for liveness and tried to enroll:', processingPayload)
+      log.info('Adding enrollment to the 3D Database:', processingPayload)
     }
-
-    sessionRef.put(processingPayload)
   }
 
   async onEnrollmentCompleted() {
-    const { sessionRef, user, storage, adminApi, queueApi, log } = this
+    const { user, storage, adminApi, queueApi, log, enrollmentIdentifier } = this
     const { gdAddress, profilePublickey, loggedInAs } = user
 
-    log.info('Whitelisting user:', loggedInAs)
+    log.info('Whitelisting user:', { loggedInAs })
 
     await Promise.all([
-      queueApi.setWhitelisted(user, storage, log),
+      queueApi.setWhitelisted(user, storage, log).catch(e => log.warn('claim queue update failed', e.message, e)),
       adminApi.whitelistUser(gdAddress, profilePublickey),
-      storage.updateUser({ identifier: loggedInAs, isVerified: true })
+      storage.updateUser({ identifier: loggedInAs, isVerified: true }),
+      scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.Reauthenticate).catch(e =>
+        log.error('adding facemap to re-auth dispose queue failed:', e.message, e)
+      )
     ])
 
-    sessionRef.put({ isWhitelisted: true })
-    log.info('Successfully whitelisted user:', loggedInAs)
+    log.info('Successfully whitelisted user:', { loggedInAs })
   }
 
-  onEnrollmentFailed(exception) {
-    const { sessionRef } = this
-    const { message } = exception
+  async onEnrollmentFailed() {
+    const { storage, enrollmentIdentifier } = this
+    const filters = forEnrollment(enrollmentIdentifier)
 
-    sessionRef.put({
-      isLive: false,
-      isEnrolled: false,
-      isDuplicate: true,
-      isWhitelisted: false,
-      isError: message
-    })
+    await storage.unlockDelayedTasks(DISPOSE_ENROLLMENTS_TASK, filters)
   }
 }

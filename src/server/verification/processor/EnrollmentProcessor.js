@@ -3,7 +3,6 @@ import { chunk, noop } from 'lodash'
 import moment from 'moment'
 
 import Config from '../../server.config'
-import { GunDBPublic } from '../../gun/gun-middleware'
 import AdminWallet from '../../blockchain/AdminWallet'
 import { ClaimQueue } from '../../claimQueue/claimQueueAPI'
 import { recoverPublickey } from '../../utils/eth'
@@ -13,18 +12,17 @@ import { type IEnrollmentProvider } from './typings'
 import { type DelayedTaskRecord } from '../../../imports/types'
 
 import EnrollmentSession from './EnrollmentSession'
-import getZoomProvider from './provider/ZoomProvider'
 
-export const DISPOSE_ENROLLMENTS_TASK = 'verification/dispose_enrollments'
+import getZoomProvider from './provider/ZoomProvider'
+import { DisposeAt, scheduleDisposalTask, DISPOSE_ENROLLMENTS_TASK } from '../cron/taskUtil'
 
 // count of chunks pending tasks should (approximately) be split to
 const DISPOSE_BATCH_AMOUNT = 10
-// minimal & maximal chuk sizes
+// minimal & maximal chunk sizes
 const DISPOSE_BATCH_MINIMAL = 10
 const DISPOSE_BATCH_MAXIMAL = 50
 
 class EnrollmentProcessor {
-  gun = null
   logger = null
   storage = null
   adminApi = null
@@ -43,10 +41,9 @@ class EnrollmentProcessor {
     return _provider
   }
 
-  constructor(config, storage, adminApi, queueApi, gun, logger) {
+  constructor(config, storage, adminApi, queueApi, logger) {
     const { keepFaceVerificationRecords } = config
 
-    this.gun = gun
     this.logger = logger
     this.storage = storage
     this.adminApi = adminApi
@@ -82,7 +79,7 @@ class EnrollmentProcessor {
 
     try {
       const isDisposing = await storage.hasTasksQueued(DISPOSE_ENROLLMENTS_TASK, {
-        subject: enrollmentIdentifier
+        subject: { enrollmentIdentifier, executeAt: DisposeAt.AccountRemoved }
       })
 
       log.info('Got disposal state for enrollment', { enrollmentIdentifier, isDisposing })
@@ -90,7 +87,7 @@ class EnrollmentProcessor {
     } catch (exception) {
       const error = exception.message
 
-      log.warn("Coundn't check disposal state for enrollment", { enrollmentIdentifier, error })
+      log.warn("Couldn't check disposal state for enrollment", { enrollmentIdentifier, error })
       throw exception
     }
   }
@@ -102,13 +99,13 @@ class EnrollmentProcessor {
   }
 
   async enroll(user: any, enrollmentIdentifier: string, payload: any, customLogger = null): Promise<any> {
-    const session = this.createEnrollmentSession(user, customLogger)
+    const session = this.createEnrollmentSession(enrollmentIdentifier, user, customLogger)
 
-    return session.enroll(enrollmentIdentifier, payload)
+    return session.enroll(payload)
   }
 
   async enqueueDisposal(user: any, enrollmentIdentifier: string, signature: string, customLogger = null) {
-    const { storage, provider, adminApi, keepEnrollments, logger } = this
+    const { storage, adminApi, logger } = this
     const log = customLogger || logger
 
     log.info('Requested disposal for enrollment', { enrollmentIdentifier })
@@ -117,7 +114,7 @@ class EnrollmentProcessor {
     const isUserWhitelisted = await adminApi.isVerified(gdAddress)
 
     if (isUserWhitelisted) {
-      log.info('Walllet is whitelisted, making user non-whitelisted', { gdAddress })
+      log.info('Wallet is whitelisted, making user non-whitelisted', { gdAddress })
       await adminApi.removeWhitelisted(gdAddress)
     }
 
@@ -140,8 +137,8 @@ class EnrollmentProcessor {
     }
 
     try {
-      // dont pass user to task records to keep privacy
-      const task = await storage.enqueueTask(DISPOSE_ENROLLMENTS_TASK, enrollmentIdentifier)
+      // don't pass user to task records to keep privacy
+      const task = await scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.AccountRemoved)
 
       log.info('Enqueued enrollment disposal task', { enrollmentIdentifier, taskId: task._id })
     } catch (exception) {
@@ -157,17 +154,33 @@ class EnrollmentProcessor {
     onProcessed: (identifier: string, exception?: Error) => void = noop,
     customLogger = null
   ): Promise<void> {
-    const { storage, keepEnrollments, logger } = this
+    const { Reauthenticate, AccountRemoved } = DisposeAt
+    const { storage, adminApi, keepEnrollments, logger } = this
     const log = customLogger || logger
 
-    const enqueuedAtFilters = {}
+    const authenticationPeriod = await adminApi.getAuthenticationPeriod()
+    const deletedAccountFilters = { 'subject.executeAt': AccountRemoved }
 
     if (keepEnrollments > 0) {
-      enqueuedAtFilters.createdAt = {
+      deletedAccountFilters.createdAt = {
         $lte: moment()
           .subtract(keepEnrollments, 'hours')
           .toDate()
       }
+    }
+
+    const enqueuedAtFilters = {
+      $or: [
+        deletedAccountFilters,
+        {
+          'subject.executeAt': Reauthenticate,
+          createdAt: {
+            $lte: moment()
+              .subtract(authenticationPeriod + 1, 'days') //give extra one day before we delete
+              .toDate()
+          }
+        }
+      ]
     }
 
     try {
@@ -185,13 +198,14 @@ class EnrollmentProcessor {
 
       log.info('Enqueued disposal tasks fetched and ready to processing', {
         enqueuedTasksCount,
-        disposeBatchSize
+        disposeBatchSize,
+        authenticationPeriod
       })
 
       await chunkedDisposalTasks.reduce(
         (queue, tasksBatch) => queue.then(() => this._executeDisposalBatch(tasksBatch, onProcessed, customLogger)),
         Promise.resolve()
-      )
+      ) //iterate over batches. each batch is executed when previous batch promise resolves
     } catch (exception) {
       const { message: errMessage } = exception
       const logPayload = { e: exception, errMessage }
@@ -201,10 +215,10 @@ class EnrollmentProcessor {
     }
   }
 
-  createEnrollmentSession(user, customLogger = null) {
-    const { provider, storage, adminApi, queueApi, gun } = this
+  createEnrollmentSession(enrollmentIdentifier, user, customLogger = null) {
+    const { provider, storage, adminApi, queueApi } = this
 
-    return new EnrollmentSession(user, provider, storage, adminApi, queueApi, gun, customLogger)
+    return new EnrollmentSession(enrollmentIdentifier, user, provider, storage, adminApi, queueApi, customLogger)
   }
 
   /**
@@ -222,15 +236,15 @@ class EnrollmentProcessor {
 
     await Promise.all(
       disposalBatch.map(async task => {
-        const { _id: taskId, subject: enrollmentIdentifier } = task
-
+        const { _id: taskId, subject } = task
+        const { enrollmentIdentifier } = subject
         try {
-          const enrollmentExists = await provider.enrollmentExists(enrollmentIdentifier, customLogger)
+          const isEnrollmentIndexed = await provider.isEnrollmentIndexed(enrollmentIdentifier, customLogger)
 
-          if (!enrollmentExists) {
-            log.info("Enrollment doesn't exists, skipping disposal", { enrollmentIdentifier })
-          } else {
+          if (isEnrollmentIndexed) {
             await provider.dispose(enrollmentIdentifier, customLogger)
+          } else {
+            log.info("Enrollment isn't indexed in the 3D Database, skipping disposal", { enrollmentIdentifier })
           }
 
           tasksSucceeded.push(taskId)
@@ -257,7 +271,7 @@ const enrollmentProcessors = new WeakMap()
 export default (storage, log) => {
   if (!enrollmentProcessors.has(storage)) {
     log = log || logger.child({ from: 'EnrollmentProcessor' })
-    const enrollmentProcessor = new EnrollmentProcessor(Config, storage, AdminWallet, ClaimQueue, GunDBPublic, log)
+    const enrollmentProcessor = new EnrollmentProcessor(Config, storage, AdminWallet, ClaimQueue, log)
 
     enrollmentProcessor.registerProvier(getZoomProvider())
     enrollmentProcessors.set(storage, enrollmentProcessor)

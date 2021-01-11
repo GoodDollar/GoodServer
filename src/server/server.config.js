@@ -7,7 +7,9 @@ import dotenv from 'dotenv'
 import getNetworks from './networks'
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
 
-import { version } from '../../package.json'
+import { version, description } from '../../package.json'
+
+export const appName = description.replace(/\s*server\s*/i, '')
 
 let dotenvPath = '.env'
 
@@ -220,7 +222,7 @@ const conf = convict({
     doc: 'mautic URL',
     format: '*',
     env: 'MAUTIC_URL',
-    default: 'WALLET_URL'
+    default: 'https://go.gooddollar.org/api'
   },
   mauticToken: {
     doc: 'mautic token',
@@ -276,11 +278,17 @@ const conf = convict({
     env: 'ZOOM_MINIMAL_MATCHLEVEL',
     default: 1
   },
+  zoomSearchIndexName: {
+    doc: 'FaceTec 3d DB search index name',
+    format: '*',
+    env: 'ZOOM_SEARCH_INDEX_NAME',
+    default: appName
+  },
   zoomServerBaseUrl: {
     doc: 'FaceTec Managed Testing API URL',
     format: '*',
     env: 'ZOOM_SERVER_BASEURL',
-    default: 'https://api.zoomauth.com/api/v2/biometrics'
+    default: 'https://api.facetec.com/api/v3/biometrics'
   },
   zoomLicenseKey: {
     doc: 'Zoom (Face Recognition / Liveness Test API) License key',
@@ -365,12 +373,6 @@ const conf = convict({
     format: String,
     env: 'SENTRY_DSN',
     default: ''
-  },
-  secure_key: {
-    doc: 'Secure key word used to create secure hash by which server can communicate with web3',
-    format: String,
-    env: 'SECURE_KEY',
-    default: null
   },
   fuse: {
     doc: 'Main url for fuse api',
@@ -563,6 +565,30 @@ const conf = convict({
     format: String,
     default: 'VerificationEmail',
     env: 'AWS_SES_TEMPLATE_NAME'
+  },
+  cfWorkerVerifyJwtSecret: {
+    doc: 'Cloudflare verify worker JWT secret',
+    format: String,
+    default: '',
+    env: 'CF_WORKER_VERIFY_JWT_SECRET'
+  },
+  cfWorkerVerifyJwtAudience: {
+    doc: 'Cloudflare verify worker JWT audience',
+    format: String,
+    default: '',
+    env: 'CF_WORKER_VERIFY_JWT_AUDIENCE'
+  },
+  cfWorkerVerifyJwtSubject: {
+    doc: 'Cloudflare verify worker JWT subject',
+    format: String,
+    default: '',
+    env: 'CF_WORKER_VERIFY_JWT_SUBJECT'
+  },
+  cfWorkerVerifyUrl: {
+    doc: 'Cloudflare verify worker URL',
+    format: String,
+    default: '',
+    env: 'CF_WORKER_VERIFY_URL'
   }
 })
 
