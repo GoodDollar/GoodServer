@@ -71,7 +71,6 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         // (torus maps identifier such as email and mobile to private/public key pairs)
         const verifier = createUserVerifier(userRecord, userPayload, logger)
 
-        //this modifies userRecord with smsValidated/isEmailConfirmed
         await verifier.verifySignInIdentifiers()
 
         // check that user email/mobile sent is the same as the ones verified

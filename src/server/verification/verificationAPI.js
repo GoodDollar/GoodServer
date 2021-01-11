@@ -125,7 +125,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       let enrollmentResult
 
       // checking if request aborted to handle cases when connection is slow
-      // and facemap / images were uploaded more that 30sec causing timeout
+      // and facemap / images were uploaded more that 30sec cousing timeout
       if (req.aborted) {
         return
       }
@@ -136,15 +136,13 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
         await enrollmentProcessor.validate(user, enrollmentIdentifier, payload)
 
-        // if FV disabled or dups allowed or running Cypress, we're skipping enrollment logic
-        if (disableFaceVerification || allowDuplicatedFaceRecords || isE2ERunning) {
+        // if user is already verified, we're skipping enroillment logic
+        if (user.isVerified || disableFaceVerification || allowDuplicatedFaceRecords || isE2ERunning) {
           // creating enrollment session manually for this user
           const enrollmentSession = enrollmentProcessor.createEnrollmentSession(user, log)
           // to access user's session reference in the Gun
-          const { sessionRef } = enrollmentSession.initialize(enrollmentIdentifier, payload)
+          const { sessionRef } = enrollmentSession.initialize(payload)
 
-          // calling onEnrollmentStarted() to lock dispose task in the queue
-          await enrollmentSession.onEnrollmentStarted()
           // immediately publishing isEnrolled to subscribers
           sessionRef.put({ isDuplicate: false, isLive: true, isEnrolled: true })
           enrollmentResult = { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } }
@@ -165,7 +163,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
             // also we should try...catch manually,
             // on failure call call onEnrollmentFailed()
             // for set non-whitelistened and error in the Gun's session
-            await enrollmentSession.onEnrollmentFailed(exception)
+            enrollmentSession.onEnrollmentFailed(exception)
             // and rethrow exception for return { success: false } JSON response
             throw exception
           }

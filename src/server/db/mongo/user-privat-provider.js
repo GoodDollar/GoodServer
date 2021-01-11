@@ -1,6 +1,6 @@
 //@flow
 import { v4 as uuidv4 } from 'uuid'
-import { get, isArray, isBoolean, isString } from 'lodash'
+import { get } from 'lodash'
 
 import UserPrivateModel from './models/user-private'
 import DelayedTaskModel, { DelayedTaskStatus } from './models/delayed-task'
@@ -17,7 +17,7 @@ class UserPrivate {
   }
 
   /**
-   * Is duplicate User
+   * Is dublicate User
    *
    * @param {UserRecord} user
    *
@@ -51,7 +51,7 @@ class UserPrivate {
   }
 
   /**
-   * Create or update user private date
+   * Create or update user privat date
    *
    * @param {UserRecord} user
    *
@@ -171,7 +171,8 @@ class UserPrivate {
    * @returns {Promise<*>}
    */
   async listUsers(fields: any = {}): Promise<UserRecord> {
-    return await this.model.find({}, { email: 1, identifier: 1, ...fields }).lean()
+    const res = this.model.find({}, { email: 1, identifier: 1, ...fields }).lean()
+    return res
   }
 
   /**
@@ -197,7 +198,7 @@ class UserPrivate {
   }
 
   /**
-   * Enqueue delayed task to the user's tasks queue
+   * Enqueues delayed task to the user's tasks queue
    *
    * @param {string} userIdentifier
    * @param {string} taskName
@@ -220,7 +221,7 @@ class UserPrivate {
   }
 
   /**
-   * Checks if there exists tasks of the type specified and matching optional filters
+   * Checks if there exists tasks of the type specifid and matching optional filters
    * @param {string} taskName
    * @param {object} filters
    */
@@ -231,18 +232,7 @@ class UserPrivate {
   }
 
   /**
-   * cancel queued task
-   * @param {string} taskName
-   * @param {object} filters
-   */
-  async cancelTasksQueued(taskName: string, filters: object = {}): Promise<void> {
-    const { taskModel } = this
-
-    await taskModel.deleteOne({ ...filters, taskName })
-  }
-
-  /**
-   * Fetches tasks of the type specified with optional filtering and locks them by setting running status
+   * Fetches tasks of the type specifid with optional filtering and locks them by setting running status
    *
    * @param {string} taskName
    * @param {object} filters
@@ -250,14 +240,14 @@ class UserPrivate {
   async fetchTasksForProcessing(taskName: string, filters: object = {}): Promise<DelayedTaskRecord[]> {
     const lockId = uuidv4()
     const { taskModel, logger } = this
-    const { Locked, Complete } = DelayedTaskStatus
+    const { Running, Complete } = DelayedTaskStatus
 
     try {
       await taskModel.updateMany(
         // selecting tasks which aren't locked or completed by taskName and other filters
-        { ...filters, status: { $nin: [Locked, Complete] }, taskName },
+        { ...filters, status: { $nin: [Running, Complete] }, taskName },
         // setting unique (for each fetchTasksForProcessing() call) lockId
-        { status: Locked, lockId }
+        { status: Running, lockId }
       )
 
       // queries aren't Promises in mongoose so we couldn't just
@@ -280,32 +270,12 @@ class UserPrivate {
   }
 
   /**
-   * Unlocks delayed tasks in the queue
-   *
-   * @param {string[]} tasksIdentifiers
-   */
-  async unlockDelayedTasks(taskNameOrIdentifiers: string | string[], filters: object = {}): Promise<void> {
-    const taskName = taskNameOrIdentifiers
-    const { Pending } = DelayedTaskStatus
-
-    if (isArray(taskNameOrIdentifiers)) {
-      return this._unlockTasks(taskNameOrIdentifiers)
-    }
-
-    if (!isString(taskName)) {
-      return
-    }
-
-    await this._unlockTasksBy({ ...filters, taskName }, Pending)
-  }
-
-  /**
    * Unlocks delayed tasks in the queue and marks them as completed
    *
    * @param {string[]} tasksIdentifiers
    */
   async completeDelayedTasks(tasksIdentifiers: string[]): Promise<void> {
-    await this._unlockTasks(tasksIdentifiers, true)
+    await this._unlockRunningTasks(tasksIdentifiers, true)
   }
 
   /**
@@ -314,7 +284,7 @@ class UserPrivate {
    * @param {string[]} tasksIdentifiers
    */
   async failDelayedTasks(tasksIdentifiers: string[]): Promise<void> {
-    await this._unlockTasks(tasksIdentifiers, false)
+    await this._unlockRunningTasks(tasksIdentifiers, false)
   }
 
   /**
@@ -324,10 +294,10 @@ class UserPrivate {
    */
   async removeDelayedTasks(tasksIdentifiers: string[]): Promise<void> {
     const { taskModel, logger } = this
-    const { Locked, Complete } = DelayedTaskStatus
+    const { Running, Complete } = DelayedTaskStatus
 
     try {
-      await taskModel.deleteMany({ status: { $in: [Locked, Complete] }, _id: { $in: tasksIdentifiers } })
+      await taskModel.deleteMany({ status: { $in: [Running, Complete] }, _id: { $in: tasksIdentifiers } })
     } catch (exception) {
       const { message: errMessage } = exception
       const logPayload = { tasksIdentifiers }
@@ -340,30 +310,19 @@ class UserPrivate {
   /**
    * @private
    */
-  async _unlockTasks(tasksIdentifiers: string[], tasksSucceeded: boolean = null): Promise<void> {
-    const { Complete, Failed, Pending } = DelayedTaskStatus
-    let unlockedStatus = Pending
-
-    if (isBoolean(tasksSucceeded)) {
-      unlockedStatus = tasksSucceeded ? Complete : Failed
-    }
-
-    await this._unlockTasksBy({ _id: { $in: tasksIdentifiers } }, unlockedStatus)
-  }
-
-  /**
-   * @private
-   */
-  async _unlockTasksBy(filters: object, newStatus: string): Promise<void> {
+  async _unlockRunningTasks(tasksIdentifiers: string[], tasksSucceeded: boolean): Promise<void> {
     const { taskModel, logger } = this
-    const { Locked } = DelayedTaskStatus
+    const { Running, Complete, Failed } = DelayedTaskStatus
 
     try {
-      await taskModel.updateMany({ ...filters, status: Locked }, { status: newStatus, lockId: null })
+      await taskModel.updateMany(
+        { status: Running, _id: { $in: tasksIdentifiers } },
+        { status: tasksSucceeded ? Complete : Failed, lockId: null }
+      )
     } catch (exception) {
       const { message: errMessage } = exception
 
-      logger.error("Couldn't unlock and update delayed tasks", errMessage, exception, filters)
+      logger.error("Couldn't unlock and update delayed tasks", errMessage, exception, { tasksIdentifiers })
       throw exception
     }
   }

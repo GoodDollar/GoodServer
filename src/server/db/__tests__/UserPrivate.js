@@ -5,7 +5,7 @@ import storage from '../mongo/user-privat-provider'
 import mongoose from '../mongo-db'
 import { pick, keys } from 'lodash'
 
-import DelayedTaskModel, { DelayedTaskStatus } from '../mongo/models/delayed-task'
+import { DelayedTaskStatus } from '../mongo/models/delayed-task'
 
 const testUserName = 'mongo_test'
 const testTaskName = 'mongo_test'
@@ -37,7 +37,6 @@ describe('UserPrivate', () => {
         await storage.failDelayedTasks([_id])
         break
       default:
-        await storage.unlockDelayedTasks([_id])
         break
     }
 
@@ -59,7 +58,7 @@ describe('UserPrivate', () => {
     await userModel.deleteMany({ fullName: new RegExp(testUserName, 'i') })
   })
 
-  it('Should mongo connect', async () => {
+  it('Should monogo connect', async () => {
     expect(mongoose.connection.readyState).toBeTruthy()
   })
 
@@ -216,23 +215,6 @@ describe('UserPrivate', () => {
     await testHasTasksQueued()
   })
 
-  it('Should cancel an enqueued task', async () => {
-    // check before add (both raw query and hasTasksQueued() should return false)
-    await testHasTasksQueued()
-    // enqueue task to cancel
-    await storage.enqueueTask(testTaskName, testTaskSubject)
-    // find enqueued task
-    const enqueuedTaskBeforeCancel = await DelayedTaskModel.findOne({ taskName: testTaskName })
-    // assert that enqueued task exists
-    expect(enqueuedTaskBeforeCancel).toBeObject()
-    // cancel enqueued task
-    await storage.cancelTasksQueued(testTaskName, { subject: testTaskSubject })
-    // find enqueued task
-    const enqueuedTaskAfterCancel = await DelayedTaskModel.findOne({ taskName: testTaskName })
-    // assert enqueued task doesn't exist'
-    expect(enqueuedTaskAfterCancel).toBeNull()
-  })
-
   it('Should fetch tasks', async () => {
     const { _id } = await storage.enqueueTask(testTaskName, testTaskSubject)
 
@@ -258,7 +240,7 @@ describe('UserPrivate', () => {
     await expect(storage.fetchTasksForProcessing(testTaskName)).resolves.toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          status: DelayedTaskStatus.Locked,
+          status: DelayedTaskStatus.Running,
           lockId: expect.anything()
         })
       ])
@@ -268,27 +250,10 @@ describe('UserPrivate', () => {
     await expect(storage.fetchTasksForProcessing(testTaskName)).resolves.toBeArrayOfSize(0)
   })
 
-  it('Should complete/fail/unlock tasks', async () => {
+  it('Should complete or fail tasks', async () => {
     await testTaskStatusSwitch(DelayedTaskStatus.Complete)
     await taskModel.deleteMany({ taskName: testTaskName })
     await testTaskStatusSwitch(DelayedTaskStatus.Failed)
-    await taskModel.deleteMany({ taskName: testTaskName })
-    await testTaskStatusSwitch(DelayedTaskStatus.Pending)
-  })
-
-  it('Should unlock tasks also by the filters', async () => {
-    await storage.enqueueTask(testTaskName, testTaskSubject)
-    await storage.fetchTasksForProcessing(testTaskName)
-    await storage.unlockDelayedTasks(testTaskName)
-
-    await expect(taskModel.find({ taskName: testTaskName })).resolves.toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          status: DelayedTaskStatus.Pending,
-          lockId: null
-        })
-      ])
-    )
   })
 
   it('Should unlock failed tasks', async () => {
@@ -302,14 +267,13 @@ describe('UserPrivate', () => {
     await expect(storage.fetchTasksForProcessing(testTaskName)).resolves.toBeArrayOfSize(1)
   })
 
-  it("Complete/fail/update shouldn't switch pending status", async () => {
+  it("Complete/fail shouldn't switch pending status", async () => {
     const { Complete, Failed } = DelayedTaskStatus
     const { _id } = await storage.enqueueTask(testTaskName, testTaskSubject)
 
-    // we shouldn't be able to update status for task aren't locked via fetchTasksForProcessing()
+    // we sholdn't be able to update status for task aren't locked via fetchTasksForProcessing()
     await storage.failDelayedTasks([_id])
     await storage.completeDelayedTasks([_id])
-    await storage.unlockDelayedTasks([_id])
 
     // no complete/failed tasks should be found despite we've called corresponding storage methods
     await expect(
