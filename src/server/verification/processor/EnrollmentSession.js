@@ -1,5 +1,5 @@
 // @flow
-import { assign, bindAll, noop, omit } from 'lodash'
+import { assign, bindAll, omit } from 'lodash'
 import { type IEnrollmentEventPayload } from './typings'
 import logger from '../../../imports/logger'
 import { DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment, scheduleDisposalTask } from '../cron/taskUtil'
@@ -48,7 +48,7 @@ export default class EnrollmentSession {
       log.info('Enrollment session completed with result:', enrollmentResult)
 
       await this.onEnrollmentCompleted()
-      Object.assign(result, { enrollmentResult })
+      assign(result, { enrollmentResult })
     } catch (exception) {
       const { response, message } = exception
       const logLevel = message.toLowerCase().includes('liveness') ? 'warn' : 'error'

@@ -1,7 +1,9 @@
-import getTaskRunner from '../TaskRunner'
 import moment from 'moment'
 import delay from 'delay'
 import { size } from 'lodash'
+
+import getTaskRunner from '../TaskRunner'
+import { noopAsync } from '../../utils/async'
 
 const TaskRunner = getTaskRunner()
 jest.setTimeout(20000)
@@ -23,7 +25,7 @@ describe('TaskRunner', () => {
   const testCronTask = {
     name: 'testCronTask',
     schedule: '* * * * * *',
-    execute: async () => {}
+    execute: noopAsync
   }
 
   const executeSpy = jest.spyOn(testTask, 'execute')
@@ -51,7 +53,7 @@ describe('TaskRunner', () => {
   test('it should run cron syntax multiple times', async () => {
     TaskRunner.registerTask(testCronTask)
     TaskRunner.startTasks()
-    await delay(12500)
+    await delay(2500)
     TaskRunner.stopTasks()
     // check if there was at lest 2 call during last 2.5 sec
     expect(executeCronSpy.mock.calls.length).toBeGreaterThanOrEqual(2)
