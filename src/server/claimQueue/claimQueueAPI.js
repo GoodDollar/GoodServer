@@ -19,10 +19,9 @@ const ClaimQueue = {
   async setWhitelisted(user, storage, log = defaultLogger) {
     const { mauticClaimQueueWhitelistedSegmentId } = conf
     const { identifier, mauticId, claimQueue } = user
-    let result = Promise.resolve()
 
     if (claimQueue) {
-      result = storage.updateUser({ identifier, 'claimQueue.status': 'whitelisted' })
+      await storage.updateUser({ identifier, 'claimQueue.status': 'whitelisted' })
     }
 
     // Mautic calls could took a lot of time and cause ZoOm timeout
@@ -41,8 +40,6 @@ const ClaimQueue = {
         log.error('Failed Mautic adding user to claim queue whitelisted segment', message, exception)
       })
     }
-
-    return result
   },
 
   async getStatistics(storage) {

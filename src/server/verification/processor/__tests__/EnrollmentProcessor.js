@@ -9,6 +9,7 @@ import { ClaimQueue } from '../../../claimQueue/claimQueueAPI'
 
 import createMockingHelper from '../../api/__tests__/__util__'
 import { DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment } from '../../cron/taskUtil'
+import { noopAsync } from '../../../utils/async'
 
 let helper
 let zoomServiceMock
@@ -21,7 +22,7 @@ const failDelayedTasksMock = jest.fn()
 const cancelTasksQueuedMock = jest.fn()
 const removeDelayedTasksMock = jest.fn()
 const fetchTasksForProcessingMock = jest.fn()
-const unlockDelayedTasksMock = jest.fn(async () => {})
+const unlockDelayedTasksMock = jest.fn()
 
 // GUN mocks
 const setWhitelistedImplementation = ClaimQueue.setWhitelisted
@@ -87,6 +88,8 @@ describe('EnrollmentProcessor', () => {
     hasTasksQueuedMock.mockReturnValue(false)
     enqueueTaskMock.mockResolvedValue(fakeTask)
     getAuthenticationPeriodMock.mockReturnValue(14)
+    unlockDelayedTasksMock.mockImplementation(noopAsync)
+    whitelistInQueueMock.mockImplementation(noopAsync)
 
     invokeMap(
       [
