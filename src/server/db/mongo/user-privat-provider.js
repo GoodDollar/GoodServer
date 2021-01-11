@@ -209,7 +209,7 @@ class UserPrivate {
     const userIdentifier = get(user, '_id')
 
     try {
-      return taskModel.create({ userIdentifier, taskName, subject })
+      return await taskModel.create({ userIdentifier, taskName, subject })
     } catch (exception) {
       const { message: errMessage } = exception
       const logPayload = { taskName, userIdentifier, subject }
