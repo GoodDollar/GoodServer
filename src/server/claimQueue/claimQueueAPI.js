@@ -20,10 +20,6 @@ const ClaimQueue = {
     const { mauticClaimQueueWhitelistedSegmentId } = conf
     const { identifier, mauticId, claimQueue } = user
 
-    if (claimQueue) {
-      await storage.updateUser({ identifier, 'claimQueue.status': 'whitelisted' })
-    }
-
     // Mautic calls could took a lot of time and cause ZoOm timeout
     // so let's do it 'in background'
     // also we won't call mautic if user.mauticId is empty or null
@@ -39,6 +35,10 @@ const ClaimQueue = {
 
         log.error('Failed Mautic adding user to claim queue whitelisted segment', message, exception)
       })
+    }
+
+    if (claimQueue) {
+      return storage.updateUser({ identifier, 'claimQueue.status': 'whitelisted' })
     }
   },
 
