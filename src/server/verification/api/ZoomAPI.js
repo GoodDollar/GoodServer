@@ -2,7 +2,7 @@
 
 import Axios from 'axios'
 import { URL } from 'url'
-import { assign, get, pick, omit, isPlainObject, isArray, mapValues, once, lowerFirst } from 'lodash'
+import { assign, get, pick, omit, isPlainObject, isArray, mapValues, once, lowerFirst, toLower, findKey } from 'lodash'
 
 import Config from '../../server.config'
 import logger from '../../../imports/logger'
@@ -21,6 +21,7 @@ export const failedMatchMessage = 'FaceMap could not be 3D-matched and updated'
 export const enrollmentNotFoundMessage = 'An enrollment does not exists for this enrollment identifier'
 export const enrollmentAlreadyExistsMessage = 'An enrollment already exists for this enrollment identifier'
 
+export const enrollmentIdFields = ['enrollmentIdentifier', 'externalDatabaseRefID', 'identifier']
 export const faceSnapshotFields = ['sessionId', 'faceScan', 'auditTrailImage', 'lowQualityAuditTrailImage']
 const redactFieldsDuringLogging = ['faceMapBase64', 'auditTrailBase64', ...faceSnapshotFields]
 
@@ -212,24 +213,58 @@ class ZoomAPI {
     const { request } = this.http.interceptors
 
     request.use(request => {
-      const { url, params } = request
-      let searchParams = params instanceof URLSearchParams ? params : new URLSearchParams(params || {})
-
-      const substituteParameter = (_, parameter) => {
-        const parameterValue = searchParams.get(parameter) || ''
-
-        searchParams.delete(parameter)
-        return encodeURIComponent(parameterValue)
-      }
+      const { data } = request
+      let rawRequest = this._configureParams(request)
 
       this._logRequest(request)
 
-      return {
-        ...request,
-        params: searchParams,
-        url: (url || '').replace(/:(\w[\w\d]+)/g, substituteParameter)
+      if (isPlainObject(data)) {
+        rawRequest = this._configurePayload(rawRequest)
       }
+
+      return rawRequest
     })
+  }
+
+  _configureParams(request) {
+    const { url, params } = request
+    let searchParams = params instanceof URLSearchParams ? params : new URLSearchParams(params || {})
+
+    const substituteParameter = (_, parameter) => {
+      let parameterValue = searchParams.get(parameter) || ''
+
+      if (enrollmentIdFields.includes(parameter)) {
+        parameterValue = toLower(parameterValue)
+      }
+
+      searchParams.delete(parameter)
+      return encodeURIComponent(parameterValue)
+    }
+
+    return {
+      ...request,
+      params: searchParams,
+      url: (url || '').replace(/:(\w[\w\d]+)/g, substituteParameter)
+    }
+  }
+
+  _configurePayload(request) {
+    const { data } = request
+    const identifierKey = findKey(data, (_, key) => enrollmentIdFields.includes(key))
+
+    if (!identifierKey) {
+      return request
+    }
+
+    const identifier = data[identifierKey]
+
+    return {
+      ...request,
+      data: {
+        ...data,
+        [identifierKey]: toLower(identifier)
+      }
+    }
   }
 
   _configureResponses() {

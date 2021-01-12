@@ -1,6 +1,7 @@
-import { upperFirst } from 'lodash'
+import { upperFirst, toLower } from 'lodash'
 
 import {
+  enrollmentIdFields,
   failedLivenessMessage,
   failedEnrollmentMessage,
   failedMatchMessage,
@@ -21,15 +22,17 @@ export default zoomServiceMock => {
   const dbInternalEnrollmentDoesntExists = 'An enrollment does not exist for this externalDatabaseRefID.'
   const searchIndexNotInitializedMessage = 'Tried to search a groupName when that groupName does not exist.'
 
-  const enrollmentUri = enrollmentIdentifier => `/enrollment-3d/${encodeURIComponent(enrollmentIdentifier)}`
+  const enrollmentUri = enrollmentIdentifier => `/enrollment-3d/${encodeURIComponent(toLower(enrollmentIdentifier))}`
 
-  const enrollmentPayloadMatcher = enrollmentIdentifier => ({
-    asymmetricMatch(payload) {
-      const { externalDatabaseRefID, identifier } = payload || {}
+  const enrollmentPayloadMatcher = enrollmentIdentifier => {
+    const enrollmentId = toLower(enrollmentIdentifier)
 
-      return [externalDatabaseRefID, identifier].some(id => id === enrollmentIdentifier)
+    return {
+      asymmetricMatch(payload) {
+        return enrollmentIdFields.some(field => payload[field] === enrollmentId)
+      }
     }
-  })
+  }
 
   const successResponse = { success: true, error: false }
 

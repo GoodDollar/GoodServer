@@ -346,7 +346,7 @@ describe('ZoomAPI', () => {
   })
 
   test("faceSearch() should return empty results if index doesn't initialized yet", async () => {
-    helper.mockSearchIndexNotInitialized()
+    helper.mockSearchIndexNotInitialized(enrollmentIdentifier)
 
     const wrappedResponse = expect(ZoomAPI.faceSearch(enrollmentIdentifier)).resolves
 
