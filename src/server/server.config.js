@@ -482,6 +482,12 @@ const conf = convict({
     default: 'gooddollar-auth0-sms-passwordless',
     env: 'TORUS_AUTH0SMS'
   },
+  torusVerificationTimeout: {
+    doc: 'Max time for email/phone verificarion attempt',
+    format: Number,
+    default: 5000,
+    env: 'TORUS_VERIFICATION_TIMEOUT'
+  },
   torusVerificationAttempts: {
     doc: 'Amount of proof verification attempts',
     format: Number,

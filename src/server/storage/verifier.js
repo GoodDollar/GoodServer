@@ -1,6 +1,6 @@
 import { assign, isEmpty, bindAll, isError } from 'lodash'
 import { from as fromPromise, defer, throwError, timer } from 'rxjs'
-import { mergeMap, retryWhen } from 'rxjs/operators'
+import { mergeMap, retryWhen, timeout } from 'rxjs/operators'
 
 import Config from '../../server/server.config'
 
@@ -9,15 +9,20 @@ import FacebookVerifier from '../../imports/facebookVerifier'
 
 class DefaultVerificationStrategy {
   constructor(config) {
-    const { torusVerificationRetryDelay, torusVerificationAttempts } = config
+    const { torusVerificationRetryDelay, torusVerificationAttempts, torusVerificationTimeout } = config
 
     bindAll(this, '_onRetry', '_callVerifier')
-    assign(this, { torusVerificationRetryDelay, torusVerificationAttempts })
+
+    assign(this, {
+      torusVerificationRetryDelay,
+      torusVerificationAttempts,
+      torusVerificationTimeout
+    })
   }
 
   async verify(requestPayload, userRecord, logger) {
     const { torusProof } = requestPayload
-    const { _callVerifier, _onRetry } = this
+    const { _callVerifier, _onRetry, torusVerificationTimeout } = this
     let verificationResult = { emailVerified: false, mobileVerified: false }
 
     if (!torusProof) {
@@ -26,7 +31,10 @@ class DefaultVerificationStrategy {
     }
 
     try {
-      verificationResult = await defer(() => fromPromise(_callVerifier(requestPayload))) // calling TorusProvider
+      verificationResult = await defer(() =>
+        // calling TorusProvider
+        fromPromise(_callVerifier(requestPayload)).pipe(timeout(torusVerificationTimeout))
+      )
         .pipe(retryWhen(attempts => attempts.pipe(mergeMap(_onRetry)))) // on each failure passing rejection reason
         .toPromise() // through the onRetry callback to determine should we retry or not and how long we have to wait before
     } catch (exception) {
@@ -46,6 +54,7 @@ class DefaultVerificationStrategy {
   async _callVerifier(requestPayload) {
     const { torusProof, torusProvider, torusProofNonce } = requestPayload
     const verifier = TorusVerifier.factory(this.logger)
+
     return verifier.verifyProof(torusProof, torusProvider, requestPayload, torusProofNonce)
   }
 
