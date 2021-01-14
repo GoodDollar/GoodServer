@@ -1,5 +1,4 @@
-import FetchNodeDetails from '@toruslabs/fetch-node-details/dist/fetchNodeDetails-node.js'
-import TorusUtils from '@toruslabs/torus.js/dist/torusUtils-node.js'
+import { FetchNodeDetails, TorusUtils } from './torus'
 import moment from 'moment'
 import Config from '../server/server.config'
 import { recoverPublickey } from '../server/utils/eth'
