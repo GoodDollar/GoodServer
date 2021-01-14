@@ -2,7 +2,7 @@
 import { Router } from 'express'
 import passport from 'passport'
 import { defaults, first, get, omitBy, sortBy } from 'lodash'
-import { sha3 } from 'web3-utils'
+import { sha3, toChecksumAddress } from 'web3-utils'
 import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync, onlyInEnv } from '../utils/helpers'
 import { Mautic } from '../mautic/mauticAPI'
@@ -289,7 +289,12 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         fetch(`https://amplitude.com/api/2/deletions/users`, {
           headers: { Authorization: `Basic ${conf.amplitudeBasicAuth}`, 'Content-Type': 'application/json' },
           method: 'POST',
-          body: JSON.stringify({ user_ids: [user.identifier], delete_from_org: 'True', ignore_invalid_id: 'True' })
+
+          body: JSON.stringify({
+            user_ids: [toChecksumAddress(user.identifier.toLowerCase())], //amplitude id is case sensitive and is the original address form from user wallet
+            delete_from_org: 'True',
+            ignore_invalid_id: 'True'
+          })
         })
           .then(_ => _.text())
           .then(_ => {
