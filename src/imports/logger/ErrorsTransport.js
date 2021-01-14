@@ -1,5 +1,7 @@
 import * as Sentry from '@sentry/node'
 import { RewriteFrames } from '@sentry/integrations'
+import isError from '@stdlib/assert/is-error'
+import clone from '@stdlib/utils/copy'
 import Transport from 'winston-transport'
 import { SPLAT } from 'triple-beam'
 import { forEach, trimEnd } from 'lodash'
@@ -46,13 +48,21 @@ export default class ErrorsTransport extends Transport {
     }
 
     const { message: generalMessage, userId, ...data } = context
+    const errorPrefix = `${trimEnd(generalMessage, ' :')}: `
 
     // context[SPLAT] could be undefined in case if just one argument passed to the error log
     // i.e log.error('some error message')
-    const [errorMessage, errorObj = new Error(), extra = {}] = context[SPLAT] || []
-    const dataToPassIntoLog = { generalMessage, errorMessage, errorObj, ...extra, ...data }
+    let [errorMessage, errorObj, extra = {}] = context[SPLAT] || []
+    let errorToCapture
 
-    errorObj.message = `${trimEnd(generalMessage, ' :')}: ${errorObj.message}`
+    if (isError(errorObj)) {
+      errorToCapture = clone(errorObj)
+      errorToCapture.message = errorPrefix + errorObj.message
+    } else {
+      errorToCapture = errorObj = new Error(errorPrefix + errorMessage)
+    }
+
+    const dataToPassIntoLog = { generalMessage, errorMessage, errorObj, ...extra, ...data }
 
     Sentry.configureScope(scope => {
       scope.setUser({
@@ -64,7 +74,7 @@ export default class ErrorsTransport extends Transport {
       })
     })
 
-    Sentry.captureException(errorObj)
+    Sentry.captureException(errorToCapture)
     callback()
   }
 }
