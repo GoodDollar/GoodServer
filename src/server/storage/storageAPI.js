@@ -1,7 +1,7 @@
 // @flow
 import { Router } from 'express'
 import passport from 'passport'
-import { defaults, first, get, omitBy, sortBy } from 'lodash'
+import { defaults, first, get, omitBy, sortBy, escapeRegExp } from 'lodash'
 import { sha3, toChecksumAddress } from 'web3-utils'
 import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync, onlyInEnv } from '../utils/helpers'
@@ -351,7 +351,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
       const identifierLC = identifier.toLowerCase()
 
       const queryOrs = [
-        { identifier: identifierLC },
+        { identifier: new RegExp(escapeRegExp(identifierLC), 'i') },
         { email: email && sha3(email) },
         { mobile: mobile && sha3(mobile) }
       ].filter(or => Object.values(or)[0] != null)
@@ -375,6 +375,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
       if (existing.length) {
         //prefer oldest verified account
         const bestExisting = first(existingSorted)
+
         return res.json({
           ok: 1,
           found: existing.length,
