@@ -46,14 +46,14 @@ jobs:
       - name: update version qa
         if: "github.event.inputs.release == 'qa'"
         run: |
-          npm version preminor -m "chore: release qa version %s [skip ci]"
+          npm version prerelease -m "chore: release qa version %s [skip build]"
           git push https://${{ secrets.GIT_AUTH }}@github.com/GoodDollar/GoodServer master:${{ github.event.inputs.targetbranch }} --force --follow-tags
           git push https://${{ secrets.GIT_AUTH }}@github.com/GoodDollar/GoodServer master --follow-tags
 
       - name: update version prod
         if: "github.event.inputs.release != 'qa'"
         run: |
-          npm version minor -m "chore: release prod version %s [skip ci]"
+          npm version minor -m "chore: release prod version %s [skip build]"
           git push https://${{ secrets.GIT_AUTH }}@github.com/GoodDollar/GoodServer staging:${{ github.event.inputs.targetbranch }} --force --follow-tags
           git checkout master
           git merge staging
@@ -61,7 +61,7 @@ jobs:
 
   test:
     name: Unit Tests
-    if: "github.event_name != 'workflow_dispatch' && !contains(github.event.head_commit.message,'skip ci')"
+    if: "github.event_name != 'workflow_dispatch' && !contains(github.event.head_commit.message,'skip ci') && !contains(github.event.head_commit.message,'skip build')"
     env:
       GUNDB_PASS: test
       JWT_PASS: test
