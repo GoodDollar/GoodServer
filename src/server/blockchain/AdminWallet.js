@@ -190,7 +190,7 @@ export class Wallet {
       })
     }
 
-    for (let addr of this.addresses) {
+    const ps = this.addresses.map(async addr => {
       const balance = await this.web3.eth.getBalance(addr)
       const mainnetBalance = await this.mainnetWeb3.eth.getBalance(addr)
 
@@ -203,7 +203,9 @@ export class Wallet {
         log.info(`admin wallet ${addr} mainnet balance ${mainnetBalance}`)
         this.mainnetAddresses.push(addr)
       } else log.warn('Failed adding mainnet admin wallet', { addr, mainnetBalance, adminMinBalance })
-    }
+    })
+    await Promise.all(ps)
+
     if (this.filledAddresses.length === 0) {
       log.error('no admin wallet with funds')
       sendSlackAlert({
