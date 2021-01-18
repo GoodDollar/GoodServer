@@ -381,7 +381,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           found: existing.length,
           exists: true,
           provider: bestExisting.torusProvider,
-          identifier: identifierLC === bestExisting.identifier,
+          identifier: identifierLC === bestExisting.identifier.toLowerCase(),
           email: email && sha3(email) === bestExisting.email,
           mobile: mobile && sha3(mobile) === bestExisting.mobile,
           fullName: bestExisting.fullName
