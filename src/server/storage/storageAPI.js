@@ -351,10 +351,10 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
       const identifierLC = identifier.toLowerCase()
 
       const queryOrs = [
-        { identifier: new RegExp(escapeRegExp(identifierLC), 'i') },
+        { identifier: identifierLC && new RegExp(escapeRegExp(identifierLC), 'i') },
         { email: email && sha3(email) },
         { mobile: mobile && sha3(mobile) }
-      ].filter(or => Object.values(or)[0] != null)
+      ].filter(or => !!Object.values(or)[0])
 
       const existing = await storage.model
         .find({
