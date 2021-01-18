@@ -1,6 +1,6 @@
 {
   "name": "@gooddollar/goodserver",
-  "version": "1.17.0-1",
+  "version": "1.17.0-2",
   "description": "GoodDollar Server",
   "main": "src/server/index.js",
   "engines": {
@@ -61,7 +61,7 @@
     "auto-changelog": "^1.16.4",
     "await-mutex": "^1.0.2",
     "aws-sdk": "^2.783.0",
-    "axios": "^0.19.2",
+    "axios": "^0.21.1",
     "big-number": "^2.0.0",
     "bip39-light": "^1.0.7",
     "body-parser": "^1.19.0",
