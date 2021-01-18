@@ -115,27 +115,13 @@ export class Wallet {
     switch (transport) {
       case 'WebSocket':
         provider = conf.ethereumMainnet.websocketWeb3Provider
-        web3Provider = new Web3.providers.WebsocketProvider(provider, {
-          headers: [
-            {
-              name: 'Origin',
-              value: 'https://gooddollar.org'
-            }
-          ]
-        })
+        web3Provider = new Web3.providers.WebsocketProvider(provider)
         break
 
       default:
       case 'HttpProvider':
         provider = conf.ethereumMainnet.httpWeb3Provider
-        web3Provider = new Web3.providers.HttpProvider(provider, {
-          headers: [
-            {
-              name: 'Origin',
-              value: 'https://gooddollar.org'
-            }
-          ]
-        })
+        web3Provider = new Web3.providers.HttpProvider(provider)
         break
     }
     log.debug('mainnet', { web3Provider, provider })
