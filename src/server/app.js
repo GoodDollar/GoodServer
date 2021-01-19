@@ -9,7 +9,7 @@ import conf from './server.config'
 
 import logger from '../imports/logger'
 
-const log = logger.child({ from: 'GunDB-Middleware' })
+const log = logger.child({ from: 'startapp' })
 
 EventEmitter.defaultMaxListeners = 100
 // we're logging uncaught exceptions in logger monitor so just exiting process
