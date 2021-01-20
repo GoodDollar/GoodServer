@@ -5,6 +5,7 @@ import { defaults, first, get, omitBy, sortBy, escapeRegExp } from 'lodash'
 import { sha3, toChecksumAddress } from 'web3-utils'
 import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync, onlyInEnv } from '../utils/helpers'
+import requestTimeout from '../utils/timeout'
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import addUserSteps from './addUserSteps'
@@ -187,9 +188,12 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         ])
           .then(res => logger.info('updated trust indexes result:', { res }))
           .catch(e => {
-            logger.error('failed adding new user to indexes. allowing to finish registartion')
+            logger.error('updated trust indexes: failed adding new user to indexes. allowing to finish registartion')
           })
-        signUpPromises.push(p5)
+        const p6 = Promise.race([p5, requestTimeout(15000, 'updated trust indexes timeout')]).catch(e => {
+          logger.error(e.message)
+        })
+        signUpPromises.push(p6)
 
         await Promise.all(signUpPromises)
         logger.debug('signup steps success. adding new user:', { toUpdateUser })

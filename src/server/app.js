@@ -7,6 +7,10 @@ import requestTimeout from './utils/timeout'
 import { GunDBPublic } from './gun/gun-middleware'
 import conf from './server.config'
 
+import logger from '../imports/logger'
+
+const log = logger.child({ from: 'startapp' })
+
 EventEmitter.defaultMaxListeners = 100
 // we're logging uncaught exceptions in logger monitor so just exiting process
 process.on('uncaughtException', () => process.exit(-1))
@@ -15,10 +19,11 @@ const startApp = async () => {
   await Promise.race([
     requestTimeout(30000, 'gun not initialized'),
     AdminWallet.ready.then(() => {
+      log.info('AdminWallet ready', { addresses: AdminWallet.addresses })
       const pkey = AdminWallet.wallets[AdminWallet.addresses[0]].privateKey.slice(2)
       //we no longer use backend also as gundb  server, otherwise this needs to be moved back
       //to server-prod.js so we can pass the express server instance instead of null
-      GunDBPublic.init(null, pkey, 'publicdb')
+      return GunDBPublic.init(null, pkey, 'publicdb')
     })
   ]).catch(e => {
     if (conf.env === 'test') return

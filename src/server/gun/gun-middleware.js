@@ -208,9 +208,10 @@ class GunDB implements StorageAPI {
     this.serverName = name
     this.user = this.gun.user()
     this.ready = gunAuth(this.gun, password).then(async _ => {
+      log.debug('gun logged in... initializing indexes', { user: this.userRoot })
       await this.initIndexes()
       this.userRoot = await this.gun.user().then(null, { wait: 2000 })
-      log.debug('gun logged in', { user: this.userRoot })
+      log.debug('gun initialized indexes', { user: this.userRoot })
       this.trust = this.getIndexes()
       log.debug('done indexes', { indexes: this.trust })
       return true
