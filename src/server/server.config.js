@@ -92,6 +92,12 @@ const conf = convict({
     default: undefined,
     env: 'JWT_PASS'
   },
+  jwtExpiration: {
+    doc: 'The JWT expiration time',
+    format: Number,
+    default: 60 * 60 * 24 * 7, // 1 week
+    env: 'JWT_EXPIRATION'
+  },
   mnemonic: {
     doc: 'Wallet mnemonic',
     format: String,
