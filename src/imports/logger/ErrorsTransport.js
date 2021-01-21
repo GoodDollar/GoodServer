@@ -1,11 +1,10 @@
 import * as Sentry from '@sentry/node'
 import { RewriteFrames } from '@sentry/integrations'
-import isError from '@stdlib/assert/is-error'
-import clone from '@stdlib/utils/copy'
 import Transport from 'winston-transport'
 import { SPLAT } from 'triple-beam'
-import { forEach, trimEnd } from 'lodash'
+import { forEach, trimEnd, isError } from 'lodash'
 
+import { cloneErrorObject } from '../../server/utils/exception'
 import Config from '../../server/server.config'
 
 export default class ErrorsTransport extends Transport {
@@ -56,7 +55,7 @@ export default class ErrorsTransport extends Transport {
     let errorToCapture
 
     if (isError(errorObj)) {
-      errorToCapture = clone(errorObj)
+      errorToCapture = cloneErrorObject(errorObj)
       errorToCapture.message = errorPrefix + errorObj.message
     } else {
       errorToCapture = errorObj = new Error(errorPrefix + errorMessage)

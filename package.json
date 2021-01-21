@@ -52,7 +52,6 @@
     "@sendgrid/mail": "^6.5.5",
     "@sentry/integrations": "^5.24.2",
     "@sentry/node": "^5.24.2",
-    "@stdlib/stdlib": "0.0.93",
     "@toruslabs/fetch-node-details": "^2.3.4",
     "@toruslabs/torus.js": "^2.2.14",
     "apidoc": "^0.17.7",
