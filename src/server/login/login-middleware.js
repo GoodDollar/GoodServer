@@ -126,7 +126,8 @@ const setup = (app: Router) => {
             method: method,
             loggedInAs: recovered,
             gdAddress: gdPublicAddress,
-            profilePublickey: profileReqPublickey
+            profilePublickey: profileReqPublickey,
+            exp: Math.floor(Date.now() / 1000) + Config.jwtExpiration
           },
           Config.jwtPassword
         )
