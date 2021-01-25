@@ -6,14 +6,11 @@ import {
   failedEnrollmentMessage,
   failedMatchMessage,
   enrollmentNotFoundMessage,
-  enrollmentAlreadyExistsMessage
-} from '../../ZoomAPI'
-
-import {
+  enrollmentAlreadyExistsMessage,
   duplicateFoundMessage,
   alreadyEnrolledMessage,
   successfullyEnrolledMessage
-} from '../../../processor/provider/ZoomProvider'
+} from '../../../constants'
 
 export default zoomServiceMock => {
   const serviceErrorMessage = 'Request failed with status code 500'

@@ -1,14 +1,17 @@
 // @flow
 import { omit, once, omitBy, bindAll } from 'lodash'
 
-import initZoomAPI, { faceSnapshotFields, ZoomAPIError } from '../../api/ZoomAPI.js'
+import initZoomAPI from '../../api/ZoomAPI'
+import {
+  faceSnapshotFields,
+  ZoomAPIError,
+  duplicateFoundMessage,
+  successfullyEnrolledMessage,
+  alreadyEnrolledMessage
+} from '../../constants'
 import logger from '../../../../imports/logger'
 
 import { type IEnrollmentProvider } from '../typings'
-
-export const duplicateFoundMessage = `Duplicate exists for FaceMap you're trying to enroll.`
-export const successfullyEnrolledMessage = 'The FaceMap was successfully enrolled.'
-export const alreadyEnrolledMessage = 'The FaceMap was already enrolled.'
 
 class ZoomProvider implements IEnrollmentProvider {
   api = null

@@ -5,7 +5,8 @@ import { toUpper, upperFirst } from 'lodash'
 import allSettled from 'promise.allsettled'
 
 import config from '../../../server.config'
-import getZoomAPI, { ZoomAPIError } from '../ZoomAPI'
+import getZoomAPI from '../ZoomAPI'
+import { ZoomAPIError } from '../../constants'
 import createMockingHelper from './__util__'
 
 const ZoomAPI = getZoomAPI()

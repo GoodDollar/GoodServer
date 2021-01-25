@@ -3,6 +3,8 @@ import once from 'events.once'
 import { omit, isPlainObject, assign } from 'lodash'
 import Crypto from 'crypto'
 
+import { redactFieldsDuringLogging as fvRedact } from '../../server/verification/constants'
+
 export const createLoggerMiddleware = logger => (req, res, next) => {
   const startTime = Date.now()
   const uuid = Crypto.createHash('sha1')
@@ -20,7 +22,7 @@ export const createLoggerMiddleware = logger => (req, res, next) => {
     let { url, method, body: logBody, query, headers } = req
 
     if (url.startsWith('/verify/face/') && isPlainObject(logBody)) {
-      logBody = omit(logBody, 'faceMap', 'auditTrailImage', 'lowQualityAuditTrailImage')
+      logBody = omit(logBody, fvRedact)
     }
 
     log[aborted ? 'warn' : 'info']('http', logMessage, {

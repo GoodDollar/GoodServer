@@ -7,23 +7,17 @@ import { assign, get, pick, omit, isPlainObject, isArray, mapValues, once, lower
 import Config from '../../server.config'
 import logger from '../../../imports/logger'
 
-export const ZoomAPIError = {
-  FacemapNotFound: 'facemapNotFound',
-  FacemapDoesNotMatch: 'facemapNotMatch',
-  LivenessCheckFailed: 'livenessCheckFailed',
-  SecurityCheckFailed: 'securityCheckFailed',
-  NameCollision: 'nameCollision'
-}
-
-export const failedEnrollmentMessage = 'FaceMap could not be enrolled'
-export const failedLivenessMessage = 'Liveness could not be determined'
-export const failedMatchMessage = 'FaceMap could not be 3D-matched and updated'
-export const enrollmentNotFoundMessage = 'An enrollment does not exists for this enrollment identifier'
-export const enrollmentAlreadyExistsMessage = 'An enrollment already exists for this enrollment identifier'
-
-export const enrollmentIdFields = ['enrollmentIdentifier', 'externalDatabaseRefID', 'identifier']
-export const faceSnapshotFields = ['sessionId', 'faceScan', 'auditTrailImage', 'lowQualityAuditTrailImage']
-const redactFieldsDuringLogging = ['faceMapBase64', 'auditTrailBase64', ...faceSnapshotFields]
+import {
+  ZoomAPIError,
+  failedEnrollmentMessage,
+  failedLivenessMessage,
+  failedMatchMessage,
+  enrollmentNotFoundMessage,
+  enrollmentAlreadyExistsMessage,
+  enrollmentIdFields,
+  faceSnapshotFields,
+  redactFieldsDuringLogging
+} from '../constants'
 
 class ZoomAPI {
   http = null
