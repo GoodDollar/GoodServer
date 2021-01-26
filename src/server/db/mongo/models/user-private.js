@@ -1,11 +1,16 @@
 import mongoose, { Schema } from '../../mongo-db.js'
 import { MODEL_USER_PRIVATE } from './constants'
 
+export const caseInsensitive = { locale: 'en', strength: 2 }
+
 export const UserPrivateSchema = new Schema(
   {
     identifier: {
       type: String,
-      index: { unique: true },
+      index: {
+        unique: true,
+        collation: caseInsensitive
+      },
       required: true
     },
     fullName: {

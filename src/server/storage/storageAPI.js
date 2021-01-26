@@ -1,8 +1,10 @@
 // @flow
 import { Router } from 'express'
 import passport from 'passport'
-import { defaults, first, get, omitBy, sortBy, escapeRegExp } from 'lodash'
+import fetch from 'cross-fetch'
+import { defaults, first, get, omitBy, sortBy } from 'lodash'
 import { sha3, toChecksumAddress } from 'web3-utils'
+
 import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync, onlyInEnv } from '../utils/helpers'
 import requestTimeout from '../utils/timeout'
@@ -11,7 +13,7 @@ import conf from '../server.config'
 import addUserSteps from './addUserSteps'
 import createUserVerifier from './verifier'
 import { fishManager } from '../blockchain/stakingModelTasks'
-import fetch from 'cross-fetch'
+import { caseInsensitive } from '../db/mongo/models/user-private'
 
 const adminAuthenticate = (req, res, next) => {
   const { body } = req
@@ -355,30 +357,37 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
       const identifierLC = identifier.toLowerCase()
 
       const queryOrs = [
-        { identifier: identifierLC && new RegExp(escapeRegExp(identifierLC), 'i') },
+        { identifier: identifierLC },
         { email: email && sha3(email) },
         { mobile: mobile && sha3(mobile) }
       ].filter(or => !!Object.values(or)[0])
 
-      const existing = await storage.model
-        .find({
-          $or: queryOrs,
-          createdDate: { $exists: true }
-        })
-        .lean()
+      let query = await storage.model.find({
+        $or: queryOrs,
+        createdDate: { $exists: true }
+      })
 
-      //sort by importance
-      const existingSorted = sortBy(existing, [
-        e => e.identifier === identifierLC,
-        'isVerified',
-        'createdDate'
-      ]).reverse()
+      if (identifierLC) {
+        query = query.collation(caseInsensitive)
+      }
 
-      log.debug('userExists:', { existingSorted, existing, identifier, identifierLC, email, mobile })
+      // sort by importance, prefer oldest verified account
+      query.sort({ isVerified: -1, createdDate: 1 })
+
+      let existing = await query.lean()
+
+      if (identifierLC && (email || mobile)) {
+        // if email or phone also were specified we want
+        // to select matches by id first
+        // sortBy sorts in ascending order (and keeps existing sort)
+        // so non-matched by id results would be moved to the end
+        existing = sortBy(({ identifier }) => identifier.toLowerCase() != identifierLC)
+      }
+
+      log.debug('userExists:', { existing, identifier, identifierLC, email, mobile })
 
       if (existing.length) {
-        //prefer oldest verified account
-        const bestExisting = first(existingSorted)
+        const bestExisting = first(existing)
 
         return res.json({
           ok: 1,
