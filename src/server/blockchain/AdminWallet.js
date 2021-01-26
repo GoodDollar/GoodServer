@@ -181,9 +181,10 @@ export class Wallet {
 
     this.txManager.getTransactionCount = this.web3.eth.getTransactionCount
     this.mainnetTxManager.getTransactionCount = this.mainnetWeb3.eth.getTransactionCount
-    await this.txManager.createListIfNotExists(this.addresses)
-    await this.mainnetTxManager.createListIfNotExists(this.mainnetAddresses)
 
+    await this.txManager.createListIfNotExists(this.addresses)
+    // await this.mainnetTxManager.createListIfNotExists(this.mainnetAddresses)
+    log.info('Initialized wallet queue manager')
     if (conf.topAdminsOnStartup) {
       await this.topAdmins().catch(e => {
         log.warn('Top admins failed', { e, errMessage: e.message })
@@ -205,6 +206,7 @@ export class Wallet {
       } else log.warn('Failed adding mainnet admin wallet', { addr, mainnetBalance, adminMinBalance })
     })
     await Promise.all(ps)
+    log.info('Initialized adminwallet addresses')
 
     if (this.filledAddresses.length === 0) {
       log.error('no admin wallet with funds')
@@ -213,13 +215,14 @@ export class Wallet {
       })
       if (conf.env !== 'test' && conf.env !== 'development') process.exit(-1)
     }
-    if (this.mainnetAddresses.length === 0) {
-      sendSlackAlert({
-        msg: 'critical: no mainnet admin wallet with funds'
-      })
-      log.error('no admin wallet with funds for mainnet')
-      if (conf.env !== 'test') process.exit(-1)
-    }
+
+    // if (this.mainnetAddresses.length === 0) {
+    //   sendSlackAlert({
+    //     msg: 'critical: no mainnet admin wallet with funds'
+    //   })
+    //   log.error('no admin wallet with funds for mainnet')
+    //   if (conf.env !== 'test') process.exit(-1)
+    // }
 
     this.address = this.filledAddresses[0]
 
