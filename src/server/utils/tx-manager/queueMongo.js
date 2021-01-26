@@ -81,9 +81,8 @@ export default class queueMongo {
    * @returns {Promise<void>}
    */
   async createListIfNotExists(addresses) {
-    for (let address of addresses) {
-      await this.createWallet(address)
-    }
+    const ps = addresses.map(this.createWallet)
+    await Promise.all(ps)
   }
 
   /**
