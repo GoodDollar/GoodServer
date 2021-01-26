@@ -1,8 +1,6 @@
 import mongoose, { Schema } from '../../mongo-db.js'
 import { MODEL_USER_PRIVATE } from './constants'
 
-export const caseInsensitive = { locale: 'en', strength: 2 }
-
 export const UserPrivateSchema = new Schema(
   {
     identifier: {
@@ -93,7 +91,5 @@ export const UserPrivateSchema = new Schema(
   },
   { minimize: false }
 )
-
-UserPrivateSchema.index({ identifier: 1 }, { unique: true, collation: caseInsensitive, name: 'identifier_insensitive' })
 
 export default mongoose.model(MODEL_USER_PRIVATE, UserPrivateSchema)

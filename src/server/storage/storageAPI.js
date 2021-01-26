@@ -13,7 +13,6 @@ import conf from '../server.config'
 import addUserSteps from './addUserSteps'
 import createUserVerifier from './verifier'
 import { fishManager } from '../blockchain/stakingModelTasks'
-import { caseInsensitive } from '../db/mongo/models/user-private'
 
 const adminAuthenticate = (req, res, next) => {
   const { body } = req
@@ -362,26 +361,20 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         { mobile: mobile && sha3(mobile) }
       ].filter(or => !!Object.values(or)[0])
 
-      let query = await storage.model.find({
-        $or: queryOrs,
-        createdDate: { $exists: true }
-      })
-
-      if (identifierLC) {
-        query = query.collation(caseInsensitive)
-      }
-
-      // sort by importance, prefer oldest verified account
-      query.sort({ isVerified: -1, createdDate: 1 })
-
-      let existing = await query.lean()
+      let existing = await storage.model
+        .find({
+          $or: queryOrs,
+          createdDate: { $exists: true }
+        }) // sort by importance, prefer oldest verified account
+        .sort({ isVerified: -1, createdDate: 1 })
+        .lean()
 
       if (identifierLC && (email || mobile)) {
         // if email or phone also were specified we want
         // to select matches by id first
         // sortBy sorts in ascending order (and keeps existing sort)
         // so non-matched by id results would be moved to the end
-        existing = sortBy(({ identifier }) => identifier.toLowerCase() != identifierLC)
+        existing = sortBy(({ identifier }) => identifier !== identifierLC)
       }
 
       log.debug('userExists:', { existing, identifier, identifierLC, email, mobile })
@@ -394,7 +387,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           found: existing.length,
           exists: true,
           provider: bestExisting.torusProvider,
-          identifier: identifierLC === bestExisting.identifier.toLowerCase(),
+          identifier: identifierLC === bestExisting.identifier,
           email: email && sha3(email) === bestExisting.email,
           mobile: mobile && sha3(mobile) === bestExisting.mobile,
           fullName: bestExisting.fullName
