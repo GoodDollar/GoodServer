@@ -357,7 +357,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
       const identifierLC = identifier.toLowerCase()
 
       const queryOrs = [
-        { identifier: identifierLC },
+        { identifier: identifierLC }, // identifier is stored lowercase in the db. we lowercase addresses in the /auth/eth process
         { email: email && sha3(email) },
         { mobile: mobile && sha3(mobile) }
       ].filter(or => !!Object.values(or)[0])
