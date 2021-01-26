@@ -7,10 +7,7 @@ export const UserPrivateSchema = new Schema(
   {
     identifier: {
       type: String,
-      index: {
-        unique: true,
-        collation: caseInsensitive
-      },
+      index: { unique: true },
       required: true
     },
     fullName: {
@@ -96,5 +93,7 @@ export const UserPrivateSchema = new Schema(
   },
   { minimize: false }
 )
+
+UserPrivateSchema.index({ identifier: 1 }, { unique: true, collation: caseInsensitive, name: 'identifier_insensitive' })
 
 export default mongoose.model(MODEL_USER_PRIVATE, UserPrivateSchema)
