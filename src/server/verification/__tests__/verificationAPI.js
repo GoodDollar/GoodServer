@@ -225,7 +225,7 @@ describe('verificationAPI', () => {
     })
 
     test('PUT /verify/face/:enrollmentIdentifier returns 400 if user is being deleted', async () => {
-      await scheduleDisposalTask(storage, enrollmentIdentifier.toLowerCase(), DisposeAt.AccountRemoved)
+      await scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.AccountRemoved)
 
       await request(server)
         .put(enrollmentUri)
@@ -401,11 +401,9 @@ describe('verificationAPI', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200, { success: true })
 
-      await expect(
-        storage.hasTasksQueued(DISPOSE_ENROLLMENTS_TASK, {
-          subject: { enrollmentIdentifier: enrollmentIdentifier.toLowerCase(), executeAt: DisposeAt.AccountRemoved }
-        })
-      ).resolves.toBe(true)
+      const filters = forEnrollment(enrollmentIdentifier, DisposeAt.AccountRemoved)
+
+      await expect(storage.hasTasksQueued(DISPOSE_ENROLLMENTS_TASK, filters)).resolves.toBe(true)
     })
 
     test('DELETE /verify/face/:enrollmentIdentifier returns 400 and success = false if signature is invalid', async () => {

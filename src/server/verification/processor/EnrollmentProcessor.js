@@ -5,6 +5,7 @@ import moment from 'moment'
 import Config from '../../server.config'
 import AdminWallet from '../../blockchain/AdminWallet'
 import { ClaimQueue } from '../../claimQueue/claimQueueAPI'
+import { recoverPublickey } from '../../utils/eth'
 import logger from '../../../imports/logger'
 
 import { type IEnrollmentProvider } from './typings'
@@ -13,7 +14,7 @@ import { type DelayedTaskRecord } from '../../../imports/types'
 import EnrollmentSession from './EnrollmentSession'
 
 import getZoomProvider from './provider/ZoomProvider'
-import { DisposeAt, scheduleDisposalTask, DISPOSE_ENROLLMENTS_TASK } from '../cron/taskUtil'
+import { DisposeAt, scheduleDisposalTask, DISPOSE_ENROLLMENTS_TASK, forEnrollment } from '../cron/taskUtil'
 
 // count of chunks pending tasks should (approximately) be split to
 const DISPOSE_BATCH_AMOUNT = 10
@@ -77,9 +78,10 @@ class EnrollmentProcessor {
     log.info('Checking disposal state for enrollment', { enrollmentIdentifier })
 
     try {
-      const isDisposing = await storage.hasTasksQueued(DISPOSE_ENROLLMENTS_TASK, {
-        subject: { enrollmentIdentifier, executeAt: DisposeAt.AccountRemoved }
-      })
+      const isDisposing = await storage.hasTasksQueued(
+        DISPOSE_ENROLLMENTS_TASK,
+        forEnrollment(enrollmentIdentifier, DisposeAt.AccountRemoved)
+      )
 
       log.info('Got disposal state for enrollment', { enrollmentIdentifier, isDisposing })
       return isDisposing
@@ -115,6 +117,24 @@ class EnrollmentProcessor {
     if (isUserWhitelisted) {
       log.info('Wallet is whitelisted, making user non-whitelisted', { gdAddress })
       await adminApi.removeWhitelisted(gdAddress)
+    }
+
+    try {
+      // recoverPublickey() also could throw so we're wrapping its call to try block
+      const recovered = recoverPublickey(signature, enrollmentIdentifier, '')
+
+      if (recovered.substr(2) !== enrollmentIdentifier.toLowerCase()) {
+        throw new Error("Public key doesn't matches")
+      }
+    } catch {
+      const signerException = new Error(
+        `Unable to enqueue enrollment disposal: SigUtil unable to recover the message signer`
+      )
+
+      const logPayload = { e: signerException, errMessage: signerException.message, enrollmentIdentifier }
+
+      log.warn("Enrollment disposal: Couldn't confirm signer of the enrollment identifier sent", logPayload)
+      throw signerException
     }
 
     try {

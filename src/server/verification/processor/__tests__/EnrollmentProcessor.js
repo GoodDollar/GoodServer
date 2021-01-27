@@ -8,7 +8,7 @@ import AdminWallet from '../../../blockchain/AdminWallet'
 import { ClaimQueue } from '../../../claimQueue/claimQueueAPI'
 
 import createMockingHelper from '../../api/__tests__/__util__'
-import { DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment } from '../../cron/taskUtil'
+import { createTaskSubject, DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment } from '../../cron/taskUtil'
 import { noopAsync } from '../../../utils/async'
 
 let helper
@@ -194,10 +194,9 @@ describe('EnrollmentProcessor', () => {
 
     await enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)
 
-    expect(enqueueTaskMock).toHaveBeenCalledWith(DISPOSE_ENROLLMENTS_TASK, {
-      enrollmentIdentifier,
-      executeAt: DisposeAt.Reauthenticate
-    })
+    const subject = createTaskSubject(enrollmentIdentifier, DisposeAt.Reauthenticate)
+
+    expect(enqueueTaskMock).toHaveBeenCalledWith(DISPOSE_ENROLLMENTS_TASK, subject)
   })
 
   test('enroll() preserves existing tasks for identifier being enrolled', async () => {
@@ -246,10 +245,9 @@ describe('EnrollmentProcessor', () => {
   test('enqueueDisposal() enqueues disposal task', async () => {
     await expect(enrollmentProcessor.enqueueDisposal(user, enrollmentIdentifier, signature)).resolves.toBeUndefined()
 
-    expect(enqueueTaskMock).toHaveBeenCalledWith(DISPOSE_ENROLLMENTS_TASK, {
-      enrollmentIdentifier,
-      executeAt: DisposeAt.AccountRemoved
-    })
+    const subject = createTaskSubject(enrollmentIdentifier, DisposeAt.AccountRemoved)
+
+    expect(enqueueTaskMock).toHaveBeenCalledWith(DISPOSE_ENROLLMENTS_TASK, subject)
   })
 
   test("enqueueDisposal() de-whitelists user if it's whitelisted", async () => {

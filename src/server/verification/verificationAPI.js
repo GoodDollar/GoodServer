@@ -44,7 +44,6 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           throw new Error("Public key doesn't match")
         }
 
-        enrollmentIdentifier = enrollmentIdentifier.toLowerCase()
         const processor = createEnrollmentProcessor(storage, log)
 
         await processor.enqueueDisposal(user, enrollmentIdentifier, signature, log)
@@ -73,9 +72,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { params, log, user } = req
-      let { enrollmentIdentifier } = params
-
-      enrollmentIdentifier = enrollmentIdentifier.toLowerCase()
+      const { enrollmentIdentifier } = params
 
       try {
         const processor = createEnrollmentProcessor(storage, log)
@@ -131,10 +128,8 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { user, log, params, body: payload, isE2ERunning } = req
-      let { enrollmentIdentifier } = params
+      const { enrollmentIdentifier } = params
       let enrollmentResult
-
-      enrollmentIdentifier = enrollmentIdentifier.toLowerCase()
 
       // checking if request aborted to handle cases when connection is slow
       // and facemap / images were uploaded more that 30sec causing timeout
