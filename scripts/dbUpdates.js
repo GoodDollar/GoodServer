@@ -12,7 +12,6 @@ import conf from '../src/server/server.config'
 console.log(conf, process.env.NODE_ENV, process.env.TRAVIS)
 if (process.env.NODE_ENV === 'test' || process.env.TRAVIS === 'true') process.exit(0)
 
-const { DISPOSE_ENROLLMENTS_TASK } = require('../src/server/verification/cron/TaskService')
 const { default: UserPrivateModel } = require('../src/server/db/mongo/models/user-private')
 const { default: DelayedTaskModel } = require('../src/server/db/mongo/models/delayed-task')
 const { DatabaseVersion } = require('../src/server/db/mongo/models/props')
@@ -61,7 +60,7 @@ class DBUpdates {
     }
 
     if (version >= 2 && version < 3) {
-      await DelayedTaskModel.updateMany({ taskName: DISPOSE_ENROLLMENTS_TASK }, [{
+      await DelayedTaskModel.updateMany({}, [{
         $set: { 'subject.enrollmentIdentifier': { $toLower: "$subject.enrollmentIdentifier" }}
       }])
 
