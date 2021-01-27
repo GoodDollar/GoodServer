@@ -131,7 +131,7 @@ export class Wallet {
 
   async init() {
     log.debug('Initializing wallet:', { conf: conf.ethereum, mainnet: conf.ethereumMainnet })
-    // this.mainnetTxManager = getManager(conf.ethereumMainnet.network_id)
+    this.mainnetTxManager = getManager(conf.ethereumMainnet.network_id)
     this.txManager = getManager(conf.ethereum.network_id)
     this.web3 = new Web3(this.getWeb3TransportProvider(), null, {
       defaultBlock: 'latest',
@@ -180,10 +180,12 @@ export class Wallet {
     }
 
     this.txManager.getTransactionCount = this.web3.eth.getTransactionCount
-    // this.mainnetTxManager.getTransactionCount = this.mainnetWeb3.eth.getTransactionCount
+    this.mainnetTxManager.getTransactionCount = this.mainnetWeb3.eth.getTransactionCount
 
     await this.txManager.createListIfNotExists(this.addresses)
-    // await this.mainnetTxManager.createListIfNotExists(this.mainnetAddresses)
+
+    if (conf.env !== 'production') await this.mainnetTxManager.createListIfNotExists(this.mainnetAddresses)
+
     log.info('Initialized wallet queue manager')
     if (conf.topAdminsOnStartup) {
       await this.topAdmins().catch(e => {
@@ -193,7 +195,6 @@ export class Wallet {
 
     const ps = this.addresses.map(async addr => {
       const balance = await this.web3.eth.getBalance(addr)
-      // const mainnetBalance = await this.mainnetWeb3.eth.getBalance(addr)
 
       const isAdminWallet = await this.isVerifiedAdmin(addr)
       if (isAdminWallet && web3Utils.fromWei(balance, 'gwei') > adminMinBalance) {
@@ -201,10 +202,13 @@ export class Wallet {
         this.filledAddresses.push(addr)
       } else log.warn('Failed adding admin wallet', { addr, balance, isAdminWallet, adminMinBalance })
 
-      // if (web3Utils.fromWei(mainnetBalance, 'gwei') > adminMinBalance) {
-      //   log.info(`admin wallet ${addr} mainnet balance ${mainnetBalance}`)
-      //   this.mainnetAddresses.push(addr)
-      // } else log.warn('Failed adding mainnet admin wallet', { addr, mainnetBalance, adminMinBalance })
+      if (conf.env !== 'production') {
+        const mainnetBalance = await this.mainnetWeb3.eth.getBalance(addr)
+        if (web3Utils.fromWei(mainnetBalance, 'gwei') > adminMinBalance) {
+          log.info(`admin wallet ${addr} mainnet balance ${mainnetBalance}`)
+          this.mainnetAddresses.push(addr)
+        } else log.warn('Failed adding mainnet admin wallet', { addr, mainnetBalance, adminMinBalance })
+      }
     })
 
     await Promise.all(ps)
