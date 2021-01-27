@@ -259,12 +259,6 @@ describe('EnrollmentProcessor', () => {
     expect(removeWhitelistedMock).toHaveBeenCalledWith(user.gdAddress)
   })
 
-  test('enqueueDisposal() fails with invalid signature', async () => {
-    await expect(enrollmentProcessor.enqueueDisposal(user, enrollmentIdentifier, 'invalid-signature')).rejects.toThrow(
-      `Unable to enqueue enrollment disposal: SigUtil unable to recover the message signer`
-    )
-  })
-
   test('disposeEnqueuedEnrollments() calls callback, fails unsuccessfull tasks and removes successfull tasks from queue', async () => {
     const unexistingEnrollmentIdentifier = 'unexisting-enrollment-identifier'
     const failedEnrollmentIdentifier = 'failed-enrollment-identifier'
