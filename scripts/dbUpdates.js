@@ -1,7 +1,7 @@
 //@flow
 import Gun from '@gooddollar/gun'
 import { sha3 } from 'web3-utils'
-import { delay } from 'lodash'
+import { delay, chunk, flattenDeep } from 'lodash'
 import logger from '../src/imports/logger'
 import { type UserRecord } from '../src/imports/types'
 import { GunDBPublic } from '../src/server/gun/gun-middleware'
@@ -13,7 +13,6 @@ console.log(conf, process.env.NODE_ENV, process.env.TRAVIS)
 if (process.env.NODE_ENV === 'test' || process.env.TRAVIS === 'true') process.exit(0)
 
 const { default: UserPrivateModel } = require('../src/server/db/mongo/models/user-private')
-const { default: DelayedTaskModel } = require('../src/server/db/mongo/models/delayed-task')
 const { DatabaseVersion } = require('../src/server/db/mongo/models/props')
 
 class DBUpdates {
@@ -56,15 +55,6 @@ class DBUpdates {
         })
 
       dbversion.value.version = 2
-      await dbversion.save()
-    }
-
-    if (version >= 2 && version < 3) {
-      await DelayedTaskModel.updateMany({}, [{
-        $set: { 'subject.enrollmentIdentifier': { $toLower: "$subject.enrollmentIdentifier" }}
-      }])
-
-      dbversion.value.version = 3
       await dbversion.save()
     }
   }

@@ -16,7 +16,7 @@ import { getToken, getCreds } from '../../__util__/'
 import createMockingHelper from '../api/__tests__/__util__'
 
 import * as awsSes from '../../aws-ses/aws-ses'
-import { DisposeAt, DISPOSE_ENROLLMENTS_TASK } from '../cron/TaskService'
+import { DisposeAt, scheduleDisposalTask, DISPOSE_ENROLLMENTS_TASK, forEnrollment } from '../cron/taskUtil'
 
 describe('verificationAPI', () => {
   let server
@@ -147,10 +147,8 @@ describe('verificationAPI', () => {
     })
 
     beforeEach(async () => {
-      const { getTaskFilters } = enrollmentProcessor.tasksApi
-
       await storage.updateUser({ identifier: userIdentifier, isVerified: false, claimQueue: null })
-      await storage.taskModel.deleteMany(getTaskFilters(enrollmentIdentifier))
+      await storage.taskModel.deleteMany(forEnrollment(enrollmentIdentifier))
 
       enrollmentProcessor.keepEnrollments = 24
       isVerifiedMock.mockResolvedValue(false)
@@ -227,7 +225,7 @@ describe('verificationAPI', () => {
     })
 
     test('PUT /verify/face/:enrollmentIdentifier returns 400 if user is being deleted', async () => {
-      await enrollmentProcessor.tasksApi.scheduleDisposalTask(enrollmentIdentifier, DisposeAt.AccountRemoved)
+      await scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.AccountRemoved)
 
       await request(server)
         .put(enrollmentUri)
