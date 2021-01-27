@@ -2,7 +2,7 @@
 import { assign, bindAll, omit } from 'lodash'
 import { type IEnrollmentEventPayload } from './typings'
 import logger from '../../../imports/logger'
-import { DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment, scheduleDisposalTask } from '../cron/taskUtil'
+import { DisposeAt } from '../cron/TaskService'
 
 const log = logger.child({ from: 'EnrollmentSession' })
 
@@ -15,7 +15,7 @@ export default class EnrollmentSession {
   queueApi = null
   enrollmentIdentifier = null
 
-  constructor(enrollmentIdentifier, user, provider, storage, adminApi, queueApi, customLogger = null) {
+  constructor(enrollmentIdentifier, user, provider, storage, adminApi, queueApi, tasksApi, customLogger = null) {
     this.log = customLogger || log
 
     assign(this, {
@@ -24,6 +24,7 @@ export default class EnrollmentSession {
       storage,
       adminApi,
       queueApi,
+      tasksApi,
       enrollmentIdentifier
     })
 
@@ -70,10 +71,9 @@ export default class EnrollmentSession {
   }
 
   async onEnrollmentStarted() {
-    const { storage, enrollmentIdentifier } = this
-    const filters = forEnrollment(enrollmentIdentifier)
+    const { tasksApi, enrollmentIdentifier } = this
 
-    await storage.fetchTasksForProcessing(DISPOSE_ENROLLMENTS_TASK, filters)
+    await tasksApi.lockDisposalTask(enrollmentIdentifier)
   }
 
   onEnrollmentProcessing(processingPayload: IEnrollmentEventPayload) {
@@ -93,7 +93,7 @@ export default class EnrollmentSession {
   }
 
   async onEnrollmentCompleted() {
-    const { user, storage, adminApi, queueApi, log, enrollmentIdentifier } = this
+    const { user, storage, adminApi, queueApi, tasksApi, log, enrollmentIdentifier } = this
     const { gdAddress, profilePublickey, loggedInAs } = user
 
     log.info('Whitelisting user:', { loggedInAs })
@@ -102,18 +102,17 @@ export default class EnrollmentSession {
       queueApi.setWhitelisted(user, storage, log).catch(e => log.warn('claim queue update failed', e.message, e)),
       adminApi.whitelistUser(gdAddress, profilePublickey),
       storage.updateUser({ identifier: loggedInAs, isVerified: true }),
-      scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.Reauthenticate).catch(e =>
-        log.error('adding facemap to re-auth dispose queue failed:', e.message, e)
-      )
+      tasksApi
+        .scheduleDisposalTask(enrollmentIdentifier, DisposeAt.Reauthenticate)
+        .catch(e => log.error('adding facemap to re-auth dispose queue failed:', e.message, e))
     ])
 
     log.info('Successfully whitelisted user:', { loggedInAs })
   }
 
   async onEnrollmentFailed() {
-    const { storage, enrollmentIdentifier } = this
-    const filters = forEnrollment(enrollmentIdentifier)
+    const { tasksApi, enrollmentIdentifier } = this
 
-    await storage.unlockDelayedTasks(DISPOSE_ENROLLMENTS_TASK, filters)
+    await tasksApi.unlockDisposalTask(enrollmentIdentifier)
   }
 }

@@ -1,8 +1,6 @@
 // @flow
-import { chunk, noop } from 'lodash'
-import moment from 'moment'
+import { assign, chunk, noop } from 'lodash'
 
-import Config from '../../server.config'
 import AdminWallet from '../../blockchain/AdminWallet'
 import { ClaimQueue } from '../../claimQueue/claimQueueAPI'
 import { recoverPublickey } from '../../utils/eth'
@@ -14,7 +12,7 @@ import { type DelayedTaskRecord } from '../../../imports/types'
 import EnrollmentSession from './EnrollmentSession'
 
 import getZoomProvider from './provider/ZoomProvider'
-import { DisposeAt, scheduleDisposalTask, DISPOSE_ENROLLMENTS_TASK } from '../cron/taskUtil'
+import createTaskService, { DisposeAt } from '../cron/TaskService'
 
 // count of chunks pending tasks should (approximately) be split to
 const DISPOSE_BATCH_AMOUNT = 10
@@ -27,7 +25,7 @@ class EnrollmentProcessor {
   storage = null
   adminApi = null
   queueApi = null
-  keepEnrollments = null
+  tasksApi = null
 
   _provider = null
 
@@ -41,14 +39,8 @@ class EnrollmentProcessor {
     return _provider
   }
 
-  constructor(config, storage, adminApi, queueApi, logger) {
-    const { keepFaceVerificationRecords } = config
-
-    this.logger = logger
-    this.storage = storage
-    this.adminApi = adminApi
-    this.queueApi = queueApi
-    this.keepEnrollments = keepFaceVerificationRecords
+  constructor(storage, adminApi, queueApi, tasksApi, logger) {
+    assign(this, { logger, storage, adminApi, queueApi, tasksApi })
   }
 
   registerProvier(provider: IEnrollmentProvider): void {
@@ -72,15 +64,13 @@ class EnrollmentProcessor {
   }
 
   async isEnqueuedForDisposal(enrollmentIdentifier: string, customLogger = null): Promise<boolean> {
-    const { storage, logger } = this
+    const { logger, tasksApi } = this
     const log = customLogger || logger
 
     log.info('Checking disposal state for enrollment', { enrollmentIdentifier })
 
     try {
-      const isDisposing = await storage.hasTasksQueued(DISPOSE_ENROLLMENTS_TASK, {
-        subject: { enrollmentIdentifier, executeAt: DisposeAt.AccountRemoved }
-      })
+      const isDisposing = await tasksApi.hasDisposalTask(enrollmentIdentifier)
 
       log.info('Got disposal state for enrollment', { enrollmentIdentifier, isDisposing })
       return isDisposing
@@ -105,7 +95,7 @@ class EnrollmentProcessor {
   }
 
   async enqueueDisposal(user: any, enrollmentIdentifier: string, signature: string, customLogger = null) {
-    const { storage, adminApi, logger } = this
+    const { adminApi, logger, tasksApi } = this
     const log = customLogger || logger
 
     log.info('Requested disposal for enrollment', { enrollmentIdentifier })
@@ -138,7 +128,7 @@ class EnrollmentProcessor {
 
     try {
       // don't pass user to task records to keep privacy
-      const task = await scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.AccountRemoved)
+      const task = await tasksApi.scheduleDisposalTask(enrollmentIdentifier, DisposeAt.AccountRemoved)
 
       log.info('Enqueued enrollment disposal task', { enrollmentIdentifier, taskId: task._id })
     } catch (exception) {
@@ -154,37 +144,11 @@ class EnrollmentProcessor {
     onProcessed: (identifier: string, exception?: Error) => void = noop,
     customLogger = null
   ): Promise<void> {
-    const { Reauthenticate, AccountRemoved } = DisposeAt
-    const { storage, adminApi, keepEnrollments, logger } = this
+    const { logger, tasksApi } = this
     const log = customLogger || logger
 
-    const authenticationPeriod = await adminApi.getAuthenticationPeriod()
-    const deletedAccountFilters = { 'subject.executeAt': AccountRemoved }
-
-    if (keepEnrollments > 0) {
-      deletedAccountFilters.createdAt = {
-        $lte: moment()
-          .subtract(keepEnrollments, 'hours')
-          .toDate()
-      }
-    }
-
-    const enqueuedAtFilters = {
-      $or: [
-        deletedAccountFilters,
-        {
-          'subject.executeAt': Reauthenticate,
-          createdAt: {
-            $lte: moment()
-              .subtract(authenticationPeriod + 1, 'days') //give extra one day before we delete
-              .toDate()
-          }
-        }
-      ]
-    }
-
     try {
-      const enqueuedDisposalTasks = await storage.fetchTasksForProcessing(DISPOSE_ENROLLMENTS_TASK, enqueuedAtFilters)
+      const enqueuedDisposalTasks = await tasksApi.fetchDisposalTasks()
       const enqueuedTasksCount = enqueuedDisposalTasks.length
 
       if (enqueuedTasksCount <= 0) {
@@ -198,8 +162,7 @@ class EnrollmentProcessor {
 
       log.info('Enqueued disposal tasks fetched and ready to processing', {
         enqueuedTasksCount,
-        disposeBatchSize,
-        authenticationPeriod
+        disposeBatchSize
       })
 
       await chunkedDisposalTasks.reduce(
@@ -216,9 +179,18 @@ class EnrollmentProcessor {
   }
 
   createEnrollmentSession(enrollmentIdentifier, user, customLogger = null) {
-    const { provider, storage, adminApi, queueApi } = this
+    const { provider, storage, adminApi, queueApi, tasksApi } = this
 
-    return new EnrollmentSession(enrollmentIdentifier, user, provider, storage, adminApi, queueApi, customLogger)
+    return new EnrollmentSession(
+      enrollmentIdentifier,
+      user,
+      provider,
+      storage,
+      adminApi,
+      queueApi,
+      tasksApi,
+      customLogger
+    )
   }
 
   /**
@@ -267,11 +239,12 @@ class EnrollmentProcessor {
 }
 
 const enrollmentProcessors = new WeakMap()
+const defaultLogger = logger.child({ from: 'EnrollmentProcessor' })
 
-export default (storage, log) => {
+export default (storage, log = defaultLogger) => {
   if (!enrollmentProcessors.has(storage)) {
-    log = log || logger.child({ from: 'EnrollmentProcessor' })
-    const enrollmentProcessor = new EnrollmentProcessor(Config, storage, AdminWallet, ClaimQueue, log)
+    const tasksService = createTaskService(storage)
+    const enrollmentProcessor = new EnrollmentProcessor(storage, AdminWallet, ClaimQueue, tasksService, log)
 
     enrollmentProcessor.registerProvier(getZoomProvider())
     enrollmentProcessors.set(storage, enrollmentProcessor)

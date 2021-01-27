@@ -8,7 +8,7 @@ import AdminWallet from '../../../blockchain/AdminWallet'
 import { ClaimQueue } from '../../../claimQueue/claimQueueAPI'
 
 import createMockingHelper from '../../api/__tests__/__util__'
-import { DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment } from '../../cron/taskUtil'
+import { DisposeAt, DISPOSE_ENROLLMENTS_TASK } from '../../cron/TaskService'
 import { noopAsync } from '../../../utils/async'
 
 let helper
@@ -194,10 +194,10 @@ describe('EnrollmentProcessor', () => {
 
     await enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)
 
-    expect(enqueueTaskMock).toHaveBeenCalledWith(DISPOSE_ENROLLMENTS_TASK, {
-      enrollmentIdentifier,
-      executeAt: DisposeAt.Reauthenticate
-    })
+    const { createTaskSubject } = enrollmentProcessor.tasksApi
+    const subjectMatchTo = createTaskSubject(enrollmentIdentifier, DisposeAt.Reauthenticate)
+
+    expect(enqueueTaskMock).toHaveBeenCalledWith(DISPOSE_ENROLLMENTS_TASK, subjectMatchTo)
   })
 
   test('enroll() preserves existing tasks for identifier being enrolled', async () => {
@@ -208,13 +208,15 @@ describe('EnrollmentProcessor', () => {
 
     await enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)
 
+    const { getTaskFilters } = enrollmentProcessor.tasksApi
+
     // check for lock called
     expect(fetchTasksForProcessingMock).toHaveBeenCalledWith(
       DISPOSE_ENROLLMENTS_TASK,
-      forEnrollment(enrollmentIdentifier)
+      getTaskFilters(enrollmentIdentifier)
     )
     // check for unlock called
-    expect(unlockDelayedTasksMock).toHaveBeenCalledWith(DISPOSE_ENROLLMENTS_TASK, forEnrollment(enrollmentIdentifier))
+    expect(unlockDelayedTasksMock).toHaveBeenCalledWith(DISPOSE_ENROLLMENTS_TASK, getTaskFilters(enrollmentIdentifier))
   })
 
   test("enroll() proxies provider's error", async () => {
@@ -246,10 +248,10 @@ describe('EnrollmentProcessor', () => {
   test('enqueueDisposal() enqueues disposal task', async () => {
     await expect(enrollmentProcessor.enqueueDisposal(user, enrollmentIdentifier, signature)).resolves.toBeUndefined()
 
-    expect(enqueueTaskMock).toHaveBeenCalledWith(DISPOSE_ENROLLMENTS_TASK, {
-      enrollmentIdentifier,
-      executeAt: DisposeAt.AccountRemoved
-    })
+    const { createTaskSubject } = enrollmentProcessor.tasksApi
+    const subjectMatchTo = createTaskSubject(enrollmentIdentifier, DisposeAt.AccountRemoved)
+
+    expect(enqueueTaskMock).toHaveBeenCalledWith(DISPOSE_ENROLLMENTS_TASK, subjectMatchTo)
   })
 
   test("enqueueDisposal() de-whitelists user if it's whitelisted", async () => {
