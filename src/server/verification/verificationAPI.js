@@ -14,9 +14,9 @@ import OTP from '../../imports/otp'
 import conf from '../server.config'
 import { Mautic } from '../mautic/mauticAPI'
 import { sendTemplateEmail } from '../aws-ses/aws-ses'
-import { recoverPublickey } from '../utils/eth'
 
 import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
+import { verifySignature } from '../utils/eth'
 
 const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, storage: StorageAPI) => {
   /**
@@ -34,19 +34,14 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { params, query, log, user } = req
-      let { enrollmentIdentifier } = params
+      const { enrollmentIdentifier } = params
       const { signature } = query
 
       try {
-        const recovered = recoverPublickey(signature, enrollmentIdentifier, '')
-
-        if (recovered.substr(2) !== enrollmentIdentifier.toLowerCase()) {
-          throw new Error("Public key doesn't match")
-        }
-
         const processor = createEnrollmentProcessor(storage, log)
 
-        await processor.enqueueDisposal(user, enrollmentIdentifier, signature, log)
+        await verifySignature(enrollmentIdentifier, signature)
+        await processor.enqueueDisposal(user, enrollmentIdentifier, log)
       } catch (exception) {
         const { message } = exception
         log.error('delete face record failed:', message, exception, { enrollmentIdentifier, user })

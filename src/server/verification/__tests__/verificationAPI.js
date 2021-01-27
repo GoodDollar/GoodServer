@@ -413,18 +413,7 @@ describe('verificationAPI', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(400, {
           success: false,
-          error: 'The recovery param is more than two bits'
-        })
-    })
-
-    test('DELETE /verify/face/:enrollmentIdentifier returns 400 and success = false if signature is invalid', async () => {
-      await request(server)
-        .delete(enrollmentUri.toLowerCase())
-        .query({ signature })
-        .set('Authorization', `Bearer ${token}`)
-        .expect(400, {
-          success: false,
-          error: "Public key doesn't match"
+          error: 'SigUtil unable to recover the message signer'
         })
     })
 

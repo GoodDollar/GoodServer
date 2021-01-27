@@ -243,7 +243,7 @@ describe('EnrollmentProcessor', () => {
   })
 
   test('enqueueDisposal() enqueues disposal task', async () => {
-    await expect(enrollmentProcessor.enqueueDisposal(user, enrollmentIdentifier, signature)).resolves.toBeUndefined()
+    await expect(enrollmentProcessor.enqueueDisposal(user, enrollmentIdentifier)).resolves.toBeUndefined()
 
     const subject = createTaskSubject(enrollmentIdentifier, DisposeAt.AccountRemoved)
 
@@ -253,7 +253,7 @@ describe('EnrollmentProcessor', () => {
   test("enqueueDisposal() de-whitelists user if it's whitelisted", async () => {
     isVerifiedMock.mockResolvedValueOnce(true)
 
-    await expect(enrollmentProcessor.enqueueDisposal(user, enrollmentIdentifier, signature)).resolves.toBeUndefined()
+    await expect(enrollmentProcessor.enqueueDisposal(user, enrollmentIdentifier)).resolves.toBeUndefined()
     expect(removeWhitelistedMock).toHaveBeenCalledWith(user.gdAddress)
   })
 

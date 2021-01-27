@@ -5,7 +5,6 @@ import moment from 'moment'
 import Config from '../../server.config'
 import AdminWallet from '../../blockchain/AdminWallet'
 import { ClaimQueue } from '../../claimQueue/claimQueueAPI'
-import { recoverPublickey } from '../../utils/eth'
 import logger from '../../../imports/logger'
 
 import { type IEnrollmentProvider } from './typings'
@@ -105,7 +104,7 @@ class EnrollmentProcessor {
     return session.enroll(payload)
   }
 
-  async enqueueDisposal(user: any, enrollmentIdentifier: string, signature: string, customLogger = null) {
+  async enqueueDisposal(user: any, enrollmentIdentifier: string, customLogger = null) {
     const { storage, adminApi, logger } = this
     const log = customLogger || logger
 
@@ -117,24 +116,6 @@ class EnrollmentProcessor {
     if (isUserWhitelisted) {
       log.info('Wallet is whitelisted, making user non-whitelisted', { gdAddress })
       await adminApi.removeWhitelisted(gdAddress)
-    }
-
-    try {
-      // recoverPublickey() also could throw so we're wrapping its call to try block
-      const recovered = recoverPublickey(signature, enrollmentIdentifier, '')
-
-      if (recovered.substr(2) !== enrollmentIdentifier.toLowerCase()) {
-        throw new Error("Public key doesn't matches")
-      }
-    } catch {
-      const signerException = new Error(
-        `Unable to enqueue enrollment disposal: SigUtil unable to recover the message signer`
-      )
-
-      const logPayload = { e: signerException, errMessage: signerException.message, enrollmentIdentifier }
-
-      log.warn("Enrollment disposal: Couldn't confirm signer of the enrollment identifier sent", logPayload)
-      throw signerException
     }
 
     try {
