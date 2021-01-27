@@ -14,6 +14,7 @@ import OTP from '../../imports/otp'
 import conf from '../server.config'
 import { Mautic } from '../mautic/mauticAPI'
 import { sendTemplateEmail } from '../aws-ses/aws-ses'
+import { recoverPublickey } from '../utils/eth'
 
 import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 
@@ -33,10 +34,17 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { params, query, log, user } = req
-      const { enrollmentIdentifier } = params
+      let { enrollmentIdentifier } = params
       const { signature } = query
 
       try {
+        const recovered = recoverPublickey(signature, enrollmentIdentifier, '')
+
+        if (recovered.substr(2) !== enrollmentIdentifier.toLowerCase()) {
+          throw new Error("Public key doesn't match")
+        }
+
+        enrollmentIdentifier = enrollmentIdentifier.toLowerCase()
         const processor = createEnrollmentProcessor(storage, log)
 
         await processor.enqueueDisposal(user, enrollmentIdentifier, signature, log)
@@ -65,7 +73,9 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { params, log, user } = req
-      const { enrollmentIdentifier } = params
+      let { enrollmentIdentifier } = params
+
+      enrollmentIdentifier = enrollmentIdentifier.toLowerCase()
 
       try {
         const processor = createEnrollmentProcessor(storage, log)
@@ -121,8 +131,10 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { user, log, params, body: payload, isE2ERunning } = req
-      const { enrollmentIdentifier } = params
+      let { enrollmentIdentifier } = params
       let enrollmentResult
+
+      enrollmentIdentifier = enrollmentIdentifier.toLowerCase()
 
       // checking if request aborted to handle cases when connection is slow
       // and facemap / images were uploaded more that 30sec causing timeout

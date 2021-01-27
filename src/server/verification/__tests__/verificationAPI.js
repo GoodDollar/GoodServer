@@ -225,7 +225,7 @@ describe('verificationAPI', () => {
     })
 
     test('PUT /verify/face/:enrollmentIdentifier returns 400 if user is being deleted', async () => {
-      await scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.AccountRemoved)
+      await scheduleDisposalTask(storage, enrollmentIdentifier.toLowerCase(), DisposeAt.AccountRemoved)
 
       await request(server)
         .put(enrollmentUri)
@@ -403,7 +403,7 @@ describe('verificationAPI', () => {
 
       await expect(
         storage.hasTasksQueued(DISPOSE_ENROLLMENTS_TASK, {
-          subject: { enrollmentIdentifier: enrollmentIdentifier, executeAt: DisposeAt.AccountRemoved }
+          subject: { enrollmentIdentifier: enrollmentIdentifier.toLowerCase(), executeAt: DisposeAt.AccountRemoved }
         })
       ).resolves.toBe(true)
     })
@@ -415,7 +415,18 @@ describe('verificationAPI', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(400, {
           success: false,
-          error: 'Unable to enqueue enrollment disposal: SigUtil unable to recover the message signer'
+          error: 'The recovery param is more than two bits'
+        })
+    })
+
+    test('DELETE /verify/face/:enrollmentIdentifier returns 400 and success = false if signature is invalid', async () => {
+      await request(server)
+        .delete(enrollmentUri.toLowerCase())
+        .query({ signature })
+        .set('Authorization', `Bearer ${token}`)
+        .expect(400, {
+          success: false,
+          error: "Public key doesn't match"
         })
     })
 

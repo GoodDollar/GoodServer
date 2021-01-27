@@ -14,6 +14,7 @@ if (process.env.NODE_ENV === 'test' || process.env.TRAVIS === 'true') process.ex
 
 const { default: UserPrivateModel } = require('../src/server/db/mongo/models/user-private')
 const { DatabaseVersion } = require('../src/server/db/mongo/models/props')
+const { default: DelayedTaskModel } = require('../src/server/db/mongo/models/delayed-task')
 
 class DBUpdates {
   async runUpgrades() {
@@ -55,6 +56,17 @@ class DBUpdates {
         })
 
       dbversion.value.version = 2
+      await dbversion.save()
+    }
+
+    if (version >= 2 && version < 3) {
+      await DelayedTaskModel.updateMany({}, [
+        {
+          $set: { 'subject.enrollmentIdentifier': { $toLower: '$subject.enrollmentIdentifier' } }
+        }
+      ])
+
+      dbversion.value.version = 3
       await dbversion.save()
     }
   }
