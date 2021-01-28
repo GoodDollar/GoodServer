@@ -374,7 +374,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         // to select matches by id first
         // sortBy sorts in ascending order (and keeps existing sort)
         // so non-matched by id results would be moved to the end
-        existing = sortBy(({ identifier }) => identifier !== identifierLC)
+        existing = sortBy(existing, ({ identifier }) => identifier !== identifierLC)
       }
 
       log.debug('userExists:', { existing, identifier, identifierLC, email, mobile })
