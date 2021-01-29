@@ -14,7 +14,7 @@ let server
 
 describe('GunDB', () => {
   beforeAll(async done => {
-    server = await makeServer(done)
+    server = await makeServer(done, 'guntest')
   })
 
   afterAll(done => {

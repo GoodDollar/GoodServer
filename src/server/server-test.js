@@ -12,7 +12,7 @@ import startApp from './app'
 
 const PORT = conf.port || 4000
 
-const makeServer = async done => {
+const makeServer = async (done, gunName = 'publicdb') => {
   const app = await startApp()
   let server
   let serverPromise = new Promise(async (res, rej) => {
@@ -24,7 +24,7 @@ const makeServer = async done => {
     })
     await AdminWallet.ready
     const pkey = AdminWallet.wallets[AdminWallet.addresses[0]].privateKey.slice(2)
-    GunDBPublic.init(server, pkey, 'publicdb')
+    await GunDBPublic.init(server, pkey, gunName)
   })
   serverPromise
     .then(x => mongoose.connection.readyState)
