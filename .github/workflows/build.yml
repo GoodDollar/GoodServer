@@ -68,7 +68,7 @@ jobs:
       TRAVIS: true
       NETWORK: develop
       MNEMONIC: 'myth like bonus scare over problem client lizard pioneer submit female collect'
-      ADMIN_MNEMONIC: 'they bus duty candy uncover assault bullet kitchen kit acid spin physical'
+      ADMIN_MNEMONIC: 'audit jealous snake hospital hello away diary wedding hold across nice tribe'
       MAUTIC_BASIC_TOKEN: ${{ secrets.MAUTIC_BASIC_TOKEN }}
       CI: false
     runs-on: ubuntu-latest
