@@ -46,7 +46,7 @@
   "homepage": "https://gooddollar.org",
   "dependencies": {
     "@babel/polyfill": "^7.11.5",
-    "@gooddollar/goodcontracts": "^2.2.5",
+    "@gooddollar/goodcontracts": "^2.6.0",
     "@gooddollar/gun": "^0.2020.910",
     "@gooddollar/gun-pk-auth": "^1.1.0",
     "@sendgrid/mail": "^6.5.5",
