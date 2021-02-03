@@ -9,7 +9,7 @@
   "scripts": {
     "build": "webpack --mode production --config webpack.server.config.js",
     "postbuild": "babel-node scripts/dbUpdates.js",
-    "test": "jest --silent=false --forceExit --detectOpenHandles --maxWorkers=1",
+    "test": "jest --silent=false --verbose=false --forceExit --detectOpenHandles --maxWorkers=1",
     "test:staging": "jest --forceExit --detectOpenHandles",
     "test:setup": "./scripts/blockchainTestSetup.sh",
     "coverage": "jest --forceExit --detectOpenHandles --coverage --maxWorkers=1",
