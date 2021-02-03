@@ -71,7 +71,7 @@ jobs:
       ADMIN_MNEMONIC: 'audit jealous snake hospital hello away diary wedding hold across nice tribe'
       MAUTIC_BASIC_TOKEN: ${{ secrets.MAUTIC_BASIC_TOKEN }}
       CI: false
-      LOG_LEVEL: error
+      # LOG_LEVEL: error
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -89,7 +89,8 @@ jobs:
           MNEMONIC: ${{ env.ADMIN_MNEMONIC }}
         run: |
           echo "using mnemonic for admin: ${MNEMONIC}"
-          npm run coverage -- --silent
+          npm run test -- src/server/gun/__tests__/GunDB.js src/server/send/__tests__/sendAPI.js
+          # npm run coverage -- --silent
           # npm run coveralls
           npm run build
           pkill -f ganache
