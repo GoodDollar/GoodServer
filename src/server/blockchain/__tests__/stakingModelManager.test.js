@@ -3,8 +3,6 @@ import { fundManager } from '../stakingModelTasks'
 import delay from 'delay'
 import { version } from '@gooddollar/goodcontracts/package.json'
 
-jest.setTimeout(20000)
-
 const next_interval = async function(interval = 5760) {
   let blocks = interval
   let ps = []

@@ -12,8 +12,6 @@ const testTaskName = 'mongo_test'
 const testTaskSubject = 'test_subject'
 const testUser = { identifier: '00', fullName: testUserName, email: 'test@test.test', mobile: '123456789' }
 
-jest.setTimeout(30000)
-
 describe('UserPrivate', () => {
   const { model: userModel, taskModel } = storage
 

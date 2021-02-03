@@ -8,7 +8,6 @@ import { getToken } from '../../__util__/'
 import UserDBPrivate from '../../db/mongo/user-privat-provider'
 import { Mautic } from '../../mautic/mauticAPI'
 import AdminWallet from '../../blockchain/AdminWallet'
-jest.setTimeout(20000)
 describe('sendAPÏ', () => {
   let server
   beforeAll(async done => {

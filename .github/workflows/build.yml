@@ -71,6 +71,7 @@ jobs:
       ADMIN_MNEMONIC: 'audit jealous snake hospital hello away diary wedding hold across nice tribe'
       MAUTIC_BASIC_TOKEN: ${{ secrets.MAUTIC_BASIC_TOKEN }}
       CI: false
+      LOG_LEVEL: error
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2

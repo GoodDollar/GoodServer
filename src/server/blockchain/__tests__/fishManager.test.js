@@ -2,8 +2,6 @@ import AdminWallet from '../AdminWallet'
 import { fishManager } from '../stakingModelTasks'
 import { version } from '@gooddollar/goodcontracts/package.json'
 
-jest.setTimeout(20000)
-
 const setNextDay = async () => {
   await AdminWallet.web3.currentProvider.send('evm_increaseTime', 60 * 60 * 24).catch(e => console.log(e))
   await AdminWallet.web3.currentProvider.send('evm_mine').catch(e => console.log(e))

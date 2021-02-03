@@ -8,8 +8,6 @@ import { recoverPublickey } from '../../server/utils/eth'
 import TorusVerifier from '../torusVerifier'
 import createUserVerifier from '../../server/storage/verifier'
 
-jest.setTimeout(20000)
-
 describe('Test torus email/mobile to address', () => {
   //const strategies = ['google', 'google-old', 'auth0-pwdless-sms', 'auth0-pwdless-email']
   const strategies = ['auth0-pwdless-email']

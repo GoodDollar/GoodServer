@@ -8,8 +8,6 @@ import type { UserRecord } from '../../../imports/types'
 import addUserSteps from '../addUserSteps'
 import { getCreds, utmString } from '../../__util__'
 
-jest.setTimeout(30000)
-
 describe('storageAPI', () => {
   const isCompletedAllFalse = {
     whiteList: false,

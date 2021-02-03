@@ -6,7 +6,6 @@ import getTaskRunner from '../TaskRunner'
 import { noopAsync } from '../../utils/async'
 
 const TaskRunner = getTaskRunner()
-jest.setTimeout(20000)
 
 describe('TaskRunner', () => {
   const testTask = {

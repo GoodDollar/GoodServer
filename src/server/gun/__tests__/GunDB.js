@@ -9,12 +9,12 @@ import { sha3 } from 'web3-utils'
 import request from 'supertest'
 import makeServer from '../../server-test'
 
-jest.setTimeout(10000)
 let server
 
 describe('GunDB', () => {
   beforeAll(async done => {
     server = await makeServer(done, 'guntest')
+    console.log('GunDB: server ready')
   })
 
   afterAll(done => {

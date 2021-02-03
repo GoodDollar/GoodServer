@@ -10,7 +10,6 @@ import { getToken, getCreds } from '../../__util__'
 import UserDBPrivate from '../../db/mongo/user-privat-provider'
 import { ClaimQueueProps } from '../../db/mongo/models/props'
 
-jest.setTimeout(15000)
 describe('claimQueueAPI', () => {
   let server, creds, token
   const { claimQueueAllowed } = conf
@@ -21,7 +20,6 @@ describe('claimQueueAPI', () => {
     await UserDBPrivate.model.deleteMany({ claimQueue: { $exists: true } })
     await ClaimQueueProps.deleteMany({})
 
-    jest.setTimeout(30000)
     server = await makeServer(done)
   })
 
