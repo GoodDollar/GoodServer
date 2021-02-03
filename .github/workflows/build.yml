@@ -59,8 +59,29 @@ jobs:
           git merge staging
           git push https://${{ secrets.GIT_AUTH }}@github.com/GoodDollar/GoodServer master --follow-tags
 
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      test-chunks: ${{ steps['set-test-chunks'].outputs['test-chunks'] }}
+      test-chunk-ids: ${{ steps['set-test-chunk-ids'].outputs['test-chunk-ids'] }}
+    steps:
+      - uses: actions/checkout@v2
+      - id: set-test-chunks
+        name: Set Chunks
+        run: echo "::set-output name=test-chunks::$(find ./src -path \*/__tests__/*.js | sort | jq -R -s -c 'split("\n")[:-1]'| jq -cM '[_nwise(length / 10 | floor)]')"
+      - id: set-test-chunk-ids
+        name: Set Chunk IDs
+        run: echo "::set-output name=test-chunk-ids::$(echo $CHUNKS | jq -cM 'to_entries | map(.key)')"
+        env:
+          CHUNKS: ${{ steps['set-test-chunks'].outputs['test-chunks'] }}
+
   test:
     name: Unit Tests
+    needs:
+      - setup
+    strategy:
+      matrix:
+        chunk: ${{ fromJson(needs.setup.outputs['test-chunk-ids']) }}
     if: "github.event_name != 'workflow_dispatch' && !contains(github.event.head_commit.message,'skip ci') && !contains(github.event.head_commit.message,'skip build')"
     env:
       GUNDB_PASS: test
@@ -71,7 +92,9 @@ jobs:
       ADMIN_MNEMONIC: 'audit jealous snake hospital hello away diary wedding hold across nice tribe'
       MAUTIC_BASIC_TOKEN: ${{ secrets.MAUTIC_BASIC_TOKEN }}
       CI: false
-      # LOG_LEVEL: error
+      LOG_LEVEL: error
+      CHUNKS: ${{ needs.setup.outputs['test-chunks'] }}
+
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -89,7 +112,8 @@ jobs:
           MNEMONIC: ${{ env.ADMIN_MNEMONIC }}
         run: |
           echo "using mnemonic for admin: ${MNEMONIC}"
-          npm run test -- src/server/gun/__tests__/GunDB.js src/server/send/__tests__/sendAPI.js
+          echo $CHUNKS | jq '.[${{ matrix.chunk }}] | .[] | @text' | xargs npm run coverage
+          # npm run test -- src/server/gun/__tests__/GunDB.js src/server/send/__tests__/sendAPI.js
           # npm run coverage -- --silent
           # npm run coveralls
           npm run build
@@ -99,3 +123,15 @@ jobs:
         uses: coverallsapp/github-action@master
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          parallel: true
+          flag-name: run-${{ matrix.chunk }}
+
+  coverage:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Coveralls Finished
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          parallel-finished: true
