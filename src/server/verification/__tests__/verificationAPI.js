@@ -30,7 +30,7 @@ describe('verificationAPI', () => {
     jest.setTimeout(50000)
     server = await makeServer(done)
 
-    console.log('the server is ..')
+    console.log('verificationAPI: server ready')
     console.log({ server })
   })
 
@@ -44,7 +44,10 @@ describe('verificationAPI', () => {
     Object.assign(Config, { skipEmailVerification, claimQueueAllowed })
     await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
 
-    server.close(done)
+    server.close(err => {
+      console.log('verificationAPI: closing server', { err })
+      done()
+    })
   })
 
   describe('face verification', () => {

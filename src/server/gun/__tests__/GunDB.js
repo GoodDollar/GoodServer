@@ -19,7 +19,7 @@ describe('GunDB', () => {
 
   afterAll(done => {
     server.close(err => {
-      console.log({ err })
+      console.log('GunDB: closing server', { err })
       done()
     })
   })

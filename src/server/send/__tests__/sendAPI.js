@@ -7,11 +7,15 @@ import makeServer from '../../server-test'
 import { getToken } from '../../__util__/'
 import UserDBPrivate from '../../db/mongo/user-privat-provider'
 import { Mautic } from '../../mautic/mauticAPI'
-import AdminWallet from '../../blockchain/AdminWallet'
-describe('sendAPÏ', () => {
+
+describe('sendAPI', () => {
   let server
   beforeAll(async done => {
-    const res = await Mautic.createContact({ firstname: 'h', lastname: 'r', email: 'hadartest@gooddollar.org' })
+    const res = await Mautic.createContact({
+      firstname: 'h',
+      lastname: 'r',
+      email: 'hadartest@gooddollar.org'
+    }).catch(e => console.log('sendAPI test user failed:', e))
     const mauticId = res.contact.id
     //make sure fullname is set for user which is required for sending the recovery email
     await UserDBPrivate.updateUser({
@@ -19,13 +23,15 @@ describe('sendAPÏ', () => {
       fullName: 'full name',
       mauticId
     })
-    await AdminWallet.ready
+    console.log('sendAPI: starting server')
+
     server = await makeServer(done)
+    console.log('sendAPI: server ready')
   })
 
   afterAll(done => {
     server.close(err => {
-      console.log({ err })
+      console.log('sendAPI: closing server', { err })
       done()
     })
   })

@@ -21,13 +21,14 @@ describe('claimQueueAPI', () => {
     await ClaimQueueProps.deleteMany({})
 
     server = await makeServer(done)
+    console.log('claimQueueAPI: server ready')
   })
 
   afterAll(done => {
     Object.assign(conf, { claimQueueAllowed })
 
     server.close(err => {
-      console.log({ err })
+      console.log('claimQueueAPI: closing server', { err })
       done()
     })
   })
