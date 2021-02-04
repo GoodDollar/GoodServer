@@ -119,7 +119,7 @@ jobs:
           # npm run coverage -- --silent
           # npm run coveralls
           npm run build
-          pkill -f ganache
+          pkill -f ganache || true
 
       - name: Coveralls
         uses: coverallsapp/github-action@master
