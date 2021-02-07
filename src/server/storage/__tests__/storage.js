@@ -7,6 +7,7 @@ import type { UserRecord } from '../../../imports/types'
 
 import addUserSteps from '../addUserSteps'
 import { getCreds, utmString } from '../../__util__'
+import AdminWallet from '../../blockchain/AdminWallet'
 
 describe('storageAPI', () => {
   const isCompletedAllFalse = {
@@ -67,6 +68,8 @@ describe('storageAPI', () => {
   })
 
   test('should addUserToWhiteList when faceverification disabled', async () => {
+    const mockedFunc = AdminWallet.whitelistUser
+    AdminWallet.whitelistUser = jest.fn().mockImplementation(() => Promise.resolve(true))
     const { disableFaceVerification } = config
 
     let userIsCompleted
@@ -83,6 +86,7 @@ describe('storageAPI', () => {
     }
 
     expect(userIsCompleted.whiteList).toBeTruthy()
+    AdminWallet.whitelistUser = mockedFunc
   })
 
   test('check isCompletedAllTrue', async () => {
