@@ -1,8 +1,12 @@
 import throng from 'throng'
-import start from './server-prod'
 
+const start = async workerId => {
+  const serverStart =
+    process.env.NODE_ENV === 'production' ? require('./server-prod').default : require('./server-dev').default
+  return serverStart(workerId)
+}
 if (process.env.WEB_CONCURRENCY > 1) {
-  throng({ workers: process.env.WEB_CONCURRENCY, lifetime: Infinity }, start)
+  throng({ count: process.env.WEB_CONCURRENCY, lifetime: Infinity, worker: start, master: () => {} })
 } else {
   start(0)
 }

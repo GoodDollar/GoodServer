@@ -2,7 +2,7 @@ import path from 'path'
 import express from 'express'
 import startApp from './app'
 
-export default async function start(workerId) {
+export default async function start(workerId = 'master') {
   global.workerId = workerId
   console.log(`start workerId = ${workerId}`)
 

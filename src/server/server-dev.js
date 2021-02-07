@@ -6,7 +6,11 @@ import conf from './server.config'
 import startApp from './app'
 
 const compiler = webpack(config)
-startApp().then(app => {
+
+export default async function start(workerId = 'master') {
+  global.workerId = workerId
+  console.log(`started dev workerId = ${workerId}`)
+  const app = await startApp()
   app.use(webpackHotMiddleware(compiler))
 
   console.log({ conf })
@@ -17,4 +21,4 @@ startApp().then(app => {
     console.log(`App listening to ${PORT}....`)
     console.log('Press Ctrl+C to quit.')
   })
-})
+}
