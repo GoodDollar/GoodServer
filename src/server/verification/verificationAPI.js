@@ -348,6 +348,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
    */
   app.post(
     '/verify/topwallet',
+    requestRateLimiter(1, 1),
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       const log = req.log
