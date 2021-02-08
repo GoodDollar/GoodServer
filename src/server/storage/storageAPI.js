@@ -81,14 +81,14 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         if (['production', 'staging'].includes(env)) {
           if (
             (optionalMobile === false && userRecord.smsValidated !== true) ||
-            (userRecord.mobile && userRecord.mobile !== sha3(mobile))
+            (mobile && userRecord.mobile && userRecord.mobile !== sha3(mobile))
           ) {
             throw new Error('User mobile not verified!')
           }
 
           if (
             skipEmailVerification === false &&
-            (userRecord.isEmailConfirmed !== true || (userRecord.email && userRecord.email !== sha3(email)))
+            (userRecord.isEmailConfirmed !== true || (email && userRecord.email && userRecord.email !== sha3(email)))
           ) {
             throw new Error('User email not verified!')
           }
@@ -111,8 +111,8 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           identifier: userRecord.loggedInAs,
           regMethod: userPayload.regMethod,
           torusProvider: userPayload.torusProvider,
-          email: sha3(email),
-          mobile: sha3(mobile),
+          email: email ? sha3(email) : userRecord.email,
+          mobile: mobile ? sha3(mobile) : userRecord.mobile,
           mobileValidated: !!userRecord.smsValidated,
           profilePublickey: userRecord.profilePublickey,
           isCompleted: userRecord.isCompleted
