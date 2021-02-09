@@ -37,7 +37,7 @@ export default class EnrollmentSession {
     log.info('Enrollment session started', {
       enrollmentIdentifier,
       userIdentifier: user.loggedInAs,
-      payload: omit(payload, 'faceMap', 'auditTrailImage', 'lowQualityAuditTrailImage')
+      payload: omit(payload, 'faceMap', 'faceScan', 'auditTrailImage', 'lowQualityAuditTrailImage')
     })
 
     try {
