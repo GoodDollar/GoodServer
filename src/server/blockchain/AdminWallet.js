@@ -25,7 +25,7 @@ import { sendSlackAlert } from '../../imports/slack'
 
 const log = logger.child({ from: 'AdminWallet' })
 
-const FUSE_TX_TIMEOUT = 12000 //should be confirmed after max 2 blocks (10sec)
+const FUSE_TX_TIMEOUT = 15000 //should be confirmed after max 3 blocks (15sec)
 const defaultGas = 200000
 const defaultGasPrice = web3Utils.toWei('1', 'gwei')
 const adminMinBalance = conf.adminMinBalance
@@ -619,7 +619,6 @@ export class Wallet {
           })
           .on('confirmation', c => onConfirmation && onConfirmation(c))
           .on('error', async e => {
-            logger.error('sendTransaction error:', e.message, e, { from: address, uuid })
             if (isFundsError(e)) {
               balance = await this.web3.eth.getBalance(address)
               logger.warn('sendTransaciton funds issue retry', {
@@ -666,12 +665,13 @@ export class Wallet {
       const res = await Promise.race([txPromise, requestTimeout(FUSE_TX_TIMEOUT, 'fuse tx timeout')])
       return res
     } catch (e) {
-      logger.warn('sendTransaction failed:', e.message, { uuid, txHash, retry })
       await this.txManager.unlock(currentAddress)
       if (retry && e.message.includes('fuse tx timeout')) {
-        logger.warn('sendTransaction failed retrying:', { uuid, txHash })
+        logger.warn('sendTransaction timeout retrying:', { uuid, txHash })
         return this.sendTransaction(tx, txCallbacks, { gas, gasPrice }, false, logger)
       }
+      logger.error('sendTransaction error:', e.message, e, { from: currentAddress, uuid })
+
       throw new Error(e)
     }
   }
@@ -721,8 +721,6 @@ export class Wallet {
           .on('error', async e => {
             const { message } = e
 
-            log.error('sendNative failed', message, e)
-
             if (isNonceError(e)) {
               let netNonce = parseInt(await this.web3.eth.getTransactionCount(address))
               log.error('sendNative nonce failure retry', message, e, {
@@ -743,6 +741,7 @@ export class Wallet {
             } else {
               fail()
               onError && onError(e)
+              log.error('sendNative failed', message, e)
               rej(e)
             }
           })
@@ -822,7 +821,6 @@ export class Wallet {
           .on('error', async exception => {
             const { message } = exception
 
-            log.error('sendTransaction error mainnet:', message, exception, { from: address, uuid })
             if (isFundsError(exception)) {
               balance = await this.mainnetWeb3.eth.getBalance(address)
               log.warn('sendTransaciton funds issue retry mainnet', {
@@ -861,6 +859,7 @@ export class Wallet {
             } else {
               fail()
               onError && onError(exception)
+              log.error('sendTransaction error mainnet:', message, exception, { from: address, uuid })
               rej(exception)
             }
           })

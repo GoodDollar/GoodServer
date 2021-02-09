@@ -258,7 +258,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       const { mobile } = user.otp || {}
 
       if (!mobile) {
-        log.error('mobile to verify not found or missing', 'mobile missing', new Error('mobile missing'), {
+        log.warn('mobile to verify not found or missing', 'mobile missing', new Error('mobile missing'), {
           user,
           verificationData
         })
@@ -272,17 +272,11 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       log.debug('mobile verified', { user, verificationData, hashedNewMobile })
 
       if (!user.smsValidated || currentMobile !== hashedNewMobile) {
-        let verified = await verifier
-          .verifyMobile({ identifier: user.loggedInAs, mobile }, verificationData)
-          .catch(e => {
-            log.warn('mobile verification failed:', { e })
-
-            res.status(400).json({ ok: 0, error: 'OTP FAILED', message: e.message })
-            return false
-          })
-
-        if (verified === false) {
-          return
+        try {
+          await verifier.verifyMobile({ identifier: user.loggedInAs, mobile }, verificationData)
+        } catch (e) {
+          log.warn('mobile verification failed:', e.message, { user, mobile, verificationData })
+          return res.status(400).json({ ok: 0, error: 'OTP FAILED', message: e.message })
         }
 
         let updIndexPromise
@@ -535,7 +529,12 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         const { mauticId } = user
 
         if (runInEnv && conf.skipEmailVerification === false) {
-          await verifier.verifyEmail({ identifier: user.loggedInAs }, verificationData)
+          try {
+            await verifier.verifyEmail({ identifier: user.loggedInAs }, verificationData)
+          } catch (e) {
+            log.warn('email verification failed:', e.message, { user, email, verificationData })
+            return res.status(400).json({ ok: 0, error: e.message })
+          }
         }
 
         const updateUserUbj = {
