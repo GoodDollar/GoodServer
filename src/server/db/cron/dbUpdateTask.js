@@ -24,7 +24,6 @@ export class DBUpdateTask {
         .toDate()
     ) //run this only once so we set time to next year
   }
-  G
 
   get schedule() {
     return Config.dbUpdateTaskCron
@@ -38,6 +37,7 @@ export class DBUpdateTask {
    * restore trust profiles
    */
   async fixGunTrustProfiles2() {
+    logger.debug('fixGunTrustProfiles2 waitiing for wallet + gun...')
     await AdminWallet.ready
     await GunDBPublic.ready
 
@@ -52,7 +52,7 @@ export class DBUpdateTask {
       {
         profilePublickey: { $exists: true },
         trustIndex: { $exists: false },
-        createdDate: { $lt: new Date('2020-10-08') }
+        createdDate: { $lt: new Date('2021-02-20') }
       },
       'email mobile profilePublickey smsValidated isEmailConfirmed identifier'
     )
@@ -73,8 +73,11 @@ export class DBUpdateTask {
 
         const promises = []
 
+        if (!walletAddress) {
+          logger.warn('not wallet address found for user:', user.identifier, user.profilePublickey)
+        }
         if (walletAddress) {
-          promises.push(UserPrivateModel.updateOne({ identifier: user.identifier }, { trustIndex: true }))
+          promises.push(UserPrivateModel.updateOne({ identifier: user.identifier }, { trustIndex: Date.now() }))
           fixedUsers += 1
           hasWallet += 1
         }

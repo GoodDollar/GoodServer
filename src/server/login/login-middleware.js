@@ -40,8 +40,7 @@ export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
 //add them again to the trust indexes
 const fixTrustIndex = async (identifier, gdAddress, logger) => {
   const user = await UserDBPrivate.getUser(identifier)
-  if (user && !user.trustIndex && moment(user.createdDate).isBefore('2020-10-08')) {
-    user.trustIndex = true
+  if (user && (!user.trustIndex || moment(user.trustIndex).isBefore(moment().subtract(1, 'day')))) {
     await Promise.all([
       user.smsValidated &&
         user.mobile &&
@@ -53,7 +52,7 @@ const fixTrustIndex = async (identifier, gdAddress, logger) => {
         GunDBPublic.addHashToIndex('email', user.email, user),
 
       user.gdAddress && GunDBPublic.addUserToIndex('walletAddress', user.gdAddress, user),
-      UserDBPrivate.updateUser(user)
+      UserDBPrivate.model.updateOne({ identifier: user.identifier }, { trustIndex: Date.now() })
     ])
     logger.info('fixed trust index for user:', { identifier, gdAddress, mobile: user.mobile, email: user.email })
   }

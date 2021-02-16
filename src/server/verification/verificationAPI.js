@@ -428,10 +428,12 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       const isEmailChanged = currentEmail && currentEmail !== sha3(email)
 
       if (conf.allowDuplicateUserData === false && (await storage.isDupUserData({ email }))) {
+        log.debug('enforcing unique email per user', { email })
         return res.json({ ok: 0, error: 'Email already exists, please use a different one' })
       }
 
       let code
+      log.debug('processing request for email verification', { email })
       if (runInEnv === true && conf.skipEmailVerification === false) {
         let currentMauticId = mauticId || tempMauticId
 
@@ -469,7 +471,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
               code: parseInt(code)
             }
             await sendTemplateEmail(email, templateData)
-            log.debug('sent new user email validation code', code)
+            log.debug('sent new user email validation code', { email, code })
           } catch (e) {
             log.error('failed sending email verification to user:', e.message, e, { userRec, code })
             throw e
