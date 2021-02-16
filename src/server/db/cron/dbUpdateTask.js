@@ -45,7 +45,7 @@ export class DBUpdateTask {
 
     logger.info('fixGunTrustProfiles2 GoodDollar profile id:', {
       gooddollarProfile,
-      bywalletIdx: await GunDBPublic.user.get('users/bywalletAddress').then(Gun.node.soul)
+      idxes: GunDBPublic.trust
     })
 
     const docs = await UserPrivateModel.find(
