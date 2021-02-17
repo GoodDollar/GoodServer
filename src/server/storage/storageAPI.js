@@ -13,6 +13,7 @@ import conf from '../server.config'
 import addUserSteps from './addUserSteps'
 import createUserVerifier from './verifier'
 import { fishManager } from '../blockchain/stakingModelTasks'
+import { DBUpdateTask } from '../db/cron/dbUpdateTask'
 
 const adminAuthenticate = (req, res, next) => {
   const { body } = req
@@ -185,7 +186,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
             userRecordWithPII.isEmailConfirmed &&
             gunPublic.addUserToIndex('email', userRecordWithPII.email, userRecordWithPII),
           userRecordWithPII.gdAddress &&
-            gunPublic.addUserToIndex('walletAddress', userRecordWithPII.gdAddress, userRecordWithPII)
+            gunPublic.addUserToIndex('walletAddress', userRecordWithPII.gdAddress.toLowerCase(), userRecordWithPII)
         ])
           .then(res => logger.info('updated trust indexes result:', { res }))
           .catch(e => {
@@ -443,6 +444,14 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         .then(fishResult => log.info('fishing request result:', { fishResult }))
         .catch(e => log.error('fish request failed', { daysAgo }))
 
+      res.json({ ok: 1 })
+    })
+  )
+  app.post(
+    '/admin/user/fixtrust',
+    adminAuthenticate,
+    wrapAsync(async (req, res, next) => {
+      new DBUpdateTask().fixGunTrustProfiles2()
       res.json({ ok: 1 })
     })
   )

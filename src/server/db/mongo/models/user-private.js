@@ -82,8 +82,8 @@ export const UserPrivateSchema = new Schema(
       status: { type: String, index: { unique: false } }
     },
     trustIndex: {
-      type: Boolean,
-      default: false
+      type: Date,
+      default: Date.now
     },
     lastLogin: {
       type: Date

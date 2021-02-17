@@ -24,7 +24,6 @@ export class DBUpdateTask {
         .toDate()
     ) //run this only once so we set time to next year
   }
-  G
 
   get schedule() {
     return Config.dbUpdateTaskCron
@@ -38,6 +37,7 @@ export class DBUpdateTask {
    * restore trust profiles
    */
   async fixGunTrustProfiles2() {
+    logger.debug('fixGunTrustProfiles2 waitiing for wallet + gun...')
     await AdminWallet.ready
     await GunDBPublic.ready
 
@@ -45,14 +45,14 @@ export class DBUpdateTask {
 
     logger.info('fixGunTrustProfiles2 GoodDollar profile id:', {
       gooddollarProfile,
-      bywalletIdx: await GunDBPublic.user.get('users/bywalletAddress').then(Gun.node.soul)
+      idxes: GunDBPublic.trust
     })
 
     const docs = await UserPrivateModel.find(
       {
         profilePublickey: { $exists: true },
         trustIndex: { $exists: false },
-        createdDate: { $lt: new Date('2020-10-08') }
+        createdDate: { $lt: new Date('2021-02-20') }
       },
       'email mobile profilePublickey smsValidated isEmailConfirmed identifier'
     )
@@ -61,7 +61,7 @@ export class DBUpdateTask {
 
     let fixedUsers = 0
 
-    const processChunk = users => {
+    const processChunk = async users => {
       let hasWallet = 0
       const promises = users.map(async user => {
         const walletAddress = await GunDBPublic.gun
@@ -73,8 +73,14 @@ export class DBUpdateTask {
 
         const promises = []
 
+        if (!walletAddress) {
+          logger.warn('no wallet address found for user:', user.identifier, user.profilePublickey)
+        } else {
+          logger.debug('found wallet address for user', user.identifier, user.profilePublickey, walletAddress)
+        }
+
         if (walletAddress) {
-          promises.push(UserPrivateModel.updateOne({ identifier: user.identifier }, { trustIndex: true }))
+          promises.push(UserPrivateModel.updateOne({ identifier: user.identifier }, { trustIndex: Date.now() }))
           fixedUsers += 1
           hasWallet += 1
         }
@@ -83,7 +89,7 @@ export class DBUpdateTask {
           promises.push(GunDBPublic.addHashToIndex('mobile', user.mobile, user))
         if (user.email && user.isEmailConfirmed && user.email.startsWith('0x'))
           promises.push(GunDBPublic.addHashToIndex('email', user.email, user))
-        if (walletAddress) promises.push(GunDBPublic.addUserToIndex('walletAddress', walletAddress, user))
+        if (walletAddress) promises.push(GunDBPublic.addUserToIndex('walletAddress', walletAddress.toLowerCase(), user))
 
         const indexRes = await Promise.all(promises).catch(e => {
           logger.warn('fixGunTrustProfiles2 failed user:', e, { walletAddress, user })
@@ -93,8 +99,8 @@ export class DBUpdateTask {
         // logger.info('fixGunTrustProfiles2 updated user:', { walletAddress, user })
         return indexRes
       })
-
-      return [Promise.all(promises), hasWallet]
+      const res = await Promise.all(promises)
+      return [res, hasWallet]
     }
 
     for (let users of chunk(docs, 100)) {
