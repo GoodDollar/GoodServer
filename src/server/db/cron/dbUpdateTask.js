@@ -89,7 +89,7 @@ export class DBUpdateTask {
           promises.push(GunDBPublic.addHashToIndex('mobile', user.mobile, user))
         if (user.email && user.isEmailConfirmed && user.email.startsWith('0x'))
           promises.push(GunDBPublic.addHashToIndex('email', user.email, user))
-        if (walletAddress) promises.push(GunDBPublic.addUserToIndex('walletAddress', walletAddress, user))
+        if (walletAddress) promises.push(GunDBPublic.addUserToIndex('walletAddress', walletAddress.toLowerCase(), user))
 
         const indexRes = await Promise.all(promises).catch(e => {
           logger.warn('fixGunTrustProfiles2 failed user:', e, { walletAddress, user })

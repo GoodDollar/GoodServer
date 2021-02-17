@@ -51,7 +51,7 @@ const fixTrustIndex = async (identifier, gdAddress, logger) => {
         user.email.startsWith('0x') &&
         GunDBPublic.addHashToIndex('email', user.email, user),
 
-      user.gdAddress && GunDBPublic.addUserToIndex('walletAddress', user.gdAddress, user),
+      user.gdAddress && GunDBPublic.addUserToIndex('walletAddress', user.gdAddress.toLowerCase(), user),
       UserDBPrivate.model.updateOne({ identifier: user.identifier }, { trustIndex: Date.now() })
     ])
     logger.info('fixed trust index for user:', { identifier, gdAddress, mobile: user.mobile, email: user.email })

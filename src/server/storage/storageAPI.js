@@ -186,7 +186,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
             userRecordWithPII.isEmailConfirmed &&
             gunPublic.addUserToIndex('email', userRecordWithPII.email, userRecordWithPII),
           userRecordWithPII.gdAddress &&
-            gunPublic.addUserToIndex('walletAddress', userRecordWithPII.gdAddress, userRecordWithPII)
+            gunPublic.addUserToIndex('walletAddress', userRecordWithPII.gdAddress.toLowerCase(), userRecordWithPII)
         ])
           .then(res => logger.info('updated trust indexes result:', { res }))
           .catch(e => {
