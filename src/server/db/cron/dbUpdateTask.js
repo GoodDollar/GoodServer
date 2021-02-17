@@ -61,7 +61,7 @@ export class DBUpdateTask {
 
     let fixedUsers = 0
 
-    const processChunk = users => {
+    const processChunk = async users => {
       let hasWallet = 0
       const promises = users.map(async user => {
         const walletAddress = await GunDBPublic.gun
@@ -75,7 +75,10 @@ export class DBUpdateTask {
 
         if (!walletAddress) {
           logger.warn('not wallet address found for user:', user.identifier, user.profilePublickey)
+        } else {
+          logger.debug('found wallet address for user', user.identifier, user.profilePublickey, walletAddress)
         }
+
         if (walletAddress) {
           promises.push(UserPrivateModel.updateOne({ identifier: user.identifier }, { trustIndex: Date.now() }))
           fixedUsers += 1
@@ -96,8 +99,8 @@ export class DBUpdateTask {
         // logger.info('fixGunTrustProfiles2 updated user:', { walletAddress, user })
         return indexRes
       })
-
-      return [Promise.all(promises), hasWallet]
+      const res = await Promise.all(promises)
+      return [res, hasWallet]
     }
 
     for (let users of chunk(docs, 100)) {
