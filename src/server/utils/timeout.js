@@ -22,3 +22,6 @@ export default async function requestTimeout(millis, timeoutReason = null) {
 
   await timeout(millis, errorMessage)
 }
+
+Promise.timeout = (promises, timeout, timeoutReason) =>
+  Promise.race([Array.isArray(promises) ? Promise.all(promises) : promises, requestTimeout(timeout, timeoutReason)])
