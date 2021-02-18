@@ -17,6 +17,7 @@ import createMockingHelper from '../api/__tests__/__util__'
 
 import * as awsSes from '../../aws-ses/aws-ses'
 import { DisposeAt, scheduleDisposalTask, DISPOSE_ENROLLMENTS_TASK, forEnrollment } from '../cron/taskUtil'
+import { noopAsync } from '../../utils/async'
 
 describe('verificationAPI', () => {
   let server
@@ -155,6 +156,7 @@ describe('verificationAPI', () => {
 
       enrollmentProcessor.keepEnrollments = 24
       isVerifiedMock.mockResolvedValue(false)
+      whitelistUserMock.mockImplementation(noopAsync)
     })
 
     afterEach(() => {
