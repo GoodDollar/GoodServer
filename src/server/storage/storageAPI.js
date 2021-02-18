@@ -166,17 +166,18 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           signUpPromises.push(p3)
         }
 
-        const p4 = addUserSteps
-          .topUserWallet(userRecord, logger)
-          .then(isTopWallet => {
-            if (isTopWallet === false) throw new Error('Failed to top wallet of new user')
-            logger.debug('topUserWallet success')
-          })
-          .catch(e => {
-            logger.error('topUserWallet failed', e.message, e, { userRecord })
-            throw new Error('Failed topping user wallet')
-          })
-        signUpPromises.push(p4)
+        //no need to topwallet, we now have the faucet contract
+        // const p4 = addUserSteps
+        //   .topUserWallet(userRecord, logger)
+        //   .then(isTopWallet => {
+        //     if (isTopWallet === false) throw new Error('Failed to top wallet of new user')
+        //     logger.debug('topUserWallet success')
+        //   })
+        //   .catch(e => {
+        //     logger.error('topUserWallet failed', e.message, e, { userRecord })
+        //     throw new Error('Failed topping user wallet')
+        //   })
+        // signUpPromises.push(p4)
 
         const p5 = Promise.all([
           userRecordWithPII.smsValidated &&
@@ -192,12 +193,24 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           .catch(e => {
             logger.error('updated trust indexes: failed adding new user to indexes. allowing to finish registartion')
           })
-        const p6 = Promise.race([p5, requestTimeout(15000, 'updated trust indexes timeout')]).catch(e => {
+        const p6 = Promise.timeout(p5, 15000, 'updated trust indexes timeout').catch(e => {
           logger.error(e.message)
         })
         signUpPromises.push(p6)
 
-        await Promise.all(signUpPromises)
+        //dont await, if we failed to update its not critical for user.
+        Promise.timeout(signUpPromises, 30000, 'signup promises timeout')
+          .then(async r => {
+            logger.info('signup promises success')
+            if (isNonDevelopMode || mauticBasicToken || mauticToken) {
+              const mauticId = await p3
+              await Mautic.updateContact(mauticId, { tags: ['signup_completed'] }).catch(exception => {
+                const { message } = exception
+                logger.error('Failed Mautic tagging user completed signup', message, exception, { mauticId })
+              })
+            }
+          })
+          .catch(e => logger.error('signup promises failed', e.message, e))
         logger.debug('signup steps success. adding new user:', { toUpdateUser })
 
         await storage.updateUser({
@@ -205,14 +218,6 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           createdDate: new Date().toString(),
           otp: {} //delete trace of mobile,email
         })
-
-        if (isNonDevelopMode || mauticBasicToken || mauticToken) {
-          const mauticId = await p3
-          Mautic.updateContact(mauticId, { tags: ['signup_completed'] }).catch(exception => {
-            const { message } = exception
-            logger.error('Failed Mautic tagging user completed signup', message, exception, { mauticId })
-          })
-        }
 
         res.json({
           ok: 1
@@ -244,11 +249,12 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
 
       if (!user.email || existingUser.createdDate || existingUser.mauticId) return res.json({ ok: 0 })
 
-      await addUserSteps
+      //fire and forget, dont wait for success or failure
+      addUserSteps
         .updateMauticRecord(user, utmString, logger)
-        .then(r => logger.debug('updateMauticRecord success'))
+        .then(r => logger.debug('/user/start updateMauticRecord success'))
         .catch(e => {
-          logger.error('updateMauticRecord failed', e.message, e, { user })
+          logger.error('/user/start updateMauticRecord failed', e.message, e, { user })
           throw new Error('Failed adding user to mautic')
         })
 
