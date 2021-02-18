@@ -2,7 +2,7 @@
 
 import { Router } from 'express'
 import passport from 'passport'
-import { get, defaults } from 'lodash'
+import { get, defaults, pick } from 'lodash'
 import { sha3 } from 'web3-utils'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
@@ -420,10 +420,9 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
       const { user, body } = req
       const { email } = body.user
-      let { tempMauticId } = user.otp || {}
 
       //merge user details for use by mautic
-      const { email: currentEmail, mauticId } = user
+      const { email: currentEmail } = user
       let userRec: UserRecord = defaults(body.user, user)
       const isEmailChanged = currentEmail && currentEmail !== sha3(email)
 
@@ -435,29 +434,6 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       let code
       log.debug('processing request for email verification', { email })
       if (runInEnv === true && conf.skipEmailVerification === false) {
-        let currentMauticId = mauticId || tempMauticId
-
-        if (currentMauticId && !isEmailChanged) {
-          const isMauticIdExists = await Mautic.contactExists(currentMauticId)
-
-          if (!isMauticIdExists) {
-            currentMauticId = null
-          }
-        }
-
-        if (!currentMauticId || isEmailChanged) {
-          const mauticContact = await Mautic.createContact(userRec)
-
-          tempMauticId = get(mauticContact, 'contact.id')
-          // otp might be undefined so we use spread operator instead of userRec.otp.tempId=
-          userRec.otp = {
-            ...(userRec.otp || {}),
-            tempMauticId
-          }
-
-          log.debug('created new user mautic contact', userRec)
-        }
-
         code = OTP.generateOTP(6)
 
         if (!user.isEmailConfirmed || isEmailChanged) {
@@ -514,7 +490,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       const log = req.log
       const { user, body } = req
       const verificationData: { code: string } = body.verificationData
-      const { email, tempMauticId: tempSavedMauticId } = user.otp || {}
+      const { email } = user.otp || {}
       const hashedNewEmail = sha3(email)
       const currentEmail = user.email
 
@@ -523,7 +499,6 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         body,
         email,
         verificationData,
-        tempSavedMauticId,
         currentEmail
       })
 
@@ -546,19 +521,49 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         }
 
         if (runInEnv && mauticId) {
-          await Promise.all([
-            Mautic.deleteContact({ mauticId: tempSavedMauticId }),
-            Mautic.updateContact(mauticId, { email })
-          ]).catch(e =>
-            log.error('Error updating Mautic contact', e.message, e, {
-              currentMauticId: tempSavedMauticId,
-              currentEmail,
-              mauticId,
-              email
+          //fire and forget updates (dont await)
+          Mautic.contactExists(mauticId)
+            .then(async exists => {
+              if (exists) {
+                await Mautic.updateContact(mauticId, { email })
+              } else {
+                const userFields = pick(user, [
+                  'fullName',
+                  'identifier',
+                  'profilePublickey',
+                  'regMethod',
+                  'torusProvider'
+                ])
+
+                const nameParts = get(userFields, 'fullName', '').split(' ')
+                const firstName = nameParts[0]
+                const lastName = nameParts.length > 1 && nameParts.pop()
+
+                const fieldsForMautic = {
+                  firstName,
+                  lastName,
+                  ...userFields,
+                  email
+                }
+                const record = await Mautic.createContact(fieldsForMautic, log)
+                const newMauticId = get(record, 'contact.id', -1)
+                updateUserUbj.mauticId = newMauticId
+                await Promise.all([
+                  storage.model.updateOne(
+                    { identifier: user.loggedInAs },
+                    { $unset: { 'otp.email': 1, 'otp.tempMauticId': 1 } }
+                  ),
+                  storage.updateUser(updateUserUbj)
+                ])
+              }
             })
-          )
-        } else {
-          updateUserUbj.mauticId = tempSavedMauticId
+            .catch(e =>
+              log.error('Error updating Mautic contact', e.message, e, {
+                currentEmail,
+                mauticId,
+                email
+              })
+            )
         }
 
         //update indexes, if new user, indexes are set in /adduser
@@ -567,15 +572,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           gunPublic.addUserToIndex('email', email, user)
         }
 
-        const [, , signedEmail] = await Promise.all([
-          user.createdDate && //keep temporary field if user is signing up
-            storage.model.updateOne(
-              { identifier: user.loggedInAs },
-              { $unset: { 'otp.email': 1, 'otp.tempMauticId': 1 } }
-            ),
-          storage.updateUser(updateUserUbj),
-          gunPublic.signClaim(req.user.profilePubkey, { hasEmail: hashedNewEmail })
-        ])
+        const signedEmail = await gunPublic.signClaim(req.user.profilePubkey, { hasEmail: hashedNewEmail })
 
         return res.json({ ok: 1, attestation: signedEmail })
       }
