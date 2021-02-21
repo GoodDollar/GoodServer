@@ -99,11 +99,14 @@ export default class EnrollmentSession {
     log.info('Whitelisting user:', { loggedInAs })
 
     await Promise.all([
+      storage.updateUser({ identifier: loggedInAs, isVerified: true }),
+
       queueApi.setWhitelisted(user, storage, log).catch(e => log.warn('claim queue update failed', e.message, e)),
+
       adminApi
         .whitelistUser(gdAddress, profilePublickey)
         .catch(e => log.error('whitelisting after fv failed', e.message, e)),
-      storage.updateUser({ identifier: loggedInAs, isVerified: true }),
+
       scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.Reauthenticate).catch(e =>
         log.error('adding facemap to re-auth dispose queue failed:', e.message, e)
       )

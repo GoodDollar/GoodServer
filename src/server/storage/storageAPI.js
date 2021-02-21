@@ -114,6 +114,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           torusProvider: userPayload.torusProvider,
           email: email ? sha3(email) : userRecord.email,
           mobile: mobile ? sha3(mobile) : userRecord.mobile,
+          walletAddress: sha3(userRecord.gdAddress.toLowerCase()),
           mobileValidated: !!userRecord.smsValidated,
           profilePublickey: userRecord.profilePublickey,
           isCompleted: userRecord.isCompleted
@@ -398,6 +399,45 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           email: email && sha3(email) === bestExisting.email,
           mobile: mobile && sha3(mobile) === bestExisting.mobile,
           fullName: bestExisting.fullName
+        })
+      }
+
+      res.json({ ok: 0, exists: false })
+    })
+  )
+
+  app.get(
+    '/profileBy',
+    wrapAsync(async (req, res, next) => {
+      const { log } = req
+      const { valueHash } = req.query
+
+      console.log('profileBy', { valueHash })
+      const queryOrs = [
+        { email: valueHash, isEmailConfirmed: true },
+        { mobile: valueHash, smsValidated: true },
+        { walletAddress: valueHash }
+      ]
+
+      let existing = await storage.model
+        .find(
+          {
+            $or: queryOrs,
+            createdDate: { $exists: true }
+          },
+          { profilePublickey: 1 }
+        ) // sort by importance, prefer oldest verified account
+        .sort({ isVerified: -1, createdDate: 1 })
+        .lean()
+
+      log.debug('user/profileBy:', { existing, valueHash })
+
+      if (existing.length) {
+        const bestExisting = first(existing)
+
+        return res.json({
+          ok: 1,
+          profilePublickey: bestExisting.profilePublickey
         })
       }
 
