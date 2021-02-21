@@ -8,7 +8,7 @@ import UserPrivateModel from '../../db/mongo/models/user-private'
 import getTasksRunner from '../../cron/TaskRunner'
 import Logger from '../../../imports/logger'
 import Config from '../../server.config'
-
+import { sha3 } from 'web3-utils'
 const logger = Logger.child({ from: 'dbUpdateTask' })
 
 export class DBUpdateTask {
@@ -80,7 +80,12 @@ export class DBUpdateTask {
         }
 
         if (walletAddress) {
-          promises.push(UserPrivateModel.updateOne({ identifier: user.identifier }, { trustIndex: Date.now() }))
+          promises.push(
+            UserPrivateModel.updateOne(
+              { identifier: user.identifier },
+              { walletAddress: sha3(walletAddress.toLowerCase()), trustIndex: Date.now() }
+            )
+          )
           fixedUsers += 1
           hasWallet += 1
         }
