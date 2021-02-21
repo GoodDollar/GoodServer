@@ -22,6 +22,10 @@ export const UserPrivateSchema = new Schema(
       type: String,
       index: { unique: false }
     },
+    walletAddress: {
+      type: String,
+      index: { unique: false }
+    },
     jwt: {
       type: String
     },
