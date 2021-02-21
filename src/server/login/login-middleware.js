@@ -14,6 +14,7 @@ import { recoverPublickey } from '../utils/eth'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import clientSettings from '../clients.config.js'
 import { GunDBPublic } from '../gun/gun-middleware'
+import { sha3 } from 'web3-utils'
 const log = logger.child({ from: 'login-middleware' })
 
 const jwtOptions = {
@@ -52,7 +53,10 @@ const fixTrustIndex = async (identifier, gdAddress, logger) => {
         GunDBPublic.addHashToIndex('email', user.email, user),
 
       gdAddress && GunDBPublic.addUserToIndex('walletAddress', gdAddress.toLowerCase(), user),
-      UserDBPrivate.model.updateOne({ identifier: user.identifier }, { trustIndex: Date.now() })
+      UserDBPrivate.model.updateOne(
+        { identifier: user.identifier },
+        { trustIndex: Date.now(), walletAddress: sha3(gdAddress.toLowerCase()) }
+      )
     ])
     logger.info('fixed trust index for user:', { identifier, gdAddress, mobile: user.mobile, email: user.email })
   }
