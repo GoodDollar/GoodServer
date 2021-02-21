@@ -82,6 +82,18 @@ class DBUpdates {
       dbversion.value.version = 4
       await dbversion.save()
     }
+
+    if (version < 5) {
+      await UserPrivateModel.updateMany(
+        {},
+        {
+          $unset: { trustIndex: '' }
+        }
+      )
+
+      dbversion.value.version = 5
+      await dbversion.save()
+    }
   }
 
   async testWrite() {
