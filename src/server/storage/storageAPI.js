@@ -7,7 +7,7 @@ import { sha3, toChecksumAddress } from 'web3-utils'
 
 import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync, onlyInEnv } from '../utils/helpers'
-import requestTimeout from '../utils/timeout'
+import { withTimeout } from '../utils/timeout'
 import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import addUserSteps from './addUserSteps'
@@ -194,13 +194,15 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           .catch(e => {
             logger.error('updated trust indexes: failed adding new user to indexes. allowing to finish registartion')
           })
-        const p6 = Promise.timeout(p5, 15000, 'updated trust indexes timeout').catch(e => {
+
+        const p6 = withTimeout(p5, 15000, 'updated trust indexes timeout').catch(e => {
           logger.error(e.message)
         })
+
         signUpPromises.push(p6)
 
-        //dont await, if we failed to update its not critical for user.
-        Promise.timeout(signUpPromises, 30000, 'signup promises timeout')
+        // dont await, if we failed to update its not critical for user.
+        withTimeout(signUpPromises, 30000, 'signup promises timeout')
           .then(async r => {
             logger.info('signup promises success')
             if (isNonDevelopMode || mauticBasicToken || mauticToken) {
