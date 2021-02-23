@@ -202,7 +202,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         signUpPromises.push(p6)
 
         // dont await, if we failed to update its not critical for user.
-        withTimeout(signUpPromises, 30000, 'signup promises timeout')
+        withTimeout(Promise.all(signUpPromises), 30000, 'signup promises timeout')
           .then(async r => {
             logger.info('signup promises success')
             if (isNonDevelopMode || mauticBasicToken || mauticToken) {
