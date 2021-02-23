@@ -13,6 +13,9 @@ export const timeout = async (millis, errorMessage = null) => {
 // eslint-disable-next-line require-await
 export const delay = async millis => timeout(millis)
 
+export const withTimeout = (promise, millis, timeoutReason = null) =>
+  Promise.race([promise, requestTimeout(millis, timeoutReason)])
+
 export default async function requestTimeout(millis, timeoutReason = null) {
   let errorMessage = 'Request timeout'
 
