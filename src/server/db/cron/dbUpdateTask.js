@@ -69,15 +69,15 @@ export class DBUpdateTask {
           .get('profile')
           .get('walletAddress')
           .get('display')
-          .then(null, { wait: 2000 })
+          .then(null, { wait: 5000 })
 
         const promises = []
 
-        if (!walletAddress) {
-          logger.warn('not wallet address found for user:', user.identifier, user.profilePublickey)
-        } else {
-          logger.debug('found wallet address for user', user.identifier, user.profilePublickey, walletAddress)
-        }
+        // if (!walletAddress) {
+        //   logger.warn('not wallet address found for user:', user.identifier, user.profilePublickey)
+        // } else {
+        //   logger.debug('found wallet address for user', user.identifier, user.profilePublickey, walletAddress)
+        // }
 
         if (walletAddress) {
           promises.push(
@@ -90,25 +90,25 @@ export class DBUpdateTask {
           hasWallet += 1
         }
 
-        if (user.smsValidated && user.mobile && user.mobile.startsWith('0x'))
-          promises.push(GunDBPublic.addHashToIndex('mobile', user.mobile, user))
-        if (user.email && user.isEmailConfirmed && user.email.startsWith('0x'))
-          promises.push(GunDBPublic.addHashToIndex('email', user.email, user))
-        if (walletAddress) promises.push(GunDBPublic.addUserToIndex('walletAddress', walletAddress.toLowerCase(), user))
+        // if (user.smsValidated && user.mobile && user.mobile.startsWith('0x'))
+        //   promises.push(GunDBPublic.addHashToIndex('mobile', user.mobile, user))
+        // if (user.email && user.isEmailConfirmed && user.email.startsWith('0x'))
+        //   promises.push(GunDBPublic.addHashToIndex('email', user.email, user))
+        // if (walletAddress) promises.push(GunDBPublic.addUserToIndex('walletAddress', walletAddress.toLowerCase(), user))
 
-        const indexRes = await Promise.all(promises).catch(e => {
-          logger.warn('fixGunTrustProfiles2 failed user:', e, { walletAddress, user })
-          return false
-        })
+        // const indexRes = await Promise.all(promises).catch(e => {
+        //   logger.warn('fixGunTrustProfiles2 failed user:', e, { walletAddress, user })
+        //   return false
+        // })
 
-        // logger.info('fixGunTrustProfiles2 updated user:', { walletAddress, user })
-        return indexRes
+        // // logger.info('fixGunTrustProfiles2 updated user:', { walletAddress, user })
+        // return indexRes
       })
       const res = await Promise.all(promises)
       return [res, hasWallet]
     }
 
-    for (let users of chunk(docs, 100)) {
+    for (let users of chunk(docs, 50)) {
       // logger.debug('fixGunTrustProfiles2 users chunk:', users)
       const [res, fixed] = await processChunk(users)
       // logger.debug('fixGunTrustProfiles2 chunk res:', { res })
