@@ -519,14 +519,19 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           isEmailConfirmed: true,
           email: hashedNewEmail
         }
+        storage.updateUser(updateUserUbj)
 
-        if (runInEnv && mauticId) {
+        if (runInEnv) {
           //fire and forget updates (dont await)
-          Mautic.contactExists(mauticId)
+          const exists = mauticId ? Mautic.contactExists(mauticId) : Promise.resolve(false)
+          exists
             .then(async exists => {
               if (exists) {
+                log.debug('mautic contact exists updating...')
                 await Mautic.updateContact(mauticId, { email })
               } else {
+                log.debug('mautic contact doesnt exists creating...')
+
                 const userFields = pick(user, [
                   'fullName',
                   'identifier',
@@ -548,13 +553,10 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
                 const record = await Mautic.createContact(fieldsForMautic, log)
                 const newMauticId = get(record, 'contact.id', -1)
                 updateUserUbj.mauticId = newMauticId
-                await Promise.all([
-                  storage.model.updateOne(
-                    { identifier: user.loggedInAs },
-                    { $unset: { 'otp.email': 1, 'otp.tempMauticId': 1 } }
-                  ),
-                  storage.updateUser(updateUserUbj)
-                ])
+                await storage.model.updateOne(
+                  { identifier: user.loggedInAs },
+                  { $unset: { 'otp.email': 1, 'otp.tempMauticId': 1 }, $set: { mauticId: newMauticId } }
+                )
               }
             })
             .catch(e =>
