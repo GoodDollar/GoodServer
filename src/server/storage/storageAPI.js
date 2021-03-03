@@ -380,7 +380,8 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         ) // sort by importance, prefer oldest verified account
         .sort({ isVerified: -1, createdDate: 1 })
         .lean()
-        .filter(doc => doc.createdDate)
+
+      existing = existing.filter(doc => doc.createdDate)
 
       if (identifierLC && (email || mobile)) {
         // if email or phone also were specified we want
@@ -444,7 +445,8 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         ) // sort by importance, prefer newest verified account
         .sort({ isVerified: -1, createdDate: -1 })
         .lean()
-        .filter(isValidMatch)
+
+      existing = existing.filter(isValidMatch)
 
       log.debug('user/profileBy:', { existing, valueHash })
 
