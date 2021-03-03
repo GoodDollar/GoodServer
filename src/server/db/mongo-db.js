@@ -8,7 +8,8 @@ const mongoOpts = {
   useCreateIndex: true,
   autoIndex: true,
   useFindAndModify: false,
-  useUnifiedTopology: true
+  useUnifiedTopology: true,
+  poolSize: 20
 }
 
 export const { Schema } = mongoose

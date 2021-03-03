@@ -372,12 +372,15 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
       ].filter(or => !!Object.values(or)[0])
 
       let existing = await storage.model
-        .find({
-          $or: queryOrs,
-          createdDate: { $exists: true }
-        }) // sort by importance, prefer oldest verified account
+        .find(
+          {
+            $or: queryOrs
+          },
+          { identifier: 1, email: 1, mobile: 1, createdDate: 1, torusProvider: 1, fullName: 1 }
+        ) // sort by importance, prefer oldest verified account
         .sort({ isVerified: -1, createdDate: 1 })
         .lean()
+        .filter(doc => doc.createdDate)
 
       if (identifierLC && (email || mobile)) {
         // if email or phone also were specified we want
@@ -421,16 +424,27 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         { walletAddress: valueHash }
       ]
 
+      const isValidMatch = doc => {
+        //most common case
+        if (doc.walletAddress === valueHash) return true
+
+        if (doc.email === valueHash && doc.isEmailConfirmed) return true
+
+        if (doc.mobile === valueHash && doc.smsValidated) return true
+
+        return false
+      }
+
       let existing = await storage.model
         .find(
           {
-            $or: queryOrs,
-            createdDate: { $exists: true }
+            $or: queryOrs
           },
-          { profilePublickey: 1 }
-        ) // sort by importance, prefer oldest verified account
-        .sort({ isVerified: -1, createdDate: 1 })
+          { profilePublickey: 1, isEmailConfirmed: 1, smsValidated: 1 }
+        ) // sort by importance, prefer newest verified account
+        .sort({ isVerified: -1, createdDate: -1 })
         .lean()
+        .filter(isValidMatch)
 
       log.debug('user/profileBy:', { existing, valueHash })
 
