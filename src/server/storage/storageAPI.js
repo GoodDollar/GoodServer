@@ -418,12 +418,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
       const { log } = req
       const { valueHash } = req.query
 
-      console.log('profileBy', { valueHash })
-      const queryOrs = [
-        { email: valueHash, isEmailConfirmed: true },
-        { mobile: valueHash, smsValidated: true },
-        { walletAddress: valueHash }
-      ]
+      const queryOrs = [{ email: valueHash }, { mobile: valueHash }, { walletAddress: valueHash }]
 
       const isValidMatch = doc => {
         //most common case
@@ -441,7 +436,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           {
             $or: queryOrs
           },
-          { profilePublickey: 1, isEmailConfirmed: 1, smsValidated: 1 }
+          { wallettAddress: 1, mobile: 1, email: 1, profilePublickey: 1, isEmailConfirmed: 1, smsValidated: 1 }
         ) // sort by importance, prefer newest verified account
         .sort({ isVerified: -1, createdDate: -1 })
         .lean()
