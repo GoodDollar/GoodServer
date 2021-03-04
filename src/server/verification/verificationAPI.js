@@ -291,7 +291,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         }
 
         if (mauticId) {
-          updMauticPromise = Mautic.updateContact(mauticId, { mobile }).catch(e =>
+          updMauticPromise = Mautic.updateContact(mauticId, { mobile }, log).catch(e =>
             log.error('Error updating Mautic contact', e.message, e, { mauticId, mobile })
           )
         }
@@ -523,12 +523,12 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
         if (runInEnv) {
           //fire and forget updates (dont await)
-          const exists = mauticId ? Mautic.contactExists(mauticId) : Promise.resolve(false)
+          const exists = mauticId ? Mautic.contactExists(mauticId, log) : Promise.resolve(false)
           exists
             .then(async exists => {
               if (exists) {
                 log.debug('mautic contact exists updating...')
-                await Mautic.updateContact(mauticId, { email })
+                await Mautic.updateContact(mauticId, { email }, log)
               } else {
                 log.debug('mautic contact doesnt exists creating...')
 

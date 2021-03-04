@@ -24,7 +24,7 @@ const ClaimQueue = {
     // so let's do it 'in background'
     // also we won't call mautic if user.mauticId is empty or null
     if (mauticId) {
-      Mautic.updateContact(mauticId, { tags: ['claimqueue_claimed'] }).catch(exception => {
+      Mautic.updateContact(mauticId, { tags: ['claimqueue_claimed'] }, log).catch(exception => {
         const { message } = exception
 
         log.error('Failed Mautic tagging user claimed', message, exception, { mauticId })
@@ -162,14 +162,14 @@ const ClaimQueue = {
     // if user was added to queue tag him in mautic
     if (['test', 'development'].includes(conf.env) === false && user.mauticId) {
       if (status === 'pending') {
-        Mautic.updateContact(user.mauticId, { tags: ['claimqueue_in'] }).catch(e => {
+        Mautic.updateContact(user.mauticId, { tags: ['claimqueue_in'] }, log).catch(e => {
           log.error('Failed Mautic tagging  user inqueue', e.message, e, { mauticId: user.mauticId })
         })
         Mautic.addContactsToSegment([user.mauticId], conf.mauticClaimQueueSegmentId).catch(e => {
           log.error('Failed Mautic adding user to claim queue segment', e.message, e, { mauticId: user.mauticId })
         })
       } else {
-        Mautic.updateContact(user.mauticId, { tags: ['claimqueue_autoapproved'] }).catch(e => {
+        Mautic.updateContact(user.mauticId, { tags: ['claimqueue_autoapproved'] }, log).catch(e => {
           log.error('Failed Mautic tagging  user autoapproved', e.message, e, { mauticId: user.mauticId })
         })
       }
