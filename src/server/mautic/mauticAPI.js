@@ -153,12 +153,12 @@ export const Mautic = new (class {
     return false
   }
 
-  async deleteContact(user: UserRecord) {
-    if (!user.mauticId) {
+  async deleteContact(mauticId) {
+    if (!mauticId) {
       return
     }
 
-    return this.baseQuery(`/contacts/${user.mauticId}/delete`, this.baseHeaders, {}, 'delete')
+    return this.baseQuery(`/contacts/${mauticId}/delete`, this.baseHeaders, {}, 'delete')
   }
 
   async deleteContactFromDNC(user: UserRecord, group = 'email') {
