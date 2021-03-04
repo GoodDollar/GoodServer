@@ -207,7 +207,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
             logger.info('signup promises success')
             if (isNonDevelopMode || mauticBasicToken || mauticToken) {
               const mauticId = await p3
-              await Mautic.updateContact(mauticId, { tags: ['signup_completed'] }).catch(exception => {
+              await Mautic.updateContact(mauticId, { tags: ['signup_completed'] }, logger).catch(exception => {
                 const { message } = exception
                 logger.error('Failed Mautic tagging user completed signup', message, exception, { mauticId })
               })
