@@ -292,7 +292,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           .catch(e => ({ mongodb: 'failed' })),
         mauticCount > 1
           ? Promise.resolve({ mautic: 'okMultiNotDeleted' })
-          : Mautic.deleteContact(user)
+          : Mautic.deleteContact(user.mauticId)
               .then(r => ({ mautic: 'ok' }))
               .catch(e => ({ mautic: 'failed' })),
         fetch(`https://api.fullstory.com/users/v1/individual/${user.identifier}`, {
