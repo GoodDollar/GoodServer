@@ -39,21 +39,21 @@ jobs:
           ref: ${{ github.event.inputs.release == 'qa' && 'master' || 'staging' }}
       - name: setup git
         run: |
-          git config user.email "techadmin@gooddollar.org"
-          git config user.name "Techadmin"
+          git config user.email techadmin@gooddollar.org
+          git config user.name Techadmin
           npm install -g auto-changelog
       - name: update version qa
         if: "github.event.inputs.release == 'qa'"
         run: |
           npm version prerelease -m "chore: release qa version %s [skip build]"
-          git push master:${{ github.event.inputs.targetbranch }} --force --follow-tags
+          git push origin master:${{ github.event.inputs.targetbranch }} --force --follow-tags
           git push --follow-tags
 
       - name: update version prod
         if: "github.event.inputs.release != 'qa'"
         run: |
           npm version minor -m "chore: release prod version %s [skip build]"
-          git push staging:${{ github.event.inputs.targetbranch }} --force --follow-tags
+          git push origin staging:${{ github.event.inputs.targetbranch }} --force --follow-tags
           git checkout master
           git merge staging
           git push --follow-tags
