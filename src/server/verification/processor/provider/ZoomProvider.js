@@ -8,7 +8,7 @@ import {
   duplicateFoundMessage,
   successfullyEnrolledMessage,
   alreadyEnrolledMessage
-} from '../../constants'
+} from '../../utils'
 import logger from '../../../../imports/logger'
 
 import { type IEnrollmentProvider } from '../typings'

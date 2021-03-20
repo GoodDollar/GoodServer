@@ -105,10 +105,10 @@ export default class EnrollmentSession {
 
       adminApi
         .whitelistUser(gdAddress, profilePublickey)
-        .catch(e => log.error('whitelisting after fv failed', e.message, e)),
+        .catch(e => log.warn('whitelisting after fv failed', e.message, e)),
 
       scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.Reauthenticate).catch(e =>
-        log.error('adding facemap to re-auth dispose queue failed:', e.message, e)
+        log.warn('adding facemap to re-auth dispose queue failed:', e.message, e)
       )
     ])
 

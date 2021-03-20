@@ -3,8 +3,12 @@ export const ZoomAPIError = {
   FacemapDoesNotMatch: 'facemapNotMatch',
   LivenessCheckFailed: 'livenessCheckFailed',
   SecurityCheckFailed: 'securityCheckFailed',
-  NameCollision: 'nameCollision'
+  NameCollision: 'nameCollision',
+  HttpException: 'httpException',
+  UnexpectedException: 'unexpectedException'
 }
+
+const logAsErrors = [ZoomAPIError.HttpException, ZoomAPIError.UnexpectedException]
 
 export const failedEnrollmentMessage = 'FaceMap could not be enrolled'
 export const failedLivenessMessage = 'Liveness could not be determined'
@@ -19,3 +23,9 @@ export const redactFieldsDuringLogging = ['faceMapBase64', 'auditTrailBase64', .
 export const duplicateFoundMessage = `Duplicate exists for FaceMap you're trying to enroll.`
 export const successfullyEnrolledMessage = 'The FaceMap was successfully enrolled.'
 export const alreadyEnrolledMessage = 'The FaceMap was already enrolled.'
+
+export const logException = (logger, label, message, exception, data) => {
+  const loggerMethod = logAsErrors.includes(exception.name) ? 'error' : 'warn'
+
+  logger[loggerMethod](label, message, exception, data)
+}

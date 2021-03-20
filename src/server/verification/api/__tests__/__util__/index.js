@@ -10,7 +10,7 @@ import {
   duplicateFoundMessage,
   alreadyEnrolledMessage,
   successfullyEnrolledMessage
-} from '../../../constants'
+} from '../../../utils'
 
 export default zoomServiceMock => {
   const serviceErrorMessage = 'Request failed with status code 500'

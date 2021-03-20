@@ -17,7 +17,7 @@ import {
   enrollmentIdFields,
   faceSnapshotFields,
   redactFieldsDuringLogging
-} from '../constants'
+} from '../utils'
 
 class ZoomAPI {
   http = null
@@ -334,8 +334,10 @@ class ZoomAPI {
       const { data, status, statusText, config } = response
       const log = config.customLogger || logger
 
+      exception.name = ZoomAPIError.HttpException
       log.debug('HTTP exception during Zoom API call:', { data, status, statusText })
     } else {
+      exception.name = ZoomAPIError.UnexpectedException
       logger.debug('Unexpected exception during Zoom API call:', message)
     }
   }

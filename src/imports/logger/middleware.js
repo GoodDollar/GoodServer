@@ -3,7 +3,7 @@ import once from 'events.once'
 import { omit, isPlainObject, assign } from 'lodash'
 import Crypto from 'crypto'
 
-import { redactFieldsDuringLogging as fvRedact } from '../../server/verification/constants'
+import { redactFieldsDuringLogging as fvRedact } from '../../server/verification/utils'
 
 export const createLoggerMiddleware = logger => (req, res, next) => {
   const startTime = Date.now()

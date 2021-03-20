@@ -7,6 +7,7 @@ import Config from '../../server.config'
 
 import createEnrollmentProcessor from '../processor/EnrollmentProcessor'
 import { DISPOSE_ENROLLMENTS_TASK } from './taskUtil'
+import { logException } from '../utils'
 
 class DisposeEnrollmentsTask {
   schedule = null
@@ -39,7 +40,7 @@ class DisposeEnrollmentsTask {
     if (exception) {
       const { message: errMessage } = exception
 
-      logger.error(`Couldn't dispose enrollment for ID '${identifier}'`, errMessage, exception, { identifier })
+      logException(logger, `Couldn't dispose enrollment for ID '${identifier}'`, errMessage, exception, { identifier })
       return
     }
 
