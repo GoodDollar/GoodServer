@@ -7,7 +7,7 @@ import Config from '../../server.config'
 
 import createEnrollmentProcessor from '../processor/EnrollmentProcessor'
 import { DISPOSE_ENROLLMENTS_TASK } from './taskUtil'
-import { logException } from '../utils'
+import { logException } from '../utils/logger'
 
 class DisposeEnrollmentsTask {
   schedule = null

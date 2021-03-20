@@ -17,7 +17,7 @@ import { sendTemplateEmail } from '../aws-ses/aws-ses'
 
 import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 import { verifySignature } from '../utils/eth'
-import { logException } from './utils'
+import { logException } from './utils/logger'
 
 const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, storage: StorageAPI) => {
   /**

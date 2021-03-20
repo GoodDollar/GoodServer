@@ -13,11 +13,10 @@ import {
   failedLivenessMessage,
   failedMatchMessage,
   enrollmentNotFoundMessage,
-  enrollmentAlreadyExistsMessage,
-  enrollmentIdFields,
-  faceSnapshotFields,
-  redactFieldsDuringLogging
-} from '../utils'
+  enrollmentAlreadyExistsMessage
+} from '../utils/constants'
+
+import { enrollmentIdFields, faceSnapshotFields, redactFieldsDuringLogging } from '../utils/logger'
 
 class ZoomAPI {
   http = null
