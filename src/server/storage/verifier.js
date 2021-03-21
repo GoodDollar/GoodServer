@@ -100,7 +100,7 @@ class FacebookVerificationStrategy {
     }
 
     logger.info('FacebookVerifier result:', { emailVerified })
-    userRecord.isEmailConfirmed = userRecord.isEmailConfirmed || emailVerified
+    return { emailVerified, mobileVerified: false }
   }
 }
 
@@ -138,7 +138,7 @@ class UserVerifier {
     const { torusProvider } = requestPayload
     const strategy = strategies[torusProvider] || strategies.default
 
-    await strategy.verify(requestPayload, userRecord, logger)
+    return await strategy.verify(requestPayload, userRecord, logger)
   }
 }
 
