@@ -75,7 +75,7 @@ describe('Test torus email/mobile to address', () => {
     expect(signedPublicKey).toEqual('0xD97b62EC3266EbA1F8F90Ba264174c138b5d4C38'.toLowerCase())
   })
 
-  it('should modify userrecord if verified', async () => {
+  it('should return verifcation result', async () => {
     const { verifyProof } = TorusVerifier.prototype
 
     const userRecord = {
@@ -97,15 +97,14 @@ describe('Test torus email/mobile to address', () => {
     }))
 
     try {
-      await userVerifier.verifySignInIdentifiers()
+      const result = await userVerifier.verifySignInIdentifiers()
+      expect(result).toEqual({
+        emailVerified: false,
+        mobileVerified: true
+      })
     } finally {
       assign(TorusVerifier.prototype, { verifyProof })
     }
-
-    expect(userRecord).toEqual({
-      smsValidated: true,
-      isEmailConfirmed: true
-    })
   })
 
   describe('mainnet tests', () => {

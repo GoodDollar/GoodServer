@@ -43,11 +43,8 @@ class DefaultVerificationStrategy {
       logger.warn('TorusVerifier failed:', { e: exception, msg })
     }
 
-    const { emailVerified, mobileVerified } = verificationResult
-
     logger.info('TorusVerifier result:', verificationResult)
-    userRecord.smsValidated = userRecord.smsValidated || mobileVerified
-    userRecord.isEmailConfirmed = userRecord.isEmailConfirmed || emailVerified
+    return verificationResult
   }
 
   // eslint-disable-next-line require-await
