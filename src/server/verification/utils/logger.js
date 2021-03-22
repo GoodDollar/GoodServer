@@ -6,7 +6,7 @@ export const enrollmentIdFields = ['enrollmentIdentifier', 'externalDatabaseRefI
 export const faceSnapshotFields = ['sessionId', 'faceScan', 'auditTrailImage', 'lowQualityAuditTrailImage']
 export const redactFieldsDuringLogging = ['faceMapBase64', 'auditTrailBase64', ...faceSnapshotFields]
 
-export const logException = (logger, label, message, exception, data) => {
+export const notifyAboutVerificationIssue = (logger, label, message, exception, data) => {
   const loggerMethod = logAsErrors.includes(exception.name) ? 'error' : 'warn'
 
   logger[loggerMethod](label, message, exception, data)

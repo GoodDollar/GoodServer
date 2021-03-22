@@ -96,19 +96,25 @@ export default class EnrollmentSession {
     const { user, storage, adminApi, queueApi, log, enrollmentIdentifier } = this
     const { gdAddress, profilePublickey, loggedInAs } = user
 
+    const finalize = async (action, errorLogMessage) => {
+      try {
+        return await action()
+      } catch (e) {
+        log.error(errorLogMessage, e.message, e)
+        throw e
+      }
+    }
+
     log.info('Whitelisting user:', { loggedInAs })
 
     await Promise.all([
       storage.updateUser({ identifier: loggedInAs, isVerified: true }),
+      finalize(() => queueApi.setWhitelisted(user, storage, log), 'claim queue update failed'),
+      finalize(() => adminApi.whitelistUser(gdAddress, profilePublickey), 'whitelisting after fv failed'),
 
-      queueApi.setWhitelisted(user, storage, log).catch(e => log.warn('claim queue update failed', e.message, e)),
-
-      adminApi
-        .whitelistUser(gdAddress, profilePublickey)
-        .catch(e => log.warn('whitelisting after fv failed', e.message, e)),
-
-      scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.Reauthenticate).catch(e =>
-        log.warn('adding facemap to re-auth dispose queue failed:', e.message, e)
+      finalize(
+        () => scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.Reauthenticate),
+        'adding facemap to re-auth dispose queue failed:'
       )
     ])
 
