@@ -96,15 +96,6 @@ export default class EnrollmentSession {
     const { user, storage, adminApi, queueApi, log, enrollmentIdentifier } = this
     const { gdAddress, profilePublickey, loggedInAs } = user
 
-    const finalize = async (action, errorLogMessage) => {
-      try {
-        return await action()
-      } catch (e) {
-        log.error(errorLogMessage, e.message, e)
-        throw e
-      }
-    }
-
     log.info('Whitelisting user:', { loggedInAs })
 
     await Promise.all([
