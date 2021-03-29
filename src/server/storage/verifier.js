@@ -43,11 +43,8 @@ class DefaultVerificationStrategy {
       logger.warn('TorusVerifier failed:', { e: exception, msg })
     }
 
-    const { emailVerified, mobileVerified } = verificationResult
-
     logger.info('TorusVerifier result:', verificationResult)
-    userRecord.smsValidated = userRecord.smsValidated || mobileVerified
-    userRecord.isEmailConfirmed = userRecord.isEmailConfirmed || emailVerified
+    return verificationResult
   }
 
   // eslint-disable-next-line require-await
@@ -103,7 +100,7 @@ class FacebookVerificationStrategy {
     }
 
     logger.info('FacebookVerifier result:', { emailVerified })
-    userRecord.isEmailConfirmed = userRecord.isEmailConfirmed || emailVerified
+    return { emailVerified, mobileVerified: false }
   }
 }
 
@@ -141,7 +138,7 @@ class UserVerifier {
     const { torusProvider } = requestPayload
     const strategy = strategies[torusProvider] || strategies.default
 
-    await strategy.verify(requestPayload, userRecord, logger)
+    return await strategy.verify(requestPayload, userRecord, logger)
   }
 }
 

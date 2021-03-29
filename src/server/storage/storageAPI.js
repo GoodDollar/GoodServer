@@ -75,30 +75,29 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         const verifier = createUserVerifier(userRecord, userPayload, logger)
 
         //this modifies userRecord with smsValidated/isEmailConfirmed
-        await verifier.verifySignInIdentifiers()
+        const { emailVerified, mobileVerified } = await verifier.verifySignInIdentifiers()
+
+        const isEmailTorusVerified = email && emailVerified
+        const isEmailManuallyVerified = email && userRecord.isEmailConfirmed && userRecord.email === sha3(email)
+        const isEmailConfirmed = 'development' === env || isEmailTorusVerified || isEmailManuallyVerified
+        const isMobileTorusVerified = mobile && mobileVerified
+        const isMobileManuallyVerified = mobile && userRecord.smsValidated && userRecord.mobile === sha3(mobile)
+        const isMobileConfirmed = 'development' === env || isMobileTorusVerified || isMobileManuallyVerified
 
         // check that user email/mobile sent is the same as the ones verified
         //in case email/mobile was verified using torus userRecord.mobile/email will be empty
         if (['production', 'staging'].includes(env)) {
-          if (
-            (optionalMobile === false && userRecord.smsValidated !== true) ||
-            (mobile && userRecord.mobile && userRecord.mobile !== sha3(mobile))
-          ) {
+          if (optionalMobile === false && isMobileConfirmed === false) {
             throw new Error('User mobile not verified!')
           }
 
-          if (
-            skipEmailVerification === false &&
-            (userRecord.isEmailConfirmed !== true || (email && userRecord.email && userRecord.email !== sha3(email)))
-          ) {
+          if (skipEmailVerification === false && isEmailConfirmed === false) {
             throw new Error('User email not verified!')
           }
         }
 
-        if ('development' === env) {
-          userRecord.isEmailConfirmed = true
-          userRecord.smsValidated = true
-        }
+        userRecord.isEmailConfirmed = isEmailConfirmed
+        userRecord.smsValidated = isMobileConfirmed
 
         if (userRecord.createdDate) {
           logger.warn('user already created', { userRecord, userPayload })
@@ -122,7 +121,9 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
             : {
                 whiteList: false,
                 topWallet: false
-              }
+              },
+          isEmailConfirmed,
+          smsValidated: isMobileConfirmed
         })
 
         const userRecordWithPII = { ...payloadWithoutCreds, ...userRecord, inviteCode, email, mobile }
