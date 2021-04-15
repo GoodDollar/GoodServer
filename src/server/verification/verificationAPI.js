@@ -98,7 +98,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
       try {
         if (conf.env !== 'production') {
-          throw new Error('Cannot get production license running non-production mode.')
+          throw new Error('Cannot obtain production license running non-production mode.')
         }
 
         const processor = createEnrollmentProcessor(storage, log)

@@ -76,9 +76,10 @@ describe('ZoomProvider', () => {
   })
 
   test('isValidLicenseType() validates license type', () => {
-    const { Browser, Mobile } = ZoomLicenseType[(Browser, Mobile)].forEach(type =>
-      expect(ZoomProvider.isValidLicenseType(type)).toBeTruthy()
-    )
+    const { Browser, Mobile } = ZoomLicenseType
+
+    ;[Browser, Mobile].forEach(type => expect(ZoomProvider.isValidLicenseType(type)).toBeTruthy())
+
     expect(ZoomProvider.isValidLicenseType('unknown')).toBeFalsy()
   })
 

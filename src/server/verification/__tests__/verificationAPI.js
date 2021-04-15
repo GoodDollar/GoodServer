@@ -181,7 +181,8 @@ describe('verificationAPI', () => {
 
     test('Face verification endpoints returns 401 without credentials', async () => {
       await request(server)
-        .delete(licenseUri())
+        .post(licenseUri())
+        .send({})
         .expect(401)
 
       await request(server)
