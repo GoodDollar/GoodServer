@@ -4,6 +4,7 @@ import MockAdapter from 'axios-mock-adapter'
 import { first, fromPairs, keys } from 'lodash'
 
 import getZoomProvider from '../ZoomProvider'
+import { ZoomLicenseType } from '../../../constants'
 import createMockingHelper from '../../../api/__tests__/__util__'
 import { levelConfigs } from '../../../../../imports/logger/options'
 
@@ -11,6 +12,8 @@ const ZoomProvider = getZoomProvider()
 let helper
 let zoomServiceMock
 
+const licenseKey = 'fake-license'
+const licenseType = ZoomLicenseType.Browser
 const sessionToken = 'fake-session-id'
 const enrollmentIdentifier = 'fake-enrollment-identifier'
 
@@ -70,6 +73,19 @@ describe('ZoomProvider', () => {
     zoomServiceMock.restore()
     zoomServiceMock = null
     helper = null
+  })
+
+  test('isValidLicenseType() validates license type', () => {
+    const { Browser, Mobile } = ZoomLicenseType[(Browser, Mobile)].forEach(type =>
+      expect(ZoomProvider.isValidLicenseType(type)).toBeTruthy()
+    )
+    expect(ZoomProvider.isValidLicenseType('unknown')).toBeFalsy()
+  })
+
+  test('getLicenseKey() should return license key', async () => {
+    helper.mockSuccessLicenseKey(licenseType, licenseKey)
+
+    await expect(ZoomProvider.getLicenseKey(licenseType)).resolves.toEqual(licenseKey)
   })
 
   test('issueToken() should return session token', async () => {

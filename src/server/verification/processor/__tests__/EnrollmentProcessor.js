@@ -3,6 +3,7 @@
 import MockAdapter from 'axios-mock-adapter'
 import { omit, invokeMap } from 'lodash'
 
+import { ZoomLicenseType } from '../../constants'
 import createEnrollmentProcessor from '../EnrollmentProcessor'
 import AdminWallet from '../../../blockchain/AdminWallet'
 import { ClaimQueue } from '../../../claimQueue/claimQueueAPI'
@@ -49,6 +50,8 @@ const storageMock = {
 
 const fakeTask = { _id: 'fake-task-id' }
 const enrollmentIdentifier = 'f0D7A688489Ab3079491d407A03BF16e5B027b2c'
+const licenseKey = 'fake-license'
+const licenseType = ZoomLicenseType.Browser
 
 const payload = {
   sessionId: 'fake-session-id',
@@ -138,6 +141,16 @@ describe('EnrollmentProcessor', () => {
     zoomServiceMock.restore()
     zoomServiceMock = null
     helper = null
+  })
+
+  test('getLicenseKey() passes validation and returns license key', async () => {
+    helper.mockSuccessLicenseKey(licenseType, licenseKey)
+
+    await expect(enrollmentProcessor.getLicenseKey(licenseType)).resolves.toEqual(licenseKey)
+  })
+
+  test('getLicenseKey() fails if invalid license type passed', async () => {
+    await testValidation(enrollmentProcessor.getLicenseKey('unknown'))
   })
 
   test('validate() passes if user, enrollmentIdentifier and sessionId are present', async () => {

@@ -21,6 +21,8 @@ export default zoomServiceMock => {
 
   const enrollmentUri = enrollmentIdentifier => `/enrollment-3d/${encodeURIComponent(toLower(enrollmentIdentifier))}`
 
+  const licenseUri = licenseType => `/license/${encodeURIComponent(licenseType)}`
+
   const enrollmentPayloadMatcher = enrollmentIdentifier => {
     const enrollmentId = toLower(enrollmentIdentifier)
 
@@ -78,6 +80,15 @@ export default zoomServiceMock => {
       .onPost(`/3d-db/${operation}`, enrollmentPayloadMatcher(enrollmentIdentifier))
       .reply(200, mockedResponse)
   }
+
+  const mockSuccessLicenseKey = (licenseType, key) =>
+    zoomServiceMock.onGet(licenseUri(licenseType)).reply(200, {
+      key,
+      ...successResponse
+    })
+
+  const mockFailedLicenseKey = (licenseType, withMessage = null) =>
+    zoomServiceMock.onGet(licenseUri(licenseType)).reply(403, mockErrorResponse(withMessage))
 
   const mockSuccessSessionToken = sessionToken =>
     zoomServiceMock.onGet('/session-token').reply(200, {
@@ -227,6 +238,10 @@ export default zoomServiceMock => {
     enrollmentPayloadMatcher,
     mockErrorResponse,
     serviceErrorMessage,
+
+    licenseUri,
+    mockSuccessLicenseKey,
+    mockFailedLicenseKey,
 
     mockSuccessSessionToken,
     mockFailedSessionToken,

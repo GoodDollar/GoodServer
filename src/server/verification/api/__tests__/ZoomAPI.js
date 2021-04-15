@@ -6,7 +6,7 @@ import allSettled from 'promise.allsettled'
 
 import config from '../../../server.config'
 import getZoomAPI from '../ZoomAPI'
-import { ZoomAPIError } from '../../constants'
+import { ZoomAPIError, ZoomLicenseType } from '../../constants'
 import createMockingHelper from './__util__'
 
 const ZoomAPI = getZoomAPI()
@@ -17,6 +17,8 @@ const matchLevel = 10
 const indexName = 'fake-index'
 const sessionToken = 'fake-session-id'
 const enrollmentIdentifier = 'fake-enrollment-identifier'
+const licenseKey = 'fake-license'
+const licenseType = ZoomLicenseType.Browser
 
 const payload = {
   sessionId: sessionToken,
@@ -54,13 +56,29 @@ describe('ZoomAPI', () => {
     return message
   }
 
+  test('getLicenseKey() should return license key', async () => {
+    helper.mockSuccessLicenseKey(licenseType, licenseKey)
+
+    await expect(ZoomAPI.getLicenseKey(licenseType)).resolves.toHaveProperty('key', licenseKey)
+  })
+
+  test('getLicenseKey() should throw on server error', async () => {
+    const message = 'No license found in the database for this platformID.'
+
+    helper.mockFailedLicenseKey(licenseType)
+    await expect(ZoomAPI.getLicenseKey(licenseType)).rejects.toThrow('Request failed with status code 403')
+
+    helper.mockFailedLicenseKey(licenseType, message)
+    await expect(ZoomAPI.getLicenseKey(licenseType)).rejects.toThrow(message)
+  })
+
   test('getSessionToken() should return session token', async () => {
     helper.mockSuccessSessionToken(sessionToken)
 
     await expect(ZoomAPI.getSessionToken()).resolves.toHaveProperty('sessionToken', sessionToken)
   })
 
-  test('getSessionToken() should throws if no sessionToken found in the API response', async () => {
+  test('getSessionToken() should throw if no sessionToken found in the API response', async () => {
     const message = 'Some error happened on GET /session-token call'
 
     helper.mockFailedSessionToken()
