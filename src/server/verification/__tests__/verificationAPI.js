@@ -214,7 +214,7 @@ describe('verificationAPI', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200, {
           success: true,
-          licenseKey: licenseKey
+          license: licenseKey
         })
     })
 
@@ -228,7 +228,7 @@ describe('verificationAPI', () => {
         .post(licenseUri())
         .send({})
         .set('Authorization', `Bearer ${token}`)
-        .expect(200, {
+        .expect(400, {
           success: false,
           error: message
         })
@@ -241,7 +241,7 @@ describe('verificationAPI', () => {
         .post(licenseUri('unknown'))
         .send({})
         .set('Authorization', `Bearer ${token}`)
-        .expect(200, {
+        .expect(400, {
           success: false,
           error: 'Invalid input'
         })
@@ -252,9 +252,9 @@ describe('verificationAPI', () => {
         .post(licenseUri())
         .send({})
         .set('Authorization', `Bearer ${token}`)
-        .expect(200, {
+        .expect(400, {
           success: false,
-          error: 'Cannot get production license running non-production mode.'
+          error: 'Cannot obtain production license running non-production mode.'
         })
     })
 
