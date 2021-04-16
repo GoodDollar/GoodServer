@@ -318,6 +318,12 @@ const conf = convict({
       default: undefined
     }
   },
+  corsForceAnyOrigin: {
+    doc: 'Force allow any origin in the CORS middleware',
+    format: Boolean,
+    env: 'CORS_FORCE_ANY_ORIGIN',
+    default: false
+  },
   allowDuplicateUserData: {
     doc: 'Allow to register with existing mobile/email',
     format: Boolean,
