@@ -193,7 +193,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         ])
           .then(res => logger.info('updated trust indexes result:', { res }))
           .catch(e => {
-            logger.error('updated trust indexes: failed adding new user to indexes. allowing to finish registartion')
+            logger.error('updated trust indexes: failed adding new user to indexes. allowing to finish registration')
           })
 
         const p6 = withTimeout(p5, 15000, 'updated trust indexes timeout').catch(e => {
@@ -202,7 +202,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
 
         signUpPromises.push(p6)
 
-        // dont await, if we failed to update its not critical for user.
+        // don't await, if we failed to update its not critical for user.
         withTimeout(Promise.all(signUpPromises), 30000, 'signup promises timeout')
           .then(async r => {
             logger.info('signup promises success')
@@ -253,7 +253,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
 
       if (!user.email || existingUser.createdDate || existingUser.mauticId) return res.json({ ok: 0 })
 
-      //fire and forget, dont wait for success or failure
+      //fire and forget, don't wait for success or failure
       addUserSteps
         .updateMauticRecord(user, utmString, logger)
         .then(r => logger.debug('/user/start updateMauticRecord success'))
