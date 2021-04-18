@@ -491,7 +491,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       const { user, body } = req
       const verificationData: { code: string } = body.verificationData
       const { email } = user.otp || {}
-      const hashedNewEmail = sha3(email)
+      const hashedNewEmail = email ? sha3(email) : null
       const currentEmail = user.email
 
       log.debug('email verified', {
