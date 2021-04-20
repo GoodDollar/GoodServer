@@ -22,7 +22,7 @@ import { noopAsync } from '../../utils/async'
 
 describe('verificationAPI', () => {
   let server
-  const { skipEmailVerification, claimQueueAllowed, env } = Config
+  const { skipEmailVerification, claimQueueAllowed, zoomProductionMode } = Config
   const userIdentifier = '0x7ac080f6607405705aed79675789701a48c76f55'
 
   beforeAll(async done => {
@@ -38,12 +38,12 @@ describe('verificationAPI', () => {
 
   beforeEach(() => {
     // disable claim queue
-    Object.assign(Config, { env, claimQueueAllowed: 0 })
+    Object.assign(Config, { zoomProductionMode, claimQueueAllowed: 0 })
   })
 
   afterAll(async done => {
     // restore original config
-    Object.assign(Config, { skipEmailVerification, claimQueueAllowed, env })
+    Object.assign(Config, { skipEmailVerification, claimQueueAllowed, zoomProductionMode })
     await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
 
     server.close(err => {
@@ -205,7 +205,7 @@ describe('verificationAPI', () => {
     })
 
     test('POST /verify/face/license/:licenseType returns 200, success: true and license', async () => {
-      Config.env = 'production'
+      Config.zoomProductionMode = true
       helper.mockSuccessLicenseKey(licenseType, licenseKey)
 
       await request(server)
@@ -221,7 +221,7 @@ describe('verificationAPI', () => {
     test('POST /verify/face/license/:licenseType returns 400, success: false if Zoom API fails', async () => {
       const message = 'No license found in the database for this platformID.'
 
-      Config.env = 'production'
+      Config.zoomProductionMode = true
       helper.mockFailedLicenseKey(licenseType, message)
 
       await request(server)
@@ -235,7 +235,7 @@ describe('verificationAPI', () => {
     })
 
     test("POST /verify/face/license/:licenseType returns 400, success: false when license type isn't valid", async () => {
-      Config.env = 'production'
+      Config.zoomProductionMode = true
 
       await request(server)
         .post(licenseUri('unknown'))

@@ -290,6 +290,12 @@ const conf = convict({
     env: 'ZOOM_LICENSE_KEY',
     default: ''
   },
+  zoomProductionMode: {
+    doc: 'Enables fetching production key and initializes Zoom in production mode',
+    format: Boolean,
+    env: 'ZOOM_PRODUCTION_MODE',
+    default: false
+  },
   gunPrivateS3: {
     key: {
       format: '*',
@@ -317,12 +323,6 @@ const conf = convict({
       format: '*',
       default: undefined
     }
-  },
-  corsForceAnyOrigin: {
-    doc: 'Force allow any origin in the CORS middleware',
-    format: Boolean,
-    env: 'CORS_FORCE_ANY_ORIGIN',
-    default: false
   },
   allowDuplicateUserData: {
     doc: 'Allow to register with existing mobile/email',

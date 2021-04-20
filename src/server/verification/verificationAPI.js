@@ -97,7 +97,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       const { licenseType } = params
 
       try {
-        if (conf.env !== 'production') {
+        if (!conf.zoomProductionMode) {
           throw new Error('Cannot obtain production license running non-production mode.')
         }
 
