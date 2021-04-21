@@ -40,7 +40,7 @@ const stakingModelTasks = [
 export default async (app: Router) => {
   const corsConfig = {
     credentials: true,
-    origin: env === 'production' ? /\.gooddollar\.org$/ : true
+    origin: env === 'production' ? /\.gooddollar\.org$/ : /(localhost|\.netlify\.app)/
   }
 
   // parse application/x-www-form-urlencoded
