@@ -1,4 +1,4 @@
-import { assign, isEmpty, bindAll, isError } from 'lodash'
+import { assign, isEmpty, bindAll, isError, defaults } from 'lodash'
 import { from as fromPromise, defer, throwError, timer } from 'rxjs'
 import { mergeMap, retryWhen, timeout } from 'rxjs/operators'
 
@@ -43,11 +43,8 @@ class DefaultVerificationStrategy {
       logger.warn('TorusVerifier failed:', { e: exception, msg })
     }
 
-    const { emailVerified, mobileVerified } = verificationResult
-
     logger.info('TorusVerifier result:', verificationResult)
-    userRecord.smsValidated = userRecord.smsValidated || mobileVerified
-    userRecord.isEmailConfirmed = userRecord.isEmailConfirmed || emailVerified
+    return verificationResult
   }
 
   // eslint-disable-next-line require-await
@@ -82,28 +79,30 @@ class DefaultVerificationStrategy {
 class FacebookVerificationStrategy {
   async verify(requestPayload, userRecord, logger) {
     let emailVerified = false
+    const { isEmailConfirmed = false } = userRecord || {}
     const { email, torusAccessToken } = requestPayload
-
-    if (userRecord.isEmailConfirmed) {
-      logger.warn('FacebookVerifier skipping because email already verified')
-      return
-    }
 
     if (!torusAccessToken) {
       logger.warn('FacebookVerifier skipping because no accessToken was specified')
       return
     }
 
-    try {
-      emailVerified = await FacebookVerifier.verifyEmail(email, torusAccessToken, logger)
-    } catch (exception) {
-      const { message: msg } = exception
+    if (isEmailConfirmed) {
+      logger.warn('FacebookVerifier skipping because email already verified')
+      emailVerified = true
+    } else {
+      try {
+        emailVerified = await FacebookVerifier.verifyEmail(email, torusAccessToken, logger)
+      } catch (exception) {
+        const { message: msg } = exception
 
-      logger.warn('FacebookVerifier failed:', { e: exception, msg })
+        logger.warn('FacebookVerifier failed:', { e: exception, msg })
+      }
+
+      logger.info('FacebookVerifier result:', { emailVerified })
     }
 
-    logger.info('FacebookVerifier result:', { emailVerified })
-    userRecord.isEmailConfirmed = userRecord.isEmailConfirmed || emailVerified
+    return { emailVerified, mobileVerified: false }
   }
 }
 
@@ -140,8 +139,9 @@ class UserVerifier {
     const { userRecord, requestPayload, logger } = this
     const { torusProvider } = requestPayload
     const strategy = strategies[torusProvider] || strategies.default
+    const result = await strategy.verify(requestPayload, userRecord, logger)
 
-    await strategy.verify(requestPayload, userRecord, logger)
+    return defaults(result || {}, { emailVerified: false, mobileVerified: false })
   }
 }
 

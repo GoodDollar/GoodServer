@@ -10,6 +10,7 @@ describe('Send', () => {
   var mauticId = ''
   it('should add new contact', async () => {
     const res = await Mautic.createContact({ firstname: 'h', lastname: 'r', email: 'hadartest@gooddollar.org' })
+
     mauticId = res.contact.id
     expect(res.contact.fields.all).toEqual(
       expect.objectContaining({
@@ -74,15 +75,13 @@ describe('Send', () => {
   })
 
   it('should add contact to segment', async () => {
-    const res = await Mautic.addContactsToSegment([mauticId], conf.mauticClaimQueueApprovedSegmentId)
+    const res = await Mautic.addContactsToSegment([mauticId], conf.mauticClaimQueueWhitelistedSegmentId)
     expect(res.details[mauticId].success).toEqual(true)
   })
 
   it('should delete contact', async () => {
-    const res = await Mautic.deleteContact({
-      fullName: 'h r',
-      mauticId
-    })
+    const res = await Mautic.deleteContact(mauticId)
+
     expect(res.contact.fields.all).toEqual(
       expect.objectContaining({
         email: 'hadartest@gooddollar.org',

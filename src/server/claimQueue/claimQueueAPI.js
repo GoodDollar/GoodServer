@@ -94,10 +94,6 @@ const ClaimQueue = {
     const approvedUsers = map(pendingUsers, '_id')
     const mauticIds = map(pendingUsers, 'mauticId')
 
-    Mautic.addContactsToSegment(mauticIds, conf.mauticClaimQueueApprovedSegmentId).catch(e => {
-      log.error('Failed Mautic adding user to claim queue approved segment', e.message, e)
-    })
-
     await storage.model.updateMany({ _id: { $in: approvedUsers } }, { $set: { 'claimQueue.status': 'approved' } })
 
     log.debug('claim queue updated', { pendingUsers, newAllowed, stillPending })
@@ -131,10 +127,6 @@ const ClaimQueue = {
     const userIds = map(approvedUsers, '_id')
     const mauticIds = map(approvedUsers, 'mauticId')
 
-    Mautic.addContactsToSegment(mauticIds, conf.mauticClaimQueueApprovedSegmentId).catch(e => {
-      log.error('Failed Mautic adding user to claim queue approved segment', e.message, e)
-    })
-
     await storage.model.updateMany({ _id: { $in: userIds } }, { $set: { 'claimQueue.status': 'approved' } })
 
     log.debug('claim queue updated', { approvedUsers })
@@ -164,9 +156,6 @@ const ClaimQueue = {
       if (status === 'pending') {
         Mautic.updateContact(user.mauticId, { tags: ['claimqueue_in'] }, log).catch(e => {
           log.error('Failed Mautic tagging  user inqueue', e.message, e, { mauticId: user.mauticId })
-        })
-        Mautic.addContactsToSegment([user.mauticId], conf.mauticClaimQueueSegmentId).catch(e => {
-          log.error('Failed Mautic adding user to claim queue segment', e.message, e, { mauticId: user.mauticId })
         })
       } else {
         Mautic.updateContact(user.mauticId, { tags: ['claimqueue_autoapproved'] }, log).catch(e => {
