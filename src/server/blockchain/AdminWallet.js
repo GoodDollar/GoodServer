@@ -347,7 +347,7 @@ export class Wallet {
     } catch (exception) {
       const { message } = exception
 
-      log.error('Error whitelistUser', message, exception, { txHash, address, did })
+      log.warn('Error whitelistUser', message, exception, { txHash, address, did })
       throw exception
     }
   }
@@ -374,7 +374,7 @@ export class Wallet {
     } catch (exception) {
       const { message } = exception
 
-      log.error('Error authenticateUser', message, exception, { address })
+      log.warn('Error authenticateUser', message, exception, { address })
       throw exception
     }
   }
@@ -385,7 +385,7 @@ export class Wallet {
       return result.toNumber()
     } catch (exception) {
       const { message } = exception
-      log.error('Error getAuthenticationPeriod', message, exception)
+      log.warn('Error getAuthenticationPeriod', message, exception)
       throw exception
     }
   }
@@ -723,7 +723,7 @@ export class Wallet {
 
             if (isNonceError(e)) {
               let netNonce = parseInt(await this.web3.eth.getTransactionCount(address))
-              log.error('sendNative nonce failure retry', message, e, {
+              log.warn('sendNative nonce failure retry', message, e, {
                 params,
                 nonce,
                 gas,
@@ -780,7 +780,7 @@ export class Wallet {
           .estimateGas()
           .then(gas => gas + 200000) //buffer for proxy contract, reimburseGas?, and low gas unexpected failures
           .catch(e => {
-            log.error('Failed to estimate gas for tx mainnet', e.message, e)
+            log.warn('Failed to estimate gas for tx mainnet', e.message, e)
             return defaultGas
           }))
 
