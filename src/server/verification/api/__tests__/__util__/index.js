@@ -1,7 +1,8 @@
 import { upperFirst, toLower } from 'lodash'
 
+import { enrollmentIdFields } from '../../../utils/logger'
+
 import {
-  enrollmentIdFields,
   failedLivenessMessage,
   failedEnrollmentMessage,
   failedMatchMessage,
@@ -10,7 +11,7 @@ import {
   duplicateFoundMessage,
   alreadyEnrolledMessage,
   successfullyEnrolledMessage
-} from '../../../constants'
+} from '../../../utils/constants'
 
 export default zoomServiceMock => {
   const serviceErrorMessage = 'Request failed with status code 500'

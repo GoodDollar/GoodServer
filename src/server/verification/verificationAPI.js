@@ -17,6 +17,7 @@ import { sendTemplateEmail } from '../aws-ses/aws-ses'
 
 import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 import { verifySignature } from '../utils/eth'
+import { shouldLogVerificaitonError } from './utils/logger'
 
 const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, storage: StorageAPI) => {
   /**
@@ -44,6 +45,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         await processor.enqueueDisposal(user, enrollmentIdentifier, log)
       } catch (exception) {
         const { message } = exception
+
         log.error('delete face record failed:', message, exception, { enrollmentIdentifier, user })
         res.status(400).json({ success: false, error: message })
         return
@@ -76,6 +78,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         res.json({ success: true, isDisposing })
       } catch (exception) {
         const { message } = exception
+
         log.error('face record disposing check failed:', message, exception, { enrollmentIdentifier, user })
         res.status(400).json({ success: false, error: message })
       }
@@ -102,6 +105,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         res.json({ success: true, sessionToken })
       } catch (exception) {
         const { message } = exception
+
         log.error('generating enrollment session token failed:', message, exception, { user })
         res.status(400).json({ success: false, error: message })
       }
@@ -174,8 +178,14 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         }
       } catch (exception) {
         const { message } = exception
+        const logArgs = ['Face verification error:', message, exception, { enrollmentIdentifier }]
 
-        log.error('Face verification error:', message, exception, { enrollmentIdentifier })
+        if (shouldLogVerificaitonError(exception)) {
+          log.error(...logArgs)
+        } else {
+          log.warn(...logArgs)
+        }
+
         res.status(400).json({ success: false, error: message })
         return
       }

@@ -74,7 +74,7 @@ class TaskRunner {
 
         const nextTry = moment().add(1, 'hours')
 
-        logger.error('Cron task failed, retrying later', errMessage, exception, { taskName, taskId, nextTry })
+        logger.warn('Cron task failed, retrying later', errMessage, exception, { taskName, taskId, nextTry })
         this.setNextTry(taskJob, nextTry)
       }
     })
