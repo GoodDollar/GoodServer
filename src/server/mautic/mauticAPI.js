@@ -213,7 +213,10 @@ export const Mautic = new (class {
     }
 
     if (mauticId === -1) {
-      log.error('Mautic Error createContact failed', '', null, { user, tags, mauticRecord })
+      const e = new Error('createContact failed')
+
+      log.error('Mautic Error:', e.message, e, { user, tags, mauticRecord })
+      throw e
     }
 
     log.info('createContact result:', { mauticId, email: user.email })
