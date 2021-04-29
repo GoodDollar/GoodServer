@@ -204,13 +204,13 @@ export default zoomServiceMock => {
     const payloadMatcher = enrollmentPayloadMatcher(enrollmentIdentifier)
 
     const reasonFlags = {
-      faceScanLivenessCheckSucceeded: false,
+      faceScanLivenessCheckSucceeded: !!faceMapDoesntMatch,
       ...withReasonFlags
     }
 
     const response = {
       externalDatabaseRefID: enrollmentIdentifier,
-      matchLevel: faceMapDoesntMatch ? 0 : 10,
+      matchLevel: 0,
       success: false
     }
 
