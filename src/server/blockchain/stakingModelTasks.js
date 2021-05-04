@@ -440,11 +440,23 @@ class FishingManager {
     return fishers
   }
 
+  /**
+   * transfers recovered funds by fishing back to UBI
+   * @returns the amount transfered
+   */
+  transferFishToUBI = async () => {
+    let gdbalance = await AdminWallet.tokenContract.methods.balanceOf(AdminWallet.proxyContract.address).call()
+    const transferTX = await AdminWallet.transferWalletGooDollars(AdminWallet.UBIContract.address, gdbalance, this.log)
+    this.log.info('transfered fished funds to ubi', { tx: transferTX.transactionHash, gdbalance })
+    return gdbalance
+  }
+
   run = async forceDaysAgo => {
     try {
       const inactive = await this.getInactiveAccounts(forceDaysAgo)
       const fishers = await this.fish(inactive)
       const cronTime = await this.getNextDay()
+      await this.transferFishToUBI().catch() //silence exceptions, as they will be error logged in wallet
       return { result: true, cronTime, fishers, inactive: inactive.length }
     } catch (exception) {
       const { message } = exception
