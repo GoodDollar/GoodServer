@@ -539,6 +539,45 @@ export class Wallet {
     }
   }
 
+  /**
+   * transfer G$s locked in adminWallet contract to recipient
+   * @param {*} to recipient
+   * @param {*} value amount to transfer
+   * @param {*} logger
+   * @returns
+   */
+  async transferWalletGooDollars(to, value, logger = log): Promise<TransactionReceipt> {
+    try {
+      let encodedCall = this.web3.eth.abi.encodeFunctionCall(
+        {
+          name: 'transfer',
+          type: 'function',
+          inputs: [
+            {
+              type: 'address',
+              name: 'to'
+            },
+            {
+              type: 'uint256',
+              name: 'value'
+            }
+          ]
+        },
+        [to, value]
+      )
+      logger.info('transferWalletGooDollars sending tx', { encodedCall, to, value })
+      const transaction = await this.proxyContract.methods.genericCall(this.tokenContract.address, encodedCall, 0)
+      const tx = await this.sendTransaction(transaction, {}, { gas: 200000 }, false, logger)
+      logger.info('transferWalletGooDollars success', { to, value, tx: tx.transactionHash })
+      return tx
+    } catch (exception) {
+      const { message } = exception
+
+      logger.error('transferWalletGooDollars failed', message, exception, { to, value })
+      throw exception
+    }
+  }
+
   async getAddressBalance(address: string): Promise<number> {
     return this.web3.eth.getBalance(address)
   }
