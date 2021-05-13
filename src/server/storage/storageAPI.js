@@ -147,7 +147,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
               if (isWhitelisted === false) throw new Error('Failed whitelisting user')
             })
             .catch(e => {
-              logger.error('addUserToWhiteList failed', e.message, e, { userRecord })
+              logger.warn('addUserToWhiteList failed', e.message, e, { userRecord })
               throw e
             })
           signUpPromises.push(p2)
@@ -192,12 +192,12 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
             gunPublic.addUserToIndex('walletAddress', userRecordWithPII.gdAddress.toLowerCase(), userRecordWithPII)
         ])
           .then(res => logger.info('updated trust indexes result:', { res }))
-          .catch(e => {
-            logger.error('updated trust indexes: failed adding new user to indexes. allowing to finish registration')
+          .catch(() => {
+            logger.warn('updated trust indexes: failed adding new user to indexes. allowing to finish registration')
           })
 
         const p6 = withTimeout(p5, 15000, 'updated trust indexes timeout').catch(e => {
-          logger.error(e.message)
+          logger.warn('update trust indexes: ', e.message, e)
         })
 
         signUpPromises.push(p6)
@@ -215,6 +215,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
             }
           })
           .catch(e => logger.error('signup promises failed', e.message, e))
+
         logger.debug('signup steps success. adding new user:', { toUpdateUser })
 
         await storage.updateUser({
@@ -502,7 +503,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
       fishManager
         .run(daysAgo)
         .then(fishResult => log.info('fishing request result:', { fishResult }))
-        .catch(e => log.error('fish request failed', { daysAgo }))
+        .catch(e => log.error('fish request failed', e.message, e, { daysAgo }))
 
       res.json({ ok: 1 })
     })

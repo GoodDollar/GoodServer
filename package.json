@@ -1,6 +1,6 @@
 {
   "name": "@gooddollar/goodserver",
-  "version": "1.22.1-1",
+  "version": "1.22.1-4",
   "description": "GoodDollar Server",
   "main": "src/server/index.js",
   "engines": {
@@ -82,7 +82,7 @@
     "i": "^0.3.6",
     "jest": "^24.9.0",
     "jsonwebtoken": "^8.5.1",
-    "lodash": "^4.17.20",
+    "lodash": "^4.17.21",
     "math-random": "^1.0.4",
     "md5": "^2.3.0",
     "moment": "^2.29.0",
