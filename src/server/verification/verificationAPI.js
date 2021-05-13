@@ -450,6 +450,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           try {
             const { fullName } = userRec
             if (!code || !fullName || !email) {
+              log.error('missing input for sending verification email', { code, fullName, email })
               throw new Error('missing input for sending verification email')
             }
             const templateData = {
