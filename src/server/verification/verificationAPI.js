@@ -228,7 +228,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
       if (!userRec.smsValidated || hashedMobile !== savedMobile) {
         if (['production', 'staging'].includes(conf.env)) {
-          const sendResult = await OTP.sendOTP({ mobile }, { channel: body.user.otpChannel })
+          const sendResult = await OTP.sendOTP(mobile, get(body, 'user.otpChannel', 'sms'), req)
 
           log.debug('otp sent:', user.loggedInAs, sendResult)
         }
@@ -259,6 +259,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
    */
   app.post(
     '/verify/mobile',
+    requestRateLimiter(),
     passport.authenticate('jwt', { session: false }),
     onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res, next) => {
