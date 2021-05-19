@@ -36,7 +36,7 @@ class Verifications implements VerificationAPI {
 
     try {
       checkResult = await Promise.race([
-        OTP.checkOTP(user, otp),
+        OTP.checkOTP(user.mobile, otp),
         timeout(5000, 'Not much time since last attempt. Please try again later')
       ])
     } catch (e) {
