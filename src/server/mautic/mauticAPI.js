@@ -140,13 +140,19 @@ export const Mautic = new (class {
     })
 
     if (ids.length > 1) {
+      const [id, ...dups] = ids
+
       log.warn('deleteDuplicate found duplicate user:', ids)
 
-      const toDelete = ids.pop()
-      const res = await this.deleteContact(toDelete)
+      await Promise.all(
+        dups.map(async toDelete => {
+          const res = await this.deleteContact(toDelete)
 
-      log.info('deleted duplicate contact', { toDelete, res })
-      return ids[0]
+          log.info('deleted duplicate contact', { toDelete, res })
+        })
+      )
+
+      return id
     }
 
     return ids.pop()
