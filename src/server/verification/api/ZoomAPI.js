@@ -36,6 +36,22 @@ class ZoomAPI {
     this._configureResponses()
   }
 
+  async getLicenseKey(licenseType, customLogger = null) {
+    const response = await this.http.get('/license/:licenseType', {
+      customLogger,
+      params: { licenseType }
+    })
+
+    if (!get(response, 'key')) {
+      const exception = new Error('No license key in the FaceTec API response')
+
+      assign(exception, { response })
+      throw exception
+    }
+
+    return response
+  }
+
   async getSessionToken(customLogger = null) {
     const response = await this.http.get('/session-token', { customLogger })
 

@@ -1,5 +1,5 @@
 // @flow
-import { omit, once, omitBy, bindAll } from 'lodash'
+import { omit, once, omitBy, bindAll, values } from 'lodash'
 
 import initZoomAPI from '../../api/ZoomAPI'
 
@@ -7,7 +7,8 @@ import {
   ZoomAPIError,
   duplicateFoundMessage,
   successfullyEnrolledMessage,
-  alreadyEnrolledMessage
+  alreadyEnrolledMessage,
+  ZoomLicenseType
 } from '../../utils/constants'
 
 import { faceSnapshotFields } from '../../utils/logger'
@@ -30,8 +31,20 @@ class ZoomProvider implements IEnrollmentProvider {
     return !faceSnapshotFields.some(field => !payload[field])
   }
 
+  isValidLicenseType(licenseType: string): boolean {
+    return values(ZoomLicenseType).includes(licenseType)
+  }
+
+  async getLicenseKey(licenseType, customLogger = null): Promise<any> {
+    const { api } = this
+    const { key } = await api.getLicenseKey(licenseType, customLogger)
+
+    return key
+  }
+
   async issueToken(customLogger = null): Promise<string> {
-    const { sessionToken } = await this.api.getSessionToken(customLogger)
+    const { api } = this
+    const { sessionToken } = await api.getSessionToken(customLogger)
 
     return sessionToken
   }

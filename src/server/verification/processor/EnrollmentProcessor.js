@@ -92,6 +92,16 @@ class EnrollmentProcessor {
     }
   }
 
+  async getLicenseKey(licenseType, customLogger = null): Promise<any> {
+    const { provider } = this
+
+    if (!licenseType || !provider.isValidLicenseType(licenseType)) {
+      throw new Error('Invalid input')
+    }
+
+    return provider.getLicenseKey(licenseType, customLogger)
+  }
+
   async issueSessionToken(customLogger = null): Promise<any> {
     const { provider } = this
 

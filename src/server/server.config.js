@@ -290,6 +290,12 @@ const conf = convict({
     env: 'ZOOM_LICENSE_KEY',
     default: ''
   },
+  zoomProductionMode: {
+    doc: 'Enables fetching production key and initializes Zoom in production mode',
+    format: Boolean,
+    env: 'ZOOM_PRODUCTION_MODE',
+    default: false
+  },
   gunPrivateS3: {
     key: {
       format: '*',

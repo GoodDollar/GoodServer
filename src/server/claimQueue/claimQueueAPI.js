@@ -92,7 +92,6 @@ const ClaimQueue = {
       .lean()
 
     const approvedUsers = map(pendingUsers, '_id')
-    const mauticIds = map(pendingUsers, 'mauticId')
 
     await storage.model.updateMany({ _id: { $in: approvedUsers } }, { $set: { 'claimQueue.status': 'approved' } })
 
@@ -125,7 +124,6 @@ const ClaimQueue = {
     await queueProps.save()
 
     const userIds = map(approvedUsers, '_id')
-    const mauticIds = map(approvedUsers, 'mauticId')
 
     await storage.model.updateMany({ _id: { $in: userIds } }, { $set: { 'claimQueue.status': 'approved' } })
 

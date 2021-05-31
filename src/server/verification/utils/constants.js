@@ -8,6 +8,11 @@ export const ZoomAPIError = {
   UnexpectedException: 'unexpectedException'
 }
 
+export const ZoomLicenseType = {
+  Browser: 'web',
+  Mobile: 'native'
+}
+
 export const failedEnrollmentMessage = 'FaceMap could not be enrolled'
 export const failedLivenessMessage = 'Liveness could not be determined'
 export const failedMatchMessage = 'FaceMap could not be 3D-matched and updated'

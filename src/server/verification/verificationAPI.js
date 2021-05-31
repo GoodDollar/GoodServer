@@ -86,6 +86,37 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
   )
 
   /**
+   * @api {post} /verify/face/license Retrieves FaceTec license key for a new enrollment session
+   * @apiName Retrieves FaceTec license key text
+   * @apiGroup Verification
+   *
+   * @ignore
+   */
+  app.post(
+    '/verify/face/license/:licenseType',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res) => {
+      const { log, user, params } = req
+      const { licenseType } = params
+
+      try {
+        if (!conf.zoomProductionMode) {
+          throw new Error('Cannot obtain production license running non-production mode.')
+        }
+
+        const processor = createEnrollmentProcessor(storage, log)
+        const license = await processor.getLicenseKey(licenseType, log)
+
+        res.json({ success: true, license })
+      } catch (exception) {
+        const { message } = exception
+        log.error('getting FaceTec license failed:', message, exception, { user })
+        res.status(400).json({ success: false, error: message })
+      }
+    })
+  )
+
+  /**
    * @api {post} /verify/face/session Issues session token for a new enrollment session
    * @apiName Issue enrollment session token
    * @apiGroup Verification

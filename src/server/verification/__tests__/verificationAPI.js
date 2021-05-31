@@ -11,6 +11,7 @@ import AdminWallet from '../../blockchain/AdminWallet'
 import makeServer from '../../server-test'
 import { delay } from '../../utils/timeout'
 
+import { ZoomLicenseType } from '../constants'
 import createEnrollmentProcessor from '../processor/EnrollmentProcessor'
 import { getToken, getCreds } from '../../__util__/'
 import createMockingHelper from '../api/__tests__/__util__'
@@ -21,7 +22,7 @@ import { noopAsync } from '../../utils/async'
 
 describe('verificationAPI', () => {
   let server
-  const { skipEmailVerification, claimQueueAllowed } = Config
+  const { skipEmailVerification, claimQueueAllowed, zoomProductionMode } = Config
   const userIdentifier = '0x7ac080f6607405705aed79675789701a48c76f55'
 
   beforeAll(async done => {
@@ -37,12 +38,12 @@ describe('verificationAPI', () => {
 
   beforeEach(() => {
     // disable claim queue
-    Config.claimQueueAllowed = 0
+    Object.assign(Config, { zoomProductionMode, claimQueueAllowed: 0 })
   })
 
   afterAll(async done => {
     // restore original config
-    Object.assign(Config, { skipEmailVerification, claimQueueAllowed })
+    Object.assign(Config, { skipEmailVerification, claimQueueAllowed, zoomProductionMode })
     await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
 
     server.close(err => {
@@ -62,6 +63,8 @@ describe('verificationAPI', () => {
     const whitelistUserMock = jest.fn()
     const isVerifiedMock = jest.fn()
 
+    const licenseKey = 'fake-license'
+    const licenseType = ZoomLicenseType.Browser
     const sessionToken = 'fake-session-id'
     const enrollmentIdentifier = 'f0D7A688489Ab3079491d407A03BF16e5B027b2c'
     const signature =
@@ -70,6 +73,7 @@ describe('verificationAPI', () => {
     const baseUri = '/verify/face'
     const sessionUri = baseUri + '/session'
     const enrollmentUri = baseUri + '/' + encodeURIComponent(enrollmentIdentifier)
+    const licenseUri = (type = licenseType) => baseUri + helper.licenseUri(type)
 
     const payload = {
       sessionId: sessionToken,
@@ -177,6 +181,11 @@ describe('verificationAPI', () => {
 
     test('Face verification endpoints returns 401 without credentials', async () => {
       await request(server)
+        .post(licenseUri())
+        .send({})
+        .expect(401)
+
+      await request(server)
         .post(sessionUri)
         .send({})
         .expect(401)
@@ -193,6 +202,60 @@ describe('verificationAPI', () => {
       await request(server)
         .delete(enrollmentUri)
         .expect(401)
+    })
+
+    test('POST /verify/face/license/:licenseType returns 200, success: true and license', async () => {
+      Config.zoomProductionMode = true
+      helper.mockSuccessLicenseKey(licenseType, licenseKey)
+
+      await request(server)
+        .post(licenseUri())
+        .send({})
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200, {
+          success: true,
+          license: licenseKey
+        })
+    })
+
+    test('POST /verify/face/license/:licenseType returns 400, success: false if Zoom API fails', async () => {
+      const message = 'No license found in the database for this platformID.'
+
+      Config.zoomProductionMode = true
+      helper.mockFailedLicenseKey(licenseType, message)
+
+      await request(server)
+        .post(licenseUri())
+        .send({})
+        .set('Authorization', `Bearer ${token}`)
+        .expect(400, {
+          success: false,
+          error: message
+        })
+    })
+
+    test("POST /verify/face/license/:licenseType returns 400, success: false when license type isn't valid", async () => {
+      Config.zoomProductionMode = true
+
+      await request(server)
+        .post(licenseUri('unknown'))
+        .send({})
+        .set('Authorization', `Bearer ${token}`)
+        .expect(400, {
+          success: false,
+          error: 'Invalid input'
+        })
+    })
+
+    test('POST /verify/face/license/:licenseType executes in production mode only', async () => {
+      await request(server)
+        .post(licenseUri())
+        .send({})
+        .set('Authorization', `Bearer ${token}`)
+        .expect(400, {
+          success: false,
+          error: 'Cannot obtain production license running non-production mode.'
+        })
     })
 
     test('POST /verify/face/session returns 200, success: true and sessionToken', async () => {
