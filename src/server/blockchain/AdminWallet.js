@@ -347,7 +347,7 @@ export class Wallet {
     } catch (exception) {
       const { message } = exception
 
-      log.error('Error whitelistUser', message, exception, { txHash, address, did })
+      log.warn('Error whitelistUser', message, exception, { txHash, address, did })
       throw exception
     }
   }
@@ -374,7 +374,7 @@ export class Wallet {
     } catch (exception) {
       const { message } = exception
 
-      log.error('Error authenticateUser', message, exception, { address })
+      log.warn('Error authenticateUser', message, exception, { address })
       throw exception
     }
   }
@@ -385,7 +385,7 @@ export class Wallet {
       return result.toNumber()
     } catch (exception) {
       const { message } = exception
-      log.error('Error getAuthenticationPeriod', message, exception)
+      log.warn('Error getAuthenticationPeriod', message, exception)
       throw exception
     }
   }
@@ -535,6 +535,45 @@ export class Wallet {
       const { message } = exception
 
       logger.error('fishMulti failed', message, exception, { toFish })
+      throw exception
+    }
+  }
+
+  /**
+   * transfer G$s locked in adminWallet contract to recipient
+   * @param {*} to recipient
+   * @param {*} value amount to transfer
+   * @param {*} logger
+   * @returns
+   */
+  async transferWalletGooDollars(to, value, logger = log): Promise<TransactionReceipt> {
+    try {
+      let encodedCall = this.web3.eth.abi.encodeFunctionCall(
+        {
+          name: 'transfer',
+          type: 'function',
+          inputs: [
+            {
+              type: 'address',
+              name: 'to'
+            },
+            {
+              type: 'uint256',
+              name: 'value'
+            }
+          ]
+        },
+        [to, value]
+      )
+      logger.info('transferWalletGooDollars sending tx', { encodedCall, to, value })
+      const transaction = await this.proxyContract.methods.genericCall(this.tokenContract.address, encodedCall, 0)
+      const tx = await this.sendTransaction(transaction, {}, { gas: 200000 }, false, logger)
+      logger.info('transferWalletGooDollars success', { to, value, tx: tx.transactionHash })
+      return tx
+    } catch (exception) {
+      const { message } = exception
+
+      logger.error('transferWalletGooDollars failed', message, exception, { to, value })
       throw exception
     }
   }
@@ -723,7 +762,7 @@ export class Wallet {
 
             if (isNonceError(e)) {
               let netNonce = parseInt(await this.web3.eth.getTransactionCount(address))
-              log.error('sendNative nonce failure retry', message, e, {
+              log.warn('sendNative nonce failure retry', message, e, {
                 params,
                 nonce,
                 gas,
@@ -780,7 +819,7 @@ export class Wallet {
           .estimateGas()
           .then(gas => gas + 200000) //buffer for proxy contract, reimburseGas?, and low gas unexpected failures
           .catch(e => {
-            log.error('Failed to estimate gas for tx mainnet', e.message, e)
+            log.warn('Failed to estimate gas for tx mainnet', e.message, e)
             return defaultGas
           }))
 

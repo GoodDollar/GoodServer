@@ -33,7 +33,7 @@ const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
   } catch (exception) {
     const { message: errMessage } = exception
 
-    logger.error('addUserToWhiteList failed whitelisting', errMessage, exception, { userRecord })
+    logger.warn('addUserToWhiteList failed whitelisting', errMessage, exception, { userRecord })
     return false
   }
 }

@@ -13,11 +13,10 @@ import {
   failedLivenessMessage,
   failedMatchMessage,
   enrollmentNotFoundMessage,
-  enrollmentAlreadyExistsMessage,
-  enrollmentIdFields,
-  faceSnapshotFields,
-  redactFieldsDuringLogging
-} from '../constants'
+  enrollmentAlreadyExistsMessage
+} from '../utils/constants'
+
+import { enrollmentIdFields, faceSnapshotFields, redactFieldsDuringLogging } from '../utils/logger'
 
 class ZoomAPI {
   http = null
@@ -350,8 +349,10 @@ class ZoomAPI {
       const { data, status, statusText, config } = response
       const log = config.customLogger || logger
 
+      exception.name = ZoomAPIError.HttpException
       log.debug('HTTP exception during Zoom API call:', { data, status, statusText })
     } else {
+      exception.name = ZoomAPIError.UnexpectedException
       logger.debug('Unexpected exception during Zoom API call:', message)
     }
   }
@@ -407,22 +408,26 @@ class ZoomAPI {
       sessionTokenCheckSucceeded
     } = faceScanSecurityChecks
 
-    const isFaceMapDoesntMatch = 'matchLevel' in response && Number(matchLevel) < 10
-
     if (!success) {
+      let isFaceMapDoesntMatch = false
       let message = `Unknown exception happened during ${operation} request`
 
       if (!sessionTokenCheckSucceeded) {
         message = 'Session token is missing or was failed to be checked'
       } else if (!replayCheckSucceeded) {
         message = 'Replay check was failed'
-      } else if (isFaceMapDoesntMatch) {
-        message = "Face map you're trying to enroll doesn't match the already enrolled one"
       } else if (!faceScanLivenessCheckSucceeded) {
         message = failedLivenessMessage
 
         if (!auditTrailVerificationCheckSucceeded) {
           message += ' because the photoshoots evaluated to be of poor quality'
+        }
+      } else if (auditTrailVerificationCheckSucceeded) {
+        // if all security checks have been passed - check for the match level
+        isFaceMapDoesntMatch = 'matchLevel' in response && Number(matchLevel) < 10
+
+        if (isFaceMapDoesntMatch) {
+          message = "Face map you're trying to enroll doesn't match the already enrolled one"
         }
       }
 
@@ -431,10 +436,10 @@ class ZoomAPI {
 
       if (!sessionTokenCheckSucceeded || !replayCheckSucceeded) {
         name = SecurityCheckFailed
-      } else if (isFaceMapDoesntMatch) {
-        name = FacemapDoesNotMatch
       } else if (!faceScanLivenessCheckSucceeded) {
         name = LivenessCheckFailed
+      } else if (isFaceMapDoesntMatch) {
+        name = FacemapDoesNotMatch
       }
 
       assign(exception, { name, response })

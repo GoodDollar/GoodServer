@@ -90,6 +90,11 @@ jobs:
       NETWORK: develop
       MNEMONIC: 'myth like bonus scare over problem client lizard pioneer submit female collect'
       ADMIN_MNEMONIC: 'audit jealous snake hospital hello away diary wedding hold across nice tribe'
+      ALCHEMY_API: ${{ secrets.ALCHEMY_API }}
+      AWS_SES_ACCESS_KEY: ${{ secrets.AWS_SES_ACCESS_KEY }}
+      AWS_SES_SECRET_ACCESS_KEY: ${{ secrets.AWS_SES_SECRET_ACCESS_KEY }}
+      CF_WORKER_VERIFY_JWT_SECRET: ${{ secrets.CF_WORKER_VERIFY_JWT_SECRET }}
+      MAUTIC_TOKEN: ${{ secrets.MAUTIC_TOKEN }}
       MAUTIC_BASIC_TOKEN: ${{ secrets.MAUTIC_BASIC_TOKEN }}
       CI: false
       LOG_LEVEL: error

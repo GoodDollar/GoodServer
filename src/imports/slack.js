@@ -22,6 +22,6 @@ export const sendSlackAlert = async json => {
 
     log.info('slack alert sent:', { res: await res.text(), json })
   } catch (error) {
-    log.error('failed sending slack alert:', error.message, error, { json })
+    log.warn('failed sending slack alert:', error.message, error, { json })
   }
 }

@@ -5,7 +5,6 @@ import Axios from 'axios'
 
 import conf from '../server/server.config'
 import logger from './logger'
-import type { UserRecord } from './types'
 
 export default new (class {
   constructor(Config, jwt, Axios, logger) {
@@ -25,6 +24,17 @@ export default new (class {
     this.verifyWorkerUrl = cfWorkerVerifyUrl
 
     this.http = Axios.create(this.getHttpOptions())
+  }
+
+  extractIP(req) {
+    let ipAddr = req.headers['x-forwarded-for']
+    if (ipAddr) {
+      var list = ipAddr.split(',')
+      ipAddr = list[list.length - 1]
+    } else {
+      ipAddr = req.connection.remoteAddress
+    }
+    return ipAddr
   }
 
   getHttpOptions() {
@@ -53,14 +63,15 @@ export default new (class {
 
   /**
    * Generates and sends an OTP code to the user's mobile number
-   * @param {UserRecord} user - object with user's information
-   * @param {object} options - options used to config the method behavior
+   * @param {string} mobile - user's mobile
+   * @param {string} channel - 'sms' or 'call' - currently handled automatically by cloudflare worker
+   * @param {Request} request - express request object
    * @returns {Promise<object>}
    */
-  async sendOTP(user: UserRecord): Promise<object> {
-    const { mobile } = user
+  async sendOTP(mobile, channel, request): Promise<object> {
     const { log } = this
-    const payload = { recipient: mobile, verify: true }
+    //currently chaeel
+    const payload = { recipient: mobile, verify: true, req: { ip: this.extractIP(request) } }
 
     try {
       const result = await this.http.post(this.verifyWorkerUrl, payload)
@@ -76,11 +87,11 @@ export default new (class {
 
   /**
    * Checks OTP code sent to the user's mobile number
-   * @param {UserRecord} user - object with user's information
+   * @param {string} mobile - user's mobile
+   * @param {string} code - code to be verified by cloudflare worker
    * @returns {Promise<object>}
    */
-  async checkOTP(user: UserRecord, code: string): Promise<object> {
-    const { mobile } = user
+  async checkOTP(mobile, code: string): Promise<object> {
     const { log } = this
     const payload = { recipient: mobile, code, verify: true }
 

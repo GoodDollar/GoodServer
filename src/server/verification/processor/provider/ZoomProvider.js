@@ -4,14 +4,14 @@ import { omit, once, omitBy, bindAll, values } from 'lodash'
 import initZoomAPI from '../../api/ZoomAPI'
 
 import {
-  faceSnapshotFields,
   ZoomAPIError,
   duplicateFoundMessage,
   successfullyEnrolledMessage,
   alreadyEnrolledMessage,
   ZoomLicenseType
-} from '../../constants'
+} from '../../utils/constants'
 
+import { faceSnapshotFields } from '../../utils/logger'
 import logger from '../../../../imports/logger'
 
 import { type IEnrollmentProvider } from '../typings'

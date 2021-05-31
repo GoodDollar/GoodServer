@@ -3,6 +3,7 @@ import { assign, bindAll, omit } from 'lodash'
 import { type IEnrollmentEventPayload } from './typings'
 import logger from '../../../imports/logger'
 import { DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment, scheduleDisposalTask } from '../cron/taskUtil'
+import { shouldLogVerificaitonError } from '../utils/logger'
 
 const log = logger.child({ from: 'EnrollmentSession' })
 
@@ -51,7 +52,7 @@ export default class EnrollmentSession {
       assign(result, { enrollmentResult })
     } catch (exception) {
       const { response, message } = exception
-      const logLevel = message.toLowerCase().includes('liveness') ? 'warn' : 'error'
+      const logArgs = ['Enrollment session failed with exception:', message, exception, { result }]
 
       result = {
         success: false,
@@ -62,7 +63,12 @@ export default class EnrollmentSession {
         }
       }
 
-      log[logLevel]('Enrollment session failed with exception:', message, exception, { result })
+      if (shouldLogVerificaitonError(exception)) {
+        log.error(...logArgs)
+      } else {
+        log.warn(...logArgs)
+      }
+
       await this.onEnrollmentFailed()
     }
 
@@ -100,15 +106,14 @@ export default class EnrollmentSession {
 
     await Promise.all([
       storage.updateUser({ identifier: loggedInAs, isVerified: true }),
-
       queueApi.setWhitelisted(user, storage, log).catch(e => log.warn('claim queue update failed', e.message, e)),
 
       adminApi
         .whitelistUser(gdAddress, profilePublickey)
-        .catch(e => log.error('whitelisting after fv failed', e.message, e)),
+        .catch(e => log.warn('whitelisting after fv failed', e.message, e)),
 
       scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.Reauthenticate).catch(e =>
-        log.error('adding facemap to re-auth dispose queue failed:', e.message, e)
+        log.warn('adding facemap to re-auth dispose queue failed:', e.message, e)
       )
     ])
 

@@ -65,10 +65,13 @@ describe('OTP', () => {
       }
       const token = OTP.generateJWT()
       axiosMock.onPost().reply(config => {
+        expect(config.data).toEqual('{"recipient":"+972501234567","verify":true,"req":{"ip":"2.2.2.2"}}')
         expect(config.headers.Authorization).toEqual('Bearer ' + token)
         return [200, mockResult]
       })
-      const result = await OTP.sendOTP(user, options)
+      const result = await OTP.sendOTP(user.mobile, options.channel, {
+        headers: { 'x-forwarded-for': '1.1.1.1,2.2.2.2' }
+      })
       expect(result).toEqual(mockResult)
     })
   })
@@ -85,7 +88,7 @@ describe('OTP', () => {
         payee: null,
         date_updated: '2020-12-14T09:17:46Z',
         account_sid: 'AC84e66d613d5cc1a986357fb879fb9d0e',
-        to: '+972507837460',
+        to: '+972501234567',
         amount: null,
         valid: true,
         sid: 'VE2110bcdcc609055a1869a30887b9f326',
@@ -96,15 +99,16 @@ describe('OTP', () => {
 
       const token = OTP.generateJWT()
       axiosMock.onPost().reply(config => {
+        expect(config.data).toEqual('{"recipient":"+972501234567","code":123456,"verify":true}')
         expect(config.headers.Authorization).toEqual('Bearer ' + token)
         return [200, mockResult]
       })
 
       const user = {
-        mobile: '+972507837460'
+        mobile: '+972501234567'
       }
       const code = 123456
-      const result = await OTP.checkOTP(user, code)
+      const result = await OTP.checkOTP(user.mobile, code)
       expect(result).toEqual(mockResult)
     })
   })
