@@ -192,7 +192,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
               and whitelist him again in the new contract
 
             2. in the session's lifecycle onEnrollmentCompleted() is called
-              after enrollment was successfull
+              after enrollment was successful
               it whitelists user in the wallet and updates Gun's session
               here we're calling it manually as we've skipped enroll()
           */
@@ -564,7 +564,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         storage.updateUser(updateUserUbj)
 
         if (runInEnv) {
-          //fire and forget updates (dont await)
+          //fire and forget updates (don't await)
           const exists = mauticId ? Mautic.contactExists(mauticId, log) : Promise.resolve(false)
           exists
             .then(async exists => {
