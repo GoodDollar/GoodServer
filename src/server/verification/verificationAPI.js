@@ -192,7 +192,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
               and whitelist him again in the new contract
 
             2. in the session's lifecycle onEnrollmentCompleted() is called
-              after enrollment was successfull
+              after enrollment was successful
               it whitelists user in the wallet and updates Gun's session
               here we're calling it manually as we've skipped enroll()
           */
@@ -245,6 +245,8 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
       log.info('otp request:', { user, body })
 
+      const onlyCheckAlreadyVerified = body.onlyCheckAlreadyVerified
+
       const mobile = decodeURIComponent(body.user.mobile || user.otp.mobile) //fix in case input is %2B instead of +
       const hashedMobile = sha3(mobile)
       let userRec: UserRecord = defaults(body.user, user, { identifier: user.loggedInAs })
@@ -255,22 +257,23 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         return res.json({ ok: 0, error: 'mobile_already_exists' })
       }
 
-      log.debug('sending otp:', user.loggedInAs)
-
       if (!userRec.smsValidated || hashedMobile !== savedMobile) {
-        if (['production', 'staging'].includes(conf.env)) {
-          const sendResult = await OTP.sendOTP(mobile, get(body, 'user.otpChannel', 'sms'), req)
+        if (!onlyCheckAlreadyVerified) {
+          log.debug('sending otp:', user.loggedInAs)
+          if (['production', 'staging'].includes(conf.env)) {
+            const sendResult = await OTP.sendOTP(mobile, get(body, 'user.otpChannel', 'sms'), req)
 
-          log.debug('otp sent:', user.loggedInAs, sendResult)
-        }
-
-        await storage.updateUser({
-          identifier: user.loggedInAs,
-          otp: {
-            ...(userRec.otp || {}),
-            mobile
+            log.debug('otp sent:', user.loggedInAs, sendResult)
           }
-        })
+
+          await storage.updateUser({
+            identifier: user.loggedInAs,
+            otp: {
+              ...(userRec.otp || {}),
+              mobile
+            }
+          })
+        }
       }
 
       res.json({ ok: 1, alreadyVerified: hashedMobile === savedMobile && user.smsValidated })
@@ -564,7 +567,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         storage.updateUser(updateUserUbj)
 
         if (runInEnv) {
-          //fire and forget updates (dont await)
+          //fire and forget updates (don't await)
           const exists = mauticId ? Mautic.contactExists(mauticId, log) : Promise.resolve(false)
           exists
             .then(async exists => {
