@@ -485,6 +485,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
           try {
             const { fullName } = userRec
             if (!code || !fullName || !email) {
+              log.error('missing input for sending verification email', { code, fullName, email })
               throw new Error('missing input for sending verification email')
             }
             const templateData = {
@@ -536,7 +537,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       const { user, body } = req
       const verificationData: { code: string } = body.verificationData
       const { email } = user.otp || {}
-      const hashedNewEmail = sha3(email)
+      const hashedNewEmail = email ? sha3(email) : null
       const currentEmail = user.email
 
       log.debug('email verified', {
@@ -575,7 +576,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
                 log.debug('mautic contact exists updating...')
                 await Mautic.updateContact(mauticId, { email }, log)
               } else {
-                log.debug('mautic contact doesnt exists creating...')
+                log.debug("mautic contact doesn't exists creating...")
 
                 const userFields = pick(user, [
                   'fullName',
