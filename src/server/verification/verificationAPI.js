@@ -4,6 +4,7 @@ import { Router } from 'express'
 import passport from 'passport'
 import { get, defaults, pick } from 'lodash'
 import { sha3 } from 'web3-utils'
+import requestIp from 'request-ip'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
@@ -318,7 +319,8 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
       if (!user.smsValidated || currentMobile !== hashedNewMobile) {
         try {
-          await verifier.verifyMobile({ identifier: user.loggedInAs, mobile }, verificationData)
+          const clientIp = requestIp.getClientIp(req)
+          await verifier.verifyMobile({ identifier: user.loggedInAs, mobile }, verificationData, clientIp)
         } catch (e) {
           log.warn('mobile verification failed:', e.message, { user, mobile, verificationData })
           return res.status(400).json({ ok: 0, error: 'OTP FAILED', message: e.message })

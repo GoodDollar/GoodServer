@@ -2,6 +2,7 @@
 import random from 'math-random'
 import jwt from 'jsonwebtoken'
 import Axios from 'axios'
+import requestIp from 'request-ip'
 
 import conf from '../server/server.config'
 import logger from './logger'
@@ -27,14 +28,8 @@ export default new (class {
   }
 
   extractIP(req) {
-    let ipAddr = req.headers['x-forwarded-for']
-    if (ipAddr) {
-      var list = ipAddr.split(',')
-      ipAddr = list[list.length - 1]
-    } else {
-      ipAddr = req.connection.remoteAddress
-    }
-    return ipAddr
+    const clientIp = requestIp.getClientIp(req)
+    return clientIp
   }
 
   getHttpOptions() {
