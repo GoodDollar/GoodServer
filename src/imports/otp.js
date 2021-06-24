@@ -3,6 +3,7 @@ import random from 'math-random'
 import jwt from 'jsonwebtoken'
 import Axios from 'axios'
 import requestIp from 'request-ip'
+import { get } from 'lodash'
 
 import conf from '../server/server.config'
 import logger from './logger'
@@ -30,6 +31,14 @@ export default new (class {
   extractIP(req) {
     const clientIp = requestIp.getClientIp(req)
     return clientIp
+  }
+
+  getExceptionText(exception) {
+    const text = get(exception, 'response.data.text', null)
+    if (text) {
+      exception.message = exception.message + ' ' + text
+    }
+    return exception
   }
 
   getHttpOptions() {
@@ -75,6 +84,8 @@ export default new (class {
       const { message } = exception
       const logFunc = message === 'Max send attempts reached' ? 'warn' : 'error'
 
+      this.getExceptionText(exception)
+
       log[logFunc]('Error sending OTP:', message, exception, { mobile })
       throw exception
     }
@@ -96,6 +107,7 @@ export default new (class {
     } catch (exception) {
       const { message } = exception
 
+      this.getExceptionText(exception)
       log.error('Error verification OTP:', message, exception, { mobile, code })
       throw exception
     }
