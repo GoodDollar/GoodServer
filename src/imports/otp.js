@@ -86,9 +86,9 @@ export default new (class {
    * @param {string} code - code to be verified by cloudflare worker
    * @returns {Promise<object>}
    */
-  async checkOTP(mobile, code: string): Promise<object> {
+  async checkOTP(mobile, code: string, clientIp): Promise<object> {
     const { log } = this
-    const payload = { recipient: mobile, code, verify: true }
+    const payload = { recipient: mobile, code, verify: true, req: { ip: clientIp } }
 
     try {
       const result = await this.http.post(this.verifyWorkerUrl, payload)
