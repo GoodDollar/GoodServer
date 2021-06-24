@@ -2,7 +2,6 @@
 import random from 'math-random'
 import jwt from 'jsonwebtoken'
 import Axios from 'axios'
-import requestIp from 'request-ip'
 import { get } from 'lodash'
 
 import conf from '../server/server.config'
@@ -26,11 +25,6 @@ export default new (class {
     this.verifyWorkerUrl = cfWorkerVerifyUrl
 
     this.http = Axios.create(this.getHttpOptions())
-  }
-
-  extractIP(req) {
-    const clientIp = requestIp.getClientIp(req)
-    return clientIp
   }
 
   getExceptionText(exception) {
@@ -72,10 +66,10 @@ export default new (class {
    * @param {Request} request - express request object
    * @returns {Promise<object>}
    */
-  async sendOTP(mobile, channel, request): Promise<object> {
+  async sendOTP(mobile, channel, clientIp): Promise<object> {
     const { log } = this
     //currently chaeel
-    const payload = { recipient: mobile, verify: true, req: { ip: this.extractIP(request) } }
+    const payload = { recipient: mobile, verify: true, req: { ip: clientIp } }
 
     try {
       const result = await this.http.post(this.verifyWorkerUrl, payload)

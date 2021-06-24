@@ -69,9 +69,9 @@ describe('OTP', () => {
         expect(config.headers.Authorization).toEqual('Bearer ' + token)
         return [200, mockResult]
       })
-      const result = await OTP.sendOTP(user.mobile, options.channel, {
-        headers: { 'x-forwarded-for': '1.1.1.1,2.2.2.2' }
-      })
+
+      const clientIp = '2.2.2.2'
+      const result = await OTP.sendOTP(user.mobile, options.channel, clientIp)
       expect(result).toEqual(mockResult)
     })
   })
@@ -99,7 +99,7 @@ describe('OTP', () => {
 
       const token = OTP.generateJWT()
       axiosMock.onPost().reply(config => {
-        expect(config.data).toEqual('{"recipient":"+972501234567","code":123456,"verify":true}')
+        expect(config.data).toEqual('{"recipient":"+972501234567","code":123456,"verify":true,"req":{"ip":"2.2.2.2"}}')
         expect(config.headers.Authorization).toEqual('Bearer ' + token)
         return [200, mockResult]
       })
@@ -108,7 +108,8 @@ describe('OTP', () => {
         mobile: '+972501234567'
       }
       const code = 123456
-      const result = await OTP.checkOTP(user.mobile, code)
+      const ip = '2.2.2.2'
+      const result = await OTP.checkOTP(user.mobile, code, ip)
       expect(result).toEqual(mockResult)
     })
   })

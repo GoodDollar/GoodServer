@@ -262,7 +262,8 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         if (!onlyCheckAlreadyVerified) {
           log.debug('sending otp:', user.loggedInAs)
           if (['production', 'staging'].includes(conf.env)) {
-            const sendResult = await OTP.sendOTP(mobile, get(body, 'user.otpChannel', 'sms'), req)
+            const clientIp = requestIp.getClientIp(req)
+            const sendResult = await OTP.sendOTP(mobile, get(body, 'user.otpChannel', 'sms'), clientIp)
 
             log.debug('otp sent:', user.loggedInAs, sendResult)
           }
