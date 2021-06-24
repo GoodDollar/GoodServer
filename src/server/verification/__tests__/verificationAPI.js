@@ -11,7 +11,7 @@ import AdminWallet from '../../blockchain/AdminWallet'
 import makeServer from '../../server-test'
 import { delay } from '../../utils/timeout'
 
-import { ZoomLicenseType } from '../constants'
+import { ZoomLicenseType } from '../../verification/utils/constants'
 import createEnrollmentProcessor from '../processor/EnrollmentProcessor'
 import { getToken, getCreds } from '../../__util__/'
 import createMockingHelper from '../api/__tests__/__util__'

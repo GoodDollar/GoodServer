@@ -6,7 +6,7 @@ import allSettled from 'promise.allsettled'
 
 import config from '../../../server.config'
 import getZoomAPI from '../ZoomAPI'
-import { ZoomAPIError, ZoomLicenseType } from '../../constants'
+import { ZoomAPIError, ZoomLicenseType } from '../../../verification/utils/constants'
 import createMockingHelper from './__util__'
 
 const ZoomAPI = getZoomAPI()

@@ -23,7 +23,7 @@ class Verifications implements VerificationAPI {
    * @param {string} verificationData.otp
    * @returns {Promise<boolean | Error>}
    */
-  async verifyMobile(user: UserRecord, verificationData: { otp: string }): Promise<boolean | Error> {
+  async verifyMobile(user: UserRecord, verificationData: { otp: string }, clientIp): Promise<boolean | Error> {
     let checkResult
     const { log } = this
     const { otp } = verificationData
@@ -36,7 +36,7 @@ class Verifications implements VerificationAPI {
 
     try {
       checkResult = await Promise.race([
-        OTP.checkOTP(user.mobile, otp),
+        OTP.checkOTP(user.mobile, otp, clientIp),
         timeout(5000, 'Not much time since last attempt. Please try again later')
       ])
     } catch (e) {

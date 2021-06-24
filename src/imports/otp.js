@@ -2,6 +2,7 @@
 import random from 'math-random'
 import jwt from 'jsonwebtoken'
 import Axios from 'axios'
+import { get } from 'lodash'
 
 import conf from '../server/server.config'
 import logger from './logger'
@@ -26,15 +27,12 @@ export default new (class {
     this.http = Axios.create(this.getHttpOptions())
   }
 
-  extractIP(req) {
-    let ipAddr = req.headers['x-forwarded-for']
-    if (ipAddr) {
-      var list = ipAddr.split(',')
-      ipAddr = list[list.length - 1]
-    } else {
-      ipAddr = req.connection.remoteAddress
+  getExceptionText(exception) {
+    const text = get(exception, 'response.data.text', null)
+    if (text) {
+      exception.message = exception.message + ' ' + text
     }
-    return ipAddr
+    return exception
   }
 
   getHttpOptions() {
@@ -68,10 +66,10 @@ export default new (class {
    * @param {Request} request - express request object
    * @returns {Promise<object>}
    */
-  async sendOTP(mobile, channel, request): Promise<object> {
+  async sendOTP(mobile, channel, clientIp): Promise<object> {
     const { log } = this
     //currently chaeel
-    const payload = { recipient: mobile, verify: true, req: { ip: this.extractIP(request) } }
+    const payload = { recipient: mobile, verify: true, req: { ip: clientIp } }
 
     try {
       const result = await this.http.post(this.verifyWorkerUrl, payload)
@@ -79,6 +77,8 @@ export default new (class {
     } catch (exception) {
       const { message } = exception
       const logFunc = message === 'Max send attempts reached' ? 'warn' : 'error'
+
+      this.getExceptionText(exception)
 
       log[logFunc]('Error sending OTP:', message, exception, { mobile })
       throw exception
@@ -91,9 +91,9 @@ export default new (class {
    * @param {string} code - code to be verified by cloudflare worker
    * @returns {Promise<object>}
    */
-  async checkOTP(mobile, code: string): Promise<object> {
+  async checkOTP(mobile, code: string, clientIp): Promise<object> {
     const { log } = this
-    const payload = { recipient: mobile, code, verify: true }
+    const payload = { recipient: mobile, code, verify: true, req: { ip: clientIp } }
 
     try {
       const result = await this.http.post(this.verifyWorkerUrl, payload)
@@ -101,6 +101,7 @@ export default new (class {
     } catch (exception) {
       const { message } = exception
 
+      this.getExceptionText(exception)
       log.error('Error verification OTP:', message, exception, { mobile, code })
       throw exception
     }
