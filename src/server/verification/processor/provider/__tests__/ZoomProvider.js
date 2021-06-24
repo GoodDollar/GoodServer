@@ -4,7 +4,7 @@ import MockAdapter from 'axios-mock-adapter'
 import { first, fromPairs, keys } from 'lodash'
 
 import getZoomProvider from '../ZoomProvider'
-import { ZoomLicenseType } from '../../../constants'
+import { ZoomLicenseType } from '../../../utils/constants'
 import createMockingHelper from '../../../api/__tests__/__util__'
 import { levelConfigs } from '../../../../../imports/logger/options'
 
