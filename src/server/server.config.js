@@ -282,7 +282,7 @@ const conf = convict({
     doc: 'FaceTec Managed Testing API URL',
     format: '*',
     env: 'ZOOM_SERVER_BASEURL',
-    default: 'https://api.facetec.com/api/v3/biometrics'
+    default: 'https://api.facetec.com/api/v3.1/biometrics'
   },
   zoomLicenseKey: {
     doc: 'Zoom (Face Recognition / Liveness Test API) License key',
