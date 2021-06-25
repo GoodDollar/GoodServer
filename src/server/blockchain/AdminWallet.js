@@ -13,6 +13,8 @@ import UBIABI from '@gooddollar/goodcontracts/stakingModel/build/contracts/UBISc
 import ProxyContractABI from '@gooddollar/goodcontracts/build/contracts/AdminWallet.min.json'
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
 import ModelContractsAddress from '@gooddollar/goodcontracts/stakingModel/releases/deployment.json'
+import UpgradablesContractsAddress from '@gooddollar/goodcontracts/upgradables/releases/deployment.json'
+import FaucetABI from '@gooddollar/goodcontracts/upgradables/build/FuseFaucet.min.json'
 
 import conf from '../server.config'
 import logger from '../../imports/logger'
@@ -49,6 +51,8 @@ export class Wallet {
   UBIContract: Web3.eth.Contract
 
   proxyContract: Web3.eth.Contract
+
+  faucetContract: Web3.eth.Contract
 
   address: string
 
@@ -246,6 +250,14 @@ export class Wallet {
     this.UBIContract = new this.web3.eth.Contract(UBIABI.abi, get(ModelContractsAddress, `${this.network}.UBIScheme`), {
       from: this.address
     })
+
+    this.faucetContract = new this.web3.eth.Contract(
+      FaucetABI.abi,
+      get(UpgradablesContractsAddress, `${this.network}.FuseFaucet`),
+      {
+        from: this.address
+      }
+    )
 
     try {
       let gdbalance = await this.tokenContract.methods.balanceOf(this.address).call()
@@ -488,6 +500,9 @@ export class Wallet {
       return { status: 1 }
     }
 
+    const faucetRes = this.topWalletFaucet(address, logger).catch(_ => false)
+    if (faucetRes) return faucetRes
+
     let txHash
     try {
       const onTransactionHash = hash => {
@@ -511,6 +526,22 @@ export class Wallet {
     }
   }
 
+  async topWalletFaucet(address, logger = log) {
+    try {
+      const canTop = await this.faucetContract.methods.canTop(address).call()
+      if (canTop === false) {
+        return false
+      }
+
+      const txPromise = this.sendTransaction(this.faucetContract.methods.topWallet(address), {}, {}, true, logger)
+      let res = await txPromise
+      logger.debug('topWalletFaucet result:', { address, res })
+      return res
+    } catch (e) {
+      logger.error('Error topWalletFaucet', e.message, e, { address })
+      throw e
+    }
+  }
   async fishMulti(toFish: Array<string>, logger = log): Promise<TransactionReceipt> {
     try {
       let encodedCall = this.web3.eth.abi.encodeFunctionCall(
