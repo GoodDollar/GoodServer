@@ -14,7 +14,7 @@ import ProxyContractABI from '@gooddollar/goodcontracts/build/contracts/AdminWal
 import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
 import ModelContractsAddress from '@gooddollar/goodcontracts/stakingModel/releases/deployment.json'
 import UpgradablesContractsAddress from '@gooddollar/goodcontracts/upgradables/releases/deployment.json'
-import FaucetABI from '@gooddollar/goodcontracts/upgradables/build/FuseFaucet.min.json'
+import FaucetABI from '@gooddollar/goodcontracts/upgradables/build/contracts/FuseFaucet.min.json'
 
 import conf from '../server.config'
 import logger from '../../imports/logger'
