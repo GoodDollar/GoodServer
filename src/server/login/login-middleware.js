@@ -123,14 +123,16 @@ const setup = (app: Router) => {
 
       if (recovered && gdPublicAddress && profileVerified) {
         log.info(`SigUtil Successfully verified signer as ${recovered}`)
-
+        const userRecord = await UserDBPrivate.getUser(recovered)
         const token = jwt.sign(
           {
             method: method,
             loggedInAs: recovered,
             gdAddress: gdPublicAddress,
             profilePublickey: profileReqPublickey,
-            exp: Math.floor(Date.now() / 1000) + Config.jwtExpiration
+            exp: Math.floor(Date.now() / 1000) + Config.jwtExpiration,
+            aud: userRecord.smsValidated || userRecord.isEmailConfirmed ? `realmdb_wallet_${Config.env}` : 'unsigned',
+            sub: recovered
           },
           Config.jwtPassword
         )
