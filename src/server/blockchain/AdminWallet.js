@@ -500,7 +500,7 @@ export class Wallet {
       return { status: 1 }
     }
 
-    const faucetRes = this.topWalletFaucet(address, logger).catch(_ => false)
+    const faucetRes = await this.topWalletFaucet(address, logger).catch(_ => false)
     if (faucetRes) return faucetRes
 
     let txHash
