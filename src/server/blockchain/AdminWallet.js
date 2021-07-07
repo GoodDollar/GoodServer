@@ -93,7 +93,7 @@ export class Wallet {
         provider = conf.ethereum.httpWeb3Provider
         web3Provider = new Web3.providers.HttpProvider(provider, {
           timeout: 15000,
-          headers: { Origin: 'https://wallet.gooddollar.org' }
+          headers: [{ name: 'Origin', value: 'https://wallet.gooddollar.org' }]
         })
         break
     }
