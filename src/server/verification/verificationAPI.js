@@ -499,9 +499,9 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
             log.debug('sent new user email validation code', {
               email,
               code,
-              sesResponse: sesResponse.$response,
-              sesId: sesResponse.MessageId,
-              sesError: sesResponse.$response.error
+              sesResponse: get(sesResponse, '$response.httpResponse.statusCode'),
+              sesId: get(sesResponse, 'MessageId'),
+              sesError: get(sesResponse, '$response.error.message')
             })
           } catch (e) {
             log.error('failed sending email verification to user:', e.message, e, { userRec, code })
