@@ -110,6 +110,11 @@ jobs:
       - run: npm i -g patch-package
       - name: Install npm dependencies
         uses: bahmutov/npm-install@v1
+      - name: run blockchain node so admin wallet doesnt break
+        if: matrix.chunk != env.BLOCKCHAIN_CHUNK
+        run: |
+          npm i hardhat
+          npx hardhat node &
 
       - name: prepare blockchain for test
         if: matrix.chunk == env.BLOCKCHAIN_CHUNK
