@@ -9,11 +9,9 @@ import get from 'lodash/get'
 import * as web3Utils from 'web3-utils'
 import IdentityABI from '@gooddollar/goodcontracts/build/contracts/Identity.min.json'
 import GoodDollarABI from '@gooddollar/goodcontracts/build/contracts/GoodDollar.min.json'
-import UBIABI from '@gooddollar/goodcontracts/stakingModel/build/contracts/UBIScheme.min.json'
+import UBIABI from '@gooddollar/goodprotocol/artifacts/contracts/ubi/UBIScheme.sol/UBIScheme.json'
 import ProxyContractABI from '@gooddollar/goodcontracts/build/contracts/AdminWallet.min.json'
-import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
-import ModelContractsAddress from '@gooddollar/goodcontracts/stakingModel/releases/deployment.json'
-import UpgradablesContractsAddress from '@gooddollar/goodcontracts/upgradables/releases/deployment.json'
+import ContractsAddress from '@gooddollar/goodprotocol/releases/deployment.json'
 import FaucetABI from '@gooddollar/goodcontracts/upgradables/build/contracts/FuseFaucet.min.json'
 
 import conf from '../server.config'
@@ -92,8 +90,7 @@ export class Wallet {
       default:
         provider = conf.ethereum.httpWeb3Provider
         web3Provider = new Web3.providers.HttpProvider(provider, {
-          timeout: 15000,
-          headers: [{ name: 'User-Agent', value: 'goodserver' }]
+          timeout: 15000
         })
         break
     }
@@ -246,13 +243,13 @@ export class Wallet {
       get(ContractsAddress, `${this.network}.GoodDollar`),
       { from: this.address }
     )
-    this.UBIContract = new this.web3.eth.Contract(UBIABI.abi, get(ModelContractsAddress, `${this.network}.UBIScheme`), {
+    this.UBIContract = new this.web3.eth.Contract(UBIABI.abi, get(ContractsAddress, `${this.network}.UBIScheme`), {
       from: this.address
     })
 
     this.faucetContract = new this.web3.eth.Contract(
       FaucetABI.abi,
-      get(UpgradablesContractsAddress, `${this.network}.FuseFaucet`),
+      get(ContractsAddress, `${this.network}.FuseFaucet`),
       {
         from: this.address
       }

@@ -1,9 +1,12 @@
-import FundManagerABI from '@gooddollar/goodcontracts/stakingModel/build/contracts/GoodFundManager.min.json'
-import StakingABI from '@gooddollar/goodcontracts/stakingModel/build/contracts/SimpleDAIStaking.min.json'
-import UBISchemeABI from '@gooddollar/goodcontracts/stakingModel/build/contracts/UBIScheme.min.json'
+import FundManagerABI from '@gooddollar/goodprotocol/artifacts/contracts/staking/GoodFundManager.sol/GoodFundManager.json'
+import StakingABI from '@gooddollar/goodprotocol/artifacts/contracts/staking/SimpleStaking.sol/SimpleStaking.json'
+import UBISchemeABI from '@gooddollar/goodprotocol/artifacts/contracts/ubi/UBIScheme.sol/UBIScheme.json'
+import NameServiceABI from '@gooddollar/goodprotocol/artifacts/contracts/utils/NameService.sol/NameService.json'
+
+//needed for ropsten allocateTo - mint fake dai
 import DaiABI from '@gooddollar/goodcontracts/build/contracts/DAIMock.min.json'
-import cDaiABI from '@gooddollar/goodcontracts/build/contracts/cDAIMock.min.json'
-import ContractsAddress from '@gooddollar/goodcontracts/stakingModel/releases/deployment.json'
+import cDaiABI from '@gooddollar/goodprotocol/artifacts/contracts/Interfaces.sol/cERC20.json'
+import ContractsAddress from '@gooddollar/goodprotocol/releases/deployment.json'
 import fetch from 'cross-fetch'
 import AdminWallet from './AdminWallet'
 import { get, chunk, result, range, flatten } from 'lodash'
@@ -21,10 +24,13 @@ const FUSE_DAY_BLOCKS = (60 * 60 * 24) / 5
 export class StakingModelManager {
   lastRopstenTopping = moment()
   addresses = get(ContractsAddress, `${AdminWallet.network}-mainnet`) || get(ContractsAddress, `${AdminWallet.network}`)
-  managerAddress = this.addresses['FundManager']
-  stakingAddress = this.addresses['DAIStaking']
+  homeAddresses = get(ContractsAddress, AdminWallet.network)
+  managerAddress = this.addresses['GoodFundManager']
+  stakingAddresses = this.addresses['StakingContracts']
   daiAddress = this.addresses['DAI']
   cDaiAddress = this.addresses['cDAI']
+  bridge = this.addresses['ForeignBridge']
+  nameServiceAddress = this.addresses['NameService']
 
   constructor() {
     this.log = logger.child({ from: 'StakingModelManager' })
@@ -32,34 +38,37 @@ export class StakingModelManager {
     this.managerContract = AdminWallet.mainnetWeb3.eth.Contract(FundManagerABI.abi, this.managerAddress, {
       transactionPollingTimeout: 1000
     })
-    this.stakingContract = AdminWallet.mainnetWeb3.eth.Contract(StakingABI.abi, this.stakingAddress)
+    this.stakingContract = AdminWallet.mainnetWeb3.eth.Contract(StakingABI.abi, this.stakingAddresses[0][0])
     this.dai = AdminWallet.mainnetWeb3.eth.Contract(DaiABI.abi, this.daiAddress)
     this.cDai = AdminWallet.mainnetWeb3.eth.Contract(cDaiABI.abi, this.cDaiAddress)
-    this.managerContract.methods.bridgeContract.call().then(_ => (this.bridge = _))
-    this.managerContract.methods.ubiRecipient.call().then(_ => (this.ubiScheme = _))
+    this.nameService = AdminWallet.mainnetWeb3.eth.Contract(NameServiceABI.abi, this.nameServiceAddress)
+    this.log.debug('constructor:', {
+      fundmanager: this.managerAddress,
+      staking: this.stakingAddresses,
+      bridge: this.bridge
+    })
+
+    // this.managerContract.methods.bridgeContract.call().then(_ => (this.bridge = _))
+    // this.managerContract.methods.ubiRecipient.call().then(_ => (this.ubiScheme = _))
   }
 
-  canCollectFunds = async () => this.managerContract.methods.canRun.call()
-
-  blocksUntilNextCollection = async () => {
-    const interval = await this.managerContract.methods.blockInterval.call().then(parseInt)
-    const lastTransferred = await this.managerContract.methods.lastTransferred.call().then(parseInt)
-    const currentBlock = await AdminWallet.mainnetWeb3.eth.getBlockNumber()
-    const res = interval - ((currentBlock - lastTransferred * interval) % interval)
-    return res
+  canCollectFunds = async () => {
+    const result = await this.managerContract.methods.calcSortedContracts(1000000).call()
+    result.filter(_ => AdminWallet.web3.utils.toBN(_).isZero() === false)
+    return result.length > 0
   }
 
-  getAvailableInterest = async () => this.stakingContract.methods.currentUBIInterest.call()
+  getAvailableInterest = async () => this.stakingContract.methods.currentGains(true, true).call()
   transferInterest = async () => {
     let txHash
     try {
       const fundsTX = await AdminWallet.sendTransactionMainnet(
-        this.managerContract.methods.transferInterest(this.stakingAddress),
+        this.managerContract.methods.collectInterest([this.stakingContract.address]),
         { onTransactionHash: h => (txHash = h) },
-        { gas: 700000 } //force fixed gas price, tx should take around 450k
+        { gas: 2000000 } //force fixed gas price, tx should take around 450k
       )
       const fundsEvent = get(fundsTX, 'events.FundsTransferred')
-      this.log.info('transferInterest result event', { fundsEvent })
+      this.log.info('transferInterest result event', { fundsEvent, fundsTX })
       return fundsEvent
     } catch (e) {
       if (txHash && e.message.toLowerCase().includes('timeout')) {
@@ -96,7 +105,7 @@ export class StakingModelManager {
 
   getNextCollectionTime = async () => {
     let canCollectFunds = await this.canCollectFunds()
-    const blocksForNextCollection = await this.blocksUntilNextCollection()
+    const blocksForNextCollection = 4 * 60 * 24 //wait 1 day
     this.log.info('canRun result:', { canCollectFunds, blocksForNextCollection })
     if (canCollectFunds === false) {
       return moment().add(blocksForNextCollection * 15, 'seconds')
@@ -116,7 +125,7 @@ export class StakingModelManager {
       this.lastRopstenTopping = moment()
     }
     const tx1 = AdminWallet.sendTransactionMainnet(
-      this.dai.methods.approve(this.cDai.address, toWei('10', 'ether')),
+      this.dai.methods.approve(this.cDai.address, toWei('1000000000', 'ether')),
       {},
       {},
       AdminWallet.mainnetAddresses[0]
@@ -125,7 +134,7 @@ export class StakingModelManager {
       throw e
     })
     const tx2 = AdminWallet.sendTransactionMainnet(
-      this.dai.methods.allocateTo(AdminWallet.mainnetAddresses[0], toWei('100', 'ether')),
+      this.dai.methods.allocateTo(AdminWallet.mainnetAddresses[0], toWei('1000', 'ether')),
       {},
       {}
     ).catch(e => {
@@ -138,7 +147,7 @@ export class StakingModelManager {
 
     this.log.info('mockInterest approved and allocated dai. minting cDai...')
     await AdminWallet.sendTransactionMainnet(
-      this.cDai.methods.mint(toWei('10', 'ether')),
+      this.cDai.methods.mint(toWei('1000', 'ether')),
       {},
       {},
       AdminWallet.mainnetAddresses[0]
@@ -149,9 +158,13 @@ export class StakingModelManager {
       .call()
       .then(_ => _.toString())
 
-    this.log.info('mockInterest minted fake cDai, transferring to staking contract...', { ownercDaiBalanceAfter })
+    this.log.info('mockInterest minted fake cDai, transferring to staking contract...', {
+      ownercDaiBalanceAfter,
+      owner: AdminWallet.mainnetAddresses[0],
+      stakingContract: this.stakingContract.address
+    })
     await AdminWallet.sendTransactionMainnet(
-      this.cDai.methods.transfer(this.stakingAddress, ownercDaiBalanceAfter),
+      this.cDai.methods.transfer(this.stakingContract.address, ownercDaiBalanceAfter),
       {},
       {},
       AdminWallet.mainnetAddresses[0]
@@ -164,7 +177,7 @@ export class StakingModelManager {
         this.log.info('waiting for collect interest time', { nextCollectionTime })
         return { result: 'waiting', cronTime: nextCollectionTime }
       }
-      const availableInterest = await this.getAvailableInterest()
+      const availableInterest = (await this.getAvailableInterest()).map(_ => _.toString())
       this.log.info('starting collect interest', {
         availableInterest,
         nextCollectionTime: nextCollectionTime.toString()
@@ -224,10 +237,11 @@ export class StakingModelManager {
    * @param {*} start used to calculate timeout
    */
   waitForBridgeTransfer = async (fromBlock, start, value) => {
+    const ubiRecipient = await this.nameService.methods.getAddress('UBI_RECIPIENT').call()
     const res = await AdminWallet.tokenContract.getPastEvents('Transfer', {
       fromBlock,
       filter: {
-        to: this.ubiScheme,
+        to: ubiRecipient,
         value
       }
     })
@@ -236,7 +250,7 @@ export class StakingModelManager {
       start,
       res,
       bridge: this.homeBridge,
-      ubi: this.ubiScheme
+      ubi: ubiRecipient
     })
     if (res && res.length > 0) {
       return res[0]
@@ -403,7 +417,7 @@ class FishingManager {
    */
   fishChunk = async tofish => {
     const fishTX = await AdminWallet.fishMulti(tofish, this.log)
-    const fishEvents = await AdminWallet.UBIContract.getPastEvents('TotalFished', {
+    const fishEvents = await this.ubiContract.getPastEvents('TotalFished', {
       fromBlock: fishTX.blockNumber,
       toBlock: fishTX.blockNumber
     })
@@ -446,7 +460,7 @@ class FishingManager {
    */
   transferFishToUBI = async () => {
     let gdbalance = await AdminWallet.tokenContract.methods.balanceOf(AdminWallet.proxyContract.address).call()
-    const transferTX = await AdminWallet.transferWalletGooDollars(AdminWallet.UBIContract.address, gdbalance, this.log)
+    const transferTX = await AdminWallet.transferWalletGooDollars(this.ubiScheme, gdbalance, this.log)
     this.log.info('transfered fished funds to ubi', { tx: transferTX.transactionHash, gdbalance })
     return gdbalance
   }

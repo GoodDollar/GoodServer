@@ -5,7 +5,7 @@ import convict from 'convict'
 import dotenv from 'dotenv'
 
 import getNetworks from './networks'
-import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
+import ContractsAddress from '@gooddollar/goodprotocol/releases/deployment.json'
 
 import { version, description } from '../../package.json'
 
@@ -159,7 +159,8 @@ const conf = convict({
       'production',
       'develop',
       'staging',
-      'etoro'
+      'etoro',
+      'dapptest'
     ],
     default: 'develop',
     env: 'NETWORK'

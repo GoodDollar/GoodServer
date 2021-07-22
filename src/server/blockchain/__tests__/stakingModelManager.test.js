@@ -17,11 +17,6 @@ const next_interval = async function(interval = 5760) {
 }
 
 describe('stakingModelManager', () => {
-  if (version < '2.0.0') {
-    test(`${version} skiping until v2.0.0`, () => {})
-    return
-  }
-
   beforeAll(async () => {
     await AdminWallet.ready
   })
@@ -40,11 +35,6 @@ describe('stakingModelManager', () => {
     expect(canRun).toBeTruthy()
   })
 
-  test(`stakingModelManager should know how many blocks to next interval`, async () => {
-    const blocks = await fundManager.blocksUntilNextCollection()
-    expect(blocks).toBeGreaterThan(0)
-  })
-
   test(`stakingModelManager should see positive interest gains`, async () => {
     const gains = await fundManager.getAvailableInterest()
     expect(gains[0].toNumber()).toBeGreaterThan(0)
@@ -59,20 +49,19 @@ describe('stakingModelManager', () => {
     expect(event.returnValues.gdUBI.toNumber()).toBeGreaterThan(0)
   })
 
+  test(`stakingModelManager should know he cant run after previous test collecting interest`, async () => {
+    const canRun = await fundManager.canCollectFunds()
+    expect(canRun).toBeFalsy()
+  })
+
   test(`stakingModelManager should wait for bridge transfer event`, async () => {
+    const ubiRecipient = await fundManager.nameService.methods.getAddress('UBI_RECIPIENT').call()
     const bridgeLog = await fundManager.waitForBridgeTransfer(transferBlock, Date.now())
-    expect(bridgeLog).toMatchObject({ returnValues: { from: expect.any(String), to: fundManager.ubiScheme } })
+    expect(bridgeLog).toMatchObject({ returnValues: { from: expect.any(String), to: ubiRecipient } })
     expect(bridgeLog.returnValues.value.toNumber()).toEqual(ubiAmount)
   })
 
-  test(`stakingModelManager should succeed to transfer interest when no interest created`, async () => {
-    await next_interval(100)
-    const event = await fundManager.transferInterest()
-    expect(event.returnValues.gdInterest.toNumber()).toEqual(0)
-    expect(event.returnValues.gdUBI.toNumber()).toBeGreaterThan(0)
-  })
-
-  test(`stakingModelManager should fail to transfer interest if interval not passed yet`, async () => {
+  test(`stakingModelManager should fail to transfer interest if no interest to collect`, async () => {
     expect(fundManager.transferInterest()).rejects.toThrow()
   })
 
