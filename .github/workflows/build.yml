@@ -87,9 +87,9 @@ jobs:
       GUNDB_PASS: test
       JWT_PASS: test
       TRAVIS: true
-      NETWORK: develop
-      MNEMONIC: 'myth like bonus scare over problem client lizard pioneer submit female collect'
-      ADMIN_MNEMONIC: 'audit jealous snake hospital hello away diary wedding hold across nice tribe'
+      NETWORK: dapptest
+      # MNEMONIC: 'myth like bonus scare over problem client lizard pioneer submit female collect'
+      # ADMIN_MNEMONIC: 'audit jealous snake hospital hello away diary wedding hold across nice tribe'
       ALCHEMY_API: ${{ secrets.ALCHEMY_API }}
       AWS_SES_ACCESS_KEY: ${{ secrets.AWS_SES_ACCESS_KEY }}
       AWS_SES_SECRET_ACCESS_KEY: ${{ secrets.AWS_SES_SECRET_ACCESS_KEY }}
