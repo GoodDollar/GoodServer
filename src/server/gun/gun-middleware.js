@@ -280,6 +280,7 @@ class GunDB implements StorageAPI {
   }
 
   async addHashToIndex(index: string, hash: String, user: LoggedUser) {
+    if (!this.indexesRefs[index]) return false
     return this.indexesRefs[index]
       .get(hash)
       .putAck({ '#': '~' + user.profilePublickey })
