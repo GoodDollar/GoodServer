@@ -135,7 +135,7 @@ export class StakingModelManager {
       throw e
     })
     const tx2 = AdminWallet.sendTransactionMainnet(
-      this.dai.methods.allocateTo(AdminWallet.mainnetAddresses[0], toWei('1000', 'ether')),
+      this.dai.methods.allocateTo(AdminWallet.mainnetAddresses[0], toWei('2000', 'ether')),
       {},
       {}
     ).catch(e => {
@@ -148,7 +148,7 @@ export class StakingModelManager {
 
     this.log.info('mockInterest approved and allocated dai. minting cDai...')
     await AdminWallet.sendTransactionMainnet(
-      this.cDai.methods.mint(toWei('1000', 'ether')),
+      this.cDai.methods.mint(toWei('2000', 'ether')),
       {},
       {},
       AdminWallet.mainnetAddresses[0]
@@ -165,7 +165,7 @@ export class StakingModelManager {
       stakingContract: this.stakingContract.address
     })
     await AdminWallet.sendTransactionMainnet(
-      this.cDai.methods.transfer(this.stakingContract.address, ownercDaiBalanceAfter),
+      this.cDai.methods.transfer(this.stakingContract.address, '198000000000'),
       {},
       {},
       AdminWallet.mainnetAddresses[0]
