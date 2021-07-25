@@ -1,11 +1,9 @@
 import fs from 'fs'
 import path from 'path'
-import { get } from 'lodash'
 import convict from 'convict'
 import dotenv from 'dotenv'
 
 import getNetworks from './networks'
-import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
 
 import { version, description } from '../../package.json'
 
@@ -159,7 +157,8 @@ const conf = convict({
       'production',
       'develop',
       'staging',
-      'etoro'
+      'etoro',
+      'dapptest'
     ],
     default: 'develop',
     env: 'NETWORK'
@@ -603,8 +602,21 @@ const conf = convict({
 // network options
 const networks = getNetworks()
 const network = conf.get('network')
-const networkId = ContractsAddress[network].networkId
-const mainNetworkId = get(ContractsAddress, `${network}-mainnet.networkId`, networkId)
+let networkId = 4447
+let mainNetworkId = 4447
+switch (network) {
+  case 'fuse':
+  case 'staging':
+    networkId = 122
+    mainNetworkId = 3
+    break
+  case 'production':
+    networkId = 122
+    mainNetworkId = 1
+    break
+  default:
+    break
+}
 
 conf.set('ethereumMainnet', networks[mainNetworkId])
 conf.set('ethereum', networks[networkId])

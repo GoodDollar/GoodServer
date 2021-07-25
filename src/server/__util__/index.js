@@ -1,12 +1,9 @@
 import request from 'supertest'
 import Web3 from 'web3'
-import ContractsAddress from '@gooddollar/goodcontracts/releases/deployment.json'
-
-import conf from '../server.config'
 
 const web3 = new Web3()
 
-const { networkId } = ContractsAddress[conf.network]
+const networkId = 4447
 
 export const utmString =
   'utmcsr=twitter|utmcmd=banner|utmccn=Test_campaign_name_%3A-)|utmctr=test-term|utmcct=test-contant'
