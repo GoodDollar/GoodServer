@@ -147,6 +147,7 @@ export class StakingModelManager {
     })
 
     this.log.info('mockInterest approved and allocated dai. minting cDai...')
+    const balanceBefore = await this.cDai.methods.balanceOf(AdminWallet.mainnetAddresses[0]).call()
     await AdminWallet.sendTransactionMainnet(
       this.cDai.methods.mint(toWei('2000', 'ether')),
       {},
@@ -154,18 +155,17 @@ export class StakingModelManager {
       AdminWallet.mainnetAddresses[0]
     )
 
-    let ownercDaiBalanceAfter = await this.cDai.methods
-      .balanceOf(AdminWallet.mainnetAddresses[0])
-      .call()
-      .then(_ => _.toString())
+    let ownercDaiBalanceAfter = await this.cDai.methods.balanceOf(AdminWallet.mainnetAddresses[0]).call()
 
+    const toTransfer = ownercDaiBalanceAfter.sub(balanceBefore).toString()
     this.log.info('mockInterest minted fake cDai, transferring to staking contract...', {
       ownercDaiBalanceAfter,
+      toTransfer,
       owner: AdminWallet.mainnetAddresses[0],
       stakingContract: this.stakingContract.address
     })
     await AdminWallet.sendTransactionMainnet(
-      this.cDai.methods.transfer(this.stakingContract.address, '198000000000'),
+      this.cDai.methods.transfer(this.stakingContract.address, toTransfer),
       {},
       {},
       AdminWallet.mainnetAddresses[0]
