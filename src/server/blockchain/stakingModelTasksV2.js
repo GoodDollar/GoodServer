@@ -170,6 +170,14 @@ export class StakingModelManager {
       {},
       AdminWallet.mainnetAddresses[0]
     )
+    let stakingcDaiBalanceAfter = await this.cDai.methods
+      .balanceOf(this.stakingContract.address)
+      .call()
+      .then(_ => _.toString())
+
+    this.log.info('mockInterest transfered fake cDai to staking contract...', {
+      stakingcDaiBalanceAfter
+    })
   }
   run = async () => {
     try {
