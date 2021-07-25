@@ -97,7 +97,7 @@ jobs:
       MAUTIC_TOKEN: ${{ secrets.MAUTIC_TOKEN }}
       MAUTIC_BASIC_TOKEN: ${{ secrets.MAUTIC_BASIC_TOKEN }}
       CI: false
-      # LOG_LEVEL: error
+      LOG_LEVEL: error
       CHUNKS: ${{ needs.setup.outputs['test-chunks'] }}
       BLOCKCHAIN_CHUNK: 1
 
