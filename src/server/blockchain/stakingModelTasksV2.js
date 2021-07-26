@@ -186,7 +186,7 @@ export class StakingModelManager {
         this.log.info('waiting for collect interest time', { nextCollectionTime })
         return { result: 'waiting', cronTime: nextCollectionTime }
       }
-      const availableInterest = (await this.getAvailableInterest()).map(_ => _.toString())
+      const availableInterest = await this.getAvailableInterest()
       this.log.info('starting collect interest', {
         availableInterest,
         nextCollectionTime: nextCollectionTime.toString()
