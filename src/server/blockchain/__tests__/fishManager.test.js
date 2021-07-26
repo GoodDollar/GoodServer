@@ -1,6 +1,8 @@
 import AdminWallet from '../AdminWallet'
 /* eslint-disable-next-line */
-import { fishManager } from '../stakingModelTasks'
+import stakingModelTasks from '../stakingModelTasks'
+
+let fishManager = stakingModelTasks.fishManager
 
 const setNextDay = async () => {
   await AdminWallet.web3.currentProvider.send('evm_increaseTime', [60 * 60 * 24]).catch(e => console.log(e))

@@ -19,10 +19,11 @@ import logger, { addRequestLogger } from '../imports/logger'
 import VerificationAPI from './verification/verification'
 import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
 import addClaimQueueMiddlewares from './claimQueue/claimQueueAPI'
-import { FishInactiveTask, CollectFundsTask } from './blockchain/stakingModelTasks'
+import StakingModelTasks from './blockchain/stakingModelTasks'
 import './db/cron/dbUpdateTask' // import to register the task
 import Config from './server.config'
 
+const { FishInactiveTask, CollectFundsTask } = StakingModelTasks
 const rootLogger = logger.child({ from: 'Server' })
 const { env, fishTaskDisabled, stakeTaskDisabled } = Config
 

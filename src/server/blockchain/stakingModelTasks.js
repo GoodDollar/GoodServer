@@ -6,4 +6,4 @@ if (['staging', 'production'].includes(conf.network)) {
   stakingModelTasks = require('./stakingModelTasksV2')
 }
 
-module.exports = stakingModelTasks
+export default stakingModelTasks

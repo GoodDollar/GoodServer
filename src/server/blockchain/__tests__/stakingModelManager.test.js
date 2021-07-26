@@ -1,7 +1,9 @@
 import AdminWallet from '../AdminWallet'
 /* eslint-disable-next-line */
-import { fundManager } from '../stakingModelTasks'
+import stakingModelTasks from '../stakingModelTasks'
 import delay from 'delay'
+
+let fundManager = stakingModelTasks.fundManager
 
 const next_interval = async function(interval = 5760) {
   let blocks = interval
