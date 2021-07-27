@@ -15,6 +15,7 @@ import OTP from '../../imports/otp'
 import conf from '../server.config'
 import { Mautic } from '../mautic/mauticAPI'
 import { sendTemplateEmail } from '../aws-ses/aws-ses'
+import fetch from 'cross-fetch'
 
 import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 import { verifySignature } from '../utils/eth'
@@ -647,6 +648,56 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
     res.json({ success: true, phase })
     res.end()
   })
+
+  /**
+   * @api {post} /verify/recaptcha verify recaptcha token
+   * @apiName Recaptcha
+   * @apiGroup Verification
+   *
+   * @apiParam {string} token
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
+  app.post(
+    '/verify/recaptcha',
+    wrapAsync(async (req, res) => {
+      const log = req.log
+      const { token } = req.body
+      const clientIp = requestIp.getClientIp(req)
+
+      const url = `https://www.google.com/recaptcha/api/siteverify?secret=${conf.recaptchaSecretKey}&response=${token}&remoteip=${clientIp}`
+
+      const recaptchaRes = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: '*/*'
+        }
+      })
+
+      const parsedRes = await recaptchaRes.json()
+
+      try {
+        if (parsedRes.success) {
+          const verifyResult = await OTP.verifyCaptcha(clientIp)
+
+          log.debug('Recaptcha verified', verifyResult)
+
+          res.json({ success: true })
+        } else {
+          log.error('Recaptcha verification failed', { clientIp, token })
+
+          res.status(400).json({ success: false, error: 'Recaptcha verification failed' })
+        }
+      } catch (exception) {
+        const { message } = exception
+        log.error('Ip address whitelisting failed', message, exception, { clientIp, token })
+
+        res.status(400).json({ success: false, error: message })
+      }
+    })
+  )
 }
 
 export default setup
