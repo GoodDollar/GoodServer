@@ -64,14 +64,18 @@ jobs:
     outputs:
       test-chunks: ${{ steps['set-test-chunks'].outputs['test-chunks'] }}
       test-chunk-ids: ${{ steps['set-test-chunk-ids'].outputs['test-chunk-ids'] }}
+      wallet-chunk-id: ${{ steps['set-test-chunk-ids'].outputs['wallet-chunk-id'] }}
+
     steps:
       - uses: actions/checkout@v2
       - id: set-test-chunks
         name: Set Chunks
-        run: echo "::set-output name=test-chunks::$(find ./src -path \*/__tests__/*.js | sort | jq -R -s -c 'split("\n")[:-1]'| jq -cM '[_nwise(length / 5 | floor)]')"
+        run: echo "::set-output name=test-chunks::$(find ./src -path \*/__tests__/*.js | sort | jq -R -s -c 'split("\n")[:-1] | map(select(contains("__util") == false))' | jq -cM '[_nwise(length / 5 | floor)]')"
       - id: set-test-chunk-ids
         name: Set Chunk IDs
-        run: echo "::set-output name=test-chunk-ids::$(echo $CHUNKS | jq -cM 'to_entries | map(.key)')"
+        run: |
+          echo "::set-output name=test-chunk-ids::$(echo $CHUNKS | jq -cM 'to_entries | map(.key)')"
+          echo "::set-output name=wallet-chunk-id::$(echo $CHUNKS | jq -cM 'to_entries | map(select(.value | .[] | index("GoodWallet"))) | unique | first | .key')"
         env:
           CHUNKS: ${{ steps['set-test-chunks'].outputs['test-chunks'] }}
 
@@ -99,7 +103,7 @@ jobs:
       CI: false
       LOG_LEVEL: error
       CHUNKS: ${{ needs.setup.outputs['test-chunks'] }}
-      BLOCKCHAIN_CHUNK: 1
+      BLOCKCHAIN_CHUNK: ${{ needs.setup.outputs['wallet-chunk-id'] }}
 
     runs-on: ubuntu-latest
     steps:

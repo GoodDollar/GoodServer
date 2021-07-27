@@ -27,7 +27,7 @@ describe('sendAPI', () => {
       mauticId
     })
 
-    console.log('sendAPI: starting server')
+    console.log('sendAPI: starting server', { mauticId })
 
     server = await makeServer(done)
     console.log('sendAPI: server ready', { server })
