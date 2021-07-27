@@ -12,8 +12,10 @@ import { Mautic } from '../mautic/mauticAPI'
 import conf from '../server.config'
 import addUserSteps from './addUserSteps'
 import createUserVerifier from './verifier'
-import { fishManager } from '../blockchain/stakingModelTasks'
+import stakingModelTasks from '../blockchain/stakingModelTasks'
 import { DBUpdateTask } from '../db/cron/dbUpdateTask'
+
+const fishManager = stakingModelTasks.fishManager
 
 const adminAuthenticate = (req, res, next) => {
   const { body } = req

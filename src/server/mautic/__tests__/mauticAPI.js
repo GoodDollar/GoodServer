@@ -14,7 +14,7 @@ describe('Send', () => {
     mauticId = res.contact.id
     expect(res.contact.fields.all).toEqual(
       expect.objectContaining({
-        id: expect.any(Number),
+        id: expect.anything(),
         email: 'hadartest@gooddollar.org',
         firstname: 'h',
         lastname: 'r'

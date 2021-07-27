@@ -22,8 +22,14 @@ export default once(() => ({
   4447: {
     network_id: 4447,
     web3Transport: 'HttpProvider',
-    httpWeb3Provider: 'http://localhost:9545/',
-    websocketWeb3Provider: 'ws://localhost:9545/'
+    httpWeb3Provider: 'http://localhost:8545/',
+    websocketWeb3Provider: 'ws://localhost:8545/'
+  },
+  31337: {
+    network_id: 31337,
+    web3Transport: 'HttpProvider',
+    httpWeb3Provider: 'http://localhost:8545/',
+    websocketWeb3Provider: 'ws://localhost:8545/'
   },
   122: {
     network_id: 122,
