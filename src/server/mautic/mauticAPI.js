@@ -252,6 +252,12 @@ export const Mautic = new (class {
     const { mauticId, fullName } = user
 
     if (!(mnemonic && fullName && mauticId && mauticRecoveryEmailId)) {
+      this.log.error('missing input for sending recovery email', {
+        mnemonic,
+        fullName,
+        mauticId,
+        mauticRecoveryEmailId
+      })
       throw new Error('missing input for sending recovery email')
     }
 
