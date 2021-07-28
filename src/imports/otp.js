@@ -85,6 +85,24 @@ export default new (class {
     }
   }
 
+  async verifyCaptcha(clientIp): Promise<object> {
+    const { log } = this
+    const payload = { captcha: true, req: { ip: clientIp } }
+
+    try {
+      const result = await this.http.post(this.verifyWorkerUrl, payload)
+      return result.data
+    } catch (exception) {
+      const { message } = exception
+      const logFunc = message === 'Max send attempts reached' ? 'warn' : 'error'
+
+      this.getExceptionText(exception)
+
+      log[logFunc]('Error verifying captcha:', message, exception, { clientIp })
+      throw exception
+    }
+  }
+
   /**
    * Checks OTP code sent to the user's mobile number
    * @param {string} mobile - user's mobile

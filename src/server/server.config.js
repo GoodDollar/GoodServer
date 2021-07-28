@@ -181,6 +181,12 @@ const conf = convict({
     env: 'TWILIO_VERIFY_ID',
     default: ''
   },
+  recaptchaSecretKey: {
+    doc: 'Recaptcha secret key',
+    format: '*',
+    env: 'RECAPTCHA_SECRET_KEY',
+    default: ''
+  },
   sendGrid: {
     apiKey: {
       doc: 'Sendgrid API KEY',
