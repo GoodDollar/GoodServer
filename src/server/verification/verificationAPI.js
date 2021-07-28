@@ -672,20 +672,21 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       const log = req.log
       const { token } = req.body
       const clientIp = requestIp.getClientIp(req)
-
-      const url = `https://www.google.com/recaptcha/api/siteverify?secret=${conf.recaptchaSecretKey}&response=${token}&remoteip=${clientIp}`
-
-      const recaptchaRes = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: '*/*'
-        }
-      })
-
-      const parsedRes = await recaptchaRes.json()
-
       try {
+        const url = `https://www.google.com/recaptcha/api/siteverify?secret=${conf.recaptchaSecretKey}&response=${token}&remoteip=${clientIp}`
+
+        log.debug('Verifying recaptcha', { token })
+
+        const recaptchaRes = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: '*/*'
+          }
+        })
+
+        const parsedRes = await recaptchaRes.json()
+
         if (parsedRes.success) {
           const verifyResult = await OTP.verifyCaptcha(clientIp)
 
@@ -693,13 +694,11 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
           res.json({ success: true })
         } else {
-          log.error('Recaptcha verification failed', { clientIp, token })
-
-          res.status(400).json({ success: false, error: 'Recaptcha verification failed' })
+          throw new Error('Recaptcha verification failed')
         }
       } catch (exception) {
         const { message } = exception
-        log.error('Ip address whitelisting failed', message, exception, { clientIp, token })
+        log.error('Recaptcha verification failed', message, exception, { clientIp, token })
 
         res.status(400).json({ success: false, error: message })
       }
