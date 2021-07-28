@@ -667,7 +667,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
    */
   app.post(
     '/verify/recaptcha',
-    requestRateLimiter(),
+    requestRateLimiter(60, 10),
     wrapAsync(async (req, res) => {
       const log = req.log
       const { token } = req.body
