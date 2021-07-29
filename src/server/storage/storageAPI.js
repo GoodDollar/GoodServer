@@ -86,6 +86,17 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         const isMobileManuallyVerified = mobile && userRecord.smsValidated && userRecord.mobile === sha3(mobile)
         const isMobileConfirmed = 'development' === env || isMobileTorusVerified || isMobileManuallyVerified
 
+        logger.debug('new user verification result:', {
+          env,
+          mobile,
+          email,
+          isEmailTorusVerified,
+          isEmailManuallyVerified,
+          isMobileTorusVerified,
+          isMobileManuallyVerified,
+          isEmailConfirmed,
+          isMobileConfirmed
+        })
         // check that user email/mobile sent is the same as the ones verified
         //in case email/mobile was verified using torus userRecord.mobile/email will be empty
         if (['production', 'staging'].includes(env)) {
