@@ -114,7 +114,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
 
         if (userRecord.createdDate) {
           logger.warn('user already created', { userRecord, userPayload })
-          return res.json({ ok: 1 })
+          // return res.json({ ok: 1 })
         }
 
         // removing creds, nonce, proof and crypto keys from user payload as they shouldn't be stored in the userRecord
@@ -233,7 +233,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
 
         await storage.updateUser({
           identifier: userRecord.loggedInAs,
-          createdDate: new Date().toString(),
+          createdDate: userRecord.loggedInAs || new Date().toString(),
           otp: {} //delete trace of mobile,email
         })
 
