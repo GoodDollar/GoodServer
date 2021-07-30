@@ -87,7 +87,7 @@ export default new (class {
 
   async verifyCaptcha(clientIp): Promise<object> {
     const { log } = this
-    const payload = { captcha: true, req: { ip: clientIp } }
+    const payload = { captcha: true, verify: true, req: { ip: clientIp } }
 
     try {
       const result = await this.http.post(this.verifyWorkerUrl, payload)
