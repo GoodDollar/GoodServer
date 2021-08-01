@@ -122,9 +122,9 @@ const setup = (app: Router) => {
       })
 
       if (recovered && gdPublicAddress && profileVerified) {
-        log.info(`SigUtil Successfully verified signer as ${recovered}`)
         const userRecord = await UserDBPrivate.getUser(recovered)
         const hasSignedUp = userRecord && (userRecord.smsValidated || userRecord.isEmailConfirmed)
+        log.info(`SigUtil Successfully verified signer as ${recovered}`, { hasSignedUp })
         const token = jwt.sign(
           {
             method: method,

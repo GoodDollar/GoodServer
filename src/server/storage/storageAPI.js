@@ -70,7 +70,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
       try {
         logger.debug('new user request:', { data: userPayload, userRecord })
 
-        const { email, mobile, inviteCode, ...restPayload } = userPayload
+        const { email, mobile, inviteCode, fullName, regMethod, torusProvider } = userPayload
 
         // if torus, then we first verify the user mobile/email by verifying it matches the torus public key
         // (torus maps identifier such as email and mobile to private/public key pairs)
@@ -117,17 +117,14 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           // return res.json({ ok: 1 })
         }
 
-        // removing creds, nonce, proof and crypto keys from user payload as they shouldn't be stored in the userRecord
-        const payloadWithoutCreds = omitBy(restPayload, (_, userProperty) => userProperty.startsWith('torus'))
-
-        const toUpdateUser: UserRecord = defaults(payloadWithoutCreds, {
+        const toUpdateUser: UserRecord = {
           identifier: userRecord.loggedInAs,
-          regMethod: userPayload.regMethod,
-          torusProvider: userPayload.torusProvider,
+          regMethod,
+          torusProvider,
           email: email ? sha3(email) : userRecord.email,
           mobile: mobile ? sha3(mobile) : userRecord.mobile,
+          fullName,
           walletAddress: sha3(userRecord.gdAddress.toLowerCase()),
-          mobileValidated: !!userRecord.smsValidated,
           profilePublickey: userRecord.profilePublickey,
           isCompleted: userRecord.isCompleted
             ? userRecord.isCompleted
@@ -137,9 +134,9 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
               },
           isEmailConfirmed,
           smsValidated: isMobileConfirmed
-        })
+        }
 
-        const userRecordWithPII = { ...payloadWithoutCreds, ...userRecord, inviteCode, email, mobile }
+        const userRecordWithPII = { ...userRecord, ...toUpdateUser, inviteCode, email, mobile }
         const signUpPromises = []
 
         const p1 = storage
@@ -195,12 +192,8 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         // signUpPromises.push(p4)
 
         const p5 = Promise.all([
-          userRecordWithPII.smsValidated &&
-            userRecordWithPII.mobile &&
-            gunPublic.addUserToIndex('mobile', userRecordWithPII.mobile, userRecordWithPII),
-          userRecordWithPII.email &&
-            userRecordWithPII.isEmailConfirmed &&
-            gunPublic.addUserToIndex('email', userRecordWithPII.email, userRecordWithPII),
+          isMobileConfirmed && gunPublic.addUserToIndex('mobile', mobile, userRecordWithPII),
+          isEmailConfirmed && gunPublic.addUserToIndex('email', email, userRecordWithPII),
           userRecordWithPII.gdAddress &&
             gunPublic.addUserToIndex('walletAddress', userRecordWithPII.gdAddress.toLowerCase(), userRecordWithPII)
         ])
