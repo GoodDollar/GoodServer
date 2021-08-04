@@ -379,6 +379,11 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         { mobile: mobile && sha3(mobile) }
       ].filter(or => !!Object.values(or)[0])
 
+      if (queryOrs.length === 0) {
+        log.warn('empty data for /userExists', { body: req.body })
+        res.json({ ok: 0, exists: false })
+      }
+
       let existing = await storage.model
         .find(
           {
