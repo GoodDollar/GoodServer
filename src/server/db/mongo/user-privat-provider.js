@@ -66,9 +66,8 @@ class UserPrivate {
       return true
     } catch (ex) {
       logger.error('Update user failed [mongo actions]:', ex.message, ex, { user })
+      throw ex
     }
-
-    return false
   }
 
   /**

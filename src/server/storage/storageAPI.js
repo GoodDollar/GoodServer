@@ -81,10 +81,10 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
 
         const isEmailTorusVerified = email && emailVerified
         const isEmailManuallyVerified = email && userRecord.isEmailConfirmed && userRecord.email === sha3(email)
-        const isEmailConfirmed = 'development' === env || isEmailTorusVerified || isEmailManuallyVerified
+        const isEmailConfirmed = !!('development' === env || isEmailTorusVerified || isEmailManuallyVerified)
         const isMobileTorusVerified = mobile && mobileVerified
         const isMobileManuallyVerified = mobile && userRecord.smsValidated && userRecord.mobile === sha3(mobile)
-        const isMobileConfirmed = 'development' === env || isMobileTorusVerified || isMobileManuallyVerified
+        const isMobileConfirmed = !!('development' === env || isMobileTorusVerified || isMobileManuallyVerified)
 
         logger.debug('new user verification result:', {
           env,
@@ -226,7 +226,7 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
 
         await storage.updateUser({
           identifier: userRecord.loggedInAs,
-          createdDate: userRecord.loggedInAs || new Date().toString(),
+          createdDate: userRecord.createdDate || new Date().toString(),
           otp: {} //delete trace of mobile,email
         })
 
