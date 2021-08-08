@@ -125,7 +125,7 @@ const setup = (app: Router) => {
         const userRecord = await UserDBPrivate.getUser(recovered)
         const hasVerified = userRecord && (userRecord.smsValidated || userRecord.isEmailConfirmed)
         const hasSignedUp = userRecord && userRecord.createdDate
-        if (!hasSignedUp && !hasVerified) {
+        if (hasSignedUp && !hasVerified) {
           log.warn('user doesnt have email nor mobile verified', { recovered })
         }
         log.info(`SigUtil Successfully verified signer as ${recovered}`, { hasSignedUp })
