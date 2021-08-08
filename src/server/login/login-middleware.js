@@ -123,8 +123,12 @@ const setup = (app: Router) => {
 
       if (recovered && gdPublicAddress && profileVerified) {
         const userRecord = await UserDBPrivate.getUser(recovered)
-        const hasSignedUp = userRecord && (userRecord.smsValidated || userRecord.isEmailConfirmed)
-        log.info(`SigUtil Successfully verified signer as ${recovered}`, { hasSignedUp, userRecord })
+        const hasVerified = userRecord && (userRecord.smsValidated || userRecord.isEmailConfirmed)
+        const hasSignedUp = userRecord && userRecord.createdDate
+        if (hasSignedUp && !hasVerified) {
+          log.warn('user doesnt have email nor mobile verified', { recovered })
+        }
+        log.info(`SigUtil Successfully verified signer as ${recovered}`, { hasSignedUp })
         const token = jwt.sign(
           {
             method: method,
@@ -132,7 +136,7 @@ const setup = (app: Router) => {
             gdAddress: gdPublicAddress,
             profilePublickey: profileReqPublickey,
             exp: Math.floor(Date.now() / 1000) + (hasSignedUp ? Config.jwtExpiration : 60), //if not signed up jwt will last only 60 seconds so it will be refreshed after signup
-            aud: hasSignedUp ? `realmdb_wallet_${Config.env}` : 'unsigned',
+            aud: hasSignedUp || hasVerified ? `realmdb_wallet_${Config.env}` : 'unsigned',
             sub: recovered
           },
           Config.jwtPassword
