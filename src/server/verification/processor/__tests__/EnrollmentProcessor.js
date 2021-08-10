@@ -24,9 +24,6 @@ const removeDelayedTasksMock = jest.fn()
 const fetchTasksForProcessingMock = jest.fn()
 const unlockDelayedTasksMock = jest.fn()
 
-// queue mocks
-const whitelistInQueueMock = jest.fn()
-
 // wallet mocks
 const whitelistUserMock = jest.fn()
 const removeWhitelistedMock = jest.fn()
@@ -85,7 +82,6 @@ describe('EnrollmentProcessor', () => {
     enqueueTaskMock.mockResolvedValue(fakeTask)
     getAuthenticationPeriodMock.mockReturnValue(14)
     unlockDelayedTasksMock.mockImplementation(noopAsync)
-    whitelistInQueueMock.mockImplementation(noopAsync)
     whitelistUserMock.mockImplementation(noopAsync)
 
     invokeMap(
@@ -113,9 +109,6 @@ describe('EnrollmentProcessor', () => {
         failDelayedTasksMock,
         removeDelayedTasksMock,
         cancelTasksQueuedMock,
-
-        whitelistInQueueMock,
-
         whitelistUserMock,
         isVerifiedMock,
         getAuthenticationPeriodMock,
@@ -188,7 +181,6 @@ describe('EnrollmentProcessor', () => {
     await wrappedResponse.toHaveProperty('enrollmentResult.isVerified', true)
 
     expect(updateUserMock).toHaveBeenCalledWith({ identifier: loggedInAs, isVerified: true })
-    expect(whitelistInQueueMock).toHaveBeenCalledWith(user, storageMock, expect.anything())
     expect(whitelistUserMock).toHaveBeenCalledWith(gdAddress, sha3(gdAddress))
   })
 
