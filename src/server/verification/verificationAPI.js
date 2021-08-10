@@ -21,7 +21,7 @@ import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 import { verifySignature } from '../utils/eth'
 import { shouldLogVerificaitonError } from './utils/logger'
 
-const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, storage: StorageAPI) => {
+const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   /**
    * @api {delete} /verify/face/:enrollmentIdentifier Enqueue user's face snapshot for disposal since 24h
    * @apiName Dispose Face
@@ -195,7 +195,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
             2. in the session's lifecycle onEnrollmentCompleted() is called
               after enrollment was successful
-              it whitelists user in the wallet and updates Gun's session
+              it whitelists user in the wallet
               here we're calling it manually as we've skipped enroll()
           */
           await enrollmentSession.onEnrollmentCompleted()
@@ -334,8 +334,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
         if (currentMobile && currentMobile !== hashedNewMobile) {
           updIndexPromise = Promise.all([
-            gunPublic.removeUserFromIndex('mobile', currentMobile),
-            gunPublic.addUserToIndex('mobile', mobile, user)
+            //TODO: generate ceramic claim
           ])
         }
 
@@ -358,7 +357,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         ])
       }
 
-      const signedMobile = await gunPublic.signClaim(user.profilePubkey, { hasMobile: mobile })
+      //TODO: replace with ceramic
 
       res.json({ ok: 1, attestation: signedMobile })
     })
@@ -624,13 +623,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
             )
         }
 
-        //update indexes, if new user, indexes are set in /adduser
-        if (currentEmail && currentEmail !== email) {
-          gunPublic.removeUserFromIndex('email', currentEmail)
-          gunPublic.addUserToIndex('email', email, user)
-        }
-
-        const signedEmail = await gunPublic.signClaim(req.user.profilePubkey, { hasEmail: hashedNewEmail })
+        //TODO: sign using ceramic did
 
         return res.json({ ok: 1, attestation: signedEmail })
       }

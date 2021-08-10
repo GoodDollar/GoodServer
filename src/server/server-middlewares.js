@@ -7,7 +7,6 @@ import cors from 'cors'
 import { version as contractsVersion } from '@gooddollar/goodcontracts/package.json'
 
 import addLoginMiddlewares from './login/login-middleware'
-import { setup as addGunMiddlewares, GunDBPublic } from './gun/gun-middleware'
 import UserDBPrivate from './db/mongo/user-privat-provider'
 import getTasksRunner from './cron/TaskRunner'
 import addStorageMiddlewares from './storage/storageAPI'
@@ -20,7 +19,6 @@ import VerificationAPI from './verification/verification'
 import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
 import addClaimQueueMiddlewares from './claimQueue/claimQueueAPI'
 import StakingModelTasks from './blockchain/stakingModelTasks'
-import './db/cron/dbUpdateTask' // import to register the task
 import Config from './server.config'
 
 const { FishInactiveTask, CollectFundsTask } = StakingModelTasks
@@ -56,9 +54,8 @@ export default async (app: Router) => {
 
   addCypressMiddleware(app)
   addLoginMiddlewares(app)
-  addGunMiddlewares(app)
-  addStorageMiddlewares(app, GunDBPublic, UserDBPrivate)
-  addVerificationMiddlewares(app, VerificationAPI, GunDBPublic, UserDBPrivate)
+  addStorageMiddlewares(app, UserDBPrivate)
+  addVerificationMiddlewares(app, VerificationAPI, UserDBPrivate)
   addSendMiddlewares(app, UserDBPrivate)
   addClaimQueueMiddlewares(app, UserDBPrivate)
   addLoadTestMiddlewares(app)

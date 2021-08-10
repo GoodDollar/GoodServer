@@ -4,7 +4,6 @@ import { EventEmitter } from 'events'
 import middlewares from './server-middlewares'
 import AdminWallet from './blockchain/AdminWallet'
 import requestTimeout from './utils/timeout'
-import { GunDBPublic } from './gun/gun-middleware'
 import conf from './server.config'
 
 import logger from '../imports/logger'
@@ -17,17 +16,13 @@ process.on('uncaughtException', () => process.exit(-1))
 
 const startApp = async () => {
   await Promise.race([
-    requestTimeout(30000, 'gun not initialized'),
+    requestTimeout(30000, 'wallet not initialized'),
     AdminWallet.ready.then(() => {
       log.info('AdminWallet ready', { addresses: AdminWallet.addresses })
-      const pkey = AdminWallet.wallets[AdminWallet.addresses[0]].privateKey.slice(2)
-      //we no longer use backend also as gundb  server, otherwise this needs to be moved back
-      //to server-prod.js so we can pass the express server instance instead of null
-      return GunDBPublic.init(null, pkey, 'publicdb')
     })
   ]).catch(e => {
     if (conf.env === 'test') return
-    console.log('gun failed... quiting', e)
+    console.log('wallet failed... quiting', e)
     process.exit(-1)
   })
 
