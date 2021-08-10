@@ -4,7 +4,6 @@ import { sha3 } from 'web3-utils'
 import { delay, chunk, flattenDeep } from 'lodash'
 import logger from '../src/imports/logger'
 import { type UserRecord } from '../src/imports/types'
-import { GunDBPublic } from '../src/server/gun/gun-middleware'
 import AdminWallet from '../src/server/blockchain/AdminWallet'
 
 import conf from '../src/server/server.config'
@@ -96,75 +95,6 @@ class DBUpdates {
     }
   }
 
-  async testWrite() {
-    await AdminWallet.ready
-    const pkey = AdminWallet.wallets[AdminWallet.addresses[0]].privateKey.slice(2)
-    await GunDBPublic.init(null, pkey, `publicdb0`)
-    await GunDBPublic.gun.get('users/bywalletAddress').putAck({ version: Date.now() })
-  }
-  /**
-   * convert existing gun indexes to hash based, also add them to the trusted index under our profile
-   */
-  async upgradeGun() {
-    await AdminWallet.ready
-    const pkey = AdminWallet.wallets[AdminWallet.addresses[0]].privateKey.slice(2)
-    await GunDBPublic.init(null, pkey, `publicdb0`, null)
-    const gooddollarProfile = '~' + GunDBPublic.user.is.pub
-    logger.info('GoodDollar profile id:', { gooddollarProfile })
-    let ps = []
-    GunDBPublic.gun.get('users/bywalletAddress').once(
-      data => {
-        const updatedIndex = {}
-        Object.keys(data || {}).forEach(k => {
-          if (data[k] == null || k === '_') return
-          updatedIndex[sha3(k)] = data[k]
-        })
-        logger.info(`writing ${Object.keys(updatedIndex).length} records to bywalletAddress`)
-        if (Object.keys(updatedIndex).length === 0) return
-        ps.push(GunDBPublic.gun.get('users/bywalletAddress').putAck(updatedIndex))
-        ps.push(GunDBPublic.user.get('users/bywalletAddress').putAck(updatedIndex))
-      },
-      { wait: 3000 }
-    )
-    GunDBPublic.gun.get('users/bymobile').once(
-      data => {
-        const updatedIndex = {}
-        Object.keys(data || {}).forEach(k => {
-          if (data[k] == null || k === '_') return
-          updatedIndex[sha3(k)] = data[k]
-        })
-        logger.info(`writing ${Object.keys(updatedIndex).length} records to bymobile`)
-        if (Object.keys(updatedIndex).length === 0) return
-        ps.push(GunDBPublic.gun.get('users/bymobile').putAck(updatedIndex))
-        ps.push(GunDBPublic.user.get('users/bymobile').putAck(updatedIndex))
-      },
-      { wait: 3000 }
-    )
-    GunDBPublic.gun.get('users/byemail').once(
-      data => {
-        const updatedIndex = {}
-        Object.keys(data || {}).forEach(k => {
-          if (data[k] == null || k === '_') return
-          updatedIndex[sha3(k)] = data[k]
-        })
-        logger.info(`writing ${Object.keys(updatedIndex).length} records to byemail`)
-        if (Object.keys(updatedIndex).length === 0) return
-        ps.push(GunDBPublic.gun.get('users/byemail').putAck(updatedIndex))
-        ps.push(GunDBPublic.user.get('users/byemail').putAck(updatedIndex))
-      },
-      { wait: 3000 }
-    )
-    return new Promise((res, rej) => {
-      delay(
-        () =>
-          Promise.all(ps)
-            .then(res)
-            .catch(rej),
-        5000
-      )
-    })
-  }
-
   async upgrade() {
     const docs = await UserPrivateModel.find()
     const ops = docs
@@ -185,82 +115,6 @@ class DBUpdates {
     } else {
       logger.warn('upgrade mongodb. nothing to do')
     }
-  }
-
-  /**
-   * convert existing gun indexes to hash based, also add them to the trusted index under our profile
-   */
-  async fixGunTrustProfiles() {
-    await AdminWallet.ready
-    const pkey = AdminWallet.wallets[AdminWallet.addresses[0]].privateKey.slice(2)
-    await GunDBPublic.init(null, pkey, `publicdb0`, null)
-    const gooddollarProfile = '~' + GunDBPublic.user.is.pub
-    logger.info('GoodDollar profile id:', {
-      gooddollarProfile,
-      bywalletIdx: await GunDBPublic.user.get('users/bywalletAddress').then(Gun.node.soul)
-    })
-    if (gooddollarProfile.indexOf('~qBFt4jGXG') === 0) {
-      await GunDBPublic.user.delete()
-      return
-    }
-    let ps = []
-    GunDBPublic.user.get('users/bywalletAddress').onThen(
-      data => {
-        const keys = Object.keys(data || {})
-        logger.info('bywalletAddress records found:', { total: keys.length })
-        const updatedIndex = {}
-        keys.forEach(k => {
-          if (0 === k.indexOf('0x') && typeof data[k] === 'string') {
-            //fix: turn public key into node ref to public profile
-            updatedIndex[k] = { '#': '~' + data[k] }
-          }
-        })
-        logger.info(`writing ${Object.keys(updatedIndex).length} records to bywalletAddress`, { updatedIndex })
-        ps.push(GunDBPublic.user.get('users/bywalletAddress').putAck(updatedIndex))
-      },
-      { wait: 3000 }
-    )
-    GunDBPublic.user.get('users/bymobile').onThen(
-      data => {
-        const keys = Object.keys(data || {})
-        logger.info('bymobile records found:', { total: keys.length })
-        const updatedIndex = {}
-        keys.forEach(k => {
-          if (0 === k.indexOf('0x') && typeof data[k] === 'string') {
-            //fix: turn public key into node ref to public profile
-            updatedIndex[k] = { '#': '~' + data[k] }
-          }
-        })
-        logger.info(`writing ${Object.keys(updatedIndex).length} records to bymobile`, { updatedIndex })
-        ps.push(GunDBPublic.user.get('users/bymobile').putAck(updatedIndex))
-      },
-      { wait: 3000 }
-    )
-    GunDBPublic.user.get('users/byemail').onThen(
-      data => {
-        const keys = Object.keys(data || {})
-        logger.info('byemail records found:', { total: keys.length })
-        const updatedIndex = {}
-        keys.forEach(k => {
-          if (0 === k.indexOf('0x') && typeof data[k] === 'string') {
-            //fix: turn public key into node ref to public profile
-            updatedIndex[k] = { '#': '~' + data[k] }
-          }
-        })
-        logger.info(`writing ${Object.keys(updatedIndex).length} records to byemail`, { updatedIndex })
-        ps.push(GunDBPublic.user.get('users/byemail').putAck(updatedIndex))
-      },
-      { wait: 3000 }
-    )
-    return new Promise((res, rej) => {
-      delay(
-        () =>
-          Promise.all(ps)
-            .then(res)
-            .catch(rej),
-        5000
-      )
-    })
   }
 }
 
