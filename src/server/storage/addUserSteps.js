@@ -5,7 +5,7 @@ import AdminWallet from '../blockchain/AdminWallet'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
 import { type UserRecord } from '../../imports/types'
 import { Mautic } from '../mautic/mauticAPI'
-
+import { sha3 } from 'web3-utils'
 const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
   if (!conf.disableFaceVerification) {
     return
@@ -21,11 +21,11 @@ const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
 
   logger.debug('addUserToWhiteList whitelisting user...', {
     address: userRecord.gdAddress,
-    profile: userRecord.profilePublickey
+    identifier: userRecord.identifier
   })
 
   try {
-    await AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey)
+    await AdminWallet.whitelistUser(userRecord.gdAddress, sha3(userRecord.gdAddress))
     await UserDBPrivate.completeStep(userRecord.identifier, 'whiteList')
 
     logger.debug('addUserToWhiteList user whitelisted success', { address: userRecord.gdAddress })
@@ -39,15 +39,7 @@ const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
 }
 
 const updateMauticRecord = async (userRecord: UserRecord, utmString: string, logger: any) => {
-  const userFields = pick(userRecord, [
-    'fullName',
-    'mobile',
-    'email',
-    'identifier',
-    'profilePublickey',
-    'regMethod',
-    'torusProvider'
-  ])
+  const userFields = pick(userRecord, ['fullName', 'mobile', 'email', 'identifier', 'regMethod', 'torusProvider'])
 
   const utmFields = Mautic.parseUtmString(utmString)
   const nameParts = get(userFields, 'fullName', '').split(' ')

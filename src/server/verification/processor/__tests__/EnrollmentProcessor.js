@@ -2,7 +2,7 @@
 
 import MockAdapter from 'axios-mock-adapter'
 import { omit, invokeMap } from 'lodash'
-
+import { sha3 } from 'web3-utils'
 import { ZoomLicenseType } from '../../../verification/utils/constants'
 import createEnrollmentProcessor from '../EnrollmentProcessor'
 import AdminWallet from '../../../blockchain/AdminWallet'
@@ -180,7 +180,7 @@ describe('EnrollmentProcessor', () => {
     helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
     helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
 
-    const { gdAddress, profilePublickey, loggedInAs } = user
+    const { gdAddress, loggedInAs } = user
     const wrappedResponse = expect(enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)).resolves
 
     await wrappedResponse.toBeDefined()
@@ -189,7 +189,7 @@ describe('EnrollmentProcessor', () => {
 
     expect(updateUserMock).toHaveBeenCalledWith({ identifier: loggedInAs, isVerified: true })
     expect(whitelistInQueueMock).toHaveBeenCalledWith(user, storageMock, expect.anything())
-    expect(whitelistUserMock).toHaveBeenCalledWith(gdAddress, profilePublickey)
+    expect(whitelistUserMock).toHaveBeenCalledWith(gdAddress, sha3(gdAddress))
   })
 
   test('enroll() enqueues task to auto dispose enrollment once auth period passed on success', async () => {

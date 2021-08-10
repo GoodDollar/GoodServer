@@ -124,7 +124,6 @@ const setup = (app: Router, storage: StorageAPI) => {
           mobile: mobile ? sha3(mobile) : userRecord.mobile,
           fullName,
           walletAddress: sha3(userRecord.gdAddress.toLowerCase()),
-          profilePublickey: userRecord.profilePublickey,
           isCompleted: userRecord.isCompleted
             ? userRecord.isCompleted
             : {
@@ -410,52 +409,6 @@ const setup = (app: Router, storage: StorageAPI) => {
           email: email && sha3(email) === bestExisting.email,
           mobile: mobile && sha3(mobile) === bestExisting.mobile,
           fullName: bestExisting.fullName
-        })
-      }
-
-      res.json({ ok: 0, exists: false })
-    })
-  )
-
-  app.get(
-    '/profileBy',
-    wrapAsync(async (req, res, next) => {
-      const { log } = req
-      const { valueHash } = req.query
-
-      const queryOrs = [{ email: valueHash }, { mobile: valueHash }, { walletAddress: valueHash }]
-
-      const isValidMatch = doc => {
-        //most common case
-        if (doc.walletAddress === valueHash) return true
-
-        if (doc.email === valueHash && doc.isEmailConfirmed) return true
-
-        if (doc.mobile === valueHash && doc.smsValidated) return true
-
-        return false
-      }
-
-      let existing = await storage.model
-        .find(
-          {
-            $or: queryOrs
-          },
-          { walletAddress: 1, mobile: 1, email: 1, profilePublickey: 1, isEmailConfirmed: 1, smsValidated: 1 }
-        ) // sort by importance, prefer newest verified account
-        .sort({ isVerified: -1, createdDate: -1 })
-        .lean()
-
-      existing = existing.filter(isValidMatch)
-
-      log.debug('user/profileBy:', { existing, valueHash })
-
-      if (existing.length) {
-        const bestExisting = first(existing)
-
-        return res.json({
-          ok: 1,
-          profilePublickey: bestExisting.profilePublickey
         })
       }
 

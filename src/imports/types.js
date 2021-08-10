@@ -30,8 +30,7 @@ export type DelayedTaskRecord = {
 export type JWTRecord = {
   method: 'eth',
   loggedInAs: string,
-  gdAddress: string,
-  profilePublickey: string
+  gdAddress: string
 }
 
 export type LoggedUser = JWTRecord & UserRecord

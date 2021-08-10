@@ -351,7 +351,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       //TODO: replace with ceramic
-
+      let signedMobile
       res.json({ ok: 1, attestation: signedMobile })
     })
   )
@@ -580,13 +580,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
               } else {
                 log.debug("mautic contact doesn't exists creating...")
 
-                const userFields = pick(user, [
-                  'fullName',
-                  'identifier',
-                  'profilePublickey',
-                  'regMethod',
-                  'torusProvider'
-                ])
+                const userFields = pick(user, ['fullName', 'identifier', 'regMethod', 'torusProvider'])
 
                 const nameParts = get(userFields, 'fullName', '').split(' ')
                 const firstName = nameParts[0]
@@ -617,7 +611,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         }
 
         //TODO: sign using ceramic did
-
+        let signedEmail
         return res.json({ ok: 1, attestation: signedEmail })
       }
 

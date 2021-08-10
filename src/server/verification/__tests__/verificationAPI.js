@@ -2,7 +2,7 @@ import request from 'supertest'
 import MockAdapter from 'axios-mock-adapter'
 
 import { assign, omit } from 'lodash'
-
+import { sha3 } from 'web3-utils'
 import Config from '../../server.config'
 
 import storage from '../../db/mongo/user-privat-provider'
@@ -118,10 +118,10 @@ describe('verificationAPI', () => {
     }
 
     const testWhitelisted = async () => {
-      const { address, profilePublickey } = await getCreds()
+      const { address } = await getCreds()
 
       // checking is user was actrally re-whitelisted in the wallet
-      expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), profilePublickey)
+      expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), sha3(address))
     }
 
     const testNotVerified = async () => {

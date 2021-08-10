@@ -45,8 +45,6 @@ const setup = (app: Router) => {
    *
    * @apiParam {String} signature
    * @apiParam {String} gdSignature
-   * @apiParam {String} profilePublickey
-   * @apiParam {String} profileSignature
    * @apiParam {String} nonce
    * @apiParam {String} method
    *
@@ -63,8 +61,7 @@ const setup = (app: Router) => {
 
       const signature = req.body.signature
       const gdSignature = req.body.gdSignature
-      const profileReqPublickey = req.body.profilePublickey
-      const profileSignature = req.body.profileSignature
+
       const nonce = req.body.nonce
       const method = req.body.method
       const networkId = req.body.networkId
@@ -82,17 +79,14 @@ const setup = (app: Router) => {
       const msg = 'Login to GoodDAPP'
       const recovered = recoverPublickey(signature, msg, nonce)
       const gdPublicAddress = recoverPublickey(gdSignature, msg, nonce)
-      const profileVerified =
-        profileReqPublickey != null ? (await SEA.verify(profileSignature, profileReqPublickey)) === msg + nonce : true
+
       log.debug('/auth/eth', {
         message: 'Recovered public key',
         recovered,
-        gdPublicAddress,
-        profileVerified,
-        profileReqPublickey
+        gdPublicAddress
       })
 
-      if (recovered && gdPublicAddress && profileVerified) {
+      if (recovered && gdPublicAddress) {
         const userRecord = await UserDBPrivate.getUser(recovered)
         const hasVerified = userRecord && (userRecord.smsValidated || userRecord.isEmailConfirmed)
         const hasSignedUp = userRecord && userRecord.createdDate
@@ -105,7 +99,6 @@ const setup = (app: Router) => {
             method: method,
             loggedInAs: recovered,
             gdAddress: gdPublicAddress,
-            profilePublickey: profileReqPublickey,
             exp: Math.floor(Date.now() / 1000) + (hasSignedUp ? Config.jwtExpiration : 60), //if not signed up jwt will last only 60 seconds so it will be refreshed after signup
             aud: hasSignedUp || hasVerified ? `realmdb_wallet_${Config.env}` : 'unsigned',
             sub: recovered
