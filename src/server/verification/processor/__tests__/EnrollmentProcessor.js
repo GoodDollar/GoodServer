@@ -6,7 +6,6 @@ import { omit, invokeMap } from 'lodash'
 import { ZoomLicenseType } from '../../../verification/utils/constants'
 import createEnrollmentProcessor from '../EnrollmentProcessor'
 import AdminWallet from '../../../blockchain/AdminWallet'
-import { ClaimQueue } from '../../../claimQueue/claimQueueAPI'
 
 import createMockingHelper from '../../api/__tests__/__util__'
 import { createTaskSubject, DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment } from '../../cron/taskUtil'
@@ -24,9 +23,6 @@ const cancelTasksQueuedMock = jest.fn()
 const removeDelayedTasksMock = jest.fn()
 const fetchTasksForProcessingMock = jest.fn()
 const unlockDelayedTasksMock = jest.fn()
-
-// GUN mocks
-const setWhitelistedImplementation = ClaimQueue.setWhitelisted
 
 // queue mocks
 const whitelistInQueueMock = jest.fn()
@@ -78,7 +74,6 @@ describe('EnrollmentProcessor', () => {
     AdminWallet.removeWhitelisted = removeWhitelistedMock
     AdminWallet.isVerified = isVerifiedMock
     AdminWallet.getAuthenticationPeriod = getAuthenticationPeriodMock
-    ClaimQueue.setWhitelisted = whitelistInQueueMock
 
     zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
     helper = createMockingHelper(zoomServiceMock)
@@ -135,7 +130,6 @@ describe('EnrollmentProcessor', () => {
   afterAll(() => {
     const restoreWalletMethods = ['whitelistUser', 'removeWhitelisted', 'isVerified']
 
-    ClaimQueue.whitelistUser = setWhitelistedImplementation
     restoreWalletMethods.forEach(method => (AdminWallet[method] = AdminWallet.constructor.prototype[method]))
 
     zoomServiceMock.restore()

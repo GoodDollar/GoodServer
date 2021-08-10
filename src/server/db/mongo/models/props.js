@@ -1,4 +1,3 @@
-import conf from '../../../server.config'
 import mongoose, { Schema, Types } from '../../mongo-db.js'
 import { MODEL_PROPERTIES } from './constants'
 
@@ -19,19 +18,6 @@ const PropsSchema = new Schema(
 PropsSchema.index({ name: 1 }, { unique: true }) // schema level
 
 const PropsModel = mongoose.model(MODEL_PROPERTIES, PropsSchema)
-
-export const ClaimQueueProps = PropsModel.discriminator(
-  'claimQueueAllowed',
-  new Schema(
-    {
-      value: {
-        type: Number,
-        default: conf.claimQueueAllowed
-      }
-    },
-    schemaOptions
-  )
-)
 
 export const DatabaseVersion = PropsModel.discriminator(
   'DATABASE_VERSION',

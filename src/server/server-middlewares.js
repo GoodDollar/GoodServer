@@ -17,7 +17,6 @@ import { addCypressMiddleware } from './cypress/cypress-middleware'
 import logger, { addRequestLogger } from '../imports/logger'
 import VerificationAPI from './verification/verification'
 import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
-import addClaimQueueMiddlewares from './claimQueue/claimQueueAPI'
 import StakingModelTasks from './blockchain/stakingModelTasks'
 import Config from './server.config'
 
@@ -57,7 +56,6 @@ export default async (app: Router) => {
   addStorageMiddlewares(app, UserDBPrivate)
   addVerificationMiddlewares(app, VerificationAPI, UserDBPrivate)
   addSendMiddlewares(app, UserDBPrivate)
-  addClaimQueueMiddlewares(app, UserDBPrivate)
   addLoadTestMiddlewares(app)
 
   app.use((error, req, res, next: NextFunction) => {

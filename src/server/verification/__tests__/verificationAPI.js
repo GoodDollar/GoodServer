@@ -22,7 +22,7 @@ import { noopAsync } from '../../utils/async'
 
 describe('verificationAPI', () => {
   let server
-  const { skipEmailVerification, claimQueueAllowed, zoomProductionMode } = Config
+  const { skipEmailVerification, zoomProductionMode } = Config
   const userIdentifier = '0x7ac080f6607405705aed79675789701a48c76f55'
 
   beforeAll(async done => {
@@ -37,13 +37,12 @@ describe('verificationAPI', () => {
   })
 
   beforeEach(() => {
-    // disable claim queue
-    Object.assign(Config, { zoomProductionMode, claimQueueAllowed: 0 })
+    Object.assign(Config, { zoomProductionMode })
   })
 
   afterAll(async done => {
     // restore original config
-    Object.assign(Config, { skipEmailVerification, claimQueueAllowed, zoomProductionMode })
+    Object.assign(Config, { skipEmailVerification, zoomProductionMode })
     await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
 
     server.close(err => {
@@ -111,16 +110,6 @@ describe('verificationAPI', () => {
           }
         })
 
-    const testUserNotApprovedToClaim = async () =>
-      request(server)
-        .put(enrollmentUri)
-        .send(payload)
-        .set('Authorization', `Bearer ${token}`)
-        .expect(400, {
-          success: false,
-          error: 'User not approved to claim, not in queue or still pending'
-        })
-
     const testDisposalState = async isDisposing => {
       await request(server)
         .get(enrollmentUri)
@@ -155,7 +144,7 @@ describe('verificationAPI', () => {
     })
 
     beforeEach(async () => {
-      await storage.updateUser({ identifier: userIdentifier, isVerified: false, claimQueue: null })
+      await storage.updateUser({ identifier: userIdentifier, isVerified: false })
       await storage.taskModel.deleteMany(forEnrollment(enrollmentIdentifier))
 
       enrollmentProcessor.keepEnrollments = 24
@@ -361,48 +350,6 @@ describe('verificationAPI', () => {
         })
 
       await testNotVerified()
-    })
-
-    test('PUT /verify/face/:enrollmentIdentifier returns 400 and success = false when user not approved in the claim queue', async () => {
-      // enabling claim queue.
-      Config.claimQueueAllowed = 1
-      mockSuccessVerification()
-
-      // user with empty status
-      await testUserNotApprovedToClaim()
-
-      // user with pending status
-      await storage.updateUser({ identifier: userIdentifier, claimQueue: { status: 'pending' } })
-      await testUserNotApprovedToClaim()
-    })
-
-    test('PUT /verify/face/:enrollmentIdentifier users approved in the claim queue will be verified as usual', async () => {
-      // enabling claim queue.
-      Config.claimQueueAllowed = 1
-      mockSuccessVerification()
-
-      // user with approved status
-      await storage.updateUser({ identifier: userIdentifier, claimQueue: { status: 'approved' }, isVerified: false })
-      await testVerificationSuccessfull()
-
-      // user with whitelisted status
-      await storage.updateUser({ identifier: userIdentifier, claimQueue: { status: 'whitelisted' }, isVerified: false })
-      await testVerificationSuccessfull()
-    })
-
-    test('PUT /verify/face/:enrollmentIdentifier whitelists user in the claim queue', async () => {
-      // enabling claim queue.
-      Config.claimQueueAllowed = 1
-      mockSuccessVerification()
-
-      // set approved status
-      await storage.updateUser({ identifier: userIdentifier, claimQueue: { status: 'approved' }, isVerified: false })
-      await testVerificationSuccessfull()
-
-      const { claimQueue } = await storage.getUser(userIdentifier)
-
-      // to check has user been updated in the database
-      expect(claimQueue).toHaveProperty('status', 'whitelisted')
     })
 
     test('PUT /verify/face/:enrollmentIdentifier passes full verification flow even if user was already verified', async () => {

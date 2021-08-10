@@ -170,7 +170,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       try {
-        const { disableFaceVerification, allowDuplicatedFaceRecords, claimQueueAllowed } = conf
+        const { disableFaceVerification, allowDuplicatedFaceRecords } = conf
         const enrollmentProcessor = createEnrollmentProcessor(storage, log)
 
         await enrollmentProcessor.validate(user, enrollmentIdentifier, payload)
@@ -200,13 +200,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           */
           await enrollmentSession.onEnrollmentCompleted()
         } else {
-          const isApprovedToClaim = ['approved', 'whitelisted'].includes(get(user, 'claimQueue.status'))
-
-          // only approved users can do the process
-          if (claimQueueAllowed > 0 && false === isApprovedToClaim) {
-            throw new Error('User not approved to claim, not in queue or still pending')
-          }
-
           enrollmentResult = await enrollmentProcessor.enroll(user, enrollmentIdentifier, payload, log)
         }
       } catch (exception) {

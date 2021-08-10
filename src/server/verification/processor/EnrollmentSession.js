@@ -4,6 +4,7 @@ import { type IEnrollmentEventPayload } from './typings'
 import logger from '../../../imports/logger'
 import { DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment, scheduleDisposalTask } from '../cron/taskUtil'
 import { shouldLogVerificaitonError } from '../utils/logger'
+import { Mautic } from '../../mautic/mauticAPI'
 
 const log = logger.child({ from: 'EnrollmentSession' })
 
@@ -13,10 +14,9 @@ export default class EnrollmentSession {
   provider = null
   storage = null
   adminApi = null
-  queueApi = null
   enrollmentIdentifier = null
 
-  constructor(enrollmentIdentifier, user, provider, storage, adminApi, queueApi, customLogger = null) {
+  constructor(enrollmentIdentifier, user, provider, storage, adminApi, customLogger = null) {
     this.log = customLogger || log
 
     assign(this, {
@@ -24,7 +24,6 @@ export default class EnrollmentSession {
       provider,
       storage,
       adminApi,
-      queueApi,
       enrollmentIdentifier
     })
 
@@ -99,18 +98,19 @@ export default class EnrollmentSession {
   }
 
   async onEnrollmentCompleted() {
-    const { user, storage, adminApi, queueApi, log, enrollmentIdentifier } = this
-    const { gdAddress, profilePublickey, loggedInAs } = user
+    const { user, storage, adminApi, log, enrollmentIdentifier } = this
+    const { gdAddress, profilePublickey, loggedInAs, mauticId } = user
 
     log.info('Whitelisting user:', { loggedInAs })
 
     await Promise.all([
       storage.updateUser({ identifier: loggedInAs, isVerified: true }),
-      queueApi.setWhitelisted(user, storage, log).catch(e => log.warn('claim queue update failed', e.message, e)),
-
+      Mautic.setWhitelisted(mauticId, log).catch(e =>
+        log.error('mautic setWhitelisted after fv failed', e.message, e, { user })
+      ),
       adminApi
         .whitelistUser(gdAddress, profilePublickey)
-        .catch(e => log.warn('whitelisting after fv failed', e.message, e)),
+        .catch(e => log.error('whitelisting after fv failed', e.message, e, { user })),
 
       scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.Reauthenticate).catch(e =>
         log.warn('adding facemap to re-auth dispose queue failed:', e.message, e)

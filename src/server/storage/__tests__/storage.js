@@ -93,29 +93,4 @@ describe('storageAPI', () => {
     const userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')
     expect(userIsCompleted).toMatchObject(isCompletedAllTrue)
   })
-
-  test('db should have claimQueue indexed', async () => {
-    const indexes = await UserDBPrivate.model.listIndexes()
-    const found = indexes.find(x => {
-      return x.name.indexOf('claimQueue.status') >= 0
-    })
-    expect(found).toBeTruthy()
-  })
-  test('user should not be in claim queue', async () => {
-    const queue = await UserDBPrivate.getUserField(user.identifier, 'claimQueue')
-    expect(queue).toBeFalsy()
-  })
-
-  test('user should be added to queue', async () => {
-    await UserDBPrivate.updateUser({ identifier: user.identifier, claimQueue: { status: 'pending', date: Date.now() } })
-    const queue = await UserDBPrivate.getUserField(user.identifier, 'claimQueue')
-    expect(queue).toMatchObject({ status: 'pending', date: expect.anything() })
-  })
-
-  test('user should be marked as whitelisted', async () => {
-    const queue = await UserDBPrivate.getUserField(user.identifier, 'claimQueue')
-    await UserDBPrivate.updateUser({ identifier: user.identifier, 'claimQueue.status': 'whitelisted' })
-    const updated = await UserDBPrivate.getUserField(user.identifier, 'claimQueue')
-    expect(updated).toMatchObject({ status: 'whitelisted', date: queue.date })
-  })
 })

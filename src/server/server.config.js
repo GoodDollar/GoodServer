@@ -369,12 +369,6 @@ const conf = convict({
     env: 'TOP_ADMINS',
     default: false
   },
-  claimQueueAllowed: {
-    doc: 'From how many users start to enqueue',
-    format: Number,
-    env: 'CLAIM_QUEUE_ALLOWED',
-    default: 0
-  },
   facebookGraphApiUrl: {
     doc: 'Facebook GraphAPI base url',
     format: '*',
