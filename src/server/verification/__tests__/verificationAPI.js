@@ -2,7 +2,6 @@ import request from 'supertest'
 import MockAdapter from 'axios-mock-adapter'
 
 import { assign, omit } from 'lodash'
-import { sha3 } from 'web3-utils'
 import Config from '../../server.config'
 
 import storage from '../../db/mongo/user-privat-provider'
