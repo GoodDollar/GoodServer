@@ -173,7 +173,7 @@ describe('EnrollmentProcessor', () => {
     helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
     helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
 
-    const { gdAddress, loggedInAs } = user
+    const { gdAddress, loggedInAs, profilePublickey } = user
     const wrappedResponse = expect(enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)).resolves
 
     await wrappedResponse.toBeDefined()
@@ -181,7 +181,7 @@ describe('EnrollmentProcessor', () => {
     await wrappedResponse.toHaveProperty('enrollmentResult.isVerified', true)
 
     expect(updateUserMock).toHaveBeenCalledWith({ identifier: loggedInAs, isVerified: true })
-    expect(whitelistUserMock).toHaveBeenCalledWith(gdAddress, sha3(gdAddress))
+    expect(whitelistUserMock).toHaveBeenCalledWith(gdAddress, profilePublickey)
   })
 
   test('enroll() enqueues task to auto dispose enrollment once auth period passed on success', async () => {

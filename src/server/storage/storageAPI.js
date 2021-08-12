@@ -123,6 +123,7 @@ const setup = (app: Router, storage: StorageAPI) => {
           email: email ? sha3(email) : userRecord.email,
           mobile: mobile ? sha3(mobile) : userRecord.mobile,
           fullName,
+          profilePublickey: userRecord.profilePublickey,
           walletAddress: sha3(userRecord.gdAddress.toLowerCase()),
           isCompleted: userRecord.isCompleted
             ? userRecord.isCompleted

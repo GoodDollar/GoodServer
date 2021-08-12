@@ -5,7 +5,7 @@ import logger from '../../../imports/logger'
 import { DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment, scheduleDisposalTask } from '../cron/taskUtil'
 import { shouldLogVerificaitonError } from '../utils/logger'
 import { Mautic } from '../../mautic/mauticAPI'
-import { sha3 } from 'web3-utils'
+
 const log = logger.child({ from: 'EnrollmentSession' })
 
 export default class EnrollmentSession {
@@ -99,7 +99,7 @@ export default class EnrollmentSession {
 
   async onEnrollmentCompleted() {
     const { user, storage, adminApi, log, enrollmentIdentifier } = this
-    const { gdAddress, loggedInAs, mauticId } = user
+    const { gdAddress, profilePublickey, loggedInAs, mauticId } = user
 
     log.info('Whitelisting user:', { loggedInAs })
 
@@ -109,7 +109,7 @@ export default class EnrollmentSession {
         log.error('mautic setWhitelisted after fv failed', e.message, e, { user })
       ),
       adminApi
-        .whitelistUser(gdAddress, sha3(gdAddress))
+        .whitelistUser(gdAddress, profilePublickey)
         .catch(e => log.error('whitelisting after fv failed', e.message, e, { user })),
 
       scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.Reauthenticate).catch(e =>

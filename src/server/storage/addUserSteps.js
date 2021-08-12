@@ -5,7 +5,7 @@ import AdminWallet from '../blockchain/AdminWallet'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
 import { type UserRecord } from '../../imports/types'
 import { Mautic } from '../mautic/mauticAPI'
-import { sha3 } from 'web3-utils'
+
 const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
   if (!conf.disableFaceVerification) {
     return
@@ -25,7 +25,7 @@ const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
   })
 
   try {
-    await AdminWallet.whitelistUser(userRecord.gdAddress, sha3(userRecord.gdAddress))
+    await AdminWallet.whitelistUser(userRecord.gdAddress, userRecord.profilePublickey)
     await UserDBPrivate.completeStep(userRecord.identifier, 'whiteList')
 
     logger.debug('addUserToWhiteList user whitelisted success', { address: userRecord.gdAddress })

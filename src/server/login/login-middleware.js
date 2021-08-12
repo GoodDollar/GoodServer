@@ -4,6 +4,7 @@ import passport from 'passport'
 import { ExtractJwt, Strategy } from 'passport-jwt'
 import { Router } from 'express'
 import { defaults } from 'lodash'
+import * as Crypto from '@textile/crypto'
 import logger from '../../imports/logger'
 import { wrapAsync } from '../utils/helpers'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
@@ -16,6 +17,15 @@ const log = logger.child({ from: 'login-middleware' })
 const jwtOptions = {
   jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
   secretOrKey: Config.jwtPassword
+}
+
+const MSG = 'Login to GoodDAPP'
+
+const verifyProfilePublicKey = async (publicKeyString, signature, nonce) => {
+  const profilePublicKey = Crypto.PublicKey.fromString(publicKeyString)
+  const sigbytes = Uint8Array.from(Buffer.from(signature, 'base64'))
+  const msgbytes = new TextEncoder().encode(MSG + nonce)
+  return profilePublicKey.verify(msgbytes, sigbytes)
 }
 
 export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
@@ -45,6 +55,8 @@ const setup = (app: Router) => {
    *
    * @apiParam {String} signature
    * @apiParam {String} gdSignature
+   * @apiParam {String} profilePublickey
+   * @apiParam {String} profileSignature
    * @apiParam {String} nonce
    * @apiParam {String} method
    *
@@ -61,7 +73,8 @@ const setup = (app: Router) => {
 
       const signature = req.body.signature
       const gdSignature = req.body.gdSignature
-
+      const profileReqPublickey = req.body.profilePublickey
+      const profileSignature = req.body.profileSignature
       const nonce = req.body.nonce
       const method = req.body.method
       const networkId = req.body.networkId
@@ -76,17 +89,21 @@ const setup = (app: Router) => {
       }
       log.debug('/auth/eth', { signature, method })
 
-      const msg = 'Login to GoodDAPP'
-      const recovered = recoverPublickey(signature, msg, nonce)
-      const gdPublicAddress = recoverPublickey(gdSignature, msg, nonce)
+      const recovered = recoverPublickey(signature, MSG, nonce)
+      const gdPublicAddress = recoverPublickey(gdSignature, MSG, nonce)
+
+      const profileVerified =
+        profileReqPublickey != null ? await verifyProfilePublicKey(profileReqPublickey, profileSignature, nonce) : true
 
       log.debug('/auth/eth', {
         message: 'Recovered public key',
         recovered,
-        gdPublicAddress
+        gdPublicAddress,
+        profileVerified,
+        profileReqPublickey
       })
 
-      if (recovered && gdPublicAddress) {
+      if (recovered && gdPublicAddress && profileVerified) {
         const userRecord = await UserDBPrivate.getUser(recovered)
         const hasVerified = userRecord && (userRecord.smsValidated || userRecord.isEmailConfirmed)
         const hasSignedUp = userRecord && userRecord.createdDate
@@ -99,6 +116,7 @@ const setup = (app: Router) => {
             method: method,
             loggedInAs: recovered,
             gdAddress: gdPublicAddress,
+            profilePublickey: profileReqPublickey,
             exp: Math.floor(Date.now() / 1000) + (hasSignedUp ? Config.jwtExpiration : 60), //if not signed up jwt will last only 60 seconds so it will be refreshed after signup
             aud: hasSignedUp || hasVerified ? `realmdb_wallet_${Config.env}` : 'unsigned',
             sub: recovered
