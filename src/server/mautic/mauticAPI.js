@@ -291,4 +291,21 @@ export const Mautic = new (class {
       ids: mauticIdsArr
     })
   }
+
+  async setWhitelisted(mauticId, log) {
+    const { mauticClaimQueueWhitelistedSegmentId } = Config
+    if (!mauticId) return
+    return Promise.all([
+      this.updateContact(mauticId, { tags: ['claimqueue_claimed'] }, log).catch(exception => {
+        const { message } = exception
+
+        log.warn('Failed Mautic tagging user claimed', message, exception, { mauticId })
+      }),
+      this.addContactsToSegment([mauticId], mauticClaimQueueWhitelistedSegmentId).catch(exception => {
+        const { message } = exception
+
+        log.warn('Failed Mautic adding user to claim queue whitelisted segment', message, exception)
+      })
+    ])
+  }
 })(Config, logger.child({ from: 'Mautic' }))

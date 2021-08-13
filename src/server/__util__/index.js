@@ -18,9 +18,8 @@ export const getCreds = async (random = false) => {
       '0xaa4eb02d727ab09e6621060f26cff3ceecb3a0901b4f7de564490646482ced3c1c18bf310509a0d3ef7b622c458083a2dce27b3763714bb10d82f53bdb6559a21c',
     gdSignature:
       '0xaa4eb02d727ab09e6621060f26cff3ceecb3a0901b4f7de564490646482ced3c1c18bf310509a0d3ef7b622c458083a2dce27b3763714bb10d82f53bdb6559a21c',
-    profilePublickey: 'lK-f6i-QPHwyxxUOKc4uaubfpTC1TW8oLLCRmv9z9tU.CjtOQSI2XqitheQZLdVlHc09gkm_d2IRz4LRAL6GmFU',
-    profileSignature:
-      'SEA{"m":"Login to GoodDAPP","s":"tNknsunS9psSLQDr/nFeobeHWdROtu3kEHgjHFSkreLFkgmHJPy/E3fm6llN1QOsNtfE12WTs4k1mOEE/H1AWw=="}',
+    profilePublickey: 'bbaareidqc4zagsioo5ae5a5fn7i4jrqjwrph5falyszrlqn5mdw7nyuduu',
+    profileSignature: 'NVSvI0vg+jI0hBBo06rUSX01cE/Epvet+F21cx1Q+x5EclNiFUNKbTNgIkNQ1HVWoKVyYrIMpqWAouuK0fvtCw==',
     nonce: '',
     networkId
   }

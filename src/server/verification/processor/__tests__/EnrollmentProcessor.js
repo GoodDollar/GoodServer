@@ -2,11 +2,10 @@
 
 import MockAdapter from 'axios-mock-adapter'
 import { omit, invokeMap } from 'lodash'
-
+import { sha3 } from 'web3-utils'
 import { ZoomLicenseType } from '../../../verification/utils/constants'
 import createEnrollmentProcessor from '../EnrollmentProcessor'
 import AdminWallet from '../../../blockchain/AdminWallet'
-import { ClaimQueue } from '../../../claimQueue/claimQueueAPI'
 
 import createMockingHelper from '../../api/__tests__/__util__'
 import { createTaskSubject, DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment } from '../../cron/taskUtil'
@@ -24,12 +23,6 @@ const cancelTasksQueuedMock = jest.fn()
 const removeDelayedTasksMock = jest.fn()
 const fetchTasksForProcessingMock = jest.fn()
 const unlockDelayedTasksMock = jest.fn()
-
-// GUN mocks
-const setWhitelistedImplementation = ClaimQueue.setWhitelisted
-
-// queue mocks
-const whitelistInQueueMock = jest.fn()
 
 // wallet mocks
 const whitelistUserMock = jest.fn()
@@ -78,7 +71,6 @@ describe('EnrollmentProcessor', () => {
     AdminWallet.removeWhitelisted = removeWhitelistedMock
     AdminWallet.isVerified = isVerifiedMock
     AdminWallet.getAuthenticationPeriod = getAuthenticationPeriodMock
-    ClaimQueue.setWhitelisted = whitelistInQueueMock
 
     zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
     helper = createMockingHelper(zoomServiceMock)
@@ -90,7 +82,6 @@ describe('EnrollmentProcessor', () => {
     enqueueTaskMock.mockResolvedValue(fakeTask)
     getAuthenticationPeriodMock.mockReturnValue(14)
     unlockDelayedTasksMock.mockImplementation(noopAsync)
-    whitelistInQueueMock.mockImplementation(noopAsync)
     whitelistUserMock.mockImplementation(noopAsync)
 
     invokeMap(
@@ -118,9 +109,6 @@ describe('EnrollmentProcessor', () => {
         failDelayedTasksMock,
         removeDelayedTasksMock,
         cancelTasksQueuedMock,
-
-        whitelistInQueueMock,
-
         whitelistUserMock,
         isVerifiedMock,
         getAuthenticationPeriodMock,
@@ -135,7 +123,6 @@ describe('EnrollmentProcessor', () => {
   afterAll(() => {
     const restoreWalletMethods = ['whitelistUser', 'removeWhitelisted', 'isVerified']
 
-    ClaimQueue.whitelistUser = setWhitelistedImplementation
     restoreWalletMethods.forEach(method => (AdminWallet[method] = AdminWallet.constructor.prototype[method]))
 
     zoomServiceMock.restore()
@@ -186,7 +173,7 @@ describe('EnrollmentProcessor', () => {
     helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
     helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
 
-    const { gdAddress, profilePublickey, loggedInAs } = user
+    const { gdAddress, loggedInAs, profilePublickey } = user
     const wrappedResponse = expect(enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)).resolves
 
     await wrappedResponse.toBeDefined()
@@ -194,7 +181,6 @@ describe('EnrollmentProcessor', () => {
     await wrappedResponse.toHaveProperty('enrollmentResult.isVerified', true)
 
     expect(updateUserMock).toHaveBeenCalledWith({ identifier: loggedInAs, isVerified: true })
-    expect(whitelistInQueueMock).toHaveBeenCalledWith(user, storageMock, expect.anything())
     expect(whitelistUserMock).toHaveBeenCalledWith(gdAddress, profilePublickey)
   })
 

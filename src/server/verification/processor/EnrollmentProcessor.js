@@ -4,7 +4,6 @@ import moment from 'moment'
 
 import Config from '../../server.config'
 import AdminWallet from '../../blockchain/AdminWallet'
-import { ClaimQueue } from '../../claimQueue/claimQueueAPI'
 import logger from '../../../imports/logger'
 
 import { type IEnrollmentProvider } from './typings'
@@ -25,7 +24,6 @@ class EnrollmentProcessor {
   logger = null
   storage = null
   adminApi = null
-  queueApi = null
   keepEnrollments = null
 
   _provider = null
@@ -40,13 +38,12 @@ class EnrollmentProcessor {
     return _provider
   }
 
-  constructor(config, storage, adminApi, queueApi, logger) {
+  constructor(config, storage, adminApi, logger) {
     const { keepFaceVerificationRecords } = config
 
     this.logger = logger
     this.storage = storage
     this.adminApi = adminApi
-    this.queueApi = queueApi
     this.keepEnrollments = keepFaceVerificationRecords
   }
 
@@ -208,9 +205,9 @@ class EnrollmentProcessor {
   }
 
   createEnrollmentSession(enrollmentIdentifier, user, customLogger = null) {
-    const { provider, storage, adminApi, queueApi } = this
+    const { provider, storage, adminApi } = this
 
-    return new EnrollmentSession(enrollmentIdentifier, user, provider, storage, adminApi, queueApi, customLogger)
+    return new EnrollmentSession(enrollmentIdentifier, user, provider, storage, adminApi, customLogger)
   }
 
   /**
@@ -263,7 +260,7 @@ const enrollmentProcessors = new WeakMap()
 export default (storage, log) => {
   if (!enrollmentProcessors.has(storage)) {
     log = log || logger.child({ from: 'EnrollmentProcessor' })
-    const enrollmentProcessor = new EnrollmentProcessor(Config, storage, AdminWallet, ClaimQueue, log)
+    const enrollmentProcessor = new EnrollmentProcessor(Config, storage, AdminWallet, log)
 
     enrollmentProcessor.registerProvier(getZoomProvider())
     enrollmentProcessors.set(storage, enrollmentProcessor)

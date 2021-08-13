@@ -72,18 +72,6 @@ const conf = convict({
     default: '',
     env: 'GUNDB_PASS'
   },
-  gundbPeers: {
-    doc: 'superpeer to connect with for public db as a client if server mode is off',
-    format: Array,
-    default: undefined,
-    env: 'GUNDB_PEERS'
-  },
-  gundbServerMode: {
-    doc: 'should we start as a superpeer',
-    format: Boolean,
-    default: true,
-    env: 'GUNDB_SERVERMODE'
-  },
   jwtPassword: {
     doc: 'The password to sign the JWT token with',
     format: '*',
@@ -301,34 +289,6 @@ const conf = convict({
     env: 'ZOOM_PRODUCTION_MODE',
     default: false
   },
-  gunPrivateS3: {
-    key: {
-      format: '*',
-      default: undefined
-    },
-    secret: {
-      format: '*',
-      default: undefined
-    },
-    bucket: {
-      format: '*',
-      default: undefined
-    }
-  },
-  gunPublicS3: {
-    key: {
-      format: '*',
-      default: undefined
-    },
-    secret: {
-      format: '*',
-      default: undefined
-    },
-    bucket: {
-      format: '*',
-      default: undefined
-    }
-  },
   allowDuplicateUserData: {
     doc: 'Allow to register with existing mobile/email',
     format: Boolean,
@@ -408,12 +368,6 @@ const conf = convict({
     format: '*',
     env: 'TOP_ADMINS',
     default: false
-  },
-  claimQueueAllowed: {
-    doc: 'From how many users start to enqueue',
-    format: Number,
-    env: 'CLAIM_QUEUE_ALLOWED',
-    default: 0
   },
   facebookGraphApiUrl: {
     doc: 'Facebook GraphAPI base url',
@@ -626,23 +580,6 @@ switch (network) {
 
 conf.set('ethereumMainnet', networks[mainNetworkId])
 conf.set('ethereum', networks[networkId])
-
-// GUN S3 options
-const privateS3 = process.env.GUN_PRIVATE_S3
-const publicS3 = process.env.GUN_PUBLIC_S3
-
-// parse S3 details for gundb in format of key,secret,bucket
-if (privateS3) {
-  const [key, secret, bucket] = privateS3.split(',')
-
-  conf.set('gunPrivateS3', { key, secret, bucket })
-}
-
-if (publicS3) {
-  const [key, secret, bucket] = publicS3.split(',')
-
-  conf.set('gunPublicS3', { key, secret, bucket })
-}
 
 // Perform validation
 conf.validate({ allowed: 'strict' })

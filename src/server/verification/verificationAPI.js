@@ -21,7 +21,7 @@ import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 import { verifySignature } from '../utils/eth'
 import { shouldLogVerificaitonError } from './utils/logger'
 
-const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, storage: StorageAPI) => {
+const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   /**
    * @api {delete} /verify/face/:enrollmentIdentifier Enqueue user's face snapshot for disposal since 24h
    * @apiName Dispose Face
@@ -170,7 +170,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
       }
 
       try {
-        const { disableFaceVerification, allowDuplicatedFaceRecords, claimQueueAllowed } = conf
+        const { disableFaceVerification, allowDuplicatedFaceRecords } = conf
         const enrollmentProcessor = createEnrollmentProcessor(storage, log)
 
         await enrollmentProcessor.validate(user, enrollmentIdentifier, payload)
@@ -195,18 +195,11 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
             2. in the session's lifecycle onEnrollmentCompleted() is called
               after enrollment was successful
-              it whitelists user in the wallet and updates Gun's session
+              it whitelists user in the wallet
               here we're calling it manually as we've skipped enroll()
           */
           await enrollmentSession.onEnrollmentCompleted()
         } else {
-          const isApprovedToClaim = ['approved', 'whitelisted'].includes(get(user, 'claimQueue.status'))
-
-          // only approved users can do the process
-          if (claimQueueAllowed > 0 && false === isApprovedToClaim) {
-            throw new Error('User not approved to claim, not in queue or still pending')
-          }
-
           enrollmentResult = await enrollmentProcessor.enroll(user, enrollmentIdentifier, payload, log)
         }
       } catch (exception) {
@@ -334,8 +327,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
 
         if (currentMobile && currentMobile !== hashedNewMobile) {
           updIndexPromise = Promise.all([
-            gunPublic.removeUserFromIndex('mobile', currentMobile),
-            gunPublic.addUserToIndex('mobile', mobile, user)
+            //TODO: generate ceramic claim
           ])
         }
 
@@ -358,8 +350,8 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
         ])
       }
 
-      const signedMobile = await gunPublic.signClaim(user.profilePubkey, { hasMobile: mobile })
-
+      //TODO: replace with ceramic
+      let signedMobile
       res.json({ ok: 1, attestation: signedMobile })
     })
   )
@@ -588,13 +580,7 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
               } else {
                 log.debug("mautic contact doesn't exists creating...")
 
-                const userFields = pick(user, [
-                  'fullName',
-                  'identifier',
-                  'profilePublickey',
-                  'regMethod',
-                  'torusProvider'
-                ])
+                const userFields = pick(user, ['fullName', 'identifier', 'regMethod', 'torusProvider'])
 
                 const nameParts = get(userFields, 'fullName', '').split(' ')
                 const firstName = nameParts[0]
@@ -624,14 +610,8 @@ const setup = (app: Router, verifier: VerificationAPI, gunPublic: StorageAPI, st
             )
         }
 
-        //update indexes, if new user, indexes are set in /adduser
-        if (currentEmail && currentEmail !== email) {
-          gunPublic.removeUserFromIndex('email', currentEmail)
-          gunPublic.addUserToIndex('email', email, user)
-        }
-
-        const signedEmail = await gunPublic.signClaim(req.user.profilePubkey, { hasEmail: hashedNewEmail })
-
+        //TODO: sign using ceramic did
+        let signedEmail
         return res.json({ ok: 1, attestation: signedEmail })
       }
 

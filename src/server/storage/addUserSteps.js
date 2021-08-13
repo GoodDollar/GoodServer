@@ -21,7 +21,7 @@ const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
 
   logger.debug('addUserToWhiteList whitelisting user...', {
     address: userRecord.gdAddress,
-    profile: userRecord.profilePublickey
+    identifier: userRecord.identifier
   })
 
   try {
@@ -39,15 +39,7 @@ const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
 }
 
 const updateMauticRecord = async (userRecord: UserRecord, utmString: string, logger: any) => {
-  const userFields = pick(userRecord, [
-    'fullName',
-    'mobile',
-    'email',
-    'identifier',
-    'profilePublickey',
-    'regMethod',
-    'torusProvider'
-  ])
+  const userFields = pick(userRecord, ['fullName', 'mobile', 'email', 'identifier', 'regMethod', 'torusProvider'])
 
   const utmFields = Mautic.parseUtmString(utmString)
   const nameParts = get(userFields, 'fullName', '').split(' ')

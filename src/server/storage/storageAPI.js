@@ -2,7 +2,7 @@
 import { Router } from 'express'
 import passport from 'passport'
 import fetch from 'cross-fetch'
-import { defaults, first, get, omitBy, sortBy } from 'lodash'
+import { first, get, sortBy } from 'lodash'
 import { sha3, toChecksumAddress } from 'web3-utils'
 
 import { type StorageAPI, UserRecord } from '../../imports/types'
@@ -13,7 +13,6 @@ import conf from '../server.config'
 import addUserSteps from './addUserSteps'
 import createUserVerifier from './verifier'
 import stakingModelTasks from '../blockchain/stakingModelTasks'
-import { DBUpdateTask } from '../db/cron/dbUpdateTask'
 
 const fishManager = stakingModelTasks.fishManager
 
@@ -23,7 +22,7 @@ const adminAuthenticate = (req, res, next) => {
   next()
 }
 
-const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
+const setup = (app: Router, storage: StorageAPI) => {
   app.use(
     ['/user/*'],
     passport.authenticate('jwt', { session: false }),
@@ -124,8 +123,8 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
           email: email ? sha3(email) : userRecord.email,
           mobile: mobile ? sha3(mobile) : userRecord.mobile,
           fullName,
-          walletAddress: sha3(userRecord.gdAddress.toLowerCase()),
           profilePublickey: userRecord.profilePublickey,
+          walletAddress: sha3(userRecord.gdAddress.toLowerCase()),
           isCompleted: userRecord.isCompleted
             ? userRecord.isCompleted
             : {
@@ -192,21 +191,14 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         // signUpPromises.push(p4)
 
         const p5 = Promise.all([
-          isMobileConfirmed && gunPublic.addUserToIndex('mobile', mobile, userRecordWithPII),
-          isEmailConfirmed && gunPublic.addUserToIndex('email', email, userRecordWithPII),
-          userRecordWithPII.gdAddress &&
-            gunPublic.addUserToIndex('walletAddress', userRecordWithPII.gdAddress.toLowerCase(), userRecordWithPII)
+          //TODO: generate email/mobile claims using ceramic
         ])
-          .then(res => logger.info('updated trust indexes result:', { res }))
+          .then(res => logger.info('created did claims: result', { res }))
           .catch(() => {
-            logger.warn('updated trust indexes: failed adding new user to indexes. allowing to finish registration')
+            logger.warn('create did claims: failed')
           })
 
-        const p6 = withTimeout(p5, 15000, 'updated trust indexes timeout').catch(e => {
-          logger.warn('update trust indexes: ', e.message, e)
-        })
-
-        signUpPromises.push(p6)
+        signUpPromises.push(p5)
 
         // don't await, if we failed to update its not critical for user.
         withTimeout(Promise.all(signUpPromises), 30000, 'signup promises timeout')
@@ -425,52 +417,6 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
     })
   )
 
-  app.get(
-    '/profileBy',
-    wrapAsync(async (req, res, next) => {
-      const { log } = req
-      const { valueHash } = req.query
-
-      const queryOrs = [{ email: valueHash }, { mobile: valueHash }, { walletAddress: valueHash }]
-
-      const isValidMatch = doc => {
-        //most common case
-        if (doc.walletAddress === valueHash) return true
-
-        if (doc.email === valueHash && doc.isEmailConfirmed) return true
-
-        if (doc.mobile === valueHash && doc.smsValidated) return true
-
-        return false
-      }
-
-      let existing = await storage.model
-        .find(
-          {
-            $or: queryOrs
-          },
-          { walletAddress: 1, mobile: 1, email: 1, profilePublickey: 1, isEmailConfirmed: 1, smsValidated: 1 }
-        ) // sort by importance, prefer newest verified account
-        .sort({ isVerified: -1, createdDate: -1 })
-        .lean()
-
-      existing = existing.filter(isValidMatch)
-
-      log.debug('user/profileBy:', { existing, valueHash })
-
-      if (existing.length) {
-        const bestExisting = first(existing)
-
-        return res.json({
-          ok: 1,
-          profilePublickey: bestExisting.profilePublickey
-        })
-      }
-
-      res.json({ ok: 0, exists: false })
-    })
-  )
-
   app.post(
     '/admin/user/get',
     adminAuthenticate,
@@ -516,14 +462,6 @@ const setup = (app: Router, gunPublic: StorageAPI, storage: StorageAPI) => {
         .then(fishResult => log.info('fishing request result:', { fishResult }))
         .catch(e => log.error('fish request failed', e.message, e, { daysAgo }))
 
-      res.json({ ok: 1 })
-    })
-  )
-  app.post(
-    '/admin/user/fixtrust',
-    adminAuthenticate,
-    wrapAsync(async (req, res, next) => {
-      new DBUpdateTask().fixGunTrustProfiles2()
       res.json({ ok: 1 })
     })
   )
