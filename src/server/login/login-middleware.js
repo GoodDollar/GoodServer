@@ -5,6 +5,8 @@ import { ExtractJwt, Strategy } from 'passport-jwt'
 import { Router } from 'express'
 import { defaults } from 'lodash'
 import * as Crypto from '@textile/crypto'
+import { TextEncoder } from 'util'
+
 import logger from '../../imports/logger'
 import { wrapAsync } from '../utils/helpers'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
