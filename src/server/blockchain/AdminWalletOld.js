@@ -92,8 +92,7 @@ export class Wallet {
       default:
         provider = conf.ethereum.httpWeb3Provider
         web3Provider = new Web3.providers.HttpProvider(provider, {
-          timeout: 15000,
-          headers: [{ name: 'User-Agent', value: 'goodserver' }]
+          timeout: 15000
         })
         break
     }
