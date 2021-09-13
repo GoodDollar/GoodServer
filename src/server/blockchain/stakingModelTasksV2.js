@@ -21,7 +21,6 @@ const FUSE_DAY_BLOCKS = (60 * 60 * 24) / 5
 /**
  * a manager to make sure we collect and transfer the interest from the staking contract
  */
-console.log({ ContractsAddress }, AdminWallet.network)
 export class StakingModelManager {
   lastRopstenTopping = moment()
   addresses = get(ContractsAddress, `${AdminWallet.network}-mainnet`) || get(ContractsAddress, `${AdminWallet.network}`)
@@ -181,6 +180,11 @@ export class StakingModelManager {
   }
   run = async () => {
     try {
+      await this.mockInterest().catch(e => {
+        this.log.warn('mockInterest failed, continuing...')
+        sendSlackAlert({ msg: 'failure: mockInterest failed', error: e.message })
+      })
+
       const nextCollectionTime = await this.getNextCollectionTime()
       if (nextCollectionTime.isAfter()) {
         this.log.info('waiting for collect interest time', { nextCollectionTime })
@@ -191,10 +195,7 @@ export class StakingModelManager {
         availableInterest,
         nextCollectionTime: nextCollectionTime.toString()
       })
-      await this.mockInterest().catch(e => {
-        this.log.warn('mockInterest failed, continuing...')
-        sendSlackAlert({ msg: 'failure: mockInterest failed', error: e.message })
-      })
+
       const fundsEvent = await this.transferInterest().catch(e => {
         this.log.warn('transferInterest failed. stopping.')
         sendSlackAlert({ msg: 'failure: transferInterest failed', error: e.message })
