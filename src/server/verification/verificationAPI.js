@@ -462,11 +462,17 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { user, body } = req
       const { email } = body.user
 
+      if (!email || !user) {
+        log.warn('email verification email or user record not found:', { email, user })
+        return res.json({ ok: 0, error: 'email or user missing' })
+      }
+
       //merge user details for use by mautic
       const { email: currentEmail } = user
       let userRec: UserRecord = defaults(body.user, user)
       const isEmailChanged = currentEmail && currentEmail !== sha3(email)
 
+      log.debug('email verification request:', { email, currentEmail, isEmailChanged, body, user })
       if (conf.allowDuplicateUserData === false && (await storage.isDupUserData({ email }))) {
         log.debug('enforcing unique email per user', { email })
         return res.json({ ok: 0, error: 'Email already exists, please use a different one' })
