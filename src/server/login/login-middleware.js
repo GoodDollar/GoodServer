@@ -24,10 +24,16 @@ const jwtOptions = {
 const MSG = 'Login to GoodDAPP'
 
 const verifyProfilePublicKey = async (publicKeyString, signature, nonce) => {
-  const profilePublicKey = Crypto.PublicKey.fromString(publicKeyString)
-  const sigbytes = Uint8Array.from(Buffer.from(signature, 'base64'))
-  const msgbytes = new TextEncoder().encode(MSG + nonce)
-  return profilePublicKey.verify(msgbytes, sigbytes)
+  try {
+    const profilePublicKey = Crypto.PublicKey.fromString(publicKeyString)
+    const sigbytes = Uint8Array.from(Buffer.from(signature, 'base64'))
+    const msgbytes = new TextEncoder().encode(MSG + nonce)
+
+    return await profilePublicKey.verify(msgbytes, sigbytes)
+  } catch (e) {
+    log.warn('Error verifying profile public key', e.message, e, { publicKeyString, signature, nonce })
+    return false
+  }
 }
 
 export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
