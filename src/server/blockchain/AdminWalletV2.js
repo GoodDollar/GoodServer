@@ -283,13 +283,15 @@ export class Wallet {
    * @param {object} event callbacks
    * @returns {Promise<String>}
    */
-  async topAdmins(): Promise<any> {
+  async topAdmins(numAdmins: number): Promise<any> {
     try {
       const { nonce, release, fail, address } = await this.txManager.lock(this.addresses[0])
       try {
-        log.debug('topAdmins sending tx', { address, nonce })
-        await this.proxyContract.methods.topAdmins(0).send({ gas: '500000', from: address, nonce })
-        log.debug('topAdmins success')
+        for (let i = 0; i < numAdmins; i += 50) {
+          log.debug('topAdmins sending tx', { address, nonce, adminIdx: i })
+          await this.proxyContract.methods.topAdmins(i, i + 50).send({ gas: '500000', from: address, nonce })
+          log.debug('topAdmins success', { adminIdx: i })
+        }
         release()
       } catch (e) {
         fail()
