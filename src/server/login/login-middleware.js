@@ -125,7 +125,7 @@ const setup = (app: Router) => {
             loggedInAs: recovered,
             gdAddress: gdPublicAddress,
             profilePublickey: profileReqPublickey,
-            exp: Math.floor(Date.now() / 1000) + (hasSignedUp ? Config.jwtExpiration : 60), //if not signed up jwt will last only 60 seconds so it will be refreshed after signup
+            exp: Math.floor(Date.now() / 1000) + (hasSignedUp ? Config.jwtExpiration : 3600), //if not signed up jwt will last only 60 seconds so it will be refreshed after signup
             aud: hasSignedUp || hasVerified ? `realmdb_wallet_${Config.env}` : 'unsigned',
             sub: recovered
           },
