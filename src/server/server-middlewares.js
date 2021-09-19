@@ -41,6 +41,10 @@ export default async (app: Router) => {
     origin: env === 'production' ? /(\.gooddollar\.org$)|localhost|localhost:3000/ : true
   }
 
+  if (env === 'production') {
+    app.set('trust proxy', 1) //this is required for heroku to pass ips correctly to rate limiter
+  }
+
   // parse application/x-www-form-urlencoded
   // for easier testing with Postman or plain HTML forms
   app.use(express.json({ limit: '100mb', extended: true }))
