@@ -20,7 +20,7 @@ export const createLoggerMiddleware = logger => (req, res, next) => {
     const logMessage = 'Incoming Request' + (aborted ? ' [aborted]' : '')
     const responseTimeSeconds = (Date.now() - startTime) / 1000
     let { url, method, body: logBody, query, headers } = req
-
+    let { statusCode, statusMessage } = res
     if (url.startsWith('/verify/face/') && isPlainObject(logBody)) {
       logBody = omit(logBody, fvRedact)
     }
@@ -30,7 +30,9 @@ export const createLoggerMiddleware = logger => (req, res, next) => {
       method,
       body: logBody,
       query,
-      headers
+      headers,
+      statusCode,
+      statusMessage
     })
   })
 
