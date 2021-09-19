@@ -373,7 +373,7 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       if (queryOrs.length === 0) {
         log.warn('empty data for /userExists', { body: req.body })
-        res.json({ ok: 0, exists: false })
+        return res.json({ ok: 0, exists: false })
       }
 
       let existing = await storage.model

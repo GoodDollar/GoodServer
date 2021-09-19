@@ -62,7 +62,7 @@ export default async (app: Router) => {
     const log = req.log || rootLogger
     const { message } = error
 
-    log.error('Something went wrong while performing request', message, error, { req })
+    log.error('Something went wrong while performing request', message, error, { body: req.body })
 
     res.status(400).json({ message })
   })
