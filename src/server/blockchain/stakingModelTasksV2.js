@@ -469,9 +469,14 @@ class FishingManager {
    * @returns the amount transfered
    */
   transferFishToUBI = async () => {
-    let gdbalance = await AdminWallet.tokenContract.methods.balanceOf(AdminWallet.proxyContract.address).call()
-    const transferTX = await AdminWallet.transferWalletGooDollars(this.ubiScheme, gdbalance, this.log)
-    this.log.info('transfered fished funds to ubi', { tx: transferTX.transactionHash, gdbalance })
+    let gdbalance = await AdminWallet.tokenContract.methods
+      .balanceOf(AdminWallet.proxyContract.address)
+      .call()
+      .then(parseInt)
+    if (gdbalance > 0) {
+      const transferTX = await AdminWallet.transferWalletGooDollars(this.ubiScheme, gdbalance, this.log)
+      this.log.info('transfered fished funds to ubi', { tx: transferTX.transactionHash, gdbalance })
+    }
     return gdbalance
   }
 
