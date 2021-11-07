@@ -53,17 +53,25 @@ export class StakingModelManager {
   }
 
   canCollectFunds = async () => {
-    const result = await this.managerContract.methods.calcSortedContracts(1000000).call()
-    result.filter(_ => AdminWallet.web3.utils.toBN(_).isZero() === false)
-    return result.length > 0
+    const result = await this.managerContract.methods.calcSortedContracts().call()
+    //collect all contracts that can be run
+    const contracts = result.filter(_ => _.maxGasLargerOrEqualRequired).map(_ => _.contractAddress)
+
+    return contracts.length > 0 ? contracts : false
   }
 
   getAvailableInterest = async () => this.stakingContract.methods.currentGains(true, true).call()
   transferInterest = async () => {
     let txHash
+    const stakingContracts = await this.canCollectFunds()
+    if (stakingContracts === false) {
+      this.log.warn('transferInterest no staking contracts')
+      return
+    }
+
     try {
       const fundsTX = await AdminWallet.sendTransactionMainnet(
-        this.managerContract.methods.collectInterest([this.stakingContract.address]),
+        this.managerContract.methods.collectInterest(stakingContracts, false),
         { onTransactionHash: h => (txHash = h) },
         { gas: 2000000 } //force fixed gas price, tx should take around 450k
       )

@@ -29,7 +29,6 @@ describe('stakingModelManager', () => {
     const gains = await fundManager.getAvailableInterest()
     await fundManager.mockInterest()
     const gains2 = await fundManager.getAvailableInterest()
-    console.log({ gains, gains2 })
     expect(gains2[0].gt(gains[0])).toBeTruthy()
   })
 
@@ -58,12 +57,12 @@ describe('stakingModelManager', () => {
     expect(bridgeLog.returnValues.value.toString()).toEqual(ubiAmount)
   })
 
-  test(`stakingModelManager should fail to transfer interest if no interest to collect`, async () => {
-    expect(fundManager.transferInterest()).rejects.toThrow()
-  })
-
   test(`stakingModelManager should return next cronTime`, async () => {
     const { cronTime } = await fundManager.run().catch(_ => _)
     expect(cronTime.isAfter()).toBeTruthy()
+  })
+
+  test(`stakingModelManager should fail to transfer interest if no interest to collect`, async () => {
+    expect(fundManager.transferInterest()).rejects.toThrow()
   })
 })
