@@ -197,14 +197,14 @@ export class Wallet {
       const balance = await this.web3.eth.getBalance(addr)
 
       const isAdminWallet = await this.isVerifiedAdmin(addr)
-      if (isAdminWallet && web3Utils.fromWei(balance, 'gwei') > adminMinBalance) {
+      if (isAdminWallet && parseFloat(web3Utils.fromWei(balance, 'gwei')) > adminMinBalance) {
         log.info(`admin wallet ${addr} balance ${balance}`)
         this.filledAddresses.push(addr)
       } else log.warn('Failed adding admin wallet', { addr, balance, isAdminWallet, adminMinBalance })
 
       if (conf.env !== 'production') {
         const mainnetBalance = await this.mainnetWeb3.eth.getBalance(addr)
-        if (web3Utils.fromWei(mainnetBalance, 'gwei') > adminMinBalance) {
+        if (parseFloat(web3Utils.fromWei(mainnetBalance, 'gwei')) > adminMinBalance) {
           log.info(`admin wallet ${addr} mainnet balance ${mainnetBalance}`)
           this.mainnetAddresses.push(addr)
         } else log.warn('Failed adding mainnet admin wallet', { addr, mainnetBalance, adminMinBalance })
@@ -632,7 +632,7 @@ export class Wallet {
    */
   async getBalance(): Promise<number> {
     return this.getAddressBalance(this.address)
-      .then(b => web3Utils.fromWei(b))
+      .then(b => parseFloat(web3Utils.fromWei(b)))
       .catch(e => {
         log.error('Error getBalance', e.message, e)
         throw e
