@@ -406,12 +406,12 @@ export class Wallet {
    * @returns {Promise<TransactionReceipt>}
    */
   async blacklistUser(address: string): Promise<TransactionReceipt> {
-    const tx: TransactionReceipt = await this.sendTransaction(
-      this.identityContract.methods.addBlacklisted(address)
-    ).catch(e => {
-      log.error('Error blackListUser', e.message, e, { address })
-      throw e
-    })
+    const tx: TransactionReceipt = await this.sendTransaction(this.proxyContract.methods.blacklist(address)).catch(
+      e => {
+        log.error('Error blackListUser', e.message, e, { address })
+        throw e
+      }
+    )
 
     return tx
   }
@@ -531,7 +531,22 @@ export class Wallet {
         return false
       }
 
-      const txPromise = this.sendTransaction(this.faucetContract.methods.topWallet(address), {}, {}, true, logger)
+      let encodedCall = this.web3.eth.abi.encodeFunctionCall(
+        {
+          name: 'topWallet',
+          type: 'function',
+          inputs: [
+            {
+              type: 'address',
+              name: 'account'
+            }
+          ]
+        },
+        [address]
+      )
+      const transaction = await this.proxyContract.methods.genericCall(this.faucetContract.address, encodedCall, 0)
+
+      const txPromise = this.sendTransaction(transaction, {}, { gas: 200000 }, true, logger)
       let res = await txPromise
       logger.debug('topWalletFaucet result:', { address, res })
       return res
