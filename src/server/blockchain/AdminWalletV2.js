@@ -28,6 +28,8 @@ const log = logger.child({ from: 'AdminWallet' })
 const FUSE_TX_TIMEOUT = 15000 //should be confirmed after max 3 blocks (15sec)
 const defaultGas = 200000
 const defaultGasPrice = web3Utils.toWei('1', 'gwei')
+const defaultRopstenGasPrice = web3Utils.toWei('5', 'gwei')
+
 const adminMinBalance = conf.adminMinBalance
 /**
  * Exported as AdminWallet
@@ -869,7 +871,8 @@ export class Wallet {
 
       //adminwallet contract might give wrong gas estimates, so if its more than block gas limit reduce it to default
       if (gas > 8000000) gas = defaultGas
-      gasPrice = gasPrice || Math.min(await this.mainnetWeb3.eth.getGasPrice(), this.maxMainnetGasPrice)
+      // gasPrice = gasPrice || Math.min(await this.mainnetWeb3.eth.getGasPrice(), this.maxMainnetGasPrice)
+      gasPrice = gasPrice || defaultRopstenGasPrice
 
       const uuid = Crypto.randomBytes(5).toString('base64')
       log.debug('getting tx lock mainnet:', { uuid })
