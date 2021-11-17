@@ -35,21 +35,37 @@ export class StakingModelManager {
     this.stakingContract = new AdminWallet.mainnetWeb3.eth.Contract(StakingABI.abi, this.stakingAddress)
     this.dai = new AdminWallet.mainnetWeb3.eth.Contract(DaiABI.abi, this.daiAddress)
     this.cDai = new AdminWallet.mainnetWeb3.eth.Contract(cDaiABI.abi, this.cDaiAddress)
-    this.managerContract.methods.bridgeContract.call().then(_ => (this.bridge = _))
-    this.managerContract.methods.ubiRecipient.call().then(_ => (this.ubiScheme = _))
+    this.managerContract.methods
+      .bridgeContract()
+      .call()
+      .then(_ => (this.bridge = _))
+    this.managerContract.methods
+      .ubiRecipient()
+      .call()
+      .then(_ => (this.ubiScheme = _))
   }
 
-  canCollectFunds = async () => this.managerContract.methods.canRun.call()
+  canCollectFunds = async () => this.managerContract.methods.canRun().call()
 
   blocksUntilNextCollection = async () => {
-    const interval = await this.managerContract.methods.blockInterval.call().then(parseInt)
-    const lastTransferred = await this.managerContract.methods.lastTransferred.call().then(parseInt)
+    const interval = await this.managerContract.methods
+      .blockInterval()
+      .call()
+      .then(parseInt)
+    const lastTransferred = await this.managerContract.methods
+      .lastTransferred()
+      .call()
+      .then(parseInt)
     const currentBlock = await AdminWallet.mainnetWeb3.eth.getBlockNumber()
     const res = interval - ((currentBlock - lastTransferred * interval) % interval)
     return res
   }
 
-  getAvailableInterest = async () => this.stakingContract.methods.currentUBIInterest.call()
+  getAvailableInterest = async () =>
+    this.stakingContract.methods
+      .currentUBIInterest()
+      .call()
+      .then(parseInt)
   transferInterest = async () => {
     let txHash
     try {
@@ -286,14 +302,21 @@ class FishingManager {
   getUBICalculatedDays = async forceDaysAgo => {
     const dayFuseBlocks = (60 * 60 * 24) / 5
     const maxInactiveDays =
-      forceDaysAgo || (await this.ubiContract.methods.maxInactiveDays.call().then(_ => _.toNumber()))
+      forceDaysAgo ||
+      (await this.ubiContract.methods
+        .maxInactiveDays()
+        .call()
+        .then(_ => _.toNumber()))
 
     const daysagoBlocks = dayFuseBlocks * (maxInactiveDays + 1)
     const blocksAgo = Math.max((await AdminWallet.web3.eth.getBlockNumber()) - daysagoBlocks, 0)
     await AdminWallet.sendTransaction(this.ubiContract.methods.setDay(), {}).catch(e =>
       this.log.warn('fishManager set day failed')
     )
-    const currentUBIDay = await this.ubiContract.methods.currentDay.call().then(_ => _.toNumber())
+    const currentUBIDay = await this.ubiContract.methods
+      .currentDay()
+      .call()
+      .then(_ => _.toNumber())
     this.log.info('getInactiveAccounts', { daysagoBlocks, blocksAgo, currentUBIDay, maxInactiveDays })
     //get claims that were done before inactive period days ago, these accounts has the potential to be inactive
     //first we get the starting block
