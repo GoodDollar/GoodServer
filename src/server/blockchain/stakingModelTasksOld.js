@@ -29,12 +29,12 @@ export class StakingModelManager {
   constructor() {
     this.log = logger.child({ from: 'StakingModelManager' })
     //polling timeout since ethereum has network congestion and we try to pay little gas so it will take a long time to confirm tx
-    this.managerContract = AdminWallet.mainnetWeb3.eth.Contract(FundManagerABI.abi, this.managerAddress, {
+    this.managerContract = new AdminWallet.mainnetWeb3.eth.Contract(FundManagerABI.abi, this.managerAddress, {
       transactionPollingTimeout: 1000
     })
-    this.stakingContract = AdminWallet.mainnetWeb3.eth.Contract(StakingABI.abi, this.stakingAddress)
-    this.dai = AdminWallet.mainnetWeb3.eth.Contract(DaiABI.abi, this.daiAddress)
-    this.cDai = AdminWallet.mainnetWeb3.eth.Contract(cDaiABI.abi, this.cDaiAddress)
+    this.stakingContract = new AdminWallet.mainnetWeb3.eth.Contract(StakingABI.abi, this.stakingAddress)
+    this.dai = new AdminWallet.mainnetWeb3.eth.Contract(DaiABI.abi, this.daiAddress)
+    this.cDai = new AdminWallet.mainnetWeb3.eth.Contract(cDaiABI.abi, this.cDaiAddress)
     this.managerContract.methods.bridgeContract.call().then(_ => (this.bridge = _))
     this.managerContract.methods.ubiRecipient.call().then(_ => (this.ubiScheme = _))
   }
@@ -260,7 +260,7 @@ class FishingManager {
 
   constructor() {
     this.log = logger.child({ from: 'FishingManager' })
-    this.ubiContract = AdminWallet.web3.eth.Contract(UBISchemeABI.abi, this.ubiScheme)
+    this.ubiContract = new AdminWallet.web3.eth.Contract(UBISchemeABI.abi, this.ubiScheme)
   }
 
   /**
