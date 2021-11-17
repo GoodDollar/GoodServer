@@ -141,7 +141,7 @@ export class Wallet {
       defaultGasPrice,
       transactionBlockTimeout: 5,
       transactionConfirmationBlocks: 1,
-      transactionPollingTimeout: 20
+      transactionPollingTimeout: 30
     }
     this.web3 = new Web3(this.getWeb3TransportProvider(), null, web3Default)
     assign(this.web3.eth, web3Default)
@@ -899,11 +899,12 @@ export class Wallet {
       })
       return new Promise((res, rej) => {
         tx.send({
-          type: '0x2',
+          // type: '0x2',
           gas,
-          maxFeePerGas: gasPrice,
-          maxPriorityFeePerGas: web3Utils.toWei('1', 'gwei'),
-          chainId: this.networkIdMainNet,
+          gasPrice,
+          // maxFeePerGas: gasPrice,
+          // maxPriorityFeePerGas: web3Utils.toWei('1', 'gwei'),
+          // chainId: this.networkIdMainNet,
           nonce,
           from: address
         })
