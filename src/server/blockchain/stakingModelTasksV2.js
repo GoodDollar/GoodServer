@@ -142,7 +142,7 @@ export class StakingModelManager {
       this.lastRopstenTopping = moment()
     }
     const tx1 = AdminWallet.sendTransactionMainnet(
-      this.dai.methods.approve(this.cDai.address, toWei('1000000000', 'ether')),
+      this.dai.methods.approve(this.cDai._address, toWei('1000000000', 'ether')),
       {},
       {},
       AdminWallet.mainnetAddresses[0]
@@ -184,15 +184,15 @@ export class StakingModelManager {
       ownercDaiBalanceAfter,
       toTransfer,
       owner: AdminWallet.mainnetAddresses[0],
-      stakingContract: this.stakingContract.address
+      stakingContract: this.stakingContract._address
     })
     await AdminWallet.sendTransactionMainnet(
-      this.cDai.methods.transfer(this.stakingContract.address, toTransfer),
+      this.cDai.methods.transfer(this.stakingContract._address, toTransfer),
       {},
       {},
       AdminWallet.mainnetAddresses[0]
     )
-    let stakingcDaiBalanceAfter = await this.cDai.methods.balanceOf(this.stakingContract.address).call()
+    let stakingcDaiBalanceAfter = await this.cDai.methods.balanceOf(this.stakingContract._address).call()
 
     this.log.info('mockInterest transfered fake cDai to staking contract...', {
       stakingcDaiBalanceAfter
@@ -502,7 +502,7 @@ class FishingManager {
    */
   transferFishToUBI = async () => {
     let gdbalance = await AdminWallet.tokenContract.methods
-      .balanceOf(AdminWallet.proxyContract.address)
+      .balanceOf(AdminWallet.proxyContract._address)
       .call()
       .then(parseInt)
     if (gdbalance > 0) {

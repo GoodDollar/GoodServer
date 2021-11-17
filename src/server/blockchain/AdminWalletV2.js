@@ -382,7 +382,7 @@ export class Wallet {
         },
         [address]
       )
-      const transaction = await this.proxyContract.methods.genericCall(this.identityContract.address, encodedCall, 0)
+      const transaction = await this.proxyContract.methods.genericCall(this.identityContract._address, encodedCall, 0)
       const tx = await this.sendTransaction(transaction, {}, { gas: 500000 })
       log.info('authenticated user', { address, tx })
       return tx
@@ -552,7 +552,7 @@ export class Wallet {
         },
         [address]
       )
-      const transaction = await this.proxyContract.methods.genericCall(this.faucetContract.address, encodedCall, 0)
+      const transaction = await this.proxyContract.methods.genericCall(this.faucetContract._address, encodedCall, 0)
 
       const txPromise = this.sendTransaction(transaction, {}, { gas: 200000 }, true, logger)
       let res = await txPromise
@@ -578,8 +578,8 @@ export class Wallet {
         },
         [toFish]
       )
-      logger.info('fishMulti sending tx', { encodedCall, toFish })
-      const transaction = await this.proxyContract.methods.genericCall(this.UBIContract.address, encodedCall, 0)
+      logger.info('fishMulti sending tx', { encodedCall, toFish, ubischeme: this.UBIContract._address })
+      const transaction = await this.proxyContract.methods.genericCall(this.UBIContract._address, encodedCall, 0)
       const tx = await this.sendTransaction(transaction, {}, { gas: 2000000 }, false, logger)
       logger.info('fishMulti success', { toFish, tx: tx.transactionHash })
       return tx
@@ -618,7 +618,7 @@ export class Wallet {
         [to, value]
       )
       logger.info('transferWalletGooDollars sending tx', { encodedCall, to, value })
-      const transaction = await this.proxyContract.methods.genericCall(this.tokenContract.address, encodedCall, 0)
+      const transaction = await this.proxyContract.methods.genericCall(this.tokenContract._address, encodedCall, 0)
       const tx = await this.sendTransaction(transaction, {}, { gas: 200000 }, false, logger)
       logger.info('transferWalletGooDollars success', { to, value, tx: tx.transactionHash })
       return tx
