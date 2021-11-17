@@ -9,7 +9,7 @@ import cDaiABI from '@gooddollar/goodprotocol/artifacts/contracts/Interfaces.sol
 import ContractsAddress from '@gooddollar/goodprotocol/releases/deployment.json'
 import fetch from 'cross-fetch'
 import AdminWallet from './AdminWallet'
-import { get, chunk, result, range, flatten } from 'lodash'
+import { get, chunk, result, range, flatten, mapValues } from 'lodash'
 import logger from '../../imports/logger'
 import delay from 'delay'
 import moment from 'moment'
@@ -36,12 +36,17 @@ export class StakingModelManager {
     this.log = logger.child({ from: 'StakingModelManager' })
     //polling timeout since ethereum has network congestion and we try to pay little gas so it will take a long time to confirm tx
     this.managerContract = AdminWallet.mainnetWeb3.eth.Contract(FundManagerABI.abi, this.managerAddress, {
-      transactionPollingTimeout: 1000
+      transactionPollingTimeout: 1000,
+      from: AdminWallet.address
     })
-    this.stakingContract = AdminWallet.mainnetWeb3.eth.Contract(StakingABI.abi, this.stakingAddresses[0][0])
-    this.dai = AdminWallet.mainnetWeb3.eth.Contract(DaiABI.abi, this.daiAddress)
-    this.cDai = AdminWallet.mainnetWeb3.eth.Contract(cDaiABI.abi, this.cDaiAddress)
-    this.nameService = AdminWallet.mainnetWeb3.eth.Contract(NameServiceABI.abi, this.nameServiceAddress)
+    this.stakingContract = AdminWallet.mainnetWeb3.eth.Contract(StakingABI.abi, this.stakingAddresses[0][0], {
+      from: AdminWallet.address
+    })
+    this.dai = AdminWallet.mainnetWeb3.eth.Contract(DaiABI.abi, this.daiAddress, { from: AdminWallet.address })
+    this.cDai = AdminWallet.mainnetWeb3.eth.Contract(cDaiABI.abi, this.cDaiAddress, { from: AdminWallet.address })
+    this.nameService = AdminWallet.mainnetWeb3.eth.Contract(NameServiceABI.abi, this.nameServiceAddress, {
+      from: AdminWallet.address
+    })
     this.log.debug('constructor:', {
       fundmanager: this.managerAddress,
       staking: this.stakingAddresses,
@@ -60,7 +65,11 @@ export class StakingModelManager {
     return contracts.length > 0 ? contracts : false
   }
 
-  getAvailableInterest = async () => this.stakingContract.methods.currentGains(true, true).call()
+  getAvailableInterest = async () =>
+    this.stakingContract.methods
+      .currentGains(true, true)
+      .call()
+      .then(_ => mapValues(_, parseInt))
   transferInterest = async () => {
     let txHash
     const stakingContracts = await this.canCollectFunds()
@@ -154,7 +163,10 @@ export class StakingModelManager {
     })
 
     this.log.info('mockInterest approved and allocated dai. minting cDai...')
-    const balanceBefore = await this.cDai.methods.balanceOf(AdminWallet.mainnetAddresses[0]).call()
+    const balanceBefore = await this.cDai.methods
+      .balanceOf(AdminWallet.mainnetAddresses[0])
+      .call()
+      .then(parseInt)
     await AdminWallet.sendTransactionMainnet(
       this.cDai.methods.mint(toWei('2000', 'ether')),
       {},
@@ -162,7 +174,10 @@ export class StakingModelManager {
       AdminWallet.mainnetAddresses[0]
     )
 
-    let ownercDaiBalanceAfter = await this.cDai.methods.balanceOf(AdminWallet.mainnetAddresses[0]).call()
+    let ownercDaiBalanceAfter = await this.cDai.methods
+      .balanceOf(AdminWallet.mainnetAddresses[0])
+      .call()
+      .then(parseInt)
 
     const toTransfer = ownercDaiBalanceAfter.sub(balanceBefore).toString()
     this.log.info('mockInterest minted fake cDai, transferring to staking contract...', {
@@ -177,10 +192,7 @@ export class StakingModelManager {
       {},
       AdminWallet.mainnetAddresses[0]
     )
-    let stakingcDaiBalanceAfter = await this.cDai.methods
-      .balanceOf(this.stakingContract.address)
-      .call()
-      .then(_ => _.toString())
+    let stakingcDaiBalanceAfter = await this.cDai.methods.balanceOf(this.stakingContract.address).call()
 
     this.log.info('mockInterest transfered fake cDai to staking contract...', {
       stakingcDaiBalanceAfter
@@ -292,7 +304,7 @@ class FishingManager {
 
   constructor() {
     this.log = logger.child({ from: 'FishingManager' })
-    this.ubiContract = AdminWallet.web3.eth.Contract(UBISchemeABI.abi, this.ubiScheme)
+    this.ubiContract = AdminWallet.web3.eth.Contract(UBISchemeABI.abi, this.ubiScheme, { from: AdminWallet.address })
   }
 
   /**
@@ -301,7 +313,7 @@ class FishingManager {
   getNextDay = async () => {
     const startRef = await this.ubiContract.methods.periodStart
       .call()
-      .then(_ => moment(_.toNumber() * 1000).startOf('hour'))
+      .then(_ => moment(parseInt(_) * 1000).startOf('hour'))
     const blockchainNow = await AdminWallet.web3.eth
       .getBlock('latest')
       .then(_ => moment(_.timestamp * 1000).startOf('hour'))
@@ -317,15 +329,14 @@ class FishingManager {
    */
   getUBICalculatedDays = async forceDaysAgo => {
     const dayFuseBlocks = (60 * 60 * 24) / 5
-    const maxInactiveDays =
-      forceDaysAgo || (await this.ubiContract.methods.maxInactiveDays.call().then(_ => _.toNumber()))
+    const maxInactiveDays = forceDaysAgo || (await this.ubiContract.methods.maxInactiveDays.call().then(parseInt))
 
     const daysagoBlocks = dayFuseBlocks * (maxInactiveDays + 1)
     const blocksAgo = Math.max((await AdminWallet.web3.eth.getBlockNumber()) - daysagoBlocks, 0)
     await AdminWallet.sendTransaction(this.ubiContract.methods.setDay(), {}).catch(e =>
       this.log.warn('fishManager set day failed')
     )
-    const currentUBIDay = await this.ubiContract.methods.currentDay.call().then(_ => _.toNumber())
+    const currentUBIDay = await this.ubiContract.methods.currentDay.call().then(parseInt)
     this.log.info('getInactiveAccounts', { daysagoBlocks, blocksAgo, currentUBIDay, maxInactiveDays })
     //get claims that were done before inactive period days ago, these accounts has the potential to be inactive
     //first we get the starting block
