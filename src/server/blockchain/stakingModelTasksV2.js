@@ -82,7 +82,8 @@ export class StakingModelManager {
       const fundsTX = await AdminWallet.sendTransactionMainnet(
         this.managerContract.methods.collectInterest(stakingContracts, false),
         { onTransactionHash: h => (txHash = h) },
-        { gas: 2000000 } //force fixed gas price, tx should take around 450k
+        { gas: 2000000 }, //force fixed gas price, tx should take around 450k
+        AdminWallet.mainnetAddresses[0]
       )
       const fundsEvent = get(fundsTX, 'events.FundsTransferred')
       this.log.info('transferInterest result event', { fundsEvent, fundsTX })
@@ -141,7 +142,7 @@ export class StakingModelManager {
       })
       this.lastRopstenTopping = moment()
     }
-    const tx1 = AdminWallet.sendTransactionMainnet(
+    await AdminWallet.sendTransactionMainnet(
       this.dai.methods.approve(this.cDai._address, toWei('1000000000', 'ether')),
       {},
       {},
@@ -150,15 +151,13 @@ export class StakingModelManager {
       this.log.warn('dai  approve failed')
       throw e
     })
-    const tx2 = AdminWallet.sendTransactionMainnet(
+    await AdminWallet.sendTransactionMainnet(
       this.dai.methods.allocateTo(AdminWallet.mainnetAddresses[0], toWei('2000', 'ether')),
       {},
-      {}
+      {},
+      AdminWallet.mainnetAddresses[0]
     ).catch(e => {
       this.log.warn('dai  allocateTo failed')
-    })
-    await Promise.all([tx1, tx2]).catch(e => {
-      this.log.warn('mockInterest dai approve and allocateTo failed', { e, msg: e.message })
       throw e
     })
 
