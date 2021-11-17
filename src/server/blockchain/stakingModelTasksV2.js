@@ -9,7 +9,7 @@ import cDaiABI from '@gooddollar/goodprotocol/artifacts/contracts/Interfaces.sol
 import ContractsAddress from '@gooddollar/goodprotocol/releases/deployment.json'
 import fetch from 'cross-fetch'
 import AdminWallet from './AdminWallet'
-import { get, chunk, result, range, flatten, mapValues } from 'lodash'
+import { get, chunk, range, flatten, mapValues } from 'lodash'
 import logger from '../../imports/logger'
 import delay from 'delay'
 import moment from 'moment'
@@ -356,18 +356,18 @@ class FishingManager {
     })
     this.log.info('getUBICalculatedDays ubiEvents:', {
       ubiEvents: ubiEvents.length,
-      ubiEventDays: ubiEvents.map(_ => result(_, 'returnValues.day.toNumber'))
+      ubiEventDays: ubiEvents.map(_ => get(_, 'returnValues.day')).map(parseInt)
     })
 
     //find first day older than maxInactiveDays (ubiEvents is sorted from old to new  so we reverse it)
     const searchStartDay = ubiEvents
       .reverse()
-      .find(e => e.returnValues.day.toNumber() <= currentUBIDay - maxInactiveDays)
+      .find(e => parseInt(e.returnValues.day) <= currentUBIDay - maxInactiveDays)
 
-    const startDay = result(searchStartDay, 'returnValues.day.toNumber', 0)
+    const startDay = parseInt(get(searchStartDay, 'returnValues.day', 0))
     //find first day newer than searchStartDay
-    const searchEndDay = ubiEvents.reverse().find(e => e.returnValues.day.toNumber() > startDay)
-    const endDay = result(searchEndDay, 'returnValues.day.toNumber', 0)
+    const searchEndDay = ubiEvents.reverse().find(e => parseInt(e.returnValues.day) > startDay)
+    const endDay = parseInt(get(searchEndDay, 'returnValues.day', 0))
 
     this.log.info('getUBICalculatedDays got UBICalculatedEvents:', {
       currentUBIDay,
@@ -390,13 +390,15 @@ class FishingManager {
       this.log.warn('No UBICalculated event found for inactive interval', { maxInactiveDays })
     }
     //now get accounts that claimed in that day
-    const claimBlockStart = result(
-      searchStartDay,
-      'returnValues.blockNumber.toNumber',
-      Math.max((await AdminWallet.web3.eth.getBlockNumber()) - maxInactiveDays * FUSE_DAY_BLOCKS, 0)
+    const claimBlockStart = parseInt(
+      get(
+        searchStartDay,
+        'returnValues.blockNumber',
+        Math.max((await AdminWallet.web3.eth.getBlockNumber()) - maxInactiveDays * FUSE_DAY_BLOCKS, 0)
+      )
     )
 
-    const claimBlockEnd = result(searchEndDay, 'returnValues.blockNumber.toNumber', claimBlockStart + FUSE_DAY_BLOCKS)
+    const claimBlockEnd = parseInt(get(searchEndDay, 'returnValues.blockNumber', claimBlockStart + FUSE_DAY_BLOCKS))
 
     //get candidates
     const chunkSize = FUSE_DAY_BLOCKS / 10
@@ -461,7 +463,7 @@ class FishingManager {
       toBlock: fishTX.blockNumber
     })
     const fishEvent = fishEvents.find(e => e.transactionHash === fishTX.transactionHash)
-    const totalFished = result(fishEvent, 'returnValues.total.toNumber', 0)
+    const totalFished = parseInt(get(fishEvent, 'returnValues.total', 0))
     this.log.info('Fished accounts', { tofish, totalFished, fisherAccount: fishTX.from, tx: fishTX.transactionHash })
     return { totalFished, fisherAccount: fishTX.from }
   }
