@@ -900,6 +900,7 @@ export class Wallet {
       return new Promise((res, rej) => {
         tx.send({
           type: '0x2',
+          gas,
           maxFeePerGas: gasPrice,
           maxPriorityFeePerGas: web3Utils.toWei('1', 'gwei'),
           chainId: this.networkIdMainNet,
