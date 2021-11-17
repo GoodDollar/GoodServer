@@ -313,7 +313,8 @@ class FishingManager {
    * calculate the next claim epoch
    */
   getNextDay = async () => {
-    const startRef = await this.ubiContract.methods.periodStart
+    const startRef = await this.ubiContract.methods
+      .periodStart()
       .call()
       .then(_ => moment(parseInt(_) * 1000).startOf('hour'))
     const blockchainNow = await AdminWallet.web3.eth
