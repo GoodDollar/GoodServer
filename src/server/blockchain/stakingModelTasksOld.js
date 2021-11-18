@@ -72,7 +72,8 @@ export class StakingModelManager {
       const fundsTX = await AdminWallet.sendTransactionMainnet(
         this.managerContract.methods.transferInterest(this.stakingAddress),
         { onTransactionHash: h => (txHash = h) },
-        { gas: 700000 } //force fixed gas price, tx should take around 450k
+        { gas: 700000 }, //force fixed gas price, tx should take around 450k
+        AdminWallet.mainnetAddresses[0]
       )
       const fundsEvent = get(fundsTX, 'events.FundsTransferred')
       this.log.info('transferInterest result event', { fundsEvent })
@@ -143,7 +144,8 @@ export class StakingModelManager {
     const tx2 = AdminWallet.sendTransactionMainnet(
       this.dai.methods.allocateTo(AdminWallet.mainnetAddresses[0], toWei('100', 'ether')),
       {},
-      {}
+      {},
+      AdminWallet.mainnetAddresses[0]
     ).catch(e => {
       this.log.warn('dai  allocateTo failed')
     })
@@ -160,10 +162,7 @@ export class StakingModelManager {
       AdminWallet.mainnetAddresses[0]
     )
 
-    let ownercDaiBalanceAfter = await this.cDai.methods
-      .balanceOf(AdminWallet.mainnetAddresses[0])
-      .call()
-      .then(_ => _.toString())
+    let ownercDaiBalanceAfter = await this.cDai.methods.balanceOf(AdminWallet.mainnetAddresses[0]).call()
 
     this.log.info('mockInterest minted fake cDai, transferring to staking contract...', { ownercDaiBalanceAfter })
     await AdminWallet.sendTransactionMainnet(
@@ -283,9 +282,10 @@ class FishingManager {
    * calculate the next claim epoch
    */
   getNextDay = async () => {
-    const startRef = await this.ubiContract.methods.periodStart
+    const startRef = await this.ubiContract.methods
+      .periodStart()
       .call()
-      .then(_ => moment(_.toNumber() * 1000).startOf('hour'))
+      .then(_ => moment(parseInt(_) * 1000).startOf('hour'))
     const blockchainNow = await AdminWallet.web3.eth
       .getBlock('latest')
       .then(_ => moment(_.timestamp * 1000).startOf('hour'))
@@ -306,7 +306,7 @@ class FishingManager {
       (await this.ubiContract.methods
         .maxInactiveDays()
         .call()
-        .then(_ => _.toNumber()))
+        .then(parseInt))
 
     const daysagoBlocks = dayFuseBlocks * (maxInactiveDays + 1)
     const blocksAgo = Math.max((await AdminWallet.web3.eth.getBlockNumber()) - daysagoBlocks, 0)
@@ -316,7 +316,7 @@ class FishingManager {
     const currentUBIDay = await this.ubiContract.methods
       .currentDay()
       .call()
-      .then(_ => _.toNumber())
+      .then(parseInt)
     this.log.info('getInactiveAccounts', { daysagoBlocks, blocksAgo, currentUBIDay, maxInactiveDays })
     //get claims that were done before inactive period days ago, these accounts has the potential to be inactive
     //first we get the starting block
@@ -468,7 +468,10 @@ class FishingManager {
    * @returns the amount transfered
    */
   transferFishToUBI = async () => {
-    let gdbalance = await AdminWallet.tokenContract.methods.balanceOf(AdminWallet.proxyContract.address).call()
+    let gdbalance = await AdminWallet.tokenContract.methods
+      .balanceOf(AdminWallet.proxyContract.address)
+      .call()
+      .then(parseInt)
     if (gdbalance > 0) {
       const transferTX = await AdminWallet.transferWalletGooDollars(
         AdminWallet.UBIContract.address,

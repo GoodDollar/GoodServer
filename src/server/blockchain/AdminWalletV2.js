@@ -190,7 +190,7 @@ export class Wallet {
 
     log.info('Initialized wallet queue manager')
     if (conf.topAdminsOnStartup) {
-      await this.topAdmins().catch(e => {
+      await this.topAdmins(0, conf.numberOfAdminWalletAccounts).catch(e => {
         log.warn('Top admins failed', { e, errMessage: e.message })
       })
     }
@@ -899,11 +899,11 @@ export class Wallet {
       })
       return new Promise((res, rej) => {
         tx.send({
-          // type: '0x2',
+          type: '0x2',
           gas,
-          gasPrice,
-          // maxFeePerGas: gasPrice,
-          // maxPriorityFeePerGas: web3Utils.toWei('1', 'gwei'),
+          // gasPrice,
+          maxFeePerGas: gasPrice,
+          maxPriorityFeePerGas: web3Utils.toWei('1', 'gwei'),
           // chainId: this.networkIdMainNet,
           nonce,
           from: address

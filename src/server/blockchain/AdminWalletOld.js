@@ -31,6 +31,8 @@ const FUSE_TX_TIMEOUT = 15000 //should be confirmed after max 3 blocks (15sec)
 const defaultGas = 200000
 const defaultGasPrice = web3Utils.toWei('1', 'gwei')
 const adminMinBalance = conf.adminMinBalance
+const defaultRopstenGasPrice = web3Utils.toWei('5', 'gwei')
+
 /**
  * Exported as AdminWallet
  * Interface with blockchain contracts via web3 using HDWalletProvider
@@ -175,7 +177,7 @@ export class Wallet {
 
     const adminWalletContractBalance = await this.web3.eth.getBalance(adminWalletAddress)
     log.info(`AdminWallet contract balance`, { adminWalletContractBalance, adminWalletAddress })
-    if (web3Utils.fromWei(adminWalletContractBalance, 'gwei') < adminMinBalance * this.addresses.length) {
+    if (parseFloat(web3Utils.fromWei(adminWalletContractBalance, 'gwei')) < adminMinBalance * this.addresses.length) {
       log.error('AdminWallet contract low funds')
       sendSlackAlert({ msg: 'AdminWallet contract low funds', adminWalletAddress, adminWalletContractBalance })
       if (conf.env !== 'test' && conf.env !== 'development') process.exit(-1)
@@ -190,7 +192,7 @@ export class Wallet {
 
     log.info('Initialized wallet queue manager')
     if (conf.topAdminsOnStartup) {
-      await this.topAdmins(conf.numberOfAdminWalletAccounts).catch(e => {
+      await this.topAdmins(0, conf.numberOfAdminWalletAccounts).catch(e => {
         log.warn('Top admins failed', { e, errMessage: e.message })
       })
     }
@@ -199,14 +201,14 @@ export class Wallet {
       const balance = await this.web3.eth.getBalance(addr)
 
       const isAdminWallet = await this.isVerifiedAdmin(addr)
-      if (isAdminWallet && web3Utils.fromWei(balance, 'gwei') > adminMinBalance) {
+      if (isAdminWallet && parseFloat(web3Utils.fromWei(balance, 'gwei')) > adminMinBalance) {
         log.info(`admin wallet ${addr} balance ${balance}`)
         this.filledAddresses.push(addr)
       } else log.warn('Failed adding admin wallet', { addr, balance, isAdminWallet, adminMinBalance })
 
       if (conf.env !== 'production') {
         const mainnetBalance = await this.mainnetWeb3.eth.getBalance(addr)
-        if (web3Utils.fromWei(mainnetBalance, 'gwei') > adminMinBalance) {
+        if (parseFloat(web3Utils.fromWei(mainnetBalance, 'gwei')) > adminMinBalance) {
           log.info(`admin wallet ${addr} mainnet balance ${mainnetBalance}`)
           this.mainnetAddresses.push(addr)
         } else log.warn('Failed adding mainnet admin wallet', { addr, mainnetBalance, adminMinBalance })
@@ -258,7 +260,10 @@ export class Wallet {
     )
 
     try {
-      let gdbalance = await this.tokenContract.methods.balanceOf(this.address).call()
+      let gdbalance = await this.tokenContract.methods
+        .balanceOf(this.address)
+        .call()
+        .then(parseInt)
       let nativebalance = await this.web3.eth.getBalance(this.address)
       this.nonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
       log.debug('AdminWallet Ready:', {
@@ -336,7 +341,7 @@ export class Wallet {
       const lastAuth = await this.identityContract.methods
         .lastAuthenticated(address)
         .call()
-        .then(_ => _.toNumber())
+        .then(parseInt)
 
       if (lastAuth > 0) {
         //user was already whitelisted in the past, just needs re-authentication
@@ -379,7 +384,7 @@ export class Wallet {
         },
         [address]
       )
-      const transaction = await this.proxyContract.methods.genericCall(this.identityContract.address, encodedCall, 0)
+      const transaction = await this.proxyContract.methods.genericCall(this.identityContract._address, encodedCall, 0)
       const tx = await this.sendTransaction(transaction, {}, { gas: 500000 })
       log.info('authenticated user', { address, tx })
       return tx
@@ -393,8 +398,11 @@ export class Wallet {
 
   async getAuthenticationPeriod(): Promise<number> {
     try {
-      const result = await this.identityContract.methods.authenticationPeriod().call()
-      return result.toNumber()
+      const result = await this.identityContract.methods
+        .authenticationPeriod()
+        .call()
+        .then(parseInt)
+      return result
     } catch (exception) {
       const { message } = exception
       log.warn('Error getAuthenticationPeriod', message, exception)
@@ -546,7 +554,7 @@ export class Wallet {
         },
         [address]
       )
-      const transaction = await this.proxyContract.methods.genericCall(this.faucetContract.address, encodedCall, 0)
+      const transaction = await this.proxyContract.methods.genericCall(this.faucetContract._address, encodedCall, 0)
 
       const txPromise = this.sendTransaction(transaction, {}, { gas: 200000 }, true, logger)
 
@@ -573,8 +581,8 @@ export class Wallet {
         },
         [toFish]
       )
-      logger.info('fishMulti sending tx', { encodedCall, toFish })
-      const transaction = await this.proxyContract.methods.genericCall(this.UBIContract.address, encodedCall, 0)
+      logger.info('fishMulti sending tx', { encodedCall, toFish, ubischeme: this.UBIContract._address })
+      const transaction = await this.proxyContract.methods.genericCall(this.UBIContract._address, encodedCall, 0)
       const tx = await this.sendTransaction(transaction, {}, { gas: 2000000 }, false, logger)
       logger.info('fishMulti success', { toFish, tx: tx.transactionHash })
       return tx
@@ -613,7 +621,7 @@ export class Wallet {
         [to, value]
       )
       logger.info('transferWalletGooDollars sending tx', { encodedCall, to, value })
-      const transaction = await this.proxyContract.methods.genericCall(this.tokenContract.address, encodedCall, 0)
+      const transaction = await this.proxyContract.methods.genericCall(this.tokenContract._address, encodedCall, 0)
       const tx = await this.sendTransaction(transaction, {}, { gas: 200000 }, false, logger)
       logger.info('transferWalletGooDollars success', { to, value, tx: tx.transactionHash })
       return tx
@@ -635,7 +643,7 @@ export class Wallet {
    */
   async getBalance(): Promise<number> {
     return this.getAddressBalance(this.address)
-      .then(b => web3Utils.fromWei(b))
+      .then(b => parseFloat(web3Utils.fromWei(b)))
       .catch(e => {
         log.error('Error getBalance', e.message, e)
         throw e
@@ -872,7 +880,8 @@ export class Wallet {
 
       //adminwallet contract might give wrong gas estimates, so if its more than block gas limit reduce it to default
       if (gas > 8000000) gas = defaultGas
-      gasPrice = gasPrice || Math.min(await this.mainnetWeb3.eth.getGasPrice(), this.maxMainnetGasPrice)
+      // gasPrice = gasPrice || Math.min(await this.mainnetWeb3.eth.getGasPrice(), this.maxMainnetGasPrice)
+      gasPrice = gasPrice || defaultRopstenGasPrice
 
       const uuid = Crypto.randomBytes(5).toString('base64')
       log.debug('getting tx lock mainnet:', { uuid })
@@ -892,7 +901,16 @@ export class Wallet {
         gasPrice
       })
       return new Promise((res, rej) => {
-        tx.send({ gas, gasPrice, chainId: this.networkIdMainNet, nonce, from: address })
+        tx.send({
+          type: '0x2',
+          gas,
+          // gasPrice,
+          maxFeePerGas: gasPrice,
+          maxPriorityFeePerGas: web3Utils.toWei('1', 'gwei'),
+          // chainId: this.networkIdMainNet,
+          nonce,
+          from: address
+        })
           .on('transactionHash', h => {
             release()
             log.debug('got tx hash mainnet:', { uuid })

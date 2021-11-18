@@ -178,7 +178,7 @@ export class StakingModelManager {
       .call()
       .then(parseInt)
 
-    const toTransfer = ownercDaiBalanceAfter.sub(balanceBefore).toString()
+    const toTransfer = ownercDaiBalanceAfter - balanceBefore
     this.log.info('mockInterest minted fake cDai, transferring to staking contract...', {
       ownercDaiBalanceAfter,
       toTransfer,
