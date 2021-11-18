@@ -882,9 +882,9 @@ export class Wallet {
       gasPrice = gasPrice || defaultRopstenGasPrice
 
       const uuid = Crypto.randomBytes(5).toString('base64')
-      log.debug('getting tx lock mainnet:', { uuid })
+      log.debug('getting tx lock mainnet:', { uuid, forceAddress })
       const { nonce, release, fail, address } = await this.mainnetTxManager.lock(forceAddress || this.mainnetAddresses)
-      log.debug('got tx lock mainnet:', { uuid, address })
+      log.debug('got tx lock mainnet:', { uuid, address, forceAddress })
 
       let balance = NaN
       if (conf.env === 'development') {
@@ -955,7 +955,7 @@ export class Wallet {
               })
               await this.mainnetTxManager.unlock(address, netNonce)
               try {
-                res(await this.sendTransactionMainnet(tx, txCallbacks, { gas, gasPrice }))
+                res(await this.sendTransactionMainnet(tx, txCallbacks, { gas, gasPrice }, forceAddress))
               } catch (e) {
                 await this.mainnetTxManager.unlock(address)
                 rej(e)
