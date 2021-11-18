@@ -149,7 +149,7 @@ export class StakingModelManager {
       AdminWallet.mainnetAddresses[0]
     ).catch(e => {
       this.log.warn('dai  approve failed')
-      throw e
+      // throw e
     })
     await AdminWallet.sendTransactionMainnet(
       this.dai.methods.allocateTo(AdminWallet.mainnetAddresses[0], toWei('2000', 'ether')),
@@ -157,34 +157,42 @@ export class StakingModelManager {
       {},
       AdminWallet.mainnetAddresses[0]
     ).catch(e => {
-      this.log.warn('dai  allocateTo failed')
-      throw e
+      this.log.warn('dai  allocateTo failed', e.message, e)
+      // throw e
     })
 
-    this.log.info('mockInterest approved and allocated dai. minting cDai...')
     const balanceBefore = await this.cDai.methods
       .balanceOf(AdminWallet.mainnetAddresses[0])
       .call()
       .then(parseInt)
+    this.log.info('mockInterest approved and allocated dai. minting cDai...', { balanceBefore })
     await AdminWallet.sendTransactionMainnet(
       this.cDai.methods.mint(toWei('2000', 'ether')),
       {},
       {},
       AdminWallet.mainnetAddresses[0]
-    )
+    ).catch(e => {
+      this.log.warn('cdai mint failed', e.message, e)
+    })
 
     let ownercDaiBalanceAfter = await this.cDai.methods
       .balanceOf(AdminWallet.mainnetAddresses[0])
       .call()
       .then(parseInt)
 
-    const toTransfer = ownercDaiBalanceAfter - balanceBefore
+    let toTransfer = ownercDaiBalanceAfter - balanceBefore
     this.log.info('mockInterest minted fake cDai, transferring to staking contract...', {
       ownercDaiBalanceAfter,
       toTransfer,
       owner: AdminWallet.mainnetAddresses[0],
       stakingContract: this.stakingContract._address
     })
+
+    toTransfer = toTransfer > 0 ? toTransfer : (balanceBefore / 7).toFixed(0)
+    if (toTransfer === 0) {
+      this.log.warn('no mock interest to transfer to staking contract...')
+      return
+    }
     await AdminWallet.sendTransactionMainnet(
       this.cDai.methods.transfer(this.stakingContract._address, toTransfer),
       {},

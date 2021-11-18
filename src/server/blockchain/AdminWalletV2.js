@@ -141,13 +141,14 @@ export class Wallet {
       defaultGasPrice,
       transactionBlockTimeout: 5,
       transactionConfirmationBlocks: 1,
-      transactionPollingTimeout: 120
+      transactionPollingTimeout: 30
     }
     this.web3 = new Web3(this.getWeb3TransportProvider(), null, web3Default)
     assign(this.web3.eth, web3Default)
 
     this.mainnetWeb3 = new Web3(this.getMainnetWeb3TransportProvider(), null, web3Default)
     assign(this.mainnetWeb3.eth, web3Default)
+    this.mainnetWeb3.eth.transactionPollingTimeout = 600 //slow ropsten
 
     if (conf.privateKey) {
       let account = this.web3.eth.accounts.privateKeyToAccount(conf.privateKey)
