@@ -656,10 +656,16 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     requestRateLimiter(60, 10),
     wrapAsync(async (req, res) => {
       const log = req.log
-      const { token } = req.body
+      const { token, ipv6 } = req.body
       const clientIp = requestIp.getClientIp(req)
+
       try {
         const url = `https://www.google.com/recaptcha/api/siteverify?secret=${conf.recaptchaSecretKey}&response=${token}&remoteip=${clientIp}`
+        let kvStorageIpKey = clientIp
+
+        if (ipv6 && ipv6 !== clientIp) {
+          kvStorageIpKey = ipv6
+        }
 
         log.debug('Verifying recaptcha', { token })
 
@@ -674,7 +680,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         const parsedRes = await recaptchaRes.json()
 
         if (parsedRes.success) {
-          const verifyResult = await OTP.verifyCaptcha(clientIp)
+          const verifyResult = await OTP.verifyCaptcha(kvStorageIpKey)
 
           log.debug('Recaptcha verified', verifyResult)
 
