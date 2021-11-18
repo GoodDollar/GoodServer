@@ -33,7 +33,7 @@ export class StakingModelManager {
   nameServiceAddress = this.addresses['NameService']
 
   constructor() {
-    this.log = logger.child({ from: 'StakingModelManager' })
+    this.log = logger.child({ from: 'StakingModelManagerV2' })
     //polling timeout since ethereum has network congestion and we try to pay little gas so it will take a long time to confirm tx
     this.managerContract = new AdminWallet.mainnetWeb3.eth.Contract(FundManagerABI.abi, this.managerAddress, {
       transactionPollingTimeout: 1000,
