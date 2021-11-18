@@ -9,7 +9,7 @@ import cDaiABI from '@gooddollar/goodprotocol/artifacts/contracts/Interfaces.sol
 import ContractsAddress from '@gooddollar/goodprotocol/releases/deployment.json'
 import fetch from 'cross-fetch'
 import AdminWallet from './AdminWallet'
-import { get, chunk, result, range, flatten } from 'lodash'
+import { get, chunk, range, flatten, mapValues } from 'lodash'
 import logger from '../../imports/logger'
 import delay from 'delay'
 import moment from 'moment'
@@ -35,21 +35,26 @@ export class StakingModelManager {
   constructor() {
     this.log = logger.child({ from: 'StakingModelManager' })
     //polling timeout since ethereum has network congestion and we try to pay little gas so it will take a long time to confirm tx
-    this.managerContract = AdminWallet.mainnetWeb3.eth.Contract(FundManagerABI.abi, this.managerAddress, {
-      transactionPollingTimeout: 1000
+    this.managerContract = new AdminWallet.mainnetWeb3.eth.Contract(FundManagerABI.abi, this.managerAddress, {
+      transactionPollingTimeout: 1000,
+      from: AdminWallet.address
     })
-    this.stakingContract = AdminWallet.mainnetWeb3.eth.Contract(StakingABI.abi, this.stakingAddresses[0][0])
-    this.dai = AdminWallet.mainnetWeb3.eth.Contract(DaiABI.abi, this.daiAddress)
-    this.cDai = AdminWallet.mainnetWeb3.eth.Contract(cDaiABI.abi, this.cDaiAddress)
-    this.nameService = AdminWallet.mainnetWeb3.eth.Contract(NameServiceABI.abi, this.nameServiceAddress)
+    this.stakingContract = new AdminWallet.mainnetWeb3.eth.Contract(StakingABI.abi, this.stakingAddresses[0][0], {
+      from: AdminWallet.address
+    })
+    this.dai = new AdminWallet.mainnetWeb3.eth.Contract(DaiABI.abi, this.daiAddress, { from: AdminWallet.address })
+    this.cDai = new AdminWallet.mainnetWeb3.eth.Contract(cDaiABI.abi, this.cDaiAddress, { from: AdminWallet.address })
+    this.nameService = new AdminWallet.mainnetWeb3.eth.Contract(NameServiceABI.abi, this.nameServiceAddress, {
+      from: AdminWallet.address
+    })
     this.log.debug('constructor:', {
       fundmanager: this.managerAddress,
       staking: this.stakingAddresses,
       bridge: this.bridge
     })
 
-    // this.managerContract.methods.bridgeContract.call().then(_ => (this.bridge = _))
-    // this.managerContract.methods.ubiRecipient.call().then(_ => (this.ubiScheme = _))
+    // this.managerContract.methods.bridgeContract().call().then(_ => (this.bridge = _))
+    // this.managerContract.methods.ubiRecipient().call().then(_ => (this.ubiScheme = _))
   }
 
   canCollectFunds = async () => {
@@ -60,7 +65,11 @@ export class StakingModelManager {
     return contracts.length > 0 ? contracts : false
   }
 
-  getAvailableInterest = async () => this.stakingContract.methods.currentGains(true, true).call()
+  getAvailableInterest = async () =>
+    this.stakingContract.methods
+      .currentGains(true, true)
+      .call()
+      .then(_ => mapValues(_, parseInt))
   transferInterest = async () => {
     let txHash
     const stakingContracts = await this.canCollectFunds()
@@ -73,7 +82,8 @@ export class StakingModelManager {
       const fundsTX = await AdminWallet.sendTransactionMainnet(
         this.managerContract.methods.collectInterest(stakingContracts, false),
         { onTransactionHash: h => (txHash = h) },
-        { gas: 2000000 } //force fixed gas price, tx should take around 450k
+        { gas: 2000000 }, //force fixed gas price, tx should take around 450k
+        AdminWallet.mainnetAddresses[0]
       )
       const fundsEvent = get(fundsTX, 'events.FundsTransferred')
       this.log.info('transferInterest result event', { fundsEvent, fundsTX })
@@ -132,8 +142,8 @@ export class StakingModelManager {
       })
       this.lastRopstenTopping = moment()
     }
-    const tx1 = AdminWallet.sendTransactionMainnet(
-      this.dai.methods.approve(this.cDai.address, toWei('1000000000', 'ether')),
+    await AdminWallet.sendTransactionMainnet(
+      this.dai.methods.approve(this.cDai._address, toWei('1000000000', 'ether')),
       {},
       {},
       AdminWallet.mainnetAddresses[0]
@@ -141,20 +151,21 @@ export class StakingModelManager {
       this.log.warn('dai  approve failed')
       throw e
     })
-    const tx2 = AdminWallet.sendTransactionMainnet(
+    await AdminWallet.sendTransactionMainnet(
       this.dai.methods.allocateTo(AdminWallet.mainnetAddresses[0], toWei('2000', 'ether')),
       {},
-      {}
+      {},
+      AdminWallet.mainnetAddresses[0]
     ).catch(e => {
       this.log.warn('dai  allocateTo failed')
-    })
-    await Promise.all([tx1, tx2]).catch(e => {
-      this.log.warn('mockInterest dai approve and allocateTo failed', { e, msg: e.message })
       throw e
     })
 
     this.log.info('mockInterest approved and allocated dai. minting cDai...')
-    const balanceBefore = await this.cDai.methods.balanceOf(AdminWallet.mainnetAddresses[0]).call()
+    const balanceBefore = await this.cDai.methods
+      .balanceOf(AdminWallet.mainnetAddresses[0])
+      .call()
+      .then(parseInt)
     await AdminWallet.sendTransactionMainnet(
       this.cDai.methods.mint(toWei('2000', 'ether')),
       {},
@@ -162,25 +173,25 @@ export class StakingModelManager {
       AdminWallet.mainnetAddresses[0]
     )
 
-    let ownercDaiBalanceAfter = await this.cDai.methods.balanceOf(AdminWallet.mainnetAddresses[0]).call()
+    let ownercDaiBalanceAfter = await this.cDai.methods
+      .balanceOf(AdminWallet.mainnetAddresses[0])
+      .call()
+      .then(parseInt)
 
-    const toTransfer = ownercDaiBalanceAfter.sub(balanceBefore).toString()
+    const toTransfer = ownercDaiBalanceAfter - balanceBefore
     this.log.info('mockInterest minted fake cDai, transferring to staking contract...', {
       ownercDaiBalanceAfter,
       toTransfer,
       owner: AdminWallet.mainnetAddresses[0],
-      stakingContract: this.stakingContract.address
+      stakingContract: this.stakingContract._address
     })
     await AdminWallet.sendTransactionMainnet(
-      this.cDai.methods.transfer(this.stakingContract.address, toTransfer),
+      this.cDai.methods.transfer(this.stakingContract._address, toTransfer),
       {},
       {},
       AdminWallet.mainnetAddresses[0]
     )
-    let stakingcDaiBalanceAfter = await this.cDai.methods
-      .balanceOf(this.stakingContract.address)
-      .call()
-      .then(_ => _.toString())
+    let stakingcDaiBalanceAfter = await this.cDai.methods.balanceOf(this.stakingContract._address).call()
 
     this.log.info('mockInterest transfered fake cDai to staking contract...', {
       stakingcDaiBalanceAfter
@@ -292,16 +303,19 @@ class FishingManager {
 
   constructor() {
     this.log = logger.child({ from: 'FishingManager' })
-    this.ubiContract = AdminWallet.web3.eth.Contract(UBISchemeABI.abi, this.ubiScheme)
+    this.ubiContract = new AdminWallet.web3.eth.Contract(UBISchemeABI.abi, this.ubiScheme, {
+      from: AdminWallet.address
+    })
   }
 
   /**
    * calculate the next claim epoch
    */
   getNextDay = async () => {
-    const startRef = await this.ubiContract.methods.periodStart
+    const startRef = await this.ubiContract.methods
+      .periodStart()
       .call()
-      .then(_ => moment(_.toNumber() * 1000).startOf('hour'))
+      .then(_ => moment(parseInt(_) * 1000).startOf('hour'))
     const blockchainNow = await AdminWallet.web3.eth
       .getBlock('latest')
       .then(_ => moment(_.timestamp * 1000).startOf('hour'))
@@ -318,14 +332,21 @@ class FishingManager {
   getUBICalculatedDays = async forceDaysAgo => {
     const dayFuseBlocks = (60 * 60 * 24) / 5
     const maxInactiveDays =
-      forceDaysAgo || (await this.ubiContract.methods.maxInactiveDays.call().then(_ => _.toNumber()))
+      forceDaysAgo ||
+      (await this.ubiContract.methods
+        .maxInactiveDays()
+        .call()
+        .then(parseInt))
 
     const daysagoBlocks = dayFuseBlocks * (maxInactiveDays + 1)
     const blocksAgo = Math.max((await AdminWallet.web3.eth.getBlockNumber()) - daysagoBlocks, 0)
     await AdminWallet.sendTransaction(this.ubiContract.methods.setDay(), {}).catch(e =>
       this.log.warn('fishManager set day failed')
     )
-    const currentUBIDay = await this.ubiContract.methods.currentDay.call().then(_ => _.toNumber())
+    const currentUBIDay = await this.ubiContract.methods
+      .currentDay()
+      .call()
+      .then(parseInt)
     this.log.info('getInactiveAccounts', { daysagoBlocks, blocksAgo, currentUBIDay, maxInactiveDays })
     //get claims that were done before inactive period days ago, these accounts has the potential to be inactive
     //first we get the starting block
@@ -335,18 +356,18 @@ class FishingManager {
     })
     this.log.info('getUBICalculatedDays ubiEvents:', {
       ubiEvents: ubiEvents.length,
-      ubiEventDays: ubiEvents.map(_ => result(_, 'returnValues.day.toNumber'))
+      ubiEventDays: ubiEvents.map(_ => get(_, 'returnValues.day')).map(parseInt)
     })
 
     //find first day older than maxInactiveDays (ubiEvents is sorted from old to new  so we reverse it)
     const searchStartDay = ubiEvents
       .reverse()
-      .find(e => e.returnValues.day.toNumber() <= currentUBIDay - maxInactiveDays)
+      .find(e => parseInt(e.returnValues.day) <= currentUBIDay - maxInactiveDays)
 
-    const startDay = result(searchStartDay, 'returnValues.day.toNumber', 0)
+    const startDay = parseInt(get(searchStartDay, 'returnValues.day', 0))
     //find first day newer than searchStartDay
-    const searchEndDay = ubiEvents.reverse().find(e => e.returnValues.day.toNumber() > startDay)
-    const endDay = result(searchEndDay, 'returnValues.day.toNumber', 0)
+    const searchEndDay = ubiEvents.reverse().find(e => parseInt(e.returnValues.day) > startDay)
+    const endDay = parseInt(get(searchEndDay, 'returnValues.day', 0))
 
     this.log.info('getUBICalculatedDays got UBICalculatedEvents:', {
       currentUBIDay,
@@ -369,13 +390,15 @@ class FishingManager {
       this.log.warn('No UBICalculated event found for inactive interval', { maxInactiveDays })
     }
     //now get accounts that claimed in that day
-    const claimBlockStart = result(
-      searchStartDay,
-      'returnValues.blockNumber.toNumber',
-      Math.max((await AdminWallet.web3.eth.getBlockNumber()) - maxInactiveDays * FUSE_DAY_BLOCKS, 0)
+    const claimBlockStart = parseInt(
+      get(
+        searchStartDay,
+        'returnValues.blockNumber',
+        Math.max((await AdminWallet.web3.eth.getBlockNumber()) - maxInactiveDays * FUSE_DAY_BLOCKS, 0)
+      )
     )
 
-    const claimBlockEnd = result(searchEndDay, 'returnValues.blockNumber.toNumber', claimBlockStart + FUSE_DAY_BLOCKS)
+    const claimBlockEnd = parseInt(get(searchEndDay, 'returnValues.blockNumber', claimBlockStart + FUSE_DAY_BLOCKS))
 
     //get candidates
     const chunkSize = FUSE_DAY_BLOCKS / 10
@@ -440,7 +463,7 @@ class FishingManager {
       toBlock: fishTX.blockNumber
     })
     const fishEvent = fishEvents.find(e => e.transactionHash === fishTX.transactionHash)
-    const totalFished = result(fishEvent, 'returnValues.total.toNumber', 0)
+    const totalFished = parseInt(get(fishEvent, 'returnValues.total', 0))
     this.log.info('Fished accounts', { tofish, totalFished, fisherAccount: fishTX.from, tx: fishTX.transactionHash })
     return { totalFished, fisherAccount: fishTX.from }
   }
@@ -478,7 +501,7 @@ class FishingManager {
    */
   transferFishToUBI = async () => {
     let gdbalance = await AdminWallet.tokenContract.methods
-      .balanceOf(AdminWallet.proxyContract.address)
+      .balanceOf(AdminWallet.proxyContract._address)
       .call()
       .then(parseInt)
     if (gdbalance > 0) {

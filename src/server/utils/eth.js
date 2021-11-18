@@ -1,4 +1,4 @@
-import { Accounts } from 'web3-eth-accounts'
+import Accounts from 'web3-eth-accounts'
 import { get } from 'lodash'
 
 const accounts = new Accounts()

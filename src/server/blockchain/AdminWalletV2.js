@@ -6,6 +6,7 @@ import bip39 from 'bip39-light'
 import { defer, from as fromPromise, timer } from 'rxjs'
 import { retryWhen, mergeMap, throwError } from 'rxjs/operators'
 import get from 'lodash/get'
+import assign from 'lodash/assign'
 import * as web3Utils from 'web3-utils'
 import IdentityABI from '@gooddollar/goodcontracts/build/contracts/Identity.min.json'
 import GoodDollarABI from '@gooddollar/goodcontracts/build/contracts/GoodDollar.min.json'
@@ -135,19 +136,18 @@ export class Wallet {
     log.debug('Initializing wallet:', { conf: conf.ethereum, mainnet: conf.ethereumMainnet })
     this.mainnetTxManager = getManager(conf.ethereumMainnet.network_id)
     this.txManager = getManager(conf.ethereum.network_id)
-    this.web3 = new Web3(this.getWeb3TransportProvider(), null, {
+    const web3Default = {
       defaultBlock: 'latest',
       defaultGasPrice,
       transactionBlockTimeout: 5,
       transactionConfirmationBlocks: 1,
-      transactionPollingTimeout: 20
-    })
+      transactionPollingTimeout: 120
+    }
+    this.web3 = new Web3(this.getWeb3TransportProvider(), null, web3Default)
+    assign(this.web3.eth, web3Default)
 
-    this.mainnetWeb3 = new Web3(this.getMainnetWeb3TransportProvider(), null, {
-      defaultBlock: 'latest',
-      transactionBlockTimeout: 5,
-      transactionConfirmationBlocks: 1
-    })
+    this.mainnetWeb3 = new Web3(this.getMainnetWeb3TransportProvider(), null, web3Default)
+    assign(this.mainnetWeb3.eth, web3Default)
 
     if (conf.privateKey) {
       let account = this.web3.eth.accounts.privateKeyToAccount(conf.privateKey)
@@ -171,7 +171,7 @@ export class Wallet {
     }
 
     const adminWalletAddress = get(ContractsAddress, `${this.network}.AdminWallet`)
-    this.proxyContract = new this.web3.eth.Contract(ProxyContractABI.abi, adminWalletAddress)
+    this.proxyContract = new this.web3.eth.Contract(ProxyContractABI.abi, adminWalletAddress, { from: this.address })
 
     const adminWalletContractBalance = await this.web3.eth.getBalance(adminWalletAddress)
     log.info(`AdminWallet contract balance`, { adminWalletContractBalance, adminWalletAddress })
@@ -190,7 +190,7 @@ export class Wallet {
 
     log.info('Initialized wallet queue manager')
     if (conf.topAdminsOnStartup) {
-      await this.topAdmins().catch(e => {
+      await this.topAdmins(0, conf.numberOfAdminWalletAccounts).catch(e => {
         log.warn('Top admins failed', { e, errMessage: e.message })
       })
     }
@@ -258,7 +258,10 @@ export class Wallet {
     )
 
     try {
-      let gdbalance = await this.tokenContract.methods.balanceOf(this.address).call()
+      let gdbalance = await this.tokenContract.methods
+        .balanceOf(this.address)
+        .call()
+        .then(parseInt)
       let nativebalance = await this.web3.eth.getBalance(this.address)
       this.nonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
       log.debug('AdminWallet Ready:', {
@@ -336,7 +339,7 @@ export class Wallet {
       const lastAuth = await this.identityContract.methods
         .lastAuthenticated(address)
         .call()
-        .then(_ => _.toNumber())
+        .then(parseInt)
 
       if (lastAuth > 0) {
         //user was already whitelisted in the past, just needs re-authentication
@@ -379,7 +382,7 @@ export class Wallet {
         },
         [address]
       )
-      const transaction = await this.proxyContract.methods.genericCall(this.identityContract.address, encodedCall, 0)
+      const transaction = await this.proxyContract.methods.genericCall(this.identityContract._address, encodedCall, 0)
       const tx = await this.sendTransaction(transaction, {}, { gas: 500000 })
       log.info('authenticated user', { address, tx })
       return tx
@@ -393,8 +396,11 @@ export class Wallet {
 
   async getAuthenticationPeriod(): Promise<number> {
     try {
-      const result = await this.identityContract.methods.authenticationPeriod().call()
-      return result.toNumber()
+      const result = await this.identityContract.methods
+        .authenticationPeriod()
+        .call()
+        .then(parseInt)
+      return result
     } catch (exception) {
       const { message } = exception
       log.warn('Error getAuthenticationPeriod', message, exception)
@@ -546,7 +552,7 @@ export class Wallet {
         },
         [address]
       )
-      const transaction = await this.proxyContract.methods.genericCall(this.faucetContract.address, encodedCall, 0)
+      const transaction = await this.proxyContract.methods.genericCall(this.faucetContract._address, encodedCall, 0)
 
       const txPromise = this.sendTransaction(transaction, {}, { gas: 200000 }, true, logger)
       let res = await txPromise
@@ -572,8 +578,8 @@ export class Wallet {
         },
         [toFish]
       )
-      logger.info('fishMulti sending tx', { encodedCall, toFish })
-      const transaction = await this.proxyContract.methods.genericCall(this.UBIContract.address, encodedCall, 0)
+      logger.info('fishMulti sending tx', { encodedCall, toFish, ubischeme: this.UBIContract._address })
+      const transaction = await this.proxyContract.methods.genericCall(this.UBIContract._address, encodedCall, 0)
       const tx = await this.sendTransaction(transaction, {}, { gas: 2000000 }, false, logger)
       logger.info('fishMulti success', { toFish, tx: tx.transactionHash })
       return tx
@@ -612,7 +618,7 @@ export class Wallet {
         [to, value]
       )
       logger.info('transferWalletGooDollars sending tx', { encodedCall, to, value })
-      const transaction = await this.proxyContract.methods.genericCall(this.tokenContract.address, encodedCall, 0)
+      const transaction = await this.proxyContract.methods.genericCall(this.tokenContract._address, encodedCall, 0)
       const tx = await this.sendTransaction(transaction, {}, { gas: 200000 }, false, logger)
       logger.info('transferWalletGooDollars success', { to, value, tx: tx.transactionHash })
       return tx
@@ -892,7 +898,16 @@ export class Wallet {
         gasPrice
       })
       return new Promise((res, rej) => {
-        tx.send({ gas, gasPrice, chainId: this.networkIdMainNet, nonce, from: address })
+        tx.send({
+          type: '0x2',
+          gas,
+          // gasPrice,
+          maxFeePerGas: gasPrice,
+          maxPriorityFeePerGas: web3Utils.toWei('1', 'gwei'),
+          // chainId: this.networkIdMainNet,
+          nonce,
+          from: address
+        })
           .on('transactionHash', h => {
             release()
             log.debug('got tx hash mainnet:', { uuid })
