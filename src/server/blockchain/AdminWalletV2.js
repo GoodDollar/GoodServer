@@ -65,11 +65,12 @@ export class Wallet {
 
   nonce: number
 
+  mainnetAddresses = []
+
   constructor(mnemonic: string) {
     this.mnemonic = mnemonic
     this.addresses = []
     this.filledAddresses = []
-    this.mainnetAddresses = []
     this.wallets = {}
     this.numberOfAdminWalletAccounts = conf.privateKey ? 1 : conf.numberOfAdminWalletAccounts
     this.network = conf.network

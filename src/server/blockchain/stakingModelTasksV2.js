@@ -133,6 +133,7 @@ export class StakingModelManager {
   }
 
   mockInterest = async () => {
+    this.log.info('mockInterest start:', { mainnetAddresses: AdminWallet.mainnetAddresses })
     if (config.ethereumMainnet.network_id === 1) {
       return
     }
