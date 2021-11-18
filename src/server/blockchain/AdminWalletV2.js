@@ -141,7 +141,7 @@ export class Wallet {
       defaultGasPrice,
       transactionBlockTimeout: 5,
       transactionConfirmationBlocks: 1,
-      transactionPollingTimeout: 30
+      transactionPollingTimeout: 120
     }
     this.web3 = new Web3(this.getWeb3TransportProvider(), null, web3Default)
     assign(this.web3.eth, web3Default)
