@@ -24,7 +24,7 @@ import { type TransactionReceipt } from './blockchain-types'
 import { getManager } from '../utils/tx-manager'
 import { sendSlackAlert } from '../../imports/slack'
 
-const log = logger.child({ from: 'AdminWallet' })
+const log = logger.child({ from: 'AdminWalletV2' })
 
 const FUSE_TX_TIMEOUT = 15000 //should be confirmed after max 3 blocks (15sec)
 const defaultGas = 200000
@@ -911,7 +911,7 @@ export class Wallet {
         })
           .on('transactionHash', h => {
             release()
-            log.debug('got tx hash mainnet:', { uuid })
+            log.debug('got tx hash mainnet:', { txhash: h, uuid })
             onTransactionHash && onTransactionHash(h)
           })
           .on('receipt', r => {
@@ -931,7 +931,8 @@ export class Wallet {
                 gas,
                 gasPrice,
                 address,
-                balance
+                balance,
+                uuid
               })
               sendSlackAlert({ msg: 'admin account funds low mainnet', address, balance })
               await this.mainnetTxManager.unlock(address)
@@ -949,7 +950,8 @@ export class Wallet {
                 gas,
                 gasPrice,
                 address,
-                newNonce: netNonce
+                newNonce: netNonce,
+                uuid
               })
               await this.mainnetTxManager.unlock(address, netNonce)
               try {

@@ -70,6 +70,7 @@ export class StakingModelManager {
       .currentGains(true, true)
       .call()
       .then(_ => mapValues(_, parseInt))
+
   transferInterest = async () => {
     let txHash
     const stakingContracts = await this.canCollectFunds()
@@ -213,6 +214,7 @@ export class StakingModelManager {
       })
 
       const nextCollectionTime = await this.getNextCollectionTime()
+      this.log.info({ nextCollectionTime })
       if (nextCollectionTime.isAfter()) {
         this.log.info('waiting for collect interest time', { nextCollectionTime })
         return { result: 'waiting', cronTime: nextCollectionTime }
