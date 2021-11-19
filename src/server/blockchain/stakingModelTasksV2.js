@@ -58,7 +58,9 @@ export class StakingModelManager {
   }
 
   canCollectFunds = async () => {
+    this.log.debug('calling calcSortedContracts')
     const result = await this.managerContract.methods.calcSortedContracts().call()
+    this.log.debug('calling calcSortedContracts result:', result)
     //collect all contracts that can be run
     const contracts = result.filter(_ => _.maxGasLargerOrEqualRequired).map(_ => _.contractAddress)
 
@@ -216,7 +218,7 @@ export class StakingModelManager {
         this.log.warn('mockInterest failed, continuing...')
         sendSlackAlert({ msg: 'failure: mockInterest failed', error: e.message })
       })
-
+      this.log.info('mockInterest done, collecting interest...')
       const nextCollectionTime = await this.getNextCollectionTime()
       this.log.info({ nextCollectionTime })
       if (nextCollectionTime.isAfter()) {
