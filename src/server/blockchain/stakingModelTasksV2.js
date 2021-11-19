@@ -58,9 +58,8 @@ export class StakingModelManager {
   }
 
   canCollectFunds = async () => {
-    this.log.debug('calling calcSortedContracts')
-    const result = await this.managerContract.methods.calcSortedContracts().call()
-    this.log.debug('calling calcSortedContracts result:', result)
+    //TODO: need to remove 1m gas once we update goodprotocl > 1-beta.53
+    const result = await this.managerContract.methods.calcSortedContracts(1000000).call()
     //collect all contracts that can be run
     const contracts = result.filter(_ => _.maxGasLargerOrEqualRequired).map(_ => _.contractAddress)
 
