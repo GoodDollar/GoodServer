@@ -133,14 +133,14 @@ export class StakingModelManager {
   }
 
   mockInterest = async () => {
-    this.log.info('mockInterest start:', { mainnetAddresses: AdminWallet.mainnetAddresses })
+    this.log.info('mockInterest: start', { mainnetAddresses: AdminWallet.mainnetAddresses })
     if (config.ethereumMainnet.network_id === 1) {
       return
     }
     //top ropsten wallet
     if (moment().diff(this.lastRopstenTopping, 'days') > 0) {
       fetch('https://faucet.metamask.io', { method: 'POST', body: AdminWallet.mainnetAddresses[0] }).catch(e => {
-        this.log.error('failed calling ropsten faucet', e.message, e)
+        this.log.error('mockInterest: failed calling ropsten faucet', e.message, e)
       })
       this.lastRopstenTopping = moment()
     }
@@ -150,7 +150,7 @@ export class StakingModelManager {
       {},
       AdminWallet.mainnetAddresses[0]
     ).catch(e => {
-      this.log.warn('dai  approve failed')
+      this.log.warn('mockInterest: dai  approve failed')
       // throw e
     })
     await AdminWallet.sendTransactionMainnet(
@@ -159,7 +159,7 @@ export class StakingModelManager {
       {},
       AdminWallet.mainnetAddresses[0]
     ).catch(e => {
-      this.log.warn('dai  allocateTo failed', e.message, e)
+      this.log.warn('mockInterest: dai  allocateTo failed', e.message, e)
       // throw e
     })
 
@@ -167,14 +167,14 @@ export class StakingModelManager {
       .balanceOf(AdminWallet.mainnetAddresses[0])
       .call()
       .then(parseInt)
-    this.log.info('mockInterest approved and allocated dai. minting cDai...', { balanceBefore })
+    this.log.info('mockInterest: approved and allocated dai. minting cDai...', { balanceBefore })
     await AdminWallet.sendTransactionMainnet(
       this.cDai.methods.mint(toWei('2000', 'ether')),
       {},
       {},
       AdminWallet.mainnetAddresses[0]
     ).catch(e => {
-      this.log.warn('cdai mint failed', e.message, e)
+      this.log.warn('mockInterest: cdai mint failed', e.message, e)
     })
 
     let ownercDaiBalanceAfter = await this.cDai.methods
@@ -183,7 +183,7 @@ export class StakingModelManager {
       .then(parseInt)
 
     let toTransfer = ownercDaiBalanceAfter - balanceBefore
-    this.log.info('mockInterest minted fake cDai, transferring to staking contract...', {
+    this.log.info('mockInterest: minted fake cDai, transferring to staking contract...', {
       ownercDaiBalanceAfter,
       toTransfer,
       owner: AdminWallet.mainnetAddresses[0],
@@ -192,7 +192,7 @@ export class StakingModelManager {
 
     toTransfer = toTransfer > 0 ? toTransfer : (balanceBefore / 7).toFixed(0)
     if (toTransfer === 0) {
-      this.log.warn('no mock interest to transfer to staking contract...')
+      this.log.warn('mockInterest: no mock interest to transfer to staking contract...')
       return
     }
     await AdminWallet.sendTransactionMainnet(
@@ -200,10 +200,13 @@ export class StakingModelManager {
       {},
       {},
       AdminWallet.mainnetAddresses[0]
-    )
+    ).catch(e => {
+      this.log.warn('mockInterest: transfer interest failed', e.message, e)
+    })
+
     let stakingcDaiBalanceAfter = await this.cDai.methods.balanceOf(this.stakingContract._address).call()
 
-    this.log.info('mockInterest transfered fake cDai to staking contract...', {
+    this.log.info('mockInterest: transfered fake cDai to staking contract...', {
       stakingcDaiBalanceAfter
     })
   }
