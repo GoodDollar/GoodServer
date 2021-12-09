@@ -228,12 +228,18 @@ class EnrollmentProcessor {
         const { _id: taskId, subject } = task
         const { enrollmentIdentifier } = subject
         try {
-          const isEnrollmentIndexed = await provider.isEnrollmentIndexed(enrollmentIdentifier, customLogger)
+          let requiresDisposal = await provider.isEnrollmentIndexed(enrollmentIdentifier, customLogger)
 
-          if (isEnrollmentIndexed) {
+          if (!requiresDisposal) {
+            requiresDisposal = await provider.isEnrollmentExists(enrollmentIdentifier, customLogger)
+          }
+
+          if (requiresDisposal) {
             await provider.dispose(enrollmentIdentifier, customLogger)
           } else {
-            log.info("Enrollment isn't indexed in the 3D Database, skipping disposal", { enrollmentIdentifier })
+            log.info("Enrollment isn't indexed nor exists in the 3D Database, skipping disposal", {
+              enrollmentIdentifier
+            })
           }
 
           tasksSucceeded.push(taskId)

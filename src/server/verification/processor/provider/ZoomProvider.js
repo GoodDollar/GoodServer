@@ -24,7 +24,7 @@ class ZoomProvider implements IEnrollmentProvider {
     this.api = api
     this.logger = logger
 
-    bindAll(this, ['_handleNotExistsException', '_isNotExistsException'])
+    bindAll(this, ['_enrollmentOperation'])
   }
 
   isPayloadValid(payload: any): boolean {
@@ -58,7 +58,7 @@ class ZoomProvider implements IEnrollmentProvider {
     const { api, logger } = this
     const log = customLogger || logger
     const { defaultMinimalMatchLevel, defaultSearchIndexName } = api
-    const { LivenessCheckFailed, SecurityCheckFailed, FacemapNotFound, FacemapDoesNotMatch } = ZoomAPIError
+    const { LivenessCheckFailed, SecurityCheckFailed, FacemapDoesNotMatch } = ZoomAPIError
 
     // send event to onEnrollmentProcessing
     const notifyProcessor = async eventPayload => onEnrollmentProcessing(eventPayload)
@@ -83,20 +83,7 @@ class ZoomProvider implements IEnrollmentProvider {
     }
 
     // 1. checking if facescan already uploaded & enrolled
-    let alreadyEnrolled
-
-    try {
-      await api.readEnrollment(enrollmentIdentifier, customLogger)
-      alreadyEnrolled = true
-    } catch (exception) {
-      // if something other that 'FacemapNotFound was thrown - re-throwing
-      if (FacemapNotFound !== exception.name) {
-        throw exception
-      }
-
-      // otherwise, setting alreadyEnrolled to false
-      alreadyEnrolled = false
-    }
+    const alreadyEnrolled = await this.isEnrollmentExists(enrollmentIdentifier, customLogger)
 
     // 2. performing liveness check and storing facescan / audit trail images (if need)
     let isLive = true
@@ -166,10 +153,16 @@ class ZoomProvider implements IEnrollmentProvider {
       throwCustomException(duplicateFoundMessage, { isDuplicate }, faceSearchResponse)
     }
 
-    // 4. if not alreadyEnrolled - indexing uploaded & stored face scan to the 3D Database
+    // 4. if alreadyEnrolled - checking is indexed
+    // if not enrolled or not indexed - indexing uploaded & stored face scan to the 3D Database
     let isEnrolled = true
+    let alreadyIndexed = false
 
-    if (!alreadyEnrolled) {
+    if (alreadyEnrolled) {
+      alreadyIndexed = await this.isEnrollmentIndexed(enrollmentIdentifier, customLogger)
+    }
+
+    if (!alreadyIndexed) {
       try {
         await api.indexEnrollment(enrollmentIdentifier, defaultSearchIndexName, customLogger)
       } catch (exception) {
@@ -199,41 +192,37 @@ class ZoomProvider implements IEnrollmentProvider {
     return { isVerified: true, alreadyEnrolled, message: enrollmentStatus }
   }
 
+  // eslint-disable-next-line require-await
+  async isEnrollmentExists(enrollmentIdentifier: string, customLogger = null): Promise<boolean> {
+    return this._enrollmentOperation('Error checking enrollment', enrollmentIdentifier, customLogger, async () =>
+      this.api.readEnrollment(enrollmentIdentifier, customLogger)
+    )
+  }
+
+  // eslint-disable-next-line require-await
   async isEnrollmentIndexed(enrollmentIdentifier: string, customLogger = null): Promise<boolean> {
-    const { api, logger, _isNotExistsException } = this
-    const log = customLogger || logger
-    const { defaultSearchIndexName } = api
+    const { api } = this
 
-    try {
-      await api.readEnrollmentIndex(enrollmentIdentifier, defaultSearchIndexName, customLogger)
-    } catch (exception) {
-      const { message: errMessage } = exception
-
-      if (_isNotExistsException(enrollmentIdentifier, exception, customLogger)) {
-        return false
-      }
-
-      log.warn('Error checking enrollment', { e: exception, errMessage, enrollmentIdentifier })
-      throw exception
-    }
-
-    return true
+    return this._enrollmentOperation('Error checking enrollment', enrollmentIdentifier, customLogger, async () =>
+      api.readEnrollmentIndex(enrollmentIdentifier, api.defaultSearchIndexName, customLogger)
+    )
   }
 
   async dispose(enrollmentIdentifier: string, customLogger = null): Promise<void> {
-    const { api, _handleNotExistsException, logger } = this
+    const { api, _enrollmentOperation, logger } = this
     const { defaultSearchIndexName } = api
     const log = customLogger || logger
+    const logLabel = 'Error disposing enrollment'
 
     // eslint-disable-next-line require-await
-    await _handleNotExistsException(enrollmentIdentifier, customLogger, async () =>
+    await _enrollmentOperation(logLabel, enrollmentIdentifier, customLogger, async () =>
       api.removeEnrollmentFromIndex(enrollmentIdentifier, defaultSearchIndexName, customLogger)
     )
 
     // trying to remove also facemap from the DB
     try {
       // eslint-disable-next-line require-await
-      await _handleNotExistsException(enrollmentIdentifier, customLogger, async () =>
+      await _enrollmentOperation(logLabel, enrollmentIdentifier, customLogger, async () =>
         api.disposeEnrollment(enrollmentIdentifier, customLogger)
       )
     } catch (exception) {
@@ -248,33 +237,22 @@ class ZoomProvider implements IEnrollmentProvider {
     }
   }
 
-  async _handleNotExistsException(enrollmentIdentifier, customLogger = null, operation): Promise<void> {
-    const { _isNotExistsException, logger } = this
-    const log = customLogger || logger
+  async _enrollmentOperation(logLabel, enrollmentIdentifier, customLogger = null, operation): Promise<boolean> {
+    const log = customLogger || this.logger
 
     try {
       await operation()
+      return true
     } catch (exception) {
       const { message: errMessage } = exception
 
-      if (_isNotExistsException(enrollmentIdentifier, exception, customLogger)) {
-        return
+      if (ZoomAPIError.FacemapNotFound === exception.name) {
+        return false
       }
 
-      log.warn('Error disposing enrollment', { e: exception, errMessage, enrollmentIdentifier })
+      log.warn(logLabel, { e: exception, errMessage, enrollmentIdentifier })
       throw exception
     }
-  }
-
-  _isNotExistsException(enrollmentIdentifier, exception, customLogger) {
-    const log = customLogger || this.logger
-    const isNotIndexed = ZoomAPIError.FacemapNotFound === exception.name
-
-    if (isNotIndexed) {
-      log.warn("Enrollment isn't indexed in the 3D Database", { enrollmentIdentifier })
-    }
-
-    return isNotIndexed
   }
 }
 

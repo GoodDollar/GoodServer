@@ -1,8 +1,7 @@
 // @flow
 
 import MockAdapter from 'axios-mock-adapter'
-import { omit, invokeMap } from 'lodash'
-import { sha3 } from 'web3-utils'
+import { omit, invokeMap, over } from 'lodash'
 import { ZoomLicenseType } from '../../../verification/utils/constants'
 import createEnrollmentProcessor from '../EnrollmentProcessor'
 import AdminWallet from '../../../blockchain/AdminWallet'
@@ -268,11 +267,12 @@ describe('EnrollmentProcessor', () => {
       }))
     )
 
-    helper.mockSuccessRemoveEnrollmentFromIndex(enrollmentIdentifier)
-    helper.mockRemoveEnrollmentNotSupported(enrollmentIdentifier)
     helper.mockServiceErrorDuringRemoveFromIndex(failedEnrollmentIdentifier)
-    helper.mockEnrollmentNotExistsDuringReadIndex(unexistingEnrollmentIdentifier)
-    ;[enrollmentIdentifier, failedEnrollmentIdentifier].forEach(helper.mockSuccessReadEnrollmentIndex)
+    ;[enrollmentIdentifier, failedEnrollmentIdentifier].forEach(
+      over([helper.mockSuccessReadEnrollmentIndex, helper.mockEnrollmentFound])
+    )
+    over([helper.mockSuccessRemoveEnrollmentFromIndex, helper.mockRemoveEnrollmentNotSupported])(enrollmentIdentifier)
+    over([helper.mockEnrollmentNotFound, helper.mockEnrollmentNotExistsDuringReadIndex])(unexistingEnrollmentIdentifier)
 
     await expect(enrollmentProcessor.disposeEnqueuedEnrollments(onProcessedMock)).resolves.toBeUndefined()
 

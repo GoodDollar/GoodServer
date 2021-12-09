@@ -112,6 +112,7 @@ describe('ZoomProvider', () => {
 
   test('enroll() calls match 3d and skips indexing if already enrolled', async () => {
     helper.mockEnrollmentFound(enrollmentIdentifier)
+    helper.mockSuccessReadEnrollmentIndex(enrollmentIdentifier)
     helper.mockSuccessUpdateEnrollment(enrollmentIdentifier)
     helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
 
