@@ -84,7 +84,7 @@ class ZoomProvider implements IEnrollmentProvider {
 
     // 1. checking if facescan already uploaded & enrolled
     // refactored - using a separate method was added after initial implementation
-    // insteadf of the direct API call
+    // instead of the direct API call
     const alreadyEnrolled = await this.isEnrollmentExists(enrollmentIdentifier, customLogger)
 
     // 2. performing liveness check and storing facescan / audit trail images (if need)
