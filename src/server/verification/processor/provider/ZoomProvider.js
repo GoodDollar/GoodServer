@@ -234,7 +234,7 @@ class ZoomProvider implements IEnrollmentProvider {
     try {
       // eslint-disable-next-line require-await
       await _enrollmentOperation(logLabel, enrollmentIdentifier, customLogger, async () => {
-        api.disposeEnrollment(enrollmentIdentifier, customLogger)
+        await api.disposeEnrollment(enrollmentIdentifier, customLogger)
         log.debug('Enrollment removed physically from the DB', { enrollmentIdentifier })
       })
     } catch (exception) {
