@@ -83,6 +83,8 @@ class ZoomProvider implements IEnrollmentProvider {
     }
 
     // 1. checking if facescan already uploaded & enrolled
+    // refactored - using a separate method was added after initial implementation
+    // insteadf of the direct API call
     const alreadyEnrolled = await this.isEnrollmentExists(enrollmentIdentifier, customLogger)
 
     // 2. performing liveness check and storing facescan / audit trail images (if need)
@@ -95,6 +97,7 @@ class ZoomProvider implements IEnrollmentProvider {
       const methodToInvoke = (alreadyEnrolled ? 'update' : 'submit') + 'Enrollment'
 
       await api[methodToInvoke](enrollmentIdentifier, payload, customLogger)
+      log.debug('Received enrollment:', { enrollmentIdentifier, alreadyEnrolled })
     } catch (exception) {
       const { name, message, response } = exception
 
@@ -153,18 +156,25 @@ class ZoomProvider implements IEnrollmentProvider {
       throwCustomException(duplicateFoundMessage, { isDuplicate }, faceSearchResponse)
     }
 
-    // 4. if alreadyEnrolled - checking is indexed
-    // if not enrolled or not indexed - indexing uploaded & stored face scan to the 3D Database
+    // 4. indexing uploaded & stored face scan to the 3D Database
     let isEnrolled = true
+    // if wasn't already enrolled -  this means it wasn't also indexed
     let alreadyIndexed = false
 
     if (alreadyEnrolled) {
+      // if already enrolled - need to check was it already indexed or not
       alreadyIndexed = await this.isEnrollmentIndexed(enrollmentIdentifier, customLogger)
     }
 
-    if (!alreadyIndexed) {
+    log.debug('Preparing enrollment to index:', { enrollmentIdentifier, alreadyEnrolled, alreadyIndexed })
+
+    if (alreadyIndexed) {
+      log.debug('Enrollment already indexed, skipping:', { enrollmentIdentifier })
+    } else {
+      // if not already enrolled or indexed - indexing
       try {
         await api.indexEnrollment(enrollmentIdentifier, defaultSearchIndexName, customLogger)
+        log.debug('Enrollment indexed:', { enrollmentIdentifier })
       } catch (exception) {
         const { response, message } = exception
 
@@ -215,16 +225,18 @@ class ZoomProvider implements IEnrollmentProvider {
     const logLabel = 'Error disposing enrollment'
 
     // eslint-disable-next-line require-await
-    await _enrollmentOperation(logLabel, enrollmentIdentifier, customLogger, async () =>
-      api.removeEnrollmentFromIndex(enrollmentIdentifier, defaultSearchIndexName, customLogger)
-    )
+    await _enrollmentOperation(logLabel, enrollmentIdentifier, customLogger, async () => {
+      await api.removeEnrollmentFromIndex(enrollmentIdentifier, defaultSearchIndexName, customLogger)
+      log.debug('Enrollment removed from the search index', { enrollmentIdentifier })
+    })
 
     // trying to remove also facemap from the DB
     try {
       // eslint-disable-next-line require-await
-      await _enrollmentOperation(logLabel, enrollmentIdentifier, customLogger, async () =>
+      await _enrollmentOperation(logLabel, enrollmentIdentifier, customLogger, async () => {
         api.disposeEnrollment(enrollmentIdentifier, customLogger)
-      )
+        log.debug('Enrollment removed physically from the DB', { enrollmentIdentifier })
+      })
     } catch (exception) {
       const { message: errMessage } = exception
 
