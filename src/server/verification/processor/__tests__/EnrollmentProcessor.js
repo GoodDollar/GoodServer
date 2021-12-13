@@ -1,8 +1,7 @@
 // @flow
 
 import MockAdapter from 'axios-mock-adapter'
-import { omit, invokeMap } from 'lodash'
-import { sha3 } from 'web3-utils'
+import { omit, invokeMap, over, map } from 'lodash'
 import { ZoomLicenseType } from '../../../verification/utils/constants'
 import createEnrollmentProcessor from '../EnrollmentProcessor'
 import AdminWallet from '../../../blockchain/AdminWallet'
@@ -256,38 +255,65 @@ describe('EnrollmentProcessor', () => {
   })
 
   test('disposeEnqueuedEnrollments() calls callback, fails unsuccessfull tasks and removes successfull tasks from queue', async () => {
+    const nonIndexedEnrollmentIdentifier = 'non-indexed-enrollment-identifier'
     const unexistingEnrollmentIdentifier = 'unexisting-enrollment-identifier'
     const failedEnrollmentIdentifier = 'failed-enrollment-identifier'
     const taskId = identifier => `${identifier}-task-id`
     const onProcessedMock = jest.fn()
 
     fetchTasksForProcessingMock.mockResolvedValueOnce(
-      [unexistingEnrollmentIdentifier, failedEnrollmentIdentifier, enrollmentIdentifier].map(identifier => ({
+      [
+        nonIndexedEnrollmentIdentifier,
+        unexistingEnrollmentIdentifier,
+        failedEnrollmentIdentifier,
+        enrollmentIdentifier
+      ].map(identifier => ({
         _id: taskId(identifier),
         subject: { enrollmentIdentifier: identifier, executeAt: DisposeAt.AccountRemoved }
       }))
     )
 
+    helper.mockEnrollmentFound(enrollmentIdentifier)
+    helper.mockSuccessReadEnrollmentIndex(enrollmentIdentifier)
     helper.mockSuccessRemoveEnrollmentFromIndex(enrollmentIdentifier)
     helper.mockRemoveEnrollmentNotSupported(enrollmentIdentifier)
+
+    helper.mockEnrollmentFound(nonIndexedEnrollmentIdentifier)
+    helper.mockEnrollmentNotExistsDuringReadIndex(nonIndexedEnrollmentIdentifier)
+    helper.mockEnrollmentNotExistsDuringRemoveFromIndex(nonIndexedEnrollmentIdentifier)
+    helper.mockRemoveEnrollmentNotSupported(nonIndexedEnrollmentIdentifier)
+
+    helper.mockEnrollmentFound(failedEnrollmentIdentifier)
+    helper.mockSuccessReadEnrollmentIndex(failedEnrollmentIdentifier)
     helper.mockServiceErrorDuringRemoveFromIndex(failedEnrollmentIdentifier)
+    helper.mockRemoveEnrollmentNotSupported(failedEnrollmentIdentifier)
+
+    helper.mockEnrollmentNotFound(unexistingEnrollmentIdentifier)
     helper.mockEnrollmentNotExistsDuringReadIndex(unexistingEnrollmentIdentifier)
-    ;[enrollmentIdentifier, failedEnrollmentIdentifier].forEach(helper.mockSuccessReadEnrollmentIndex)
 
     await expect(enrollmentProcessor.disposeEnqueuedEnrollments(onProcessedMock)).resolves.toBeUndefined()
 
+    const { delete: deleteHistory } = zoomServiceMock.history
+
+    expect(map(deleteHistory, 'url')).toEqual(
+      expect.arrayContaining([nonIndexedEnrollmentIdentifier, enrollmentIdentifier].map(helper.enrollmentUri))
+    )
+
     expect(onProcessedMock).toHaveBeenCalledWith(enrollmentIdentifier)
     expect(onProcessedMock).toHaveBeenCalledWith(unexistingEnrollmentIdentifier)
+    expect(onProcessedMock).toHaveBeenCalledWith(nonIndexedEnrollmentIdentifier)
     expect(onProcessedMock).toHaveBeenCalledWith(failedEnrollmentIdentifier, expect.any(Error))
+
+    expect(getAuthenticationPeriodMock).toHaveBeenCalledTimes(1)
+    expect(failDelayedTasksMock).toHaveBeenCalledWith([taskId(failedEnrollmentIdentifier)])
+
     expect(onProcessedMock).toHaveBeenCalledWith(
       failedEnrollmentIdentifier,
       expect.objectContaining({ message: helper.serviceErrorMessage })
     )
 
-    expect(getAuthenticationPeriodMock).toHaveBeenCalledTimes(1)
-    expect(failDelayedTasksMock).toHaveBeenCalledWith([taskId(failedEnrollmentIdentifier)])
     expect(removeDelayedTasksMock).toHaveBeenCalledWith(
-      [unexistingEnrollmentIdentifier, enrollmentIdentifier].map(taskId)
+      [unexistingEnrollmentIdentifier, enrollmentIdentifier, nonIndexedEnrollmentIdentifier].map(taskId)
     )
   })
 })

@@ -227,13 +227,29 @@ class EnrollmentProcessor {
       disposalBatch.map(async task => {
         const { _id: taskId, subject } = task
         const { enrollmentIdentifier } = subject
-        try {
-          const isEnrollmentIndexed = await provider.isEnrollmentIndexed(enrollmentIdentifier, customLogger)
 
-          if (isEnrollmentIndexed) {
+        try {
+          // check is enrollment indexed firstly (this is faster as server won't return facemap & base64 image)
+          let requiresDisposal = await provider.isEnrollmentIndexed(enrollmentIdentifier, customLogger)
+
+          if (!requiresDisposal) {
+            // if not indexed it could be some low-quality or duplicate wasn't indexed
+            // so we'll check is enrollment exists additionally.
+            // otherwise dups & failed enrollments will be kept forever
+            requiresDisposal = await provider.isEnrollmentExists(enrollmentIdentifier, customLogger)
+            log.debug("Enrollment isn't indexed, checking for existence", { enrollmentIdentifier })
+          }
+
+          log.debug('Preparing to dispose enrollment', { enrollmentIdentifier, requiresDisposal })
+
+          if (requiresDisposal) {
+            // .dispose() removes both search index & enrollment and catches "not found" errors gracefully
+            // so if at least the enrollment itself exists, we need to call .dispose()
             await provider.dispose(enrollmentIdentifier, customLogger)
           } else {
-            log.info("Enrollment isn't indexed in the 3D Database, skipping disposal", { enrollmentIdentifier })
+            log.info("Enrollment isn't indexed nor exists in the 3D Database, skipping disposal", {
+              enrollmentIdentifier
+            })
           }
 
           tasksSucceeded.push(taskId)

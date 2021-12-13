@@ -1,7 +1,7 @@
 // @flow
 
 import MockAdapter from 'axios-mock-adapter'
-import { first, fromPairs, keys } from 'lodash'
+import { first, last, fromPairs, keys } from 'lodash'
 
 import getZoomProvider from '../ZoomProvider'
 import { ZoomLicenseType } from '../../../utils/constants'
@@ -110,8 +110,9 @@ describe('ZoomProvider', () => {
     await testSuccessfullEnrollment(false)
   })
 
-  test('enroll() calls match 3d and skips indexing if already enrolled', async () => {
+  test('enroll() calls match 3d if already enrolled', async () => {
     helper.mockEnrollmentFound(enrollmentIdentifier)
+    helper.mockSuccessReadEnrollmentIndex(enrollmentIdentifier)
     helper.mockSuccessUpdateEnrollment(enrollmentIdentifier)
     helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
 
@@ -126,6 +127,38 @@ describe('ZoomProvider', () => {
     expect(postRequest).toHaveProperty('data')
     expect(postRequest).toHaveProperty('url', '/match-3d-3d')
     expect(JSON.parse(postRequest.data)).toHaveProperty('externalDatabaseRefID', enrollmentIdentifier)
+  })
+
+  test('enroll() calls indexing if already enrolled but not indexed', async () => {
+    helper.mockEnrollmentFound(enrollmentIdentifier)
+    helper.mockEnrollmentNotExistsDuringReadIndex(enrollmentIdentifier)
+    helper.mockSuccessUpdateEnrollment(enrollmentIdentifier)
+    helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
+    helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
+
+    // should return alreadyEnrolled = true
+    await testSuccessfullEnrollment(true)
+
+    const { post: postHistory } = zoomServiceMock.history
+    const postRequest = last(postHistory)
+
+    // last post should be POST /3d-db/enroll (facemap indexing)
+    expect(postRequest).not.toBeUndefined()
+    expect(postRequest).toHaveProperty('data')
+    expect(postRequest).toHaveProperty('url', '/3d-db/enroll')
+    expect(JSON.parse(postRequest.data)).toHaveProperty('externalDatabaseRefID', enrollmentIdentifier)
+  })
+
+  test('enroll() skips indexing if already enrolled and indexed', async () => {
+    helper.mockEnrollmentFound(enrollmentIdentifier)
+    helper.mockSuccessReadEnrollmentIndex(enrollmentIdentifier)
+    helper.mockSuccessUpdateEnrollment(enrollmentIdentifier)
+    helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
+
+    // should return alreadyEnrolled = true
+    await testSuccessfullEnrollment(true)
+
+    const { post: postHistory } = zoomServiceMock.history
 
     // no indexing requests should be in the calls history
     postHistory.forEach(({ url }) => expect(url).not.toEqual('/3d-db/enroll'))

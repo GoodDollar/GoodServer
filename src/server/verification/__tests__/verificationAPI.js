@@ -355,6 +355,7 @@ describe('verificationAPI', () => {
       await storage.updateUser({ identifier: userIdentifier, isVerified: true })
 
       helper.mockEnrollmentFound(enrollmentIdentifier)
+      helper.mockSuccessReadEnrollmentIndex(enrollmentIdentifier)
       helper.mockSuccessUpdateEnrollment(enrollmentIdentifier)
       helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
 
