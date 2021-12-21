@@ -202,14 +202,16 @@ export class Wallet {
       if (isAdminWallet && parseFloat(web3Utils.fromWei(balance, 'gwei')) > adminMinBalance) {
         log.info(`admin wallet ${addr} balance ${balance}`)
         this.filledAddresses.push(addr)
-      } else log.warn('Failed adding admin wallet', { addr, balance, isAdminWallet, adminMinBalance })
+      }
+      // else log.warn('Failed adding admin wallet', { addr, balance, isAdminWallet, adminMinBalance })
 
       if (conf.env !== 'production') {
         const mainnetBalance = await this.mainnetWeb3.eth.getBalance(addr)
         if (parseFloat(web3Utils.fromWei(mainnetBalance, 'gwei')) > adminMinBalance) {
           log.info(`admin wallet ${addr} mainnet balance ${mainnetBalance}`)
           this.mainnetAddresses.push(addr)
-        } else log.warn('Failed adding mainnet admin wallet', { addr, mainnetBalance, adminMinBalance })
+        }
+        // else log.warn('Failed adding mainnet admin wallet', { addr, mainnetBalance, adminMinBalance })
       }
     })
 
@@ -234,6 +236,7 @@ export class Wallet {
 
     this.address = this.filledAddresses[0]
 
+    log.debug('setting contracts:', { mainAddress: this.address })
     this.identityContract = new this.web3.eth.Contract(
       IdentityABI.abi,
       get(ContractsAddress, `${this.network}.Identity`),
@@ -258,6 +261,7 @@ export class Wallet {
     )
 
     try {
+      log.debug('checking balances...')
       let gdbalance = await this.tokenContract.methods.balanceOf(this.address).call()
       let nativebalance = await this.web3.eth.getBalance(this.address)
       this.nonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
