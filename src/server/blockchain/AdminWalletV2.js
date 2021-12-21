@@ -204,14 +204,16 @@ export class Wallet {
       if (isAdminWallet && parseFloat(web3Utils.fromWei(balance, 'gwei')) > adminMinBalance) {
         log.info(`admin wallet ${addr} balance ${balance}`)
         this.filledAddresses.push(addr)
-      } else log.warn('Failed adding admin wallet', { addr, balance, isAdminWallet, adminMinBalance })
+      }
+      // else log.warn('Failed adding admin wallet', { addr, balance, isAdminWallet, adminMinBalance })
 
       if (conf.env !== 'production') {
         const mainnetBalance = await this.mainnetWeb3.eth.getBalance(addr)
         if (parseFloat(web3Utils.fromWei(mainnetBalance, 'gwei')) > adminMinBalance * 100) {
           log.info(`admin wallet ${addr} mainnet balance ${mainnetBalance}`)
           this.mainnetAddresses.push(addr)
-        } else log.warn('Failed adding mainnet admin wallet', { addr, mainnetBalance, adminMinBalance })
+        }
+        // else log.warn('Failed adding mainnet admin wallet', { addr, mainnetBalance, adminMinBalance })
       }
     })
 
