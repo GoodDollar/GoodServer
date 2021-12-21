@@ -1,1 +1,1 @@
-export * from './AdminWalletV2'
+export default from './AdminWalletV2'
