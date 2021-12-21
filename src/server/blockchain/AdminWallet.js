@@ -1,1 +1,2 @@
-export default from './AdminWalletV2'
+import { default as Wallet } from './AdminWalletV2'
+export default Wallet
