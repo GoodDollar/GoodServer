@@ -46,6 +46,7 @@
   "homepage": "https://gooddollar.org",
   "dependencies": {
     "@babel/polyfill": "^7.11.5",
+    "@babel/runtime": "^7.16.5",
     "@gooddollar/goodcontracts": "^2.6.1",
     "@gooddollar/goodprotocol": "^1.0.3",
     "@gooddollar/gun": "^0.2020.910",
@@ -54,8 +55,8 @@
     "@sentry/integrations": "^5.24.2",
     "@sentry/node": "^5.24.2",
     "@textile/crypto": "^4.2.0",
-    "@toruslabs/fetch-node-details": "^2.3.4",
-    "@toruslabs/torus.js": "^2.2.14",
+    "@toruslabs/fetch-node-details": "^3.0.2",
+    "@toruslabs/torus.js": "^3.0.0",
     "apidoc": "^0.17.7",
     "apidoc-markdown": "^0.2.1",
     "async-lock": "^1.2.4",
