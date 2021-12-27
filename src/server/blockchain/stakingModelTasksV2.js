@@ -59,7 +59,7 @@ export class StakingModelManager {
 
   canCollectFunds = async () => {
     const result = await this.managerContract.methods.calcSortedContracts().call()
-    this.log('canCollectFunds:', result)
+    this.log.info('canCollectFunds:', result)
     //collect all contracts that can be run
     const contracts = result.filter(_ => _.maxGasLargerOrEqualRequired).map(_ => _.contractAddress)
 
