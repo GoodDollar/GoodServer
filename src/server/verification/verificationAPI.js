@@ -576,6 +576,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         storage.updateUser(updateUserUbj)
 
         if (runInEnv) {
+          storage.model.updateOne({ identifier: user.loggedInAs }, { $unset: { 'otp.email': 1 } })
+
           //fire and forget updates (don't await)
           const exists = crmId
             ? OnGageAPI.getContactById(crmId, log)
@@ -590,7 +592,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
               } else {
                 log.debug("crm contact doesn't exists creating...")
                 await addUserSteps.createCRMRecord(user, utmString, log)
-                await storage.model.updateOne({ identifier: user.loggedInAs }, { $unset: { 'otp.email': 1 } })
               }
             })
             .catch(e =>
