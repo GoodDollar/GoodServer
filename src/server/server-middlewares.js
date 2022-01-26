@@ -11,7 +11,6 @@ import UserDBPrivate from './db/mongo/user-privat-provider'
 import getTasksRunner from './cron/TaskRunner'
 import addStorageMiddlewares from './storage/storageAPI'
 import addVerificationMiddlewares from './verification/verificationAPI'
-import addSendMiddlewares from './send/sendAPI'
 import addLoadTestMiddlewares from './loadtest/loadtest-middleware'
 import { addCypressMiddleware } from './cypress/cypress-middleware'
 import logger, { addRequestLogger } from '../imports/logger'
@@ -59,7 +58,6 @@ export default async (app: Router) => {
   addLoginMiddlewares(app)
   addStorageMiddlewares(app, UserDBPrivate)
   addVerificationMiddlewares(app, VerificationAPI, UserDBPrivate)
-  addSendMiddlewares(app, UserDBPrivate)
   addLoadTestMiddlewares(app)
 
   app.use((error, req, res, next: NextFunction) => {
