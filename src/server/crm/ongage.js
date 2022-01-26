@@ -1,7 +1,7 @@
 //@flow
 
 import fetch from 'cross-fetch'
-import { get, isNil } from 'lodash'
+import { get, isNil, fromPairs } from 'lodash'
 import { UserRecord } from '../../imports/types'
 import logger from '../../imports/logger'
 import Config from '../server.config'
@@ -24,7 +24,8 @@ export type Contact = {
 
 export type Tags = {
   whitelisted?: string,
-  version_joined?: string
+  version_joined?: string,
+  signup_completed?: string
 }
 
 interface CRMAPI {
@@ -47,6 +48,14 @@ const tagsMap = {
   utmccn: 'campaign_utm'
 }
 
+const fieldsMap = {
+  firstName: 'first_name',
+  lastName: 'last_name',
+  fullName: 'fullname',
+  regMethod: 'regmethod',
+  torusProvider: 'torusprovider'
+}
+
 export const parseUtmString = utmString => {
   return (utmString || '').split('|').reduce((tags, record) => {
     const [name, value] = record.split('=')
@@ -64,11 +73,9 @@ export const parseUtmString = utmString => {
 
 export class OnGage implements CRMAPI {
   baseUrl: string
-  config: {}
   log = logger.child({ from: 'OnGage' })
 
-  constructor(apiurl: string, account_code: string, apikey: string, apisecret: string, config: {}) {
-    this.config = config
+  constructor(apiurl: string, account_code: string, apikey: string, apisecret: string) {
     this.baseUrl = apiurl
     this.baseHeaders = {
       'Content-Type': 'application/json',
@@ -86,7 +93,6 @@ export class OnGage implements CRMAPI {
     if (!isNil(body)) {
       fetchOptions.body = JSON.stringify(body)
     }
-    console.log({ fullUrl, fetchOptions })
     return Promise.race([requestTimeout(timeout), fetch(fullUrl, fetchOptions)])
       .then(async res => {
         if (res.status >= 300) {
@@ -109,10 +115,17 @@ export class OnGage implements CRMAPI {
       })
   }
 
+  userRecordToContact(user: UserRecord): Contact {
+    let contact = Object.entries(user).map(([k, v]) => {
+      const newkey = fieldsMap[k] || k.toLowerCase()
+      return [newkey, v]
+    })
+    return fromPairs(contact)
+  }
   async createContact(user: UserRecord, logger): any {
-    let { log, config } = this
+    let { log } = this
     log = logger || log
-    const { version } = config
+    const { version } = Config
 
     const contact = this.userRecordToContact(user)
     if (contact.email === undefined) {
@@ -137,11 +150,11 @@ export class OnGage implements CRMAPI {
     return result
   }
 
-  async updateContact(email: string, fields: { [key: string]: string }, tags: Tags, logger): any {
+  async updateContact(email: string, id: string, fields: { [key: string]: string }, tags: Tags, logger): any {
     const log = logger || this.log
     let result
     try {
-      result = await this._updateOrCreate({ email, ...fields }, tags, logger)
+      result = await this._updateOrCreate({ email, id, ...fields }, tags, logger)
       return result
     } catch (e) {
       log.warn('ongage: updateContact failed', e.message, e)
@@ -151,12 +164,18 @@ export class OnGage implements CRMAPI {
 
   async _updateOrCreate(contact: Contact, tags: Tags, logger): string {
     let fields = { ...contact, ...tags }
-    const result = await this.baseQuery('contacts', {}, { email: contact.email, overwrite: true, fields })
+    delete fields['id']
+    if (!fields['email']) delete fields['email'] //in case of udpate and email is null
+    let result
+    //incase of update by id we use PUT
+    if (contact.id) result = await this.baseQuery('contacts', {}, { id: contact.id, overwrite: true, fields }, 'PUT')
+    else result = await this.baseQuery('contacts', {}, { email: contact.email, overwrite: true, fields })
 
-    const contactId =
+    const contactIdOrEmail =
       get(result, `payload.created_emails['${contact.email}']`) ||
-      get(result, `payload.updated_emails['${contact.email}']`)
-    return contactId
+      get(result, `payload.updated_emails['${contact.email}']`) ||
+      get(result, `payload.success_emails['${contact.email}']`)
+    return contactIdOrEmail
   }
 
   async deleteContactFromDNC(email: string, logger): any {
@@ -181,3 +200,5 @@ export class OnGage implements CRMAPI {
     return this._updateOrCreate({ id }, { whitelisted: 'true' }, logger)
   }
 }
+
+export const OnGageAPI = new OnGage(Config.ongageUrl, Config.ongageAccount, Config.ongageKey, Config.ongageSecret)
