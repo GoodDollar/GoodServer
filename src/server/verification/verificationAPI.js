@@ -13,8 +13,9 @@ import requestTimeout from '../utils/timeout'
 // import fuseapi from '../utils/fuseapi'
 import OTP from '../../imports/otp'
 import conf from '../server.config'
-import { Mautic } from '../mautic/mauticAPI'
+import { OnGageAPI } from '../crm/ongage'
 import { sendTemplateEmail } from '../aws-ses/aws-ses'
+import addUserSteps from '../storage/addUserSteps'
 import fetch from 'cross-fetch'
 
 import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
@@ -322,8 +323,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         }
 
         let updIndexPromise
-        let updMauticPromise
-        const { mauticId } = user
+        const { crmId } = user
 
         if (currentMobile && currentMobile !== hashedNewMobile) {
           updIndexPromise = Promise.all([
@@ -331,15 +331,15 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           ])
         }
 
-        if (mauticId) {
-          updMauticPromise = Mautic.updateContact(mauticId, { mobile }, log).catch(e =>
-            log.error('Error updating Mautic contact', e.message, e, { mauticId, mobile })
+        if (crmId) {
+          //fire and forget
+          OnGageAPI.updateContact(null, crmId, { mobile }, log).catch(e =>
+            log.error('Error updating CRM contact', e.message, e, { crmId, mobile })
           )
         }
 
         await Promise.all([
           updIndexPromise,
-          updMauticPromise,
           storage.updateUser({
             identifier: user.loggedInAs,
             smsValidated: true,
@@ -467,7 +467,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         return res.json({ ok: 0, error: 'email or user missing' })
       }
 
-      //merge user details for use by mautic
+      //merge user details
       const { email: currentEmail } = user
       let userRec: UserRecord = defaults(body.user, user)
       const isEmailChanged = currentEmail && currentEmail !== sha3(email)
@@ -509,7 +509,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         }
       }
 
-      // updates/adds user with the emailVerificationCode to be used for verification later and with mauticId
+      // updates/adds user with the emailVerificationCode to be used for verification later
       await storage.updateUser({
         identifier: user.identifier,
         emailVerificationCode: code,
@@ -540,7 +540,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res, next) => {
       let runInEnv = ['production', 'staging', 'test'].includes(conf.env)
-
+      const { __utmzz: utmString = '' } = req.cookies
       const log = req.log
       const { user, body } = req
       const verificationData: { code: string } = body.verificationData
@@ -557,7 +557,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       })
 
       if (!user.isEmailConfirmed || currentEmail !== hashedNewEmail) {
-        const { mauticId } = user
+        const { crmId } = user
 
         if (runInEnv && conf.skipEmailVerification === false) {
           try {
@@ -577,40 +577,26 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
         if (runInEnv) {
           //fire and forget updates (don't await)
-          const exists = mauticId ? Mautic.contactExists(mauticId, log) : Promise.resolve(false)
+          const exists = crmId
+            ? OnGageAPI.getContactById(crmId, log)
+                .then(_ => !!_)
+                .catch(e => false)
+            : Promise.resolve(false)
           exists
             .then(async exists => {
               if (exists) {
-                log.debug('mautic contact exists updating...')
-                await Mautic.updateContact(mauticId, { email }, log)
+                log.debug('crm contact exists updating...')
+                await OnGageAPI.updateContactEmail(crmId, email, log)
               } else {
-                log.debug("mautic contact doesn't exists creating...")
-
-                const userFields = pick(user, ['fullName', 'identifier', 'regMethod', 'torusProvider'])
-
-                const nameParts = get(userFields, 'fullName', '').split(' ')
-                const firstName = nameParts[0]
-                const lastName = nameParts.length > 1 && nameParts.pop()
-
-                const fieldsForMautic = {
-                  firstName,
-                  lastName,
-                  ...userFields,
-                  email
-                }
-                const record = await Mautic.createContact(fieldsForMautic, log)
-                const newMauticId = get(record, 'contact.id', -1)
-                updateUserUbj.mauticId = newMauticId
-                await storage.model.updateOne(
-                  { identifier: user.loggedInAs },
-                  { $unset: { 'otp.email': 1, 'otp.tempMauticId': 1 }, $set: { mauticId: newMauticId } }
-                )
+                log.debug("crm contact doesn't exists creating...")
+                await addUserSteps.createCRMRecord(user, utmString, log)
+                await storage.model.updateOne({ identifier: user.loggedInAs }, { $unset: { 'otp.email': 1 } })
               }
             })
             .catch(e =>
-              log.error('Error updating Mautic contact', e.message, e, {
+              log.error('Error updating CRM contact', e.message, e, {
                 currentEmail,
-                mauticId,
+                crmId,
                 email
               })
             )

@@ -217,47 +217,29 @@ const conf = convict({
     env: 'WALLET_URL',
     default: 'WALLET_URL'
   },
-  mauticURL: {
-    doc: 'mautic URL',
+  ongageURL: {
+    doc: 'ongage URL',
     format: '*',
-    env: 'MAUTIC_URL',
-    default: 'https://go.gooddollar.org/api'
+    env: 'ONGAGE_URL',
+    default: 'https://api.ongage.com/api/v2'
   },
-  mauticToken: {
-    doc: 'mautic token',
+  ongageAccount: {
+    doc: 'ongage account code',
     format: '*',
-    env: 'MAUTIC_TOKEN',
-    default: null
+    env: 'ONGAGE_ACCOUNT_CODE',
+    default: 'gooddollar_limited'
   },
-  mauticBasicToken: {
-    doc: 'mautic basic auth token',
+  ongageKey: {
+    doc: 'ongage user/key',
     format: String,
-    env: 'MAUTIC_BASIC_TOKEN',
+    env: 'ONGAGE_KEY',
     default: ''
   },
-  mauticRecoveryEmailId: {
-    doc: 'id of email template',
-    format: '*',
-    env: 'MAUTIC_RECOVERY_ID',
-    default: '9'
-  },
-  mauticmagicLinkEmailId: {
-    doc: 'id of email template',
-    format: '*',
-    env: 'MAUTIC_MAGICLINK_ID',
-    default: '30'
-  },
-  mauticVerifyEmailId: {
-    doc: 'id of email template',
-    format: '*',
-    env: 'MAUTIC_VERIFY_ID',
-    default: '31'
-  },
-  mauticClaimQueueWhitelistedSegmentId: {
-    doc: 'id of segment',
-    format: '*',
-    env: 'MAUTIC_CLAIM_QUEUE_WHITELISTED_SEG_ID',
-    default: '54'
+  ongageKey: {
+    doc: 'ongage secret/password',
+    format: String,
+    env: 'ONGAGE_SECRET',
+    default: ''
   },
   zoomMinimalMatchLevel: {
     doc: 'Minimal FaceTec Match Level threshold to mark enrollment as duplicate',
@@ -458,12 +440,6 @@ const conf = convict({
     format: Number,
     default: 50,
     env: 'TORUS_VERIFICATION_RETRY_DELAY'
-  },
-  newuserTag: {
-    doc: 'mautic tag for new user. incremented by phases',
-    format: String,
-    default: 'dappuser',
-    env: 'MAUTIC_NEWUSER_TAG'
   },
   slackAlertsWebhook: {
     doc: 'secret url for sending alerts to some channel',

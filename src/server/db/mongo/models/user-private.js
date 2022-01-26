@@ -14,6 +14,9 @@ export const UserPrivateSchema = new Schema(
     mauticId: {
       type: String
     },
+    crmId: {
+      type: String
+    },
     email: {
       type: String,
       index: { unique: false }

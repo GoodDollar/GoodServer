@@ -4,7 +4,7 @@ import { type IEnrollmentEventPayload } from './typings'
 import logger from '../../../imports/logger'
 import { DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment, scheduleDisposalTask } from '../cron/taskUtil'
 import { shouldLogVerificaitonError } from '../utils/logger'
-import { Mautic } from '../../mautic/mauticAPI'
+import { OnGageAPI } from '../../crm/ongage'
 
 const log = logger.child({ from: 'EnrollmentSession' })
 
@@ -99,14 +99,14 @@ export default class EnrollmentSession {
 
   async onEnrollmentCompleted() {
     const { user, storage, adminApi, log, enrollmentIdentifier } = this
-    const { gdAddress, profilePublickey, loggedInAs, mauticId } = user
+    const { gdAddress, profilePublickey, loggedInAs, crmId } = user
 
     log.info('Whitelisting user:', { loggedInAs })
 
     await Promise.all([
       storage.updateUser({ identifier: loggedInAs, isVerified: true }),
-      Mautic.setWhitelisted(mauticId, log).catch(e =>
-        log.error('mautic setWhitelisted after fv failed', e.message, e, { user })
+      OnGageAPI.setWhitelisted(crmId, log).catch(e =>
+        log.error('CRM setWhitelisted after fv failed', e.message, e, { user })
       ),
       adminApi
         .whitelistUser(gdAddress, profilePublickey)
