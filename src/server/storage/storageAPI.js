@@ -260,6 +260,38 @@ const setup = (app: Router, storage: StorageAPI) => {
   )
 
   /**
+   * @api {post} /user/start user starts registration and we have his email
+   * @apiName Add
+   * @apiGroup Storage
+   *
+   * @apiParam {Object} user
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
+  app.post(
+    '/user/claim',
+    onlyInEnv('production', 'staging'),
+    wrapAsync(async (req, res) => {
+      const { last_claim, claim_counter } = req.body
+      const { log: logger, user } = req
+
+      if (!user.crmId) {
+        logger.warn('user/claim missing crmId', { user, body: req.body })
+        res.json({ ok: 0 })
+      }
+      await OnGageAPI.updateContact(null, user.crmId, { last_claim, claim_counter }, logger)
+        .then(r => logger.debug('/user/claim createCRMRecord success'))
+        .catch(e => {
+          logger.error('/user/claim createCRMRecord failed', e.message, e, { user, body: req.body })
+          throw new Error('Failed updating user claim in CRM')
+        })
+
+      res.json({ ok: 1 })
+    })
+  )
+
+  /**
    * @api {post} /user/delete Delete user account
    * @apiName Delete
    * @apiGroup Storage

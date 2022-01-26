@@ -19,10 +19,7 @@ export type Contact = {
   content_utm: string,
   source_utm: string,
   medium_utm: string,
-  campaign_utm: string
-}
-
-export type Tags = {
+  campaign_utm: string,
   whitelisted?: string,
   version_joined?: string,
   signup_completed?: string
@@ -30,7 +27,7 @@ export type Tags = {
 
 interface CRMAPI {
   createContact(contact: UserRecord, logger): string;
-  updateContact(identifier: string, fields: { [key: string]: stirng }, tags: Tags, logger): string;
+  updateContact(identifier: string, fields: { [key: string]: stirng }, logger): string;
   userRecordToContact(contact: UserRecord): Contact;
   deleteContactFromDNC(email: string, logger): any;
   addContactToDNC(email: string, logger): any;
@@ -133,14 +130,14 @@ export class OnGage implements CRMAPI {
       return Promise.reject('ongage: failed creating contact. no email.')
     }
 
-    let tags = { version_joined: version }
+    contact.version_joined = version
 
     let result
 
     try {
-      result = await this._updateOrCreate(contact, tags, logger)
+      result = await this._updateOrCreate(contact, logger)
     } catch (e) {
-      log.warn('ongage: createContact failed', e.message, e, { contact, tags })
+      log.warn('ongage: createContact failed', e.message, e, { contact })
       throw e
     }
 
@@ -150,11 +147,11 @@ export class OnGage implements CRMAPI {
     return result
   }
 
-  async updateContact(email: string, id: string, fields: { [key: string]: string }, tags: Tags, logger): any {
+  async updateContact(email: string, id: string, fields: { [key: string]: string }, logger): any {
     const log = logger || this.log
     let result
     try {
-      result = await this._updateOrCreate({ email, id, ...fields }, tags, logger)
+      result = await this._updateOrCreate({ email, id, ...fields }, logger)
       return result
     } catch (e) {
       log.warn('ongage: updateContact failed', e.message, e)
@@ -162,8 +159,8 @@ export class OnGage implements CRMAPI {
     }
   }
 
-  async _updateOrCreate(contact: Contact, tags: Tags, logger): string {
-    let fields = { ...contact, ...tags }
+  async _updateOrCreate(contact: Contact, logger): string {
+    let fields = { ...contact }
     delete fields['id']
     if (!fields['email']) delete fields['email'] //in case of udpate and email is null
     let result
@@ -176,6 +173,20 @@ export class OnGage implements CRMAPI {
       get(result, `payload.updated_emails['${contact.email}']`) ||
       get(result, `payload.success_emails['${contact.email}']`)
     return contactIdOrEmail
+  }
+
+  async updateContactEmail(crmId: string, newEmail: string, logger): any {
+    const log = logger || this.log
+    let result
+    try {
+      const contact = await this.getContactById(crmId, logger)
+      const email = get(contact, 'payload.email')
+      result = await this.baseQuery('contacts/change_email', {}, { email, new_email: newEmail })
+      return get(result, `payload.success_emails['${email}']`)
+    } catch (e) {
+      log.warn('ongage: updateContactEmail failed', e.message, e)
+      throw e
+    }
   }
 
   async deleteContactFromDNC(email: string, logger): any {
