@@ -64,7 +64,7 @@ describe('fishManager', () => {
     await setNextDay()
     await AdminWallet.sendTransaction(AdminWallet.UBIContract.methods.claim())
     let gdbalanceBefore = await AdminWallet.tokenContract.methods
-      .balanceOf(fishManager.ubiContract.address)
+      .balanceOf(fishManager.ubiContract._address)
       .call()
       .then(parseInt)
     const { result, cronTime, fishers } = await fishManager.run()
