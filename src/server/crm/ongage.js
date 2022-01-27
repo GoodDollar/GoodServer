@@ -122,7 +122,7 @@ export class OnGage implements CRMAPI {
   async createContact(user: UserRecord, logger): any {
     let { log } = this
     log = logger || log
-    const { version } = Config
+    const { version, env } = Config
 
     const contact = this.userRecordToContact(user)
     if (contact.email === undefined) {
@@ -131,6 +131,7 @@ export class OnGage implements CRMAPI {
     }
 
     contact.version_joined = version
+    contact.dev_env = env
 
     let result
 
