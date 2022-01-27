@@ -51,7 +51,7 @@ describe('fishManager', () => {
     expect(parseInt(searchEndDay.returnValues.blockNumber)).toBeGreaterThan(
       parseInt(searchStartDay.returnValues.blockNumber)
     )
-    expect(parseInt(searchEndDay.returnValues.day)).toBeGreaterThan(searchStartDay.returnValues.day)
+    expect(parseInt(searchEndDay.returnValues.day)).toBeGreaterThan(parseInt(searchStartDay.returnValues.day))
   })
 
   test(`fishManager should find inactive accounts in interval (need to run script simulateInterestDays.js in goodcontracts)`, async () => {
@@ -72,7 +72,7 @@ describe('fishManager', () => {
     expect(cronTime.isAfter()).toBeTruthy() //crontime in future
     expect(fishers.length).not.toEqual(0) //return the fisher admin account
     let gdbalanceAfter = await AdminWallet.tokenContract.methods
-      .balanceOf(fishManager.ubiContract.address)
+      .balanceOf(fishManager.ubiContract._address)
       .call()
       .then(parseInt)
 

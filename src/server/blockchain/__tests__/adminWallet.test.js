@@ -40,7 +40,7 @@ describe('adminwallet', () => {
     const lastAuth = await AdminWallet.identityContract.methods
       .lastAuthenticated(unverifiedAddress)
       .call()
-      .then(_ => _.toNumber())
+      .then(parseInt)
 
     expect(isVerified).toBeFalsy()
     expect(lastAuth).toBeGreaterThan(0)
