@@ -116,12 +116,12 @@ jobs:
       - name: Install npm dependencies
         uses: bahmutov/npm-install@v1
       - name: prepare blockchain for blockchain related tests
-        if: contains(fromJson(env.BLOCKCHAIN_CHUNK),matrix.chunk)
+        if: contains(fromJson(env.BLOCKCHAIN_CHUNKS),matrix.chunk)
         env:
           MNEMONIC: ${{ env.ADMIN_MNEMONIC }}
         run: npm run test:setup
       - name: prepare blockchain for generic tests
-        if: matrix.chunk != env.BLOCKCHAIN_CHUNK
+        if: not contains(fromJson(env.BLOCKCHAIN_CHUNKS) ,matrix.chunk)
         run: |
           npx ganache-cli -p 8545 &
           sleep 30
