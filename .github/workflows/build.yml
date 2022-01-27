@@ -121,7 +121,7 @@ jobs:
           MNEMONIC: ${{ env.ADMIN_MNEMONIC }}
         run: npm run test:setup
       - name: prepare blockchain for generic tests
-        if: not contains(fromJson(env.BLOCKCHAIN_CHUNKS) ,matrix.chunk)
+        if: !contains(fromJson(env.BLOCKCHAIN_CHUNKS) ,matrix.chunk)
         run: |
           npx ganache-cli -p 8545 &
           sleep 30
