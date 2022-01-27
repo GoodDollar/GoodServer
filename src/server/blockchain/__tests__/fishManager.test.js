@@ -5,8 +5,29 @@ import stakingModelTasks from '../stakingModelTasks'
 let fishManager = stakingModelTasks.fishManager
 
 const setNextDay = async () => {
-  await AdminWallet.web3.currentProvider.send('evm_increaseTime', [60 * 60 * 24]).catch(e => console.log(e))
-  await AdminWallet.web3.currentProvider.send('evm_mine').catch(e => console.log(e))
+  await new Promise((res, rej) =>
+    AdminWallet.web3.currentProvider.send(
+      {
+        jsonrpc: '2.0',
+        method: 'evm_increaseTime',
+        params: [60 * 60 * 24],
+        id: new Date().getTime()
+      },
+      (err, result) => (err ? rej(err) : res(result))
+    )
+  )
+
+  await new Promise((res, rej) =>
+    AdminWallet.web3.currentProvider.send(
+      {
+        jsonrpc: '2.0',
+        method: 'evm_mine',
+        params: [],
+        id: new Date().getTime()
+      },
+      (err, result) => (err ? rej(err) : res(result))
+    )
+  )
 }
 
 describe('fishManager', () => {
@@ -26,12 +47,11 @@ describe('fishManager', () => {
     const { searchStartDay, searchEndDay, maxInactiveDays } = await fishManager.getUBICalculatedDays()
     console.log({ searchStartDay, searchEndDay, maxInactiveDays })
     expect(maxInactiveDays).toBeGreaterThan(0)
-    expect(searchStartDay.returnValues.blockNumber.toNumber()).toBeGreaterThan(0)
-    expect(searchEndDay.returnValues.blockNumber.toNumber()).toBeGreaterThan(
-      searchStartDay.returnValues.blockNumber.toNumber()
+    expect(parseInt(searchStartDay.returnValues.blockNumber)).toBeGreaterThan(0)
+    expect(parseInt(searchEndDay.returnValues.blockNumber)).toBeGreaterThan(
+      parseInt(searchStartDay.returnValues.blockNumber)
     )
-    expect(searchStartDay.returnValues.day.toNumber())
-    expect(searchEndDay.returnValues.day.toNumber()).toBeGreaterThan(searchStartDay.returnValues.day.toNumber())
+    expect(parseInt(searchEndDay.returnValues.day)).toBeGreaterThan(searchStartDay.returnValues.day)
   })
 
   test(`fishManager should find inactive accounts in interval (need to run script simulateInterestDays.js in goodcontracts)`, async () => {
@@ -43,14 +63,20 @@ describe('fishManager', () => {
   test(`fishManager should fish account and return next run time (need to run script simulateInterestDays.js in goodcontracts)`, async () => {
     await setNextDay()
     await AdminWallet.sendTransaction(AdminWallet.UBIContract.methods.claim())
-    let gdbalanceBefore = await AdminWallet.tokenContract.methods.balanceOf(fishManager.ubiContract.address).call()
+    let gdbalanceBefore = await AdminWallet.tokenContract.methods
+      .balanceOf(fishManager.ubiContract.address)
+      .call()
+      .then(parseInt)
     const { result, cronTime, fishers } = await fishManager.run()
     expect(result).toBeTruthy() //success
     expect(cronTime.isAfter()).toBeTruthy() //crontime in future
     expect(fishers.length).not.toEqual(0) //return the fisher admin account
-    let gdbalanceAfter = await AdminWallet.tokenContract.methods.balanceOf(fishManager.ubiContract.address).call()
+    let gdbalanceAfter = await AdminWallet.tokenContract.methods
+      .balanceOf(fishManager.ubiContract.address)
+      .call()
+      .then(parseInt)
 
     //we transfer all fished bonus funds back to UBI, so balances before and after should be equal
-    expect(gdbalanceAfter.toNumber()).toEqual(gdbalanceBefore.toNumber())
+    expect(gdbalanceAfter).toEqual(gdbalanceBefore)
   })
 })
