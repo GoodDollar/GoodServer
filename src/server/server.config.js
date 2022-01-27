@@ -235,7 +235,7 @@ const conf = convict({
     env: 'ONGAGE_KEY',
     default: ''
   },
-  ongageKey: {
+  ongageSecret: {
     doc: 'ongage secret/password',
     format: String,
     env: 'ONGAGE_SECRET',
