@@ -2,6 +2,9 @@ import AdminWallet from '../AdminWallet'
 /* eslint-disable-next-line */
 import stakingModelTasks from '../stakingModelTasks'
 import delay from 'delay'
+import { get } from 'lodash'
+import GoodDollarABI from '@gooddollar/goodcontracts/build/contracts/GoodDollar.min.json'
+import ContractsAddress from '@gooddollar/goodprotocol/releases/deployment.json'
 
 let fundManager = stakingModelTasks.fundManager
 
@@ -34,6 +37,12 @@ const next_interval = async function(interval = 5760) {
 describe('stakingModelManager', () => {
   beforeAll(async () => {
     await AdminWallet.ready
+    //in test mode the bridge simply mock by transfering the mainnet token
+    AdminWallet.tokenContract = new AdminWallet.web3.eth.Contract(
+      GoodDollarABI.abi,
+      get(ContractsAddress, `${AdminWallet.network}-mainnet.GoodDollar`),
+      { from: AdminWallet.address }
+    )
   })
 
   //run this first so next tests dont fail
@@ -42,7 +51,7 @@ describe('stakingModelManager', () => {
     const gains = await fundManager.getAvailableInterest()
     await fundManager.mockInterest()
     const gains2 = await fundManager.getAvailableInterest()
-    expect(parseInt(gains2[0])).to.gt(parseInt(gains[0]))
+    expect(parseInt(gains2[0])).toBeGreaterThan(parseInt(gains[0]))
   })
 
   test(`stakingModelManager should know when to run`, async () => {
@@ -55,7 +64,7 @@ describe('stakingModelManager', () => {
     const event = await fundManager.transferInterest()
     transferBlock = event.blockNumber
     ubiAmount = parseInt(event.returnValues.gdUBI)
-    expect(ubiAmount).to.gt(0)
+    expect(ubiAmount).toBeGreaterThan(0)
   })
 
   test(`stakingModelManager should know he cant run after previous test collecting interest`, async () => {
