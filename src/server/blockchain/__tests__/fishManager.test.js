@@ -45,7 +45,6 @@ describe('fishManager', () => {
 
   test(`fishManager should find UBICalculated days (need to run script simulateInterestDays.js in goodcontracts)`, async () => {
     const { searchStartDay, searchEndDay, maxInactiveDays } = await fishManager.getUBICalculatedDays()
-    console.log({ searchStartDay, searchEndDay, maxInactiveDays })
     expect(maxInactiveDays).toBeGreaterThan(0)
     expect(parseInt(searchStartDay.returnValues.blockNumber)).toBeGreaterThan(0)
     expect(parseInt(searchEndDay.returnValues.blockNumber)).toBeGreaterThan(
@@ -61,6 +60,7 @@ describe('fishManager', () => {
   })
 
   test(`fishManager should fish account and return next run time (need to run script simulateInterestDays.js in goodcontracts)`, async () => {
+    await setNextDay()
     await setNextDay()
     await AdminWallet.sendTransaction(AdminWallet.UBIContract.methods.claim())
     let gdbalanceBefore = await AdminWallet.tokenContract.methods
