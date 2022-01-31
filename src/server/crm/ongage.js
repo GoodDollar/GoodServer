@@ -1,145 +1,53 @@
-//@flow
+// @flow
 
-import fetch from 'cross-fetch'
-import { get, isNil, fromPairs } from 'lodash'
-import { UserRecord } from '../../imports/types'
-import logger from '../../imports/logger'
+import Axios from 'axios'
+import { get, assign } from 'lodash'
 import Config from '../server.config'
-import requestTimeout from '../utils/timeout'
 
-export type Contact = {
-  identifier: string,
-  first_name: string,
-  last_name: string,
-  mobile?: string,
-  email: string,
-  regmethod: string,
-  torusprovider: string,
-  term_utm: string,
-  content_utm: string,
-  source_utm: string,
-  medium_utm: string,
-  campaign_utm: string,
-  whitelisted?: string,
-  version_joined?: string,
-  signup_completed?: string
-}
+import logger from '../../imports/logger'
 
-interface CRMAPI {
-  createContact(contact: UserRecord, logger): string;
-  updateContact(identifier: string, fields: { [key: string]: stirng }, logger): string;
-  userRecordToContact(contact: UserRecord): Contact;
-  deleteContactFromDNC(email: string, logger): any;
-  addContactToDNC(email: string, logger): any;
-  getContactByEmail(email: string, logger): any;
-  getContactById(id: string, logger): any;
-  deleteContact(id: string, logger): any;
-  setWhitelisted(id: string, logger): any;
-}
+import { type UserRecord } from '../../imports/types'
+import { userRecordToContact, type CrmApi, type Contact } from './api'
 
-const tagsMap = {
-  utmctr: 'term_utm',
-  utmcct: 'content_utm',
-  utmcsr: 'source_utm',
-  utmcmd: 'medium_utm',
-  utmccn: 'campaign_utm'
-}
+class OnGage implements CrmApi {
+  http = null
+  log = null
+  contactDefaults = {}
 
-const fieldsMap = {
-  firstName: 'first_name',
-  lastName: 'last_name',
-  fullName: 'fullname',
-  regMethod: 'regmethod',
-  torusProvider: 'torusprovider'
-}
-
-export const parseUtmString = utmString => {
-  return (utmString || '').split('|').reduce((tags, record) => {
-    const [name, value] = record.split('=')
-    const tagValue = decodeURIComponent(value)
-
-    if (name in tagsMap && tagValue && '(not set)' !== tagValue) {
-      const mappedName = tagsMap[name]
-
-      tags[mappedName] = tagValue
-    }
-
-    return tags
-  }, {})
-}
-
-export class OnGage implements CRMAPI {
-  baseUrl: string
-  log = logger.child({ from: 'OnGage' })
-
-  constructor(apiurl: string, account_code: string, apikey: string, apisecret: string) {
-    this.baseUrl = apiurl
-    this.baseHeaders = {
-      'Content-Type': 'application/json',
-      X_USERNAME: apikey,
-      X_PASSWORD: apisecret,
-      X_ACCOUNT_CODE: account_code
-    }
-  }
-
-  baseQuery(url, headers, body = null, method = 'post', timeout = 15000) {
-    const { baseUrl, log } = this
-    const fullUrl = baseUrl + url
-    const fetchOptions = { method, headers: { ...this.baseHeaders, headers } }
-
-    if (!isNil(body)) {
-      fetchOptions.body = JSON.stringify(body)
-    }
-    return Promise.race([requestTimeout(timeout), fetch(fullUrl, fetchOptions)])
-      .then(async res => {
-        if (res.status >= 300) {
-          const statusText = await res.text()
-          log.warn('ongage: response for:', { fullUrl, statusText })
-
-          throw new Error(statusText)
-        }
-        const json = await res.json()
-        log.debug('ongage: response for:', { fullUrl, json })
-        if (get(json, 'payload.warnings')) {
-          log.error('ongage request warnings:', { fullUrl, body, warnings: get(json, 'payload.warnings') })
-        }
-        return json
-      })
-      .catch(e => {
-        log.warn('Ongage Error:', e.message, e, { url, body })
-
-        throw e
-      })
-  }
-
-  userRecordToContact(user: UserRecord): Contact {
-    let contact = Object.entries(user).map(([k, v]) => {
-      const newkey = fieldsMap[k] || k.toLowerCase()
-      return [newkey, v]
-    })
-    return fromPairs(contact)
-  }
-  async createContact(user: UserRecord, logger): any {
-    let { log } = this
-    log = logger || log
+  constructor(Config, httpFactory, logger) {
     const { version, env } = Config
+    const httpClientOptions = this._configureClient(Config, logger)
 
-    const contact = this.userRecordToContact(user)
+    this.log = logger
+    this.http = httpFactory(httpClientOptions)
+
+    this.contactDefaults = {
+      version_joined: version,
+      dev_env: env
+    }
+
+    this._configureRequests()
+    this._configureResponses()
+  }
+
+  async createContact(user: UserRecord, logger = null): any {
+    let result
+    const log = logger || this.log
+    const contact = userRecordToContact(user)
+
     if (contact.email === undefined) {
       log.warn('failed creating contact, no email.', { contact })
-      return Promise.reject('ongage: failed creating contact. no email.')
+
+      throw new Error('OnGage: failed creating contact. no email.')
     }
 
-    contact.version_joined = version
-    contact.dev_env = env
-
-    let result
+    assign(contact, this.contactDefaults)
 
     try {
-      result = await this._updateOrCreate(contact, logger)
-    } catch (e) {
-      log.warn('ongage: createContact failed', e.message, e, { contact })
-      throw e
+      result = await this._upsertContact(contact, logger)
+    } catch (exception) {
+      log.warn('OnGage: createContact failed', exception.message, exception, { contact })
+      throw exception
     }
 
     log.info('createContact result:', { result, email: contact.email })
@@ -148,69 +56,173 @@ export class OnGage implements CRMAPI {
     return result
   }
 
-  async updateContact(email: string, id: string, fields: { [key: string]: string }, logger): any {
+  async updateContact(email: string, id: string, fields: { [key: string]: string }, logger = null): any {
     const log = logger || this.log
-    let result
+
     try {
-      result = await this._updateOrCreate({ email, id, ...fields }, logger)
-      return result
-    } catch (e) {
-      log.warn('ongage: updateContact failed', e.message, e)
-      throw e
+      return await this._upsertContact({ email, id, ...fields }, logger)
+    } catch (exception) {
+      log.warn('OnGage: updateContact failed', exception.message, exception)
+      throw exception
     }
   }
 
-  async _updateOrCreate(contact: Contact, logger): string {
-    let fields = { ...contact }
-    delete fields['id']
-    if (!fields['email']) delete fields['email'] //in case of udpate and email is null
-    let result
-    //incase of update by id we use PUT
-    if (contact.id) result = await this.baseQuery('contacts', {}, { id: contact.id, overwrite: true, fields }, 'PUT')
-    else result = await this.baseQuery('contacts', {}, { email: contact.email, overwrite: true, fields })
-
-    const contactIdOrEmail =
-      get(result, `payload.created_emails['${contact.email}']`) ||
-      get(result, `payload.updated_emails['${contact.email}']`) ||
-      get(result, `payload.success_emails['${contact.email}']`)
-    return contactIdOrEmail
-  }
-
-  async updateContactEmail(crmId: string, newEmail: string, logger): any {
+  async updateContactEmail(crmId: string, newEmail: string, logger = null): any {
     const log = logger || this.log
-    let result
+
     try {
       const contact = await this.getContactById(crmId, logger)
       const email = get(contact, 'payload.email')
-      result = await this.baseQuery('contacts/change_email', {}, { email, new_email: newEmail })
-      return get(result, `payload.success_emails['${email}']`)
-    } catch (e) {
-      log.warn('ongage: updateContactEmail failed', e.message, e)
-      throw e
+      const payload = { email, new_email: newEmail }
+
+      const result = await this.http.post('contacts/change_email', payload, { logger })
+      const emails = get(result, 'payload.success_emails')
+
+      return emails[email]
+    } catch (exception) {
+      log.warn('OnGage: updateContactEmail failed', exception.message, exception)
+      throw exception
     }
   }
 
-  async deleteContactFromDNC(email: string, logger): any {
-    return this.baseQuery('contacts/change_status', [], { emails: [email], change_to: 'resubscribe' })
+  async deleteContactFromDNC(email: string, logger = null): any {
+    const payload = {
+      emails: [email],
+      change_to: 'resubscribe'
+    }
+
+    return this.http.post('contacts/change_status', payload, { logger })
   }
 
-  async addContactToDNC(email: string, logger): any {
-    return this.baseQuery('contacts/change_status', [], { emails: [email], change_to: 'unsubscribe' })
+  async addContactToDNC(email: string, logger = null): any {
+    const payload = {
+      emails: [email],
+      change_to: 'unsubscribe'
+    }
+
+    return this.http.post('contacts/change_status', payload, { logger })
   }
 
-  async getContactByEmail(email: string, logger): any {
-    return this.baseQuery(`contacts/by_email/${email}`, [], null, 'GET')
-  }
-  async getContactById(id: string, logger): any {
-    return this.baseQuery(`contacts/by_id/${id}`, [], null, 'GET')
-  }
-  async deleteContact(id: string, logger): any {
-    return this.baseQuery(`contacts/delete`, [], { contact_id: id })
+  async getContactByEmail(email: string, logger = null): any {
+    const params = { email }
+
+    return this.http.get(`contacts/by_email/:email`, { logger, params })
   }
 
-  async setWhitelisted(id: string, logger): any {
-    return this._updateOrCreate({ id }, { whitelisted: 'true' }, logger)
+  async getContactById(id: string, logger = null): any {
+    const params = { id }
+
+    return this.http.get(`contacts/by_id/:id`, { logger, params })
+  }
+
+  async deleteContact(id: string, logger = null): any {
+    const payload = {
+      contact_id: id
+    }
+
+    return this.http.post(`contacts/delete`, payload, { logger })
+  }
+
+  async setWhitelisted(id: string, logger = null): any {
+    return this._upsertContact({ id, whitelisted: 'true' }, logger)
+  }
+
+  async _upsertContact(contact: Contact, logger = null): Promise<string> {
+    let result
+    const overwrite = true
+    const { http } = this
+
+    const { id, ...fields } = contact
+    const { email } = fields
+
+    if (id) {
+      // in case of udpate and email is null
+      if (!email) {
+        delete fields.email
+      }
+
+      result = await http.put('contacts', { id, overwrite, fields }, { logger })
+    } else {
+      result = await http.post('contacts', { email, overwrite, fields }, { logger })
+    }
+
+    return (
+      get(result, `payload.created_emails['${contact.email}']`) ||
+      get(result, `payload.updated_emails['${contact.email}']`) ||
+      get(result, `payload.success_emails['${contact.email}']`)
+    )
+  }
+
+  _configureClient(Config, log) {
+    const { ongageUrl, ongageAccount, ongageKey, ongageSecret } = Config
+
+    const httpClientOptions = {
+      validateStatus: status => status < 300,
+      baseURL: ongageUrl,
+      timeout: 15000,
+
+      headers: {
+        X_USERNAME: ongageKey,
+        X_PASSWORD: ongageSecret,
+        X_ACCOUNT_CODE: ongageAccount,
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    }
+
+    log.debug('Initialized OnGage client with the options:', httpClientOptions)
+    return httpClientOptions
+  }
+
+  _configureRequests() {
+    const { request } = this.http.interceptors
+
+    request.use(request => {
+      const { url, params } = request
+      const searchParams = params instanceof URLSearchParams ? params : new URLSearchParams(params || {})
+
+      const substituteParameter = (_, parameter) => {
+        const parameterValue = searchParams.get(parameter) || ''
+
+        searchParams.delete(parameter)
+        return encodeURIComponent(parameterValue)
+      }
+
+      return {
+        ...request,
+        params: searchParams,
+        url: (url || '').replace(/:(\w[\w\d]+)/g, substituteParameter)
+      }
+    })
+  }
+
+  _configureResponses() {
+    const { http, log } = this
+    const { response } = http.interceptors
+
+    response.use(
+      async response => {
+        const { config, data: json } = response
+        const { warnings } = json.payload || {}
+        const { url, data: body, logger = log } = config
+
+        logger.debug('OnGage: response for:', { url, json })
+
+        if (warnings) {
+          logger.error('ongage request warnings:', { url, body, warnings })
+        }
+
+        return json
+      },
+      async exception => {
+        const { message, response = {} } = exception
+        const { url, data: body, logger = log } = response.config || {}
+
+        logger.warn('OnGage Error:', message, exception, { url, body })
+        throw exception
+      }
+    )
   }
 }
 
-export const OnGageAPI = new OnGage(Config.ongageUrl, Config.ongageAccount, Config.ongageKey, Config.ongageSecret)
+export default new OnGage(Config, Axios, logger.child({ from: 'OnGage' }))

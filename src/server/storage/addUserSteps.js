@@ -1,10 +1,14 @@
 // @flow
 import { pick, get } from 'lodash'
 import conf from '../server.config'
+
 import AdminWallet from '../blockchain/AdminWallet'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
+import OnGage from '../crm/ongage'
+
+import { parseUtmString } from '../utils/request'
 import { type UserRecord } from '../../imports/types'
-import { parseUtmString, OnGageAPI } from '../crm/ongage'
+
 const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
   if (!conf.disableFaceVerification) {
     return
@@ -53,7 +57,7 @@ const createCRMRecord = async (userRecord: UserRecord, utmString: string, logger
   }
 
   logger.debug('createCRMRecord utm:', { utmString, utmFields })
-  let crmId = await OnGageAPI.createContact(fieldsForCRM, logger).catch(e => {
+  let crmId = await OnGage.createContact(fieldsForCRM, logger).catch(e => {
     logger.error('createCRMRecord Create CRM Record Failed', e.message, e, { fieldsForCRM, userRecord })
     throw e
   })
