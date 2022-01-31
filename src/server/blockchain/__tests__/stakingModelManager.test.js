@@ -85,6 +85,6 @@ describe('stakingModelManager', () => {
   })
 
   test(`stakingModelManager should fail to transfer interest if no interest to collect`, async () => {
-    expect(fundManager.transferInterest()).rejects.toThrow()
+    await expect(fundManager.transferInterest()).resolves.toBe(undefined)
   })
 })
