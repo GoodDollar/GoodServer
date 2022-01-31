@@ -8,7 +8,7 @@ import { sha3, toChecksumAddress } from 'web3-utils'
 import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync, onlyInEnv } from '../utils/helpers'
 import { withTimeout } from '../utils/timeout'
-import { OnGageAPI } from '../crm/ongage'
+import OnGage from '../crm/ongage'
 import conf from '../server.config'
 import addUserSteps from './addUserSteps'
 import createUserVerifier from './verifier'
@@ -200,7 +200,7 @@ const setup = (app: Router, storage: StorageAPI) => {
             if (isNonDevelopMode) {
               const crmId = await p3
               if (crmId)
-                await OnGageAPI.updateContact(email, crmId, { signup_completed: true }, logger).catch(exception => {
+                await OnGage.updateContact(email, crmId, { signup_completed: true }, logger).catch(exception => {
                   const { message } = exception
                   logger.error('Failed CRM tagging user completed signup', message, exception, { crmId })
                 })
@@ -280,7 +280,7 @@ const setup = (app: Router, storage: StorageAPI) => {
         logger.warn('user/claim missing crmId', { user, body: req.body })
         res.json({ ok: 0 })
       }
-      await OnGageAPI.updateContact(null, user.crmId, { last_claim, claim_counter }, logger)
+      await OnGage.updateContact(null, user.crmId, { last_claim, claim_counter }, logger)
         .then(r => logger.debug('/user/claim createCRMRecord success'))
         .catch(e => {
           logger.error('/user/claim createCRMRecord failed', e.message, e, { user, body: req.body })
@@ -320,7 +320,7 @@ const setup = (app: Router, storage: StorageAPI) => {
           .catch(e => ({ mongodb: 'failed' })),
         crmCount > 1
           ? Promise.resolve({ crm: 'okMultiNotDeleted' })
-          : OnGageAPI.deleteContact(user.crmId)
+          : OnGage.deleteContact(user.crmId)
               .then(r => ({ crm: 'ok' }))
               .catch(e => ({ crm: 'failed' })),
         fetch(`https://api.fullstory.com/users/v1/individual/${user.identifier}`, {

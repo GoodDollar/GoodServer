@@ -13,7 +13,7 @@ import requestTimeout from '../utils/timeout'
 // import fuseapi from '../utils/fuseapi'
 import OTP from '../../imports/otp'
 import conf from '../server.config'
-import { OnGageAPI } from '../crm/ongage'
+import OnGage from '../crm/ongage'
 import { sendTemplateEmail } from '../aws-ses/aws-ses'
 import addUserSteps from '../storage/addUserSteps'
 import fetch from 'cross-fetch'
@@ -333,7 +333,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
         if (crmId) {
           //fire and forget
-          OnGageAPI.updateContact(null, crmId, { mobile }, log).catch(e =>
+          OnGage.updateContact(null, crmId, { mobile }, log).catch(e =>
             log.error('Error updating CRM contact', e.message, e, { crmId, mobile })
           )
         }
@@ -580,7 +580,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
           //fire and forget updates (don't await)
           const exists = crmId
-            ? OnGageAPI.getContactById(crmId, log)
+            ? OnGage.getContactById(crmId, log)
                 .then(_ => !!_)
                 .catch(e => false)
             : Promise.resolve(false)
@@ -588,7 +588,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
             .then(async exists => {
               if (exists) {
                 log.debug('crm contact exists updating...')
-                await OnGageAPI.updateContactEmail(crmId, email, log)
+                await OnGage.updateContactEmail(crmId, email, log)
               } else {
                 log.debug("crm contact doesn't exists creating...")
                 await addUserSteps.createCRMRecord(user, utmString, log)

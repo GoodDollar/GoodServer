@@ -4,7 +4,7 @@ import { type IEnrollmentEventPayload } from './typings'
 import logger from '../../../imports/logger'
 import { DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment, scheduleDisposalTask } from '../cron/taskUtil'
 import { shouldLogVerificaitonError } from '../utils/logger'
-import { OnGageAPI } from '../../crm/ongage'
+import OnGage from '../../crm/ongage'
 
 const log = logger.child({ from: 'EnrollmentSession' })
 
@@ -105,7 +105,7 @@ export default class EnrollmentSession {
 
     await Promise.all([
       storage.updateUser({ identifier: loggedInAs, isVerified: true }),
-      OnGageAPI.setWhitelisted(crmId, log).catch(e =>
+      OnGage.setWhitelisted(crmId, log).catch(e =>
         log.error('CRM setWhitelisted after fv failed', e.message, e, { user })
       ),
       adminApi

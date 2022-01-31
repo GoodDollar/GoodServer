@@ -32,7 +32,6 @@ export type Contact = {
 export interface CrmApi {
   createContact(contact: UserRecord, logger): string;
   updateContact(identifier: string, fields: { [key: string]: stirng }, logger): string;
-  userRecordToContact(contact: UserRecord): Contact;
   deleteContactFromDNC(email: string, logger): any;
   addContactToDNC(email: string, logger): any;
   getContactByEmail(email: string, logger): any;
