@@ -225,4 +225,4 @@ class OnGage implements CrmApi {
   }
 }
 
-export default new OnGage(Config, Axios, logger.child({ from: 'OnGage' }))
+export default new OnGage(Config, Axios.create, logger.child({ from: 'OnGage' }))
