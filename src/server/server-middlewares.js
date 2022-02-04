@@ -19,6 +19,7 @@ import VerificationAPI from './verification/verification'
 import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
 import StakingModelTasks from './blockchain/stakingModelTasks'
 import Config from './server.config'
+import { assign } from 'lodash'
 
 const { FishInactiveTask, CollectFundsTask } = StakingModelTasks
 const rootLogger = logger.child({ from: 'Server' })
@@ -63,12 +64,16 @@ export default async (app: Router) => {
   addLoadTestMiddlewares(app)
 
   app.use((error, req, res, next: NextFunction) => {
-    const log = req.log || rootLogger
-    const { message } = error
+    const { log = rootLogger, body } = req
+    const { name, message } = error
+    const payload = { ok: 0, message }
 
-    log.error('Something went wrong while performing request', message, error, { body: req.body })
+    if ('Error' !== name) {
+      assign(payload, { name })
+    }
 
-    res.status(400).json({ message })
+    log.error('Something went wrong while performing request', message, error, { body })
+    res.status(400).json(payload)
   })
 
   const CronTasksRunner = getTasksRunner()

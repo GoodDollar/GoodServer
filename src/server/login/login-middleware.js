@@ -6,6 +6,7 @@ import { Router } from 'express'
 import { defaults } from 'lodash'
 import * as Crypto from '@textile/crypto'
 import { TextEncoder } from 'util'
+import isBase64 from 'is-base64'
 
 import logger from '../../imports/logger'
 import { wrapAsync } from '../utils/helpers'
@@ -14,6 +15,7 @@ import Config from '../server.config.js'
 import { recoverPublickey } from '../utils/eth'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import clientSettings from '../clients.config.js'
+
 const log = logger.child({ from: 'login-middleware' })
 
 const jwtOptions = {
@@ -22,6 +24,31 @@ const jwtOptions = {
 }
 
 const MSG = 'Login to GoodDAPP'
+
+const validateProfileSignature = (signature, nonce) => {
+  if (isBase64(signature)) {
+    return
+  }
+
+  if (signature.startsWith('SEA')) {
+    let json
+
+    try {
+      json = JSON.parse(signature.replace(/^SEA/, ''))
+    } catch {
+      json = null
+    }
+
+    if (json && json.m === `Login to GoodDAPP${nonce}`) {
+      const exception = new Error('Login attempt from the old profile having GUN-based profile.')
+
+      exception.name = 'OutdatedProfileSignatureError'
+      throw exception
+    }
+  }
+
+  throw new Error('Invalid profile signature received. Should be a valid BASE64 string.')
+}
 
 const verifyProfilePublicKey = async (publicKeyString, signature, nonce) => {
   try {
@@ -74,28 +101,35 @@ const setup = (app: Router) => {
   app.post(
     '/auth/eth',
     wrapAsync(async (req, res) => {
-      const log = req.log
+      const { log, body } = req
+      const { network_id: configNetworkId } = Config.ethereum
 
       log.debug('/auth/eth', { message: 'authorizing' })
-      log.debug('/auth/eth', { body: req.body })
+      log.debug('/auth/eth', { body })
 
-      const signature = req.body.signature
-      const gdSignature = req.body.gdSignature
-      const profileReqPublickey = req.body.profilePublickey
-      const profileSignature = req.body.profileSignature
-      const nonce = req.body.nonce
-      const method = req.body.method
-      const networkId = req.body.networkId
+      const {
+        nonce,
+        method,
+        networkId,
+        signature,
+        gdSignature,
+        profileSignature,
+        profilePublickey: profileReqPublickey
+      } = body
 
-      if (networkId !== Config.ethereum.network_id) {
+      log.debug('/auth/eth', { signature, method })
+
+      if (networkId !== configNetworkId) {
         log.warn('/auth/eth', {
           message: 'Networkd id mismatch',
           client: networkId,
-          server: Config.ethereum.network_id
+          server: configNetworkId
         })
-        throw new Error(`Network ID mismatch client: ${networkId} ours: ${Config.ethereum.network_id}`)
+
+        throw new Error(`Network ID mismatch client: ${networkId} ours: ${configNetworkId}`)
       }
-      log.debug('/auth/eth', { signature, method })
+
+      validateProfileSignature(profileSignature, nonce)
 
       const recovered = recoverPublickey(signature, MSG, nonce)
       const gdPublicAddress = recoverPublickey(gdSignature, MSG, nonce)
@@ -115,10 +149,13 @@ const setup = (app: Router) => {
         const userRecord = await UserDBPrivate.getUser(recovered)
         const hasVerified = userRecord && (userRecord.smsValidated || userRecord.isEmailConfirmed)
         const hasSignedUp = userRecord && userRecord.createdDate
+
         if (hasSignedUp && !hasVerified) {
           log.warn('user doesnt have email nor mobile verified', { recovered })
         }
+
         log.info(`SigUtil Successfully verified signer as ${recovered}`, { hasSignedUp })
+
         const token = jwt.sign(
           {
             method: method,
@@ -144,6 +181,7 @@ const setup = (app: Router) => {
         log.warn('/auth/eth', {
           message: 'SigUtil unable to recover the message signer'
         })
+
         throw new Error('Unable to verify credentials')
       }
     })
