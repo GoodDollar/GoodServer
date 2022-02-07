@@ -63,11 +63,10 @@ export default async (app: Router) => {
   addLoadTestMiddlewares(app)
 
   app.use((error, req, res, next: NextFunction) => {
-    const log = req.log || rootLogger
+    const { log = rootLogger, body } = req
     const { message } = error
 
-    log.error('Something went wrong while performing request', message, error, { body: req.body })
-
+    log.error('Something went wrong while performing request', message, error, { body })
     res.status(400).json({ message })
   })
 
