@@ -25,9 +25,9 @@ const jwtOptions = {
 
 const MSG = 'Login to GoodDAPP'
 
-const validateProfileSignature = (signature, nonce) => {
+const isProfileSignatureCompatible = (signature, nonce) => {
   if (isBase64(signature)) {
-    return
+    return true
   }
 
   if (signature.startsWith('SEA')) {
@@ -40,10 +40,7 @@ const validateProfileSignature = (signature, nonce) => {
     }
 
     if (json && json.m === `Login to GoodDAPP${nonce}`) {
-      const exception = new Error('Login attempt from the old profile having GUN-based profile.')
-
-      exception.name = 'OutdatedProfileSignatureError'
-      throw exception
+      return false
     }
   }
 
@@ -129,13 +126,15 @@ const setup = (app: Router) => {
         throw new Error(`Network ID mismatch client: ${networkId} ours: ${configNetworkId}`)
       }
 
-      validateProfileSignature(profileSignature, nonce)
+      isProfileSignatureCompatible(profileSignature, nonce)
 
       const recovered = recoverPublickey(signature, MSG, nonce)
       const gdPublicAddress = recoverPublickey(gdSignature, MSG, nonce)
+      let profileVerified = true
 
-      const profileVerified =
-        profileReqPublickey != null ? await verifyProfilePublicKey(profileReqPublickey, profileSignature, nonce) : true
+      if (profileReqPublickey != null && isProfileSignatureCompatible(profileSignature, nonce) === true) {
+        profileVerified = await verifyProfilePublicKey(profileReqPublickey, profileSignature, nonce)
+      }
 
       log.debug('/auth/eth', {
         message: 'Recovered public key',
