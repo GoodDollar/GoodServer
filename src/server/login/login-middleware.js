@@ -126,12 +126,11 @@ const setup = (app: Router) => {
         throw new Error(`Network ID mismatch client: ${networkId} ours: ${configNetworkId}`)
       }
 
-      isProfileSignatureCompatible(profileSignature, nonce)
-
       const recovered = recoverPublickey(signature, MSG, nonce)
       const gdPublicAddress = recoverPublickey(gdSignature, MSG, nonce)
       let profileVerified = true
 
+      // ignore profile signature check if public key is null or signature was sent from the old wallet version using GUN
       if (profileReqPublickey != null && isProfileSignatureCompatible(profileSignature, nonce) === true) {
         profileVerified = await verifyProfilePublicKey(profileReqPublickey, profileSignature, nonce)
       }
