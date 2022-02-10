@@ -1,7 +1,7 @@
 // @flow
 
 import Axios from 'axios'
-import { get, assign } from 'lodash'
+import { get, assign, values, first } from 'lodash'
 import Config from '../server.config'
 
 import logger from '../../imports/logger'
@@ -136,7 +136,7 @@ class OnGage implements CrmApi {
     const { email } = fields
 
     if (id) {
-      // in case of udpate and email is null
+      // in case of update and email is null
       if (!email) {
         delete fields.email
       }
@@ -146,11 +146,19 @@ class OnGage implements CrmApi {
       result = await http.post('contacts', { email, overwrite, fields }, { logger })
     }
 
-    return (
-      get(result, `payload.created_emails['${contact.email}']`) ||
-      get(result, `payload.updated_emails['${contact.email}']`) ||
-      get(result, `payload.success_emails['${contact.email}']`)
+    const [createdEmails, updatedEmails, successEmails] = ['created', 'updated', 'success'].map(prop =>
+      get(result, `payload.${prop}_emails`)
     )
+
+    if (email) {
+      return createdEmails[email] || updatedEmails[email] || successEmails[email]
+    }
+
+    const [firstCreated, firstUpdated, firstSuccess] = [createdEmails, updatedEmails, successEmails].map(hashMap =>
+      first(values(hashMap))
+    )
+
+    return firstCreated || firstUpdated || firstSuccess
   }
 
   _configureClient(Config, log) {
@@ -177,8 +185,7 @@ class OnGage implements CrmApi {
   _configureRequests() {
     const { request } = this.http.interceptors
 
-    request.use(request => {
-      const { url, params } = request
+    request.use(({ url, params, logger, ...requestOptions }) => {
       const searchParams = params instanceof URLSearchParams ? params : new URLSearchParams(params || {})
 
       const substituteParameter = (_, parameter) => {
@@ -188,11 +195,17 @@ class OnGage implements CrmApi {
         return encodeURIComponent(parameterValue)
       }
 
-      return {
-        ...request,
+      const options = {
+        ...requestOptions,
         params: searchParams,
         url: (url || '').replace(/:(\w[\w\d]+)/g, substituteParameter)
       }
+
+      if (!logger) {
+        return options
+      }
+
+      return { ...options, logger }
     })
   }
 
@@ -206,10 +219,10 @@ class OnGage implements CrmApi {
         const { warnings } = json.payload || {}
         const { url, data: body, logger = log } = config
 
-        logger.debug('OnGage: response for:', { url, json })
+        logger.debug('OnGage response for:', { url, json })
 
         if (warnings) {
-          logger.error('ongage request warnings:', { url, body, warnings })
+          logger.error('OnGage request warnings:', { url, body, warnings })
         }
 
         return json
@@ -218,7 +231,7 @@ class OnGage implements CrmApi {
         const { message, response = {} } = exception
         const { url, data: body, logger = log } = response.config || {}
 
-        logger.warn('OnGage Error:', message, exception, { url, body })
+        logger.warn('OnGage error:', message, exception, { url, body })
         throw exception
       }
     )
