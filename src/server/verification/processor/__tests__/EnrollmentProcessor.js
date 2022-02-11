@@ -5,6 +5,7 @@ import { omit, invokeMap, over, map } from 'lodash'
 import { ZoomLicenseType } from '../../../verification/utils/constants'
 import createEnrollmentProcessor from '../EnrollmentProcessor'
 import AdminWallet from '../../../blockchain/AdminWallet'
+import OnGage from '../../../crm/ongage'
 
 import createMockingHelper from '../../api/__tests__/__util__'
 import { createTaskSubject, DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment } from '../../cron/taskUtil'
@@ -25,6 +26,7 @@ const unlockDelayedTasksMock = jest.fn()
 
 // wallet mocks
 const whitelistUserMock = jest.fn()
+const whitelistContactMock = jest.fn()
 const removeWhitelistedMock = jest.fn()
 const isVerifiedMock = jest.fn()
 const getAuthenticationPeriodMock = jest.fn()
@@ -56,7 +58,8 @@ const user = {
   identifier: 'fake-user-identifier',
   gdAddress: 'fake-wallet-address',
   profilePublickey: 'fake-public-key',
-  loggedInAs: 'fake@email.com'
+  loggedInAs: 'fake@email.com',
+  crmId: 'fake-crm-id'
 }
 
 const testValidation = async (validationPromise, errorMessage = 'Invalid input') =>
@@ -70,6 +73,7 @@ describe('EnrollmentProcessor', () => {
     AdminWallet.removeWhitelisted = removeWhitelistedMock
     AdminWallet.isVerified = isVerifiedMock
     AdminWallet.getAuthenticationPeriod = getAuthenticationPeriodMock
+    OnGage.setWhitelisted = whitelistContactMock
 
     zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
     helper = createMockingHelper(zoomServiceMock)
@@ -82,6 +86,7 @@ describe('EnrollmentProcessor', () => {
     getAuthenticationPeriodMock.mockReturnValue(14)
     unlockDelayedTasksMock.mockImplementation(noopAsync)
     whitelistUserMock.mockImplementation(noopAsync)
+    whitelistContactMock.mockImplementation(noopAsync)
 
     invokeMap(
       [
@@ -109,6 +114,7 @@ describe('EnrollmentProcessor', () => {
         removeDelayedTasksMock,
         cancelTasksQueuedMock,
         whitelistUserMock,
+        whitelistContactMock,
         isVerifiedMock,
         getAuthenticationPeriodMock,
         removeWhitelistedMock
@@ -123,6 +129,7 @@ describe('EnrollmentProcessor', () => {
     const restoreWalletMethods = ['whitelistUser', 'removeWhitelisted', 'isVerified']
 
     restoreWalletMethods.forEach(method => (AdminWallet[method] = AdminWallet.constructor.prototype[method]))
+    OnGage.setWhitelisted = OnGage.constructor.prototype.setWhitelisted
 
     zoomServiceMock.restore()
     zoomServiceMock = null
@@ -172,7 +179,7 @@ describe('EnrollmentProcessor', () => {
     helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
     helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
 
-    const { gdAddress, loggedInAs, profilePublickey } = user
+    const { gdAddress, loggedInAs, profilePublickey, crmId } = user
     const wrappedResponse = expect(enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)).resolves
 
     await wrappedResponse.toBeDefined()
@@ -181,6 +188,7 @@ describe('EnrollmentProcessor', () => {
 
     expect(updateUserMock).toHaveBeenCalledWith({ identifier: loggedInAs, isVerified: true })
     expect(whitelistUserMock).toHaveBeenCalledWith(gdAddress, profilePublickey)
+    expect(whitelistContactMock.mock.calls[0][0]).toBe(crmId)
   })
 
   test('enroll() enqueues task to auto dispose enrollment once auth period passed on success', async () => {
