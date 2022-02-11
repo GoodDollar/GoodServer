@@ -38,7 +38,7 @@ class OnGage implements CrmApi {
     if (contact.email === undefined) {
       log.warn('failed creating contact, no email.', { contact })
 
-      throw new Error('OnGage: failed creating contact. no email.')
+      throw new Error('OnGage: failed creating contact - no email.')
     }
 
     assign(contact, this.contactDefaults)
@@ -147,7 +147,7 @@ class OnGage implements CrmApi {
     }
 
     const [createdEmails, updatedEmails, successEmails] = ['created', 'updated', 'success'].map(prop =>
-      get(result, `payload.${prop}_emails`)
+      get(result, `payload.${prop}_emails`, {})
     )
 
     if (email) {

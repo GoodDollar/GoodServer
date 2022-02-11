@@ -14,6 +14,21 @@ let mock
 const contactId = 'fake-contact-id'
 const contactEmail = 'fake@email.contact.com'
 
+const contactFields = {
+  email: contactEmail,
+  whitelisted: false,
+  fullname: 'Fake User'
+}
+
+const userRecord = {
+  email: contactEmail,
+  fullName: contactFields.fullname,
+  firstName: 'Fake',
+  lastName: 'User',
+  regMethod: 'torus',
+  torusProvider: 'google'
+}
+
 const createLoggerMock = () => mapValues(levelConfigs.levels, () => jest.fn())
 
 describe('OnGage', () => {
@@ -30,7 +45,7 @@ describe('OnGage', () => {
     helper = null
   })
 
-  xtest('should authorize', async () => {
+  test('should authorize', async () => {
     helper.mockSuccessGetContact(contactId)
     await OnGage.getContactById(contactId)
 
@@ -41,7 +56,7 @@ describe('OnGage', () => {
     expect(getRequest.headers).toHaveProperty('X_ACCOUNT_CODE', Config.ongageAccount)
   })
 
-  xtest('should substitute params to url', async () => {
+  test('should substitute params to url', async () => {
     helper.mockSuccessGetContact(contactId)
     await OnGage.getContactById(contactId)
 
@@ -51,7 +66,7 @@ describe('OnGage', () => {
     expect(getRequest).toHaveProperty('url', helper.contactUrl(contactId))
   })
 
-  xtest('should use custom logger', async () => {
+  test('should use custom logger', async () => {
     const loggerMock = createLoggerMock()
 
     helper.mockSuccessGetContact(contactId)
@@ -60,7 +75,7 @@ describe('OnGage', () => {
     expect(loggerMock.debug).toHaveBeenCalled()
   })
 
-  xtest('should throw on server error', async () => {
+  test('should throw on server error', async () => {
     const loggerMock = createLoggerMock()
 
     helper.mockFailedGetContact(contactId)
@@ -70,7 +85,7 @@ describe('OnGage', () => {
     expect(loggerMock.warn.mock.calls[0][0]).toBe('OnGage error:')
   })
 
-  xtest('should report warnings', async () => {
+  test('should report warnings', async () => {
     const loggerMock = createLoggerMock()
 
     helper.mockSuccessGetContact(contactId, { warnings: {} })
@@ -80,7 +95,7 @@ describe('OnGage', () => {
     expect(loggerMock.error.mock.calls[0][0]).toBe('OnGage request warnings:')
   })
 
-  xtest('should add to contact to DNC / remove from', async () => {
+  test('should add to contact to DNC / remove from', async () => {
     const map = {
       addContactToDNC: 'unsubscribe',
       deleteContactFromDNC: 'resubscribe'
@@ -105,7 +120,7 @@ describe('OnGage', () => {
     )
   })
 
-  xtest('should delete contact', async () => {
+  test('should delete contact', async () => {
     helper.mockSuccessDeleteContact()
 
     await expect(OnGage.deleteContact(contactId)).toResolve()
@@ -116,5 +131,127 @@ describe('OnGage', () => {
     expect(jsonPayload).toEqual({
       contact_id: contactId
     })
+  })
+
+  test('upsert: should add contact', async () => {
+    helper.mockSuccessCreateContact(contactEmail, contactId)
+
+    await expect(OnGage.updateContact(contactEmail, null, contactFields)).resolves.toBe(contactId)
+
+    const postRequest = first(mock.history.post)
+    const jsonPayload = JSON.parse(postRequest.data)
+
+    expect(jsonPayload).toEqual({
+      email: contactEmail,
+      overwrite: true,
+      fields: contactFields
+    })
+  })
+
+  test('upsert: should update contact', async () => {
+    helper.mockSuccessUpdateContact(contactEmail, contactId)
+
+    await expect(OnGage.updateContact(contactEmail, contactId, contactFields)).resolves.toBe(contactId)
+
+    const putRequest = first(mock.history.put)
+    const jsonPayload = JSON.parse(putRequest.data)
+
+    expect(jsonPayload).toEqual({
+      id: contactId,
+      overwrite: true,
+      fields: contactFields
+    })
+  })
+
+  test('upsert: should not set empty email on update', async () => {
+    const { email, ...fields } = contactFields
+
+    helper.mockSuccessUpdateContact(contactEmail, contactId)
+
+    await expect(OnGage.updateContact(contactEmail, contactId, { ...fields, email: '' })).resolves.toBe(contactId)
+
+    const putRequest = first(mock.history.put)
+    const jsonPayload = JSON.parse(putRequest.data)
+
+    expect(jsonPayload).toEqual({
+      id: contactId,
+      overwrite: true,
+      fields
+    })
+  })
+
+  test('should set whitelisted', async () => {
+    helper.mockSuccessUpdateContact(contactEmail, contactId)
+
+    await expect(OnGage.setWhitelisted(contactId)).resolves.toBe(contactId)
+
+    const putRequest = first(mock.history.put)
+    const jsonPayload = JSON.parse(putRequest.data)
+
+    expect(jsonPayload).toEqual({
+      id: contactId,
+      overwrite: true,
+      fields: { whitelisted: 'true' }
+    })
+  })
+
+  test('should update email', async () => {
+    const newEmail = 'new@fake-email.com'
+
+    helper.mockSuccessGetContact(contactId, { email: contactEmail })
+    helper.mockSuccessUpdateEmail(contactEmail, contactId)
+
+    await expect(OnGage.updateContactEmail(contactId, newEmail)).resolves.toBe(contactId)
+
+    const postRequest = first(mock.history.post)
+    const jsonPayload = JSON.parse(postRequest.data)
+
+    expect(jsonPayload).toEqual({
+      email: contactEmail,
+      new_email: newEmail
+    })
+  })
+
+  test('should convert user record, add defaults and create contact', async () => {
+    helper.mockSuccessCreateContact(contactEmail, contactId)
+    helper.mockSuccessChangeStatus()
+
+    await expect(OnGage.createContact(userRecord)).resolves.toBe(contactId)
+
+    const postRequest = first(mock.history.post)
+    const jsonPayload = JSON.parse(postRequest.data)
+
+    expect(jsonPayload).toEqual({
+      email: contactEmail,
+      overwrite: true,
+      fields: {
+        ...OnGage.contactDefaults,
+        email: contactEmail,
+        fullname: contactFields.fullname,
+        first_name: 'Fake',
+        last_name: 'User',
+        regmethod: 'torus',
+        torusprovider: 'google'
+      }
+    })
+  })
+
+  test('createContact: should remove from DNC after create', async () => {
+    helper.mockSuccessCreateContact(contactEmail, contactId)
+    helper.mockSuccessChangeStatus()
+
+    await expect(OnGage.createContact(userRecord)).toResolve()
+
+    const postRequest = last(mock.history.post)
+    const jsonPayload = JSON.parse(postRequest.data)
+
+    expect(postRequest).toHaveProperty('url', 'contacts/change_status')
+    expect(jsonPayload).toHaveProperty('change_to', 'resubscribe')
+  })
+
+  test('createContact: throws on empty email', async () => {
+    const { email, ...record } = userRecord
+
+    await expect(OnGage.createContact(record)).rejects.toThrow('OnGage: failed creating contact - no email.')
   })
 })
