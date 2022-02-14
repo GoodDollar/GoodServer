@@ -12,10 +12,12 @@ export const UserPrivateSchema = new Schema(
       type: String
     },
     mauticId: {
-      type: String
+      type: String,
+      index: { unique: false }
     },
     crmId: {
-      type: String
+      type: String,
+      index: { unique: false }
     },
     email: {
       type: String,
