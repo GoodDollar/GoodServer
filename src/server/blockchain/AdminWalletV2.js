@@ -26,7 +26,7 @@ import { sendSlackAlert } from '../../imports/slack'
 
 const log = logger.child({ from: 'AdminWalletV2' })
 
-const FUSE_TX_TIMEOUT = 15000 //should be confirmed after max 3 blocks (15sec)
+const FUSE_TX_TIMEOUT = 25000 //should be confirmed after max 5 blocks (25sec)
 const defaultGas = 200000
 const defaultGasPrice = web3Utils.toWei('1', 'gwei')
 const defaultRopstenGasPrice = web3Utils.toWei('5', 'gwei')
@@ -94,7 +94,7 @@ export class Wallet {
       default:
         provider = conf.ethereum.httpWeb3Provider
         web3Provider = new Web3.providers.HttpProvider(provider, {
-          timeout: 15000
+          timeout: FUSE_TX_TIMEOUT
         })
         break
     }
