@@ -32,6 +32,19 @@ const defaultGasPrice = web3Utils.toWei('1', 'gwei')
 const defaultRopstenGasPrice = web3Utils.toWei('5', 'gwei')
 
 const adminMinBalance = conf.adminMinBalance
+
+const getAuthHeader = rpc => {
+  const url = new URL(rpc)
+  if (url.password) {
+    return [
+      {
+        name: 'Authorization',
+        value: `Basic ${Buffer.from(`${url.username}:${url.password}`).toString('base64')}`
+      }
+    ]
+  }
+  return []
+}
 /**
  * Exported as AdminWallet
  * Interface with blockchain contracts via web3 using HDWalletProvider
@@ -93,8 +106,10 @@ export class Wallet {
       case 'HttpProvider':
       default:
         provider = conf.ethereum.httpWeb3Provider
+        const headers = getAuthHeader(provider)
         web3Provider = new Web3.providers.HttpProvider(provider, {
-          timeout: FUSE_TX_TIMEOUT
+          timeout: FUSE_TX_TIMEOUT,
+          headers
         })
         break
     }
@@ -125,7 +140,8 @@ export class Wallet {
       default:
       case 'HttpProvider':
         provider = conf.ethereumMainnet.httpWeb3Provider
-        web3Provider = new Web3.providers.HttpProvider(provider)
+        const headers = getAuthHeader(provider)
+        web3Provider = new Web3.providers.HttpProvider(provider, { headers })
         break
     }
     log.debug('mainnet', { web3Provider, provider })
