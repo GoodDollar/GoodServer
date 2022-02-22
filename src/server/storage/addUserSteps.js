@@ -1,10 +1,13 @@
 // @flow
 import { pick, get } from 'lodash'
 import conf from '../server.config'
+
 import AdminWallet from '../blockchain/AdminWallet'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
+import OnGage from '../crm/ongage'
+
+import { parseUtmString } from '../utils/request'
 import { type UserRecord } from '../../imports/types'
-import { Mautic } from '../mautic/mauticAPI'
 
 const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
   if (!conf.disableFaceVerification) {
@@ -38,33 +41,33 @@ const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
   }
 }
 
-const updateMauticRecord = async (userRecord: UserRecord, utmString: string, logger: any) => {
+const createCRMRecord = async (userRecord: UserRecord, utmString: string, logger: any) => {
   const userFields = pick(userRecord, ['fullName', 'mobile', 'email', 'identifier', 'regMethod', 'torusProvider'])
 
-  const utmFields = Mautic.parseUtmString(utmString)
+  const utmFields = parseUtmString(utmString)
   const nameParts = get(userFields, 'fullName', '').split(' ')
   const firstName = nameParts[0]
   const lastName = nameParts.length > 1 && nameParts.pop()
 
-  const fieldsForMautic = {
+  const fieldsForCRM = {
     firstName,
     lastName,
     ...userFields,
     ...utmFields
   }
 
-  logger.debug('updateMauticRecord utm:', { utmString, utmFields })
-  const mauticRecord = await Mautic.createContact(fieldsForMautic, logger).catch(e => {
-    logger.error('updateMauticRecord Create Mautic Record Failed', e.message, e, { fieldsForMautic, userRecord })
+  logger.debug('createCRMRecord utm:', { utmString, utmFields })
+  let crmId = await OnGage.createContact(fieldsForCRM, logger).catch(e => {
+    logger.error('createCRMRecord Create CRM Record Failed', e.message, e, { fieldsForCRM, userRecord })
     throw e
   })
 
-  const mauticId = get(mauticRecord, 'contact.id', userRecord.mauticId)
+  crmId = crmId || userRecord.crmId
 
-  await UserDBPrivate.updateUser({ identifier: userRecord.identifier, mauticId })
-  logger.debug('updateMauticRecord user mautic record updated', { fieldsForMautic, userRecord, mauticId, mauticRecord })
+  await UserDBPrivate.updateUser({ identifier: userRecord.identifier, crmId })
+  logger.debug('createCRMRecord user crm record updated', { fieldsForCRM, userRecord, crmId })
 
-  return mauticId
+  return crmId
 }
 
 const topUserWallet = async (userRecord: UserRecord, logger: any) => {
@@ -88,6 +91,6 @@ const topUserWallet = async (userRecord: UserRecord, logger: any) => {
 
 export default {
   topUserWallet,
-  updateMauticRecord,
+  createCRMRecord,
   addUserToWhiteList
 }

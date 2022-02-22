@@ -8,7 +8,7 @@ import { sha3, toChecksumAddress } from 'web3-utils'
 import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync, onlyInEnv } from '../utils/helpers'
 import { withTimeout } from '../utils/timeout'
-import { Mautic } from '../mautic/mauticAPI'
+import OnGage from '../crm/ongage'
 import conf from '../server.config'
 import addUserSteps from './addUserSteps'
 import createUserVerifier from './verifier'
@@ -53,14 +53,7 @@ const setup = (app: Router, storage: StorageAPI) => {
   app.post(
     '/user/add',
     wrapAsync(async (req, res) => {
-      const {
-        env,
-        skipEmailVerification,
-        disableFaceVerification,
-        mauticBasicToken,
-        mauticToken,
-        optionalMobile
-      } = conf
+      const { env, skipEmailVerification, disableFaceVerification, optionalMobile } = conf
       const isNonDevelopMode = process.env.NODE_ENV !== 'development'
       const { cookies, body, log: logger, user: userRecord } = req
       const { user: userPayload = {} } = body
@@ -163,16 +156,16 @@ const setup = (app: Router, storage: StorageAPI) => {
         }
 
         let p3 = Promise.resolve()
-        if (isNonDevelopMode || mauticBasicToken || mauticToken) {
+        if (isNonDevelopMode) {
           p3 = addUserSteps
-            .updateMauticRecord(userRecordWithPII, utmString, logger)
+            .createCRMRecord(userRecordWithPII, utmString, logger)
             .then(r => {
-              logger.debug('updateMauticRecord success')
+              logger.debug('createCRMRecord success')
               return r
             })
             .catch(e => {
-              logger.error('updateMauticRecord failed', e.message, e, { userRecordWithPII })
-              throw new Error('Failed adding user to mautic')
+              logger.error('createCRMRecord failed', e.message, e, { userRecordWithPII })
+              throw new Error('Failed adding user to CRM')
             })
           signUpPromises.push(p3)
         }
@@ -204,12 +197,13 @@ const setup = (app: Router, storage: StorageAPI) => {
         withTimeout(Promise.all(signUpPromises), 30000, 'signup promises timeout')
           .then(async r => {
             logger.info('signup promises success')
-            if (isNonDevelopMode || mauticBasicToken || mauticToken) {
-              const mauticId = await p3
-              await Mautic.updateContact(mauticId, { tags: ['signup_completed'] }, logger).catch(exception => {
-                const { message } = exception
-                logger.error('Failed Mautic tagging user completed signup', message, exception, { mauticId })
-              })
+            if (isNonDevelopMode) {
+              const crmId = await p3
+              if (crmId)
+                await OnGage.updateContact(email, crmId, { signup_completed: true }, logger).catch(exception => {
+                  const { message } = exception
+                  logger.error('Failed CRM tagging user completed signup', message, exception, { crmId })
+                })
             }
           })
           .catch(e => logger.error('signup promises failed', e.message, e))
@@ -250,15 +244,47 @@ const setup = (app: Router, storage: StorageAPI) => {
       const { log: logger, user: existingUser } = req
       const { __utmzz: utmString = '' } = req.cookies
 
-      if (!user.email || existingUser.createdDate || existingUser.mauticId) return res.json({ ok: 0 })
+      if (!user.email || existingUser.createdDate || existingUser.crmId) return res.json({ ok: 0 })
 
       //fire and forget, don't wait for success or failure
       addUserSteps
-        .updateMauticRecord(user, utmString, logger)
-        .then(r => logger.debug('/user/start updateMauticRecord success'))
+        .createCRMRecord(user, utmString, logger)
+        .then(r => logger.debug('/user/start createCRMRecord success'))
         .catch(e => {
-          logger.error('/user/start updateMauticRecord failed', e.message, e, { user })
-          throw new Error('Failed adding user to mautic')
+          logger.error('/user/start createCRMRecord failed', e.message, e, { user })
+          throw new Error('Failed adding user to crm')
+        })
+
+      res.json({ ok: 1 })
+    })
+  )
+
+  /**
+   * @api {post} /user/start user starts registration and we have his email
+   * @apiName Add
+   * @apiGroup Storage
+   *
+   * @apiParam {Object} user
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
+  app.post(
+    '/user/claim',
+    onlyInEnv('production', 'staging'),
+    wrapAsync(async (req, res) => {
+      const { last_claim, claim_counter } = req.body
+      const { log: logger, user } = req
+
+      if (!user.crmId) {
+        logger.warn('user/claim missing crmId', { user, body: req.body })
+        res.json({ ok: 0 })
+      }
+      await OnGage.updateContact(null, user.crmId, { last_claim, claim_counter }, logger)
+        .then(r => logger.debug('/user/claim createCRMRecord success'))
+        .catch(e => {
+          logger.error('/user/claim createCRMRecord failed', e.message, e, { user, body: req.body })
+          throw new Error('Failed updating user claim in CRM')
         })
 
       res.json({ ok: 1 })
@@ -280,21 +306,23 @@ const setup = (app: Router, storage: StorageAPI) => {
       const { user, log } = req
       log.info('delete user', { user })
 
-      //first get number of accounts using same mauticId before we delete the account
-      const mauticCount = await storage.getCountMauticId(user.mauticId).catch(e => {
-        log.warn('getCountMauticId failed:', e.message, e)
-        return 1
-      })
+      //first get number of accounts using same crmId before we delete the account
+      const crmCount = user.crmId
+        ? await storage.getCountCRMId(user.crmId).catch(e => {
+            log.warn('getCountCRMId failed:', e.message, e)
+            return 1
+          })
+        : 0
 
       const results = await Promise.all([
         (user.identifier ? storage.deleteUser(user) : Promise.reject())
           .then(r => ({ mongodb: 'ok' }))
           .catch(e => ({ mongodb: 'failed' })),
-        mauticCount > 1
-          ? Promise.resolve({ mautic: 'okMultiNotDeleted' })
-          : Mautic.deleteContact(user.mauticId)
-              .then(r => ({ mautic: 'ok' }))
-              .catch(e => ({ mautic: 'failed' })),
+        crmCount > 1
+          ? Promise.resolve({ crm: 'okMultiNotDeleted' })
+          : OnGage.deleteContact(user.crmId)
+              .then(r => ({ crm: 'ok' }))
+              .catch(e => ({ crm: 'failed' })),
         fetch(`https://api.fullstory.com/users/v1/individual/${user.identifier}`, {
           headers: { Authorization: `Basic ${conf.fullStoryKey}` },
           method: 'DELETE'

@@ -75,7 +75,8 @@ jobs:
         name: Set Chunk IDs
         run: |
           echo "::set-output name=test-chunk-ids::$(echo $CHUNKS | jq -cM 'to_entries | map(.key)')"
-          echo "::set-output name=wallet-chunk-id::$(echo $CHUNKS | jq -cM 'to_entries | map(select(.value | .[] | index("blockchain"))) | unique | first | .key')"
+          echo "::set-output name=wallet-chunk-id::$(echo $CHUNKS | jq -cM 'to_entries | map(select(.value | .[] | index("blockchain"))) | map(.key) | unique')"
+
         env:
           CHUNKS: ${{ steps['set-test-chunks'].outputs['test-chunks'] }}
 
@@ -103,7 +104,7 @@ jobs:
       CI: false
       LOG_LEVEL: error
       CHUNKS: ${{ needs.setup.outputs['test-chunks'] }}
-      BLOCKCHAIN_CHUNK: ${{ needs.setup.outputs['wallet-chunk-id'] }}
+      BLOCKCHAIN_CHUNKS: ${{ needs.setup.outputs['wallet-chunk-id'] }}
 
     runs-on: ubuntu-latest
     steps:
@@ -115,12 +116,12 @@ jobs:
       - name: Install npm dependencies
         uses: bahmutov/npm-install@v1
       - name: prepare blockchain for blockchain related tests
-        if: matrix.chunk == env.BLOCKCHAIN_CHUNK
+        if: contains(fromJson(env.BLOCKCHAIN_CHUNKS),matrix.chunk)
         env:
           MNEMONIC: ${{ env.ADMIN_MNEMONIC }}
         run: npm run test:setup
       - name: prepare blockchain for generic tests
-        if: matrix.chunk != env.BLOCKCHAIN_CHUNK
+        if: '!contains(fromJson(env.BLOCKCHAIN_CHUNKS) ,matrix.chunk)'
         run: |
           npx ganache-cli -p 8545 &
           sleep 30

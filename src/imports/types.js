@@ -11,6 +11,7 @@ export type UserRecord = {
   isCompleted?: { whiteList: boolean, topWallet: boolean },
   emailVerificationCode?: string,
   mauticId?: string,
+  crmId?: string,
   loginToken?: string,
   walletToken?: string,
   claimQueue?: { date: Date, status: string }

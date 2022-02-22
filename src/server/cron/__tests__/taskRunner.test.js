@@ -4,10 +4,14 @@ import { size } from 'lodash'
 
 import getTaskRunner from '../TaskRunner'
 import { noopAsync } from '../../utils/async'
-
+import walletNonce from '../../db/mongo/models/wallet-nonce'
 const TaskRunner = getTaskRunner()
 
 describe('TaskRunner', () => {
+  beforeAll(async () => {
+    const r = await walletNonce.deleteMany({})
+    await walletNonce.syncIndexes()
+  })
   const testTask = {
     name: 'testTask',
     schedule: moment()
@@ -38,7 +42,7 @@ describe('TaskRunner', () => {
 
   test('it should run task', async () => {
     TaskRunner.startTasks()
-    await delay(5500)
+    await delay(3500)
     expect(executeSpy).toHaveBeenCalled()
   })
 
