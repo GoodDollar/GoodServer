@@ -221,7 +221,7 @@ const conf = convict({
     doc: 'ongage URL',
     format: '*',
     env: 'ONGAGE_URL',
-    default: 'https://api.ongage.com/api/v2'
+    default: 'https://api.ongage.net/api'
   },
   ongageAccount: {
     doc: 'ongage account code',
