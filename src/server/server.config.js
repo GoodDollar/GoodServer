@@ -217,7 +217,7 @@ const conf = convict({
     env: 'WALLET_URL',
     default: 'WALLET_URL'
   },
-  ongageURL: {
+  ongageUrl: {
     doc: 'ongage URL',
     format: '*',
     env: 'ONGAGE_URL',
