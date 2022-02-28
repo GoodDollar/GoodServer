@@ -21,6 +21,7 @@ import fetch from 'cross-fetch'
 import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 import { verifySignature } from '../utils/eth'
 import { shouldLogVerificaitonError } from './utils/logger'
+import { SegmentedUBI } from '../blockchain/segmentedUBI'
 
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   /**
@@ -337,6 +338,19 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
             log.error('Error updating CRM contact', e.message, e, { crmId, mobile })
           )
         }
+
+        //fire and forget
+        SegmentedUBI.add(user.walletAddress, mobile, sha3(3), user.mobile)
+          .then(r =>
+            log.debug('SegmentedUBI add success:', {
+              args: [user.walletAddress, mobile, sha3(mobile), user.mobile]
+            })
+          )
+          .catch(e => {
+            log.error('SegmentedUBI add failed:', e.message, e, {
+              args: [user.walletAddress, mobile, sha3(mobile), user.mobile]
+            })
+          })
 
         await Promise.all([
           updIndexPromise,

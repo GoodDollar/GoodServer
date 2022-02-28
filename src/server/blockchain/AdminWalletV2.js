@@ -14,6 +14,7 @@ import UBIABI from '@gooddollar/goodprotocol/artifacts/contracts/ubi/UBIScheme.s
 import ProxyContractABI from '@gooddollar/goodcontracts/build/contracts/AdminWallet.min.json'
 import ContractsAddress from '@gooddollar/goodprotocol/releases/deployment.json'
 import FaucetABI from '@gooddollar/goodcontracts/upgradables/build/contracts/FuseFaucet.min.json'
+import SegmentedIdentityABI from '@gooddollar/goodprotocol/artifacts/contracts/segmentedubi/SegmentedIdentity.sol/SegmentedIdentity.json'
 
 import conf from '../server.config'
 import logger from '../../imports/logger'
@@ -268,6 +269,14 @@ export class Wallet {
     this.UBIContract = new this.web3.eth.Contract(UBIABI.abi, get(ContractsAddress, `${this.network}.UBIScheme`), {
       from: this.address
     })
+
+    this.SegmentedIdentityContract = new this.web3.eth.Contract(
+      SegmentedIdentityABI.abi,
+      get(ContractsAddress, `${this.network}.SegmentedIdentity`),
+      {
+        from: this.address
+      }
+    )
 
     this.faucetContract = new this.web3.eth.Contract(
       FaucetABI.abi,

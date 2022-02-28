@@ -13,6 +13,7 @@ import conf from '../server.config'
 import addUserSteps from './addUserSteps'
 import createUserVerifier from './verifier'
 import stakingModelTasks from '../blockchain/stakingModelTasks'
+import { SegmentedUBI } from '../blockchain/segmentedUBI'
 
 const fishManager = stakingModelTasks.fishManager
 
@@ -130,6 +131,21 @@ const setup = (app: Router, storage: StorageAPI) => {
 
         const userRecordWithPII = { ...userRecord, ...toUpdateUser, inviteCode, email, mobile }
         const signUpPromises = []
+
+        if (isMobileConfirmed) {
+          //fire and forget
+          SegmentedUBI.add(userRecord.walletAddress, mobile, sha3(3), userRecord.mobile)
+            .then(r =>
+              logger.debug('SegmentedUBI add success:', {
+                args: [userRecord.walletAddress, mobile, sha3(mobile), userRecord.mobile]
+              })
+            )
+            .catch(e => {
+              logger.error('SegmentedUBI add failed:', e.message, e, {
+                args: [userRecord.walletAddress, mobile, sha3(mobile), userRecord.mobile]
+              })
+            })
+        }
 
         const p1 = storage
           .updateUser(toUpdateUser)
