@@ -245,7 +245,7 @@ describe('OnGage', () => {
     const postRequest = last(mock.history.post)
     const jsonPayload = JSON.parse(postRequest.data)
 
-    expect(postRequest).toHaveProperty('url', 'contacts/change_status')
+    expect(postRequest).toHaveProperty('url', 'v2/contacts/change_status')
     expect(jsonPayload).toHaveProperty('change_to', 'resubscribe')
   })
 

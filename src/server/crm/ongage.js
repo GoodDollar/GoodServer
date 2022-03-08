@@ -91,7 +91,7 @@ class OnGage implements CrmApi {
       change_to: 'resubscribe'
     }
 
-    return this.http.post('contacts/change_status', payload, { logger })
+    return this.http.post('v2/contacts/change_status', payload, { logger })
   }
 
   async addContactToDNC(email: string, logger = null): any {
@@ -100,7 +100,7 @@ class OnGage implements CrmApi {
       change_to: 'unsubscribe'
     }
 
-    return this.http.post('contacts/change_status', payload, { logger })
+    return this.http.post('v2/contacts/change_status', payload, { logger })
   }
 
   async getContactByEmail(email: string, logger = null): any {
@@ -141,9 +141,9 @@ class OnGage implements CrmApi {
         delete fields.email
       }
 
-      result = await http.put('contacts', { id, overwrite, fields }, { logger })
+      result = await http.put('v2/contacts', { id, overwrite, fields }, { logger })
     } else {
-      result = await http.post('contacts', { email, overwrite, fields }, { logger })
+      result = await http.post('v2/contacts', { email, overwrite, fields }, { logger })
     }
 
     const [createdEmails, updatedEmails, successEmails] = ['created', 'updated', 'success'].map(prop =>
