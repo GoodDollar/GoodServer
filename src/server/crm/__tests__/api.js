@@ -1,7 +1,7 @@
 // @flow
 
 import MockAdapter from 'axios-mock-adapter'
-import { first, last, mapValues, toPairs } from 'lodash'
+import { first, last, mapValues, omit, toPairs } from 'lodash'
 
 import Config from '../../server.config'
 import OnGage from '../ongage'
@@ -148,6 +148,12 @@ describe('OnGage', () => {
     })
   })
 
+  test('upsert: should not add contact without email', async () => {
+    const { email, ...fields } = contactFields
+
+    await expect(OnGage.updateContact(null, null, fields)).rejects.toThrow('Cannot add contact with empty email!')
+  })
+
   test('upsert: should update contact', async () => {
     helper.mockSuccessUpdateContact(contactEmail, contactId)
 
@@ -157,7 +163,7 @@ describe('OnGage', () => {
     const jsonPayload = JSON.parse(putRequest.data)
 
     expect(jsonPayload).toEqual({
-      id: contactId,
+      email: contactEmail,
       overwrite: true,
       fields: contactFields
     })
@@ -165,19 +171,26 @@ describe('OnGage', () => {
 
   test('upsert: should not set empty email on update', async () => {
     const { email, ...fields } = contactFields
+    const emptyEmails = [null, undefined, '']
 
     helper.mockSuccessUpdateContact(contactEmail, contactId)
 
-    await expect(OnGage.updateContact(contactEmail, contactId, { ...fields, email: '' })).resolves.toBe(contactId)
+    await emptyEmails.reduce(
+      async (promise, email) =>
+        promise.then(async () => {
+          await expect(OnGage.updateContact(email, contactId, { ...fields, email })).resolves.toBe(contactId)
 
-    const putRequest = first(mock.history.put)
-    const jsonPayload = JSON.parse(putRequest.data)
+          const putRequest = last(mock.history.put)
+          const jsonPayload = JSON.parse(putRequest.data)
 
-    expect(jsonPayload).toEqual({
-      id: contactId,
-      overwrite: true,
-      fields
-    })
+          expect(jsonPayload).toEqual({
+            id: contactId,
+            overwrite: true,
+            fields
+          })
+        }),
+      Promise.resolve()
+    )
   })
 
   test('should set whitelisted', async () => {

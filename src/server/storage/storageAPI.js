@@ -279,7 +279,9 @@ const setup = (app: Router, storage: StorageAPI) => {
       if (!user.crmId) {
         logger.warn('user/claim missing crmId', { user, body: req.body })
         res.json({ ok: 0 })
+        return
       }
+
       await OnGage.updateContact(null, user.crmId, { last_claim, claim_counter }, logger)
         .then(r => logger.debug('/user/claim createCRMRecord success'))
         .catch(e => {

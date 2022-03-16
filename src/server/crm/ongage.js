@@ -60,7 +60,7 @@ class OnGage implements CrmApi {
     const log = logger || this.log
 
     try {
-      return await this._upsertContact({ email, id, ...fields }, logger)
+      return await this._upsertContact({ id, email, ...fields }, logger)
     } catch (exception) {
       log.warn('OnGage: updateContact failed', exception.message, exception)
       throw exception
@@ -132,18 +132,28 @@ class OnGage implements CrmApi {
     const overwrite = true
     const { http } = this
 
-    const { id, ...fields } = contact
-    const { email } = fields
+    const { id, email, ...fields } = contact
+    const payload = { email, overwrite, fields }
+
+    // add email to fields if set
+    if (email) {
+      assign(fields, { email })
+    }
 
     if (id) {
-      // in case of update and email is null
       if (!email) {
-        delete fields.email
+        // in case of update and email is null - use id as primary key
+        assign(payload, { id })
+        delete payload.email
       }
 
-      result = await http.put('v2/contacts', { id, overwrite, fields }, { logger })
+      result = await http.put('v2/contacts', payload, { logger })
     } else {
-      result = await http.post('v2/contacts', { email, overwrite, fields }, { logger })
+      if (!email) {
+        throw new Error('Cannot add contact with empty email!')
+      }
+
+      result = await http.post('v2/contacts', payload, { logger })
     }
 
     const [createdEmails, updatedEmails, successEmails] = ['created', 'updated', 'success'].map(prop =>
