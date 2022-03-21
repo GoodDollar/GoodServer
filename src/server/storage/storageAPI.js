@@ -1,4 +1,5 @@
 // @flow
+import moment from 'moment'
 import { Router } from 'express'
 import passport from 'passport'
 import fetch from 'cross-fetch'
@@ -273,7 +274,7 @@ const setup = (app: Router, storage: StorageAPI) => {
     '/user/claim',
     onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res) => {
-      const { last_claim, claim_counter } = req.body
+      let { last_claim, claim_counter } = req.body
       const { log: logger, user } = req
 
       if (!user.crmId) {
@@ -281,6 +282,9 @@ const setup = (app: Router, storage: StorageAPI) => {
         res.json({ ok: 0 })
         return
       }
+
+      // format date according to OnGage date format
+      last_claim = moment(last_claim).format('YYYY/MM/DD')
 
       await OnGage.updateContact(null, user.crmId, { last_claim, claim_counter }, logger)
         .then(r => logger.debug('/user/claim createCRMRecord success'))
