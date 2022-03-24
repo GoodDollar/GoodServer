@@ -40,7 +40,7 @@ export const MessageStrings = PropsModel.discriminator(
     {
       value: {
         default: {},
-        type: new Schema({})
+        type: Types.Mixed
       }
     },
     schemaOptions
