@@ -34,4 +34,17 @@ export const DatabaseVersion = PropsModel.discriminator(
   )
 )
 
+export const MessageStrings = PropsModel.discriminator(
+  'MESSAGE_STRINGS',
+  new Schema(
+    {
+      value: {
+        default: {},
+        type: new Schema({})
+      }
+    },
+    schemaOptions
+  )
+)
+
 export default PropsModel

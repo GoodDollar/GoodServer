@@ -13,7 +13,7 @@ if (process.env.NODE_ENV === 'test' || process.env.TRAVIS === 'true') process.ex
 
 const { DISPOSE_ENROLLMENTS_TASK } = require('../src/server/verification/cron/taskUtil')
 const { default: UserPrivateModel } = require('../src/server/db/mongo/models/user-private')
-const { DatabaseVersion } = require('../src/server/db/mongo/models/props')
+const { DatabaseVersion, MessageStrings } = require('../src/server/db/mongo/models/props')
 const { default: DelayedTaskModel } = require('../src/server/db/mongo/models/delayed-task')
 
 class DBUpdates {
@@ -91,6 +91,24 @@ class DBUpdates {
       )
 
       dbversion.value.version = 5
+      await dbversion.save()
+    }
+
+    if (version < 6) {
+      await MessageStrings.create({
+        value: {
+          shareTitle: 'I signed up to GoodDollar. Join me.',
+          shareMessage: `If you believe in economic inclusion and the distribution of prosperity for all,` +
+            ` then I invite you to sign up for GoodDollar and start collecting your daily digital UBI.\n` +
+            `Use my invite link and receive an extra <reward> G$ bonus:\n\n`,
+
+          shortShareMessage: 'Hi,\nIf you believe in economic inclusion and distribution of prosperity for all,' +
+            ' sign up for a GoodDollar wallet and start collecting daily digital income. ' +
+            'Use my invite link and receive an extra <reward>G$\n\n'
+        }
+      })
+
+      dbversion.value.version = 6
       await dbversion.save()
     }
   }

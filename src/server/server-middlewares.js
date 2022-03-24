@@ -17,7 +17,9 @@ import logger, { addRequestLogger } from '../imports/logger'
 import VerificationAPI from './verification/verification'
 import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
 import StakingModelTasks from './blockchain/stakingModelTasks'
+import { MessageStrings } from './db/mongo/models/props'
 import Config from './server.config'
+import { wrapAsync } from './utils/helpers'
 
 const { FishInactiveTask, CollectFundsTask } = StakingModelTasks
 const rootLogger = logger.child({ from: 'Server' })
@@ -59,6 +61,15 @@ export default async (app: Router) => {
   addStorageMiddlewares(app, UserDBPrivate)
   addVerificationMiddlewares(app, VerificationAPI, UserDBPrivate)
   addLoadTestMiddlewares(app)
+
+  app.get(
+    '/strings',
+    wrapAsync(async (_, res) => {
+      const { value } = await MessageStrings.findOne().lean()
+
+      res.json(value)
+    })
+  )
 
   app.use((error, req, res, next: NextFunction) => {
     const { log = rootLogger, body } = req
