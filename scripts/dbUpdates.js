@@ -100,11 +100,11 @@ class DBUpdates {
           shareTitle: 'I signed up to GoodDollar. Join me.',
           shareMessage: `If you believe in economic inclusion and the distribution of prosperity for all,` +
             ` then I invite you to sign up for GoodDollar and start collecting your daily digital UBI.\n` +
-            `Use my invite link and receive an extra <reward> G$ bonus:\n\n`,
+            `Use my invite link and receive an extra {reward} G$ bonus:\n\n`,
 
           shortShareMessage: 'Hi,\nIf you believe in economic inclusion and distribution of prosperity for all,' +
             ' sign up for a GoodDollar wallet and start collecting daily digital income. ' +
-            'Use my invite link and receive an extra <reward>G$\n\n'
+            'Use my invite link and receive an extra {reward}G$\n\n'
         }
       })
 
