@@ -5,4 +5,5 @@ export MNEMONIC='test test test test test test test test test test test junk'
 export ADMIN_MNEMONIC='test test test test test test test test test test test junk'
 yarn
 yarn deployTest
+yarn minimize
 popd
