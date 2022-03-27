@@ -228,6 +228,50 @@ const setup = (app: Router, storage: StorageAPI) => {
   )
 
   /**
+   * we had issues with mautic some users are not in the database
+   * fix to make sure we have user data in CRM
+   */
+  app.post(
+    '/user/verifyCRM',
+    wrapAsync(async (req, res) => {
+      const { body, log: logger, user: userRecord } = req
+      const { user: userPayload = {} } = body
+
+      try {
+        logger.debug('verify crm:', { data: userPayload, userRecord })
+        if (userRecord.crmId) {
+          logger.debug('verifyCRM already has crmID', { crmId: userRecord.crmId })
+        } else {
+          const { email, mobile, fullName } = userPayload
+          const toCRM = {
+            identifier: userRecord.loggedInAs,
+            fullName,
+            walletAddress: sha3(userRecord.gdAddress.toLowerCase())
+          }
+
+          if (sha3(email) === userRecord.email) toCRM.email = email
+          if (sha3(mobile) === userRecord.mobile) toCRM.mobile = mobile
+
+          const crmId = await addUserSteps.createCRMRecord(toCRM, '', logger)
+
+          await storage.updateUser({
+            identifier: userRecord.loggedInAs,
+            crmId
+          })
+
+          logger.debug('verifyCRM success', { crmId, toCRM })
+        }
+        return res.json({
+          ok: 1
+        })
+      } catch (e) {
+        logger.error('createCRMRecord failed', e.message, e)
+        throw new Error('Failed adding user in verifyCRM')
+      }
+    })
+  )
+
+  /**
    * @api {post} /user/start user starts registration and we have his email
    * @apiName Add
    * @apiGroup Storage
