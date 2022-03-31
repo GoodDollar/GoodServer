@@ -47,7 +47,7 @@ const createCRMRecord = async (userRecord: UserRecord, utmString: string, logger
   const utmFields = parseUtmString(utmString)
   const nameParts = get(userFields, 'fullName', '').split(' ')
   const firstName = nameParts[0]
-  const lastName = nameParts.length > 1 && nameParts.pop()
+  const lastName = nameParts.length > 1 ? nameParts.pop() : ''
 
   const fieldsForCRM = {
     firstName,

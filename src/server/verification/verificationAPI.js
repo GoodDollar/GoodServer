@@ -460,7 +460,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log
 
       const { user, body } = req
-      const { email } = body.user
+      let { email } = body.user
+      email = email.toLowerCase()
 
       if (!email || !user) {
         log.warn('email verification email or user record not found:', { email, user })
@@ -473,13 +474,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const isEmailChanged = currentEmail && currentEmail !== sha3(email)
 
       log.debug('email verification request:', { email, currentEmail, isEmailChanged, body, user })
-      if (conf.allowDuplicateUserData === false && (await storage.isDupUserData({ email }))) {
-        log.debug('enforcing unique email per user', { email })
-        return res.json({ ok: 0, error: 'Email already exists, please use a different one' })
-      }
 
       let code
-      log.debug('processing request for email verification', { email })
       if (runInEnv === true && conf.skipEmailVerification === false) {
         code = OTP.generateOTP(6)
 
@@ -544,7 +540,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log
       const { user, body } = req
       const verificationData: { code: string } = body.verificationData
-      const { email } = user.otp || {}
+      let { email } = user.otp || {}
+      email = email.toLowerCase()
       const hashedNewEmail = email ? sha3(email) : null
       const currentEmail = user.email
 
@@ -579,11 +576,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           storage.model.updateOne({ identifier: user.loggedInAs }, { $unset: { 'otp.email': 1 } })
 
           //fire and forget updates (don't await)
-          const exists = crmId
-            ? OnGage.getContactById(crmId, log)
-                .then(_ => !!_)
-                .catch(e => false)
-            : Promise.resolve(false)
+          const exists = crmId ? Promise.resolve(true) : Promise.resolve(false)
           exists
             .then(async exists => {
               if (exists) {
@@ -591,7 +584,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
                 await OnGage.updateContactEmail(crmId, email, log)
               } else {
                 log.debug("crm contact doesn't exists creating...")
-                await addUserSteps.createCRMRecord(user, utmString, log)
+                await addUserSteps.createCRMRecord({ ...user, email }, utmString, log) //add email to record, since it is under the otp field
               }
             })
             .catch(e =>

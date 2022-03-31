@@ -62,8 +62,10 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       try {
         logger.debug('new user request:', { data: userPayload, userRecord })
+        let { email } = userPayload
+        email = email.toLowerCase()
 
-        const { email, mobile, inviteCode, fullName, regMethod, torusProvider } = userPayload
+        const { mobile, inviteCode, fullName, regMethod, torusProvider } = userPayload
 
         // if torus, then we first verify the user mobile/email by verifying it matches the torus public key
         // (torus maps identifier such as email and mobile to private/public key pairs)
@@ -242,7 +244,8 @@ const setup = (app: Router, storage: StorageAPI) => {
         if (userRecord.crmId) {
           logger.debug('verifyCRM already has crmID', { crmId: userRecord.crmId })
         } else {
-          const { email, mobile, fullName } = userPayload
+          let { email, mobile, fullName } = userPayload
+          email = email.toLowerCase()
           const toCRM = {
             identifier: userRecord.loggedInAs,
             fullName,
@@ -250,6 +253,11 @@ const setup = (app: Router, storage: StorageAPI) => {
           }
 
           if (sha3(email) === userRecord.email) toCRM.email = email
+          //TODO: verify why this is happening on wallet
+          //for some reason some emails were kept with capital letter while from user they arrive lower case
+          //this line is a patch to handle that case
+          if (sha3(email.charAt(0).toUpperCase() + email.slice(1)) === userRecord.email) toCRM.email = email
+
           if (sha3(mobile) === userRecord.mobile) toCRM.mobile = mobile
 
           const crmId = await addUserSteps.createCRMRecord(toCRM, '', logger)
@@ -293,7 +301,7 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       //fire and forget, don't wait for success or failure
       addUserSteps
-        .createCRMRecord(user, utmString, logger)
+        .createCRMRecord({ user, email: user.email.toLowerCase() }, utmString, logger)
         .then(r => logger.debug('/user/start createCRMRecord success'))
         .catch(e => {
           logger.error('/user/start createCRMRecord failed', e.message, e, { user })
@@ -440,9 +448,9 @@ const setup = (app: Router, storage: StorageAPI) => {
     '/userExists',
     wrapAsync(async (req, res, next) => {
       const { log } = req
-      const { identifier = '', email, mobile } = req.body
+      let { identifier = '', email, mobile } = req.body
       const identifierLC = identifier.toLowerCase()
-
+      email = email.toLowerCase()
       const queryOrs = [
         { identifier: identifierLC }, // identifier is stored lowercase in the db. we lowercase addresses in the /auth/eth process
         { email: email && sha3(email) },
