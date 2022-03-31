@@ -46,7 +46,7 @@ export default mock => {
       {
         success_emails: emailWithId(id, email)
       },
-      'POST'
+      'PUT'
     )
 
   return {

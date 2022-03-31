@@ -2,7 +2,7 @@
 
 import { Router } from 'express'
 import passport from 'passport'
-import { get, defaults, pick } from 'lodash'
+import { get, defaults } from 'lodash'
 import { sha3 } from 'web3-utils'
 import requestIp from 'request-ip'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
@@ -15,12 +15,12 @@ import OTP from '../../imports/otp'
 import conf from '../server.config'
 import OnGage from '../crm/ongage'
 import { sendTemplateEmail } from '../aws-ses/aws-ses'
-import addUserSteps from '../storage/addUserSteps'
 import fetch from 'cross-fetch'
 
 import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 import { verifySignature } from '../utils/eth'
 import { shouldLogVerificaitonError } from './utils/logger'
+import { syncUserEmail } from '../crm/utils'
 
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   /**
@@ -554,7 +554,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       })
 
       if (!user.isEmailConfirmed || currentEmail !== hashedNewEmail) {
-        const { crmId } = user
+        let signedEmail
 
         if (runInEnv && conf.skipEmailVerification === false) {
           try {
@@ -565,39 +565,26 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           }
         }
 
-        const updateUserUbj = {
+        storage.updateUser({
           identifier: user.loggedInAs,
           isEmailConfirmed: true,
           email: hashedNewEmail
-        }
-        storage.updateUser(updateUserUbj)
+        })
 
         if (runInEnv) {
           storage.model.updateOne({ identifier: user.loggedInAs }, { $unset: { 'otp.email': 1 } })
 
-          //fire and forget updates (don't await)
-          const exists = crmId ? Promise.resolve(true) : Promise.resolve(false)
-          exists
-            .then(async exists => {
-              if (exists) {
-                log.debug('crm contact exists updating...')
-                await OnGage.updateContactEmail(crmId, email, log)
-              } else {
-                log.debug("crm contact doesn't exists creating...")
-                await addUserSteps.createCRMRecord({ ...user, email }, utmString, log) //add email to record, since it is under the otp field
-              }
+          // fire and forget
+          syncUserEmail(user, email, utmString, log).catch(e =>
+            log.error('Error updating CRM contact', e.message, e, {
+              crmId: user.crmId,
+              currentEmail,
+              email
             })
-            .catch(e =>
-              log.error('Error updating CRM contact', e.message, e, {
-                currentEmail,
-                crmId,
-                email
-              })
-            )
+          )
         }
 
         //TODO: sign using ceramic did
-        let signedEmail
         return res.json({ ok: 1, attestation: signedEmail })
       }
 

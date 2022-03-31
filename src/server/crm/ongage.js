@@ -73,9 +73,13 @@ class OnGage implements CrmApi {
     try {
       const contact = await this.getContactById(crmId, logger)
       const email = get(contact, 'payload.email')
+
+      //verify not a just a case difference
+      if (email.toLowerCase() === newEmail.toLowerCase()) return email
+
       const payload = { email, new_email: newEmail }
 
-      const result = await this.http.post('contacts/change_email', payload, { logger })
+      const result = await this.http.put('contacts/change_email', payload, { logger })
       const emails = get(result, 'payload.success_emails')
 
       return emails[email]

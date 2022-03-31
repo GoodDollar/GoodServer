@@ -6,7 +6,7 @@ import UserDBPrivate from '../../db/mongo/user-privat-provider'
 import type { UserRecord } from '../../../imports/types'
 
 import addUserSteps from '../addUserSteps'
-import { getCreds, utmString } from '../../__util__'
+import { getCreds } from '../../__util__'
 import AdminWallet from '../../blockchain/AdminWallet'
 
 describe('storageAPI', () => {
@@ -37,16 +37,6 @@ describe('storageAPI', () => {
     const userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')
     expect(userIsCompleted).toMatchObject(isCompletedAllFalse)
   })
-
-  // test('check updateMauticRecord', async () => {
-  //   const creds = await getCreds()
-  //   const userRecord = { ...creds, ...user }
-
-  //   await addUserSteps.updateMauticRecord(userRecord, utmString, console)
-  //   const mauticId = await UserDBPrivate.getUserField(user.identifier, 'mauticId')
-
-  //   expect(mauticId).toBeTruthy()
-  // })
 
   test('should not addUserToWhiteList when faceverification enabled', async () => {
     const { disableFaceVerification } = config

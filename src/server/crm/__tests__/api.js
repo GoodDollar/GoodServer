@@ -1,7 +1,7 @@
 // @flow
 
 import MockAdapter from 'axios-mock-adapter'
-import { first, last, mapValues, omit, toPairs } from 'lodash'
+import { first, last, mapValues, toPairs } from 'lodash'
 
 import Config from '../../server.config'
 import OnGage from '../ongage'
@@ -216,8 +216,8 @@ describe('OnGage', () => {
 
     await expect(OnGage.updateContactEmail(contactId, newEmail)).resolves.toBe(contactId)
 
-    const postRequest = first(mock.history.post)
-    const jsonPayload = JSON.parse(postRequest.data)
+    const putRequest = first(mock.history.put)
+    const jsonPayload = JSON.parse(putRequest.data)
 
     expect(jsonPayload).toEqual({
       email: contactEmail,

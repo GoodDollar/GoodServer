@@ -5,13 +5,10 @@ import { size } from 'lodash'
 import getTaskRunner from '../TaskRunner'
 import { noopAsync } from '../../utils/async'
 import walletNonce from '../../db/mongo/models/wallet-nonce'
+
 const TaskRunner = getTaskRunner()
 
 describe('TaskRunner', () => {
-  beforeAll(async () => {
-    const r = await walletNonce.deleteMany({})
-    await walletNonce.syncIndexes()
-  })
   const testTask = {
     name: 'testTask',
     schedule: moment()
@@ -33,6 +30,11 @@ describe('TaskRunner', () => {
 
   const executeSpy = jest.spyOn(testTask, 'execute')
   const executeCronSpy = jest.spyOn(testCronTask, 'execute')
+
+  beforeAll(async () => {
+    await walletNonce.deleteMany({})
+    await walletNonce.syncIndexes()
+  })
 
   test('it should queue task', async () => {
     expect(size(TaskRunner.tasks)).toEqual(0)
