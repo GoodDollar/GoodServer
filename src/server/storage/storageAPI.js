@@ -11,7 +11,7 @@ import { wrapAsync, onlyInEnv } from '../utils/helpers'
 import { withTimeout } from '../utils/timeout'
 import OnGage from '../crm/ongage'
 import conf from '../server.config'
-import addUserSteps from './addUserSteps'
+import { addUserToWhiteList, createCRMRecord } from './addUserSteps'
 import createUserVerifier from './verifier'
 import stakingModelTasks from '../blockchain/stakingModelTasks'
 
@@ -145,8 +145,7 @@ const setup = (app: Router, storage: StorageAPI) => {
 
         // whitelisting user if FR is disabled
         if (disableFaceVerification) {
-          const p2 = addUserSteps
-            .addUserToWhiteList(userRecord, logger)
+          const p2 = addUserToWhiteList(userRecord, logger)
             .then(isWhitelisted => {
               logger.debug('addUserToWhiteList result', { isWhitelisted })
               if (isWhitelisted === false) throw new Error('Failed whitelisting user')
@@ -160,8 +159,7 @@ const setup = (app: Router, storage: StorageAPI) => {
 
         let p3 = Promise.resolve()
         if (isNonDevelopMode) {
-          p3 = addUserSteps
-            .createCRMRecord(userRecordWithPII, utmString, logger)
+          p3 = createCRMRecord(userRecordWithPII, utmString, logger)
             .then(r => {
               logger.debug('createCRMRecord success')
               return r
@@ -172,19 +170,6 @@ const setup = (app: Router, storage: StorageAPI) => {
             })
           signUpPromises.push(p3)
         }
-
-        //no need to topwallet, we now have the faucet contract
-        // const p4 = addUserSteps
-        //   .topUserWallet(userRecord, logger)
-        //   .then(isTopWallet => {
-        //     if (isTopWallet === false) throw new Error('Failed to top wallet of new user')
-        //     logger.debug('topUserWallet success')
-        //   })
-        //   .catch(e => {
-        //     logger.error('topUserWallet failed', e.message, e, { userRecord })
-        //     throw new Error('Failed topping user wallet')
-        //   })
-        // signUpPromises.push(p4)
 
         const p5 = Promise.all([
           //TODO: generate email/mobile claims using ceramic
@@ -260,7 +245,7 @@ const setup = (app: Router, storage: StorageAPI) => {
 
           if (sha3(mobile) === userRecord.mobile) toCRM.mobile = mobile
 
-          const crmId = await addUserSteps.createCRMRecord(toCRM, '', logger)
+          const crmId = await createCRMRecord(toCRM, '', logger)
 
           await storage.updateUser({
             identifier: userRecord.loggedInAs,
@@ -300,8 +285,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       if (!user.email || existingUser.createdDate || existingUser.crmId) return res.json({ ok: 0 })
 
       //fire and forget, don't wait for success or failure
-      addUserSteps
-        .createCRMRecord({ user, email: user.email.toLowerCase() }, utmString, logger)
+      createCRMRecord({ user, email: user.email.toLowerCase() }, utmString, logger)
         .then(r => logger.debug('/user/start createCRMRecord success'))
         .catch(e => {
           logger.error('/user/start createCRMRecord failed', e.message, e, { user })

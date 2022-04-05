@@ -5,7 +5,7 @@ import config from '../../server.config'
 import UserDBPrivate from '../../db/mongo/user-privat-provider'
 import type { UserRecord } from '../../../imports/types'
 
-import addUserSteps from '../addUserSteps'
+import { addUserToWhiteList } from '../addUserSteps'
 import { getCreds } from '../../__util__'
 import AdminWallet from '../../blockchain/AdminWallet'
 
@@ -48,7 +48,7 @@ describe('storageAPI', () => {
     try {
       config.disableFaceVerification = false
       userRecord.profilePublickey = String(Math.random())
-      await addUserSteps.addUserToWhiteList(userRecord, console)
+      await addUserToWhiteList(userRecord, console)
       userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')
     } finally {
       assign(config, { disableFaceVerification })
@@ -69,7 +69,7 @@ describe('storageAPI', () => {
     try {
       config.disableFaceVerification = true
       userRecord.profilePublickey = String(Math.random())
-      await addUserSteps.addUserToWhiteList(userRecord, console)
+      await addUserToWhiteList(userRecord, console)
       userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')
     } finally {
       assign(config, { disableFaceVerification })

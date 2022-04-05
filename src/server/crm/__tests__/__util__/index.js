@@ -16,7 +16,7 @@ export default mock => {
 
   const mockFailedResponse = (url, method = 'GET') => mock[`on${capitalize(method)}`](url).reply(500)
 
-  const mockSuccessGetContact = (id, contactData) => mockSuccessResponse(contactUrl(id), contactData)
+  const mockSuccessGetContact = (id, contactData) => mockSuccessResponse(contactUrl(id), { ...contactData, id })
   const mockFailedGetContact = id => mockFailedResponse(id)
 
   const mockSuccessChangeStatus = () => mockSuccessResponse('v2/contacts/change_status', {}, 'POST')

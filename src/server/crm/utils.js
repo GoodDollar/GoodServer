@@ -1,17 +1,11 @@
-import OnGage from '../crm/ongage'
-import addUserSteps from '../storage/addUserSteps'
+import { escapeRegExp } from 'lodash'
 
-export const syncUserEmail = async (user, email, utmString, log) => {
-  const { crmId } = user
+export const shouldUpdateEmail = (email, newEmail) => {
+  if (newEmail) {
+    const emailRe = new RegExp(`^${escapeRegExp(newEmail)}$`, 'i')
 
-  if (!crmId) {
-    const userPayload = { ...user, email }
-
-    log.debug("crm contact doesn't exists creating...")
-    await addUserSteps.createCRMRecord(userPayload, utmString, log)
-    return
+    return !emailRe.test(email || '')
   }
 
-  log.debug('crm contact exists updating...')
-  await OnGage.updateContactEmail(crmId, email, log)
+  return false
 }

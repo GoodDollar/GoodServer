@@ -9,7 +9,7 @@ import OnGage from '../crm/ongage'
 import { parseUtmString } from '../utils/request'
 import { type UserRecord } from '../../imports/types'
 
-const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
+export const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
   if (!conf.disableFaceVerification) {
     return
   }
@@ -41,7 +41,7 @@ const addUserToWhiteList = async (userRecord: UserRecord, logger: any) => {
   }
 }
 
-const createCRMRecord = async (userRecord: UserRecord, utmString: string, logger: any) => {
+export const createCRMRecord = async (userRecord: UserRecord, utmString: string, logger: any) => {
   const userFields = pick(userRecord, ['fullName', 'mobile', 'email', 'identifier', 'regMethod', 'torusProvider'])
 
   const utmFields = parseUtmString(utmString)
@@ -70,7 +70,7 @@ const createCRMRecord = async (userRecord: UserRecord, utmString: string, logger
   return crmId
 }
 
-const topUserWallet = async (userRecord: UserRecord, logger: any) => {
+export const topUserWallet = async (userRecord: UserRecord, logger: any) => {
   let user = await UserDBPrivate.getUser(userRecord.identifier)
   const topWallet = get(user, 'isCompleted.topWallet', false)
   if (!topWallet) {
@@ -89,8 +89,17 @@ const topUserWallet = async (userRecord: UserRecord, logger: any) => {
   return true
 }
 
-export default {
-  topUserWallet,
-  createCRMRecord,
-  addUserToWhiteList
+export const syncUserEmail = async (user, email, utmString, log) => {
+  const { crmId } = user
+
+  if (!crmId) {
+    const userPayload = { ...user, email }
+
+    log.debug("crm contact doesn't exists creating...")
+    await createCRMRecord(userPayload, utmString, log)
+    return
+  }
+
+  log.debug('crm contact exists updating...')
+  await OnGage.updateContactEmail(crmId, email, log)
 }

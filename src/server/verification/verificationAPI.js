@@ -20,7 +20,7 @@ import fetch from 'cross-fetch'
 import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 import { verifySignature } from '../utils/eth'
 import { shouldLogVerificaitonError } from './utils/logger'
-import { syncUserEmail } from '../crm/utils'
+import { syncUserEmail } from '../storage/addUserSteps'
 
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   /**

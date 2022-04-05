@@ -225,6 +225,20 @@ describe('OnGage', () => {
     })
   })
 
+  test('should skip update email if no new email or new email matches the old one', async () => {
+    const newEmails = [null, contactEmail]
+
+    helper.mockSuccessGetContact(contactId, { email: contactEmail })
+
+    await Promise.all(
+      newEmails.map(async newEmail => {
+        await expect(OnGage.updateContactEmail(contactId, newEmail)).resolves.toBe(contactId)
+
+        expect(mock.history.put.length).toBe(0)
+      })
+    )
+  })
+
   test('should convert user record, add defaults and create contact', async () => {
     helper.mockSuccessCreateContact(contactEmail, contactId)
     helper.mockSuccessChangeStatus()

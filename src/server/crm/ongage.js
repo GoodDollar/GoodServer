@@ -8,6 +8,7 @@ import logger from '../../imports/logger'
 
 import { type UserRecord } from '../../imports/types'
 import { userRecordToContact, type CrmApi, type Contact } from './api'
+import { shouldUpdateEmail } from './utils'
 
 class OnGage implements CrmApi {
   http = null
@@ -72,13 +73,14 @@ class OnGage implements CrmApi {
 
     try {
       const contact = await this.getContactById(crmId, logger)
-      const email = get(contact, 'payload.email')
+      const { id, email } = contact.payload || {}
 
-      //verify not a just a case difference
-      if (email.toLowerCase() === newEmail.toLowerCase()) return email
+      // verify not a just a case difference
+      if (!shouldUpdateEmail(email, newEmail)) {
+        return id
+      }
 
       const payload = { email, new_email: newEmail }
-
       const result = await this.http.put('contacts/change_email', payload, { logger })
       const emails = get(result, 'payload.success_emails')
 
