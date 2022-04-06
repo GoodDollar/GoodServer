@@ -213,6 +213,7 @@ describe('OnGage', () => {
 
     helper.mockSuccessGetContact(contactId, { email: contactEmail })
     helper.mockSuccessUpdateEmail(contactEmail, contactId)
+    helper.mockFailedGetByEmail(newEmail)
 
     await expect(OnGage.updateContactEmail(contactId, newEmail)).resolves.toBe(contactId)
 
@@ -237,6 +238,33 @@ describe('OnGage', () => {
         expect(mock.history.put.length).toBe(0)
       })
     )
+  })
+
+  test('should delete contact if contact with the new email exists', async () => {
+    const newEmail = 'new@fake-email.com'
+    const existingId = 'fake-existing-contact-id'
+
+    helper.mockSuccessDeleteContact()
+    helper.mockSuccessUpdateEmail(contactEmail, contactId)
+    helper.mockSuccessGetContact(contactId, { email: contactEmail })
+    helper.mockSuccessGetByEmail(existingId, newEmail, { email: newEmail })
+
+    await expect(OnGage.updateContactEmail(contactId, newEmail)).resolves.toBe(contactId)
+
+    const putRequest = first(mock.history.put)
+    const putPayload = JSON.parse(putRequest.data)
+
+    const postRequest = first(mock.history.post)
+    const postPayload = JSON.parse(postRequest.data)
+
+    expect(postPayload).toEqual({
+      contact_id: existingId
+    })
+
+    expect(putPayload).toEqual({
+      email: contactEmail,
+      new_email: newEmail
+    })
   })
 
   test('should convert user record, add defaults and create contact', async () => {

@@ -80,6 +80,16 @@ class OnGage implements CrmApi {
         return id
       }
 
+      // verify for newEmail contact existence
+      const existingContact = await this._tryGetExistingContact(newEmail, logger)
+
+      if (existingContact) {
+        const { id } = existingContact.payload
+
+        // remove if exists
+        await this.deleteContact(id)
+      }
+
       const payload = { email, new_email: newEmail }
       const result = await this.http.put('contacts/change_email', payload, { logger })
       const emails = get(result, 'payload.success_emails')
@@ -133,6 +143,7 @@ class OnGage implements CrmApi {
     return this._upsertContact({ id, whitelisted: 'true' }, logger)
   }
 
+  /** @private */
   async _upsertContact(contact: Contact, logger = null): Promise<string> {
     let result
     const overwrite = true
@@ -177,6 +188,20 @@ class OnGage implements CrmApi {
     return firstCreated || firstUpdated || firstSuccess
   }
 
+  /** @private */
+  async _tryGetExistingContact(email, logger) {
+    try {
+      return await this.getContactByEmail(email, logger)
+    } catch (exception) {
+      if (404 !== get(exception, 'response.data.payload.code')) {
+        throw exception
+      }
+    }
+
+    return null
+  }
+
+  /** @private */
   _configureClient(Config, log) {
     const { ongageUrl, ongageAccount, ongageKey, ongageSecret } = Config
 
@@ -198,6 +223,7 @@ class OnGage implements CrmApi {
     return httpClientOptions
   }
 
+  /** @private */
   _configureRequests() {
     const { request } = this.http.interceptors
 
@@ -225,6 +251,7 @@ class OnGage implements CrmApi {
     })
   }
 
+  /** @private */
   _configureResponses() {
     const { http, log } = this
     const { response } = http.interceptors
