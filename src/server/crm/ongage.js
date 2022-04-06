@@ -87,7 +87,7 @@ class OnGage implements CrmApi {
         const { id } = existingContact.payload
 
         // remove if exists
-        await this.deleteContact(id)
+        await this.deleteContact(id, logger)
       }
 
       const payload = { email, new_email: newEmail }
