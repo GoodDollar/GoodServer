@@ -85,12 +85,16 @@ export const topUserWallet = async (userRecord: UserRecord, logger: any) => {
         return false
       })
   }
+
   logger.debug('topUserWallet user wallet already topped', { address: userRecord.gdAddress })
   return true
 }
 
 export const syncUserEmail = async (user, email, utmString, log) => {
-  const { crmId } = user
+  const { crmId, loggedInAs } = user
+  const { model } = UserDBPrivate
+
+  await model.updateOne({ identifier: loggedInAs }, { $unset: { 'otp.email': 1 } })
 
   if (!crmId) {
     const userPayload = { ...user, email }
@@ -101,5 +105,10 @@ export const syncUserEmail = async (user, email, utmString, log) => {
   }
 
   log.debug('crm contact exists updating...')
-  await OnGage.updateContactEmail(crmId, email, log)
+  const { duplicateId } = await OnGage.updateContactEmail(crmId, email, log)
+
+  if (duplicateId) {
+    log.debug('duplicate found, sharing crmId...')
+    await model.updateMany({ crmId: duplicateId }, { crmId })
+  }
 }

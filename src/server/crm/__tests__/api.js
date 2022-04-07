@@ -215,7 +215,7 @@ describe('OnGage', () => {
     helper.mockSuccessUpdateEmail(contactEmail, contactId)
     helper.mockFailedGetByEmail(newEmail)
 
-    await expect(OnGage.updateContactEmail(contactId, newEmail)).resolves.toBe(contactId)
+    await expect(OnGage.updateContactEmail(contactId, newEmail)).resolves.toStrictEqual({ id: contactId })
 
     const putRequest = first(mock.history.put)
     const jsonPayload = JSON.parse(putRequest.data)
@@ -233,14 +233,14 @@ describe('OnGage', () => {
 
     await Promise.all(
       newEmails.map(async newEmail => {
-        await expect(OnGage.updateContactEmail(contactId, newEmail)).resolves.toBe(contactId)
+        await expect(OnGage.updateContactEmail(contactId, newEmail)).resolves.toStrictEqual({ id: contactId })
 
         expect(mock.history.put.length).toBe(0)
       })
     )
   })
 
-  test('should delete contact if contact with the new email exists', async () => {
+  test('should delete contact and return duplicate id if contact with the new email exists', async () => {
     const newEmail = 'new@fake-email.com'
     const existingId = 'fake-existing-contact-id'
 
@@ -249,7 +249,10 @@ describe('OnGage', () => {
     helper.mockSuccessGetContact(contactId, { email: contactEmail })
     helper.mockSuccessGetByEmail(existingId, newEmail, { email: newEmail })
 
-    await expect(OnGage.updateContactEmail(contactId, newEmail)).resolves.toBe(contactId)
+    await expect(OnGage.updateContactEmail(contactId, newEmail)).resolves.toStrictEqual({
+      id: contactId,
+      duplicateId: existingId
+    })
 
     const putRequest = first(mock.history.put)
     const putPayload = JSON.parse(putRequest.data)

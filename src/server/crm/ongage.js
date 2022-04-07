@@ -77,24 +77,23 @@ class OnGage implements CrmApi {
 
       // verify not a just a case difference
       if (!shouldUpdateEmail(email, newEmail)) {
-        return id
+        return { id }
       }
 
       // verify for newEmail contact existence
-      const existingContact = await this._tryGetExistingContact(newEmail, logger)
+      const duplicateId = await this.getContactIdByEmail(newEmail, logger)
 
-      if (existingContact) {
-        const { id } = existingContact.payload
-
+      if (duplicateId) {
         // remove if exists
-        await this.deleteContact(id, logger)
+        await this.deleteContact(duplicateId, logger)
       }
 
       const payload = { email, new_email: newEmail }
       const result = await this.http.put('contacts/change_email', payload, { logger })
       const emails = get(result, 'payload.success_emails')
+      const response = { id: emails[email] }
 
-      return emails[email]
+      return duplicateId ? { ...response, duplicateId } : response
     } catch (exception) {
       log.warn('OnGage: updateContactEmail failed', exception.message, exception)
       throw exception
@@ -129,6 +128,20 @@ class OnGage implements CrmApi {
     const params = { id }
 
     return this.http.get(`contacts/by_id/:id`, { logger, params })
+  }
+
+  async getContactIdByEmail(email, logger) {
+    try {
+      const existingContact = await this.getContactByEmail(email, logger)
+
+      return get(existingContact, 'payload.id')
+    } catch (exception) {
+      if (404 !== get(exception, 'response.data.payload.code')) {
+        throw exception
+      }
+    }
+
+    return null
   }
 
   async deleteContact(id: string, logger = null): any {
@@ -186,19 +199,6 @@ class OnGage implements CrmApi {
     )
 
     return firstCreated || firstUpdated || firstSuccess
-  }
-
-  /** @private */
-  async _tryGetExistingContact(email, logger) {
-    try {
-      return await this.getContactByEmail(email, logger)
-    } catch (exception) {
-      if (404 !== get(exception, 'response.data.payload.code')) {
-        throw exception
-      }
-    }
-
-    return null
   }
 
   /** @private */
