@@ -416,7 +416,7 @@ class FishingManager {
     const claimBlockEnd = parseInt(get(searchEndDay, 'returnValues.blockNumber', claimBlockStart + FUSE_DAY_BLOCKS))
 
     //get candidates
-    const chunkSize = FUSE_DAY_BLOCKS / 10
+    const chunkSize = 100000
     const blockChunks = range(claimBlockStart, claimBlockEnd, chunkSize)
     const claimEvents = flatten(
       await Promise.all(
