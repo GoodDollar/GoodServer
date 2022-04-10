@@ -354,7 +354,8 @@ class FishingManager {
         .then(parseInt))
 
     const daysagoBlocks = dayFuseBlocks * (maxInactiveDays + 1)
-    const blocksAgo = Math.max((await AdminWallet.web3.eth.getBlockNumber()) - daysagoBlocks, 0)
+    const curBlock = await AdminWallet.web3.eth.getBlockNumber()
+    const blocksAgo = Math.max(curBlock - daysagoBlocks, 0)
     await AdminWallet.sendTransaction(this.ubiContract.methods.setDay(), {}).catch(e =>
       this.log.warn('fishManager set day failed')
     )
@@ -365,10 +366,28 @@ class FishingManager {
     this.log.info('getInactiveAccounts', { daysagoBlocks, blocksAgo, currentUBIDay, maxInactiveDays })
     //get claims that were done before inactive period days ago, these accounts has the potential to be inactive
     //first we get the starting block
-    const ubiEvents = await this.ubiContract.getPastEvents('UBICalculated', { fromBlock: blocksAgo }).catch(e => {
-      this.log.warn('fishManager getPastEvents failed')
-      throw e
-    })
+    const blockChunks = range(blocksAgo, curBlock, 100000)
+    const ubiEvents = flatten(
+      await Promise.all(
+        blockChunks.map(startBlock =>
+          this.ubiContract
+            .getPastEvents('UBICalculated', {
+              fromBlock: startBlock,
+              toBlock: Math.min(curBlock, startBlock + 100000)
+            })
+            .catch(e => {
+              this.log.warn('getUBICalculatedDays getPastEvents UBICalculated chunk failed', e.message, {
+                startBlock
+              })
+              return []
+            })
+        )
+      )
+    )
+    // const ubiEvents = await this.ubiContract.getPastEvents('UBICalculated', { fromBlock: blocksAgo }).catch(e => {
+    //   this.log.warn('fishManager getPastEvents failed')
+    //   throw e
+    // })
     this.log.info('getUBICalculatedDays ubiEvents:', {
       ubiEvents: ubiEvents.length,
       ubiEventDays: ubiEvents.map(_ => get(_, 'returnValues.day')).map(parseInt)
