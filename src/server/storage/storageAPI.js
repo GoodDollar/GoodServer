@@ -433,8 +433,8 @@ const setup = (app: Router, storage: StorageAPI) => {
     wrapAsync(async (req, res, next) => {
       const { log } = req
       let { identifier = '', email, mobile } = req.body
-      const identifierLC = identifier.toLowerCase()
-      email = email.toLowerCase()
+      const identifierLC = identifier ? identifier.toLowerCase() : undefined
+      email = email ? email.toLowerCase() : undefined
       const queryOrs = [
         { identifier: identifierLC }, // identifier is stored lowercase in the db. we lowercase addresses in the /auth/eth process
         { email: email && sha3(email) },
