@@ -237,13 +237,13 @@ const setup = (app: Router, storage: StorageAPI) => {
             walletAddress: sha3(userRecord.gdAddress.toLowerCase())
           }
 
-          if (sha3(email) === userRecord.email) toCRM.email = email
+          if (email && sha3(email) === userRecord.email) toCRM.email = email
           //TODO: verify why this is happening on wallet
           //for some reason some emails were kept with capital letter while from user they arrive lower case
           //this line is a patch to handle that case
-          if (sha3(email.charAt(0).toUpperCase() + email.slice(1)) === userRecord.email) toCRM.email = email
+          if (email && sha3(email.charAt(0).toUpperCase() + email.slice(1)) === userRecord.email) toCRM.email = email
 
-          if (sha3(mobile) === userRecord.mobile) toCRM.mobile = mobile
+          if (mobile && sha3(mobile) === userRecord.mobile) toCRM.mobile = mobile
 
           const crmId = await createCRMRecord(toCRM, '', logger)
 
