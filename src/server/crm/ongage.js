@@ -208,7 +208,7 @@ class OnGage implements CrmApi {
     const httpClientOptions = {
       validateStatus: status => status < 300,
       baseURL: ongageUrl,
-      timeout: 3000,
+      timeout: 15000,
 
       headers: {
         X_USERNAME: ongageKey,
