@@ -323,9 +323,9 @@ const setup = (app: Router, storage: StorageAPI) => {
       last_claim = moment(last_claim).format('YYYY/MM/DD')
 
       await OnGage.updateContact(null, user.crmId, { last_claim, claim_counter }, logger)
-        .then(r => logger.debug('/user/claim createCRMRecord success'))
+        .then(r => logger.debug('/user/claim updateContact success'))
         .catch(e => {
-          logger.error('/user/claim createCRMRecord failed', e.message, e, { user, body: req.body })
+          logger.error('/user/claim updateContact failed', e.message, e, { user, body: req.body })
           throw new Error('Failed updating user claim in CRM')
         })
 
