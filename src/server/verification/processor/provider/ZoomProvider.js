@@ -1,5 +1,5 @@
 // @flow
-import { omit, once, omitBy, bindAll, values } from 'lodash'
+import { get, once, omitBy, bindAll, values, isError } from 'lodash'
 
 import initZoomAPI from '../../api/ZoomAPI'
 
@@ -62,16 +62,23 @@ class ZoomProvider implements IEnrollmentProvider {
 
     // send event to onEnrollmentProcessing
     const notifyProcessor = async eventPayload => onEnrollmentProcessing(eventPayload)
+    const isLargeTextField = field => ['Base64', 'Blob'].some(suffix => field.endsWith(suffix))
+    const redactedFields = ['callData', 'additionalSessionData', 'serverInfo']
 
     // throws custom exception related to the predefined verification cases
     // e.g. livenes wasn't passed, duplicate found etc
-    const throwCustomException = (customMessage, customResponse, zoomResponse = {}) => {
-      const exception = new Error(customMessage)
-      // removing debug fields
-      let redactedResponse = omit(zoomResponse, 'callData', 'additionalSessionData', 'serverInfo')
+    const throwException = (errorOrMessage, customResponse, originalResponse = {}) => {
+      let exception = errorOrMessage
+      let { response } = exception || {}
 
-      // removing all large data (e.g. images , facemaps)
-      redactedResponse = omitBy(redactedResponse, (_, field) => field.endsWith('Base64'))
+      if (!isError(errorOrMessage)) {
+        exception = new Error(errorOrMessage)
+        response = originalResponse
+      }
+
+      // removing debug fields and all large data (e.g.
+      // images, facemaps), keeping just 'scanResultBlob'
+      const redactedResponse = omitBy(response, (_, field) => redactedFields.includes(field) || isLargeTextField(field))
 
       exception.response = {
         ...redactedResponse,
@@ -88,6 +95,7 @@ class ZoomProvider implements IEnrollmentProvider {
     const alreadyEnrolled = await this.isEnrollmentExists(enrollmentIdentifier, customLogger)
 
     // 2. performing liveness check and storing facescan / audit trail images (if need)
+    let resultBlob
     let isLive = true
     let isNotMatch = false
 
@@ -95,8 +103,9 @@ class ZoomProvider implements IEnrollmentProvider {
       // if already enrolled, will call /match-3d
       // othwerise (if not enrolled/stored yet) - /enroll
       const methodToInvoke = (alreadyEnrolled ? 'update' : 'submit') + 'Enrollment'
+      const response = await api[methodToInvoke](enrollmentIdentifier, payload, customLogger)
 
-      await api[methodToInvoke](enrollmentIdentifier, payload, customLogger)
+      resultBlob = get(response, 'scanResultBlob')
       log.debug('Received enrollment:', { enrollmentIdentifier, alreadyEnrolled })
     } catch (exception) {
       const { name, message, response } = exception
@@ -111,8 +120,10 @@ class ZoomProvider implements IEnrollmentProvider {
         // so we'll reject with isNotMatch: true instead
         // to show the error screen on app side immediately
         // notifying about liveness check failed
-        throwCustomException(message, { isNotMatch }, response)
+        throwException(message, { isNotMatch }, response)
       }
+
+      resultBlob = get(response, 'scanResultBlob')
 
       // if liveness / security issues were detected
       if ([LivenessCheckFailed, SecurityCheckFailed].includes(name)) {
@@ -121,7 +132,12 @@ class ZoomProvider implements IEnrollmentProvider {
         // notifying about liveness check failed
         await notifyProcessor({ isLive })
         log.warn(message, { enrollmentIdentifier })
-        throwCustomException(message, { isLive }, response)
+        throwException(message, { isLive, resultBlob }, response)
+      }
+
+      // if had response - re-throw with scanResultBlob
+      if (response) {
+        throwException(exception, { resultBlob })
       }
 
       // otherwise just re-throwing exception and stopping processing
@@ -153,7 +169,7 @@ class ZoomProvider implements IEnrollmentProvider {
     if (isDuplicate) {
       // if duplicate found - throwing corresponding error
       log.warn(duplicateFoundMessage, { duplicate, enrollmentIdentifier })
-      throwCustomException(duplicateFoundMessage, { isDuplicate }, faceSearchResponse)
+      throwException(duplicateFoundMessage, { isDuplicate }, faceSearchResponse)
     }
 
     // 4. indexing uploaded & stored face scan to the 3D Database
@@ -188,7 +204,7 @@ class ZoomProvider implements IEnrollmentProvider {
         isEnrolled = false
 
         await notifyProcessor({ isEnrolled })
-        throwCustomException(message, { isEnrolled }, response)
+        throwException(message, { isEnrolled }, response)
       }
     }
 
@@ -199,7 +215,7 @@ class ZoomProvider implements IEnrollmentProvider {
     await notifyProcessor({ isEnrolled })
 
     // returning successfull result
-    return { isVerified: true, alreadyEnrolled, message: enrollmentStatus }
+    return { isVerified: true, alreadyEnrolled, resultBlob, message: enrollmentStatus }
   }
 
   // eslint-disable-next-line require-await

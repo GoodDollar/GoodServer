@@ -16,6 +16,7 @@ const licenseKey = 'fake-license'
 const licenseType = ZoomLicenseType.Browser
 const sessionToken = 'fake-session-id'
 const enrollmentIdentifier = 'fake-enrollment-identifier'
+const enrollmentResultBlob = 'FaKEresULtBloB=='
 
 const payload = {
   sessionId: sessionToken,
@@ -26,12 +27,16 @@ const payload = {
 
 const createLoggerMock = () => fromPairs(['log', ...keys(levelConfigs.levels)].map(logFn => [logFn, jest.fn()]))
 
-const testSuccessfullEnrollment = async (alreadyEnrolled = false) => {
+const testSuccessfullEnrollment = async (alreadyEnrolled = false, resultBlob = null) => {
   const onEnrollmentProcessing = jest.fn()
   const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).resolves
 
   await wrappedResponse.toHaveProperty('isVerified', true)
   await wrappedResponse.toHaveProperty('alreadyEnrolled', alreadyEnrolled)
+
+  if (resultBlob) {
+    await wrappedResponse.toHaveProperty('resultBlob', resultBlob)
+  }
 
   expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: true, isNotMatch: false })
   expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(2, { isDuplicate: false })
@@ -110,6 +115,16 @@ describe('ZoomProvider', () => {
     await testSuccessfullEnrollment(false)
   })
 
+  test('enroll() returns resultBlob on successfull response', async () => {
+    helper.mockEnrollmentNotFound(enrollmentIdentifier)
+    helper.mockSuccessEnrollment(enrollmentIdentifier, enrollmentResultBlob)
+    helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
+    helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
+
+    // should return alreadyEnrolled = false
+    await testSuccessfullEnrollment(false, enrollmentResultBlob)
+  })
+
   test('enroll() calls match 3d if already enrolled', async () => {
     helper.mockEnrollmentFound(enrollmentIdentifier)
     helper.mockSuccessReadEnrollmentIndex(enrollmentIdentifier)
@@ -177,6 +192,16 @@ describe('ZoomProvider', () => {
     await wrappedResponse.toHaveProperty('response.isVerified', false)
 
     expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: false })
+  })
+
+  test('enroll() throws with resultBlob if enrollment fails', async () => {
+    helper.mockEnrollmentNotFound(enrollmentIdentifier)
+    helper.mockFailedEnrollment(enrollmentIdentifier, enrollmentResultBlob)
+
+    const onEnrollmentProcessing = jest.fn()
+    const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).rejects
+
+    await wrappedResponse.toHaveProperty('response.resultBlob', enrollmentResultBlob)
   })
 
   test('enroll() throws if already enrolled and facemap not match', async () => {

@@ -1,4 +1,4 @@
-import { upperFirst, toLower } from 'lodash'
+import { upperFirst, toLower, assign, isPlainObject } from 'lodash'
 
 import { enrollmentIdFields } from '../../../utils/logger'
 
@@ -180,17 +180,29 @@ export default zoomServiceMock => {
   const mockEnrollmentNotExistsDuringSearch = enrollmentIdentifier =>
     dbFailedResponse('search', enrollmentIdentifier, dbInternalEnrollmentDoesntExists)
 
-  const mockSuccessEnrollment = enrollmentIdentifier =>
-    faceScanResponse('enrollment', enrollmentPayloadMatcher(enrollmentIdentifier), {
-      externalDatabaseRefID: enrollmentIdentifier
-    })
+  const mockSuccessEnrollment = (enrollmentIdentifier, scanResultBlob = null) => {
+    const payload = { externalDatabaseRefID: enrollmentIdentifier }
 
-  const mockFailedEnrollment = (enrollmentIdentifier, withReasonFlags = {}) => {
+    if (scanResultBlob) {
+      assign(payload, { scanResultBlob })
+    }
+
+    faceScanResponse('enrollment', enrollmentPayloadMatcher(enrollmentIdentifier), payload)
+  }
+
+  const mockFailedEnrollment = (enrollmentIdentifier, withReasonFlags = {}, resultBlob = null) => {
     const payloadMatcher = enrollmentPayloadMatcher(enrollmentIdentifier)
+    let reasonFlags = withReasonFlags
+    let scanResultBlob = resultBlob
 
-    const reasonFlags = {
+    if (!isPlainObject(withReasonFlags)) {
+      reasonFlags = {}
+      scanResultBlob = withReasonFlags
+    }
+
+    const flags = {
       faceScanLivenessCheckSucceeded: false,
-      ...withReasonFlags
+      ...reasonFlags
     }
 
     const response = {
@@ -198,7 +210,11 @@ export default zoomServiceMock => {
       success: false
     }
 
-    faceScanResponse('enrollment', payloadMatcher, response, reasonFlags)
+    if (scanResultBlob) {
+      assign(response, { scanResultBlob })
+    }
+
+    faceScanResponse('enrollment', payloadMatcher, response, flags)
   }
 
   const mockEnrollmentAlreadyExists = enrollmentIdentifier =>
