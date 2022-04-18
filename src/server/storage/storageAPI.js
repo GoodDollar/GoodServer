@@ -230,6 +230,12 @@ const setup = (app: Router, storage: StorageAPI) => {
           logger.debug('verifyCRM already has crmID', { crmId: userRecord.crmId })
         } else {
           let { email, mobile, fullName } = userPayload
+          if (!email) {
+            logger.warn('verifyCRM missing user email:', { userPayload, userRecord })
+            return res.json({
+              ok: 0
+            })
+          }
           email = email.toLowerCase()
           const toCRM = {
             identifier: userRecord.loggedInAs,

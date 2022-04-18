@@ -110,14 +110,13 @@ export default class EnrollmentSession {
       ),
       adminApi
         .whitelistUser(gdAddress, profilePublickey)
+        .then(_ => log.info('Successfully whitelisted user:', { loggedInAs }))
         .catch(e => log.error('whitelisting after fv failed', e.message, e, { user })),
 
       scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.Reauthenticate).catch(e =>
         log.warn('adding facemap to re-auth dispose queue failed:', e.message, e)
       )
     ])
-
-    log.info('Successfully whitelisted user:', { loggedInAs })
   }
 
   async onEnrollmentFailed() {
