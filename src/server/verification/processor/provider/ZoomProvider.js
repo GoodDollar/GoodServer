@@ -15,6 +15,7 @@ import { faceSnapshotFields } from '../../utils/logger'
 import logger from '../../../../imports/logger'
 
 import { type IEnrollmentProvider } from '../typings'
+import { response } from 'express'
 
 class ZoomProvider implements IEnrollmentProvider {
   api = null
@@ -65,6 +66,13 @@ class ZoomProvider implements IEnrollmentProvider {
     const isLargeTextField = field => ['Base64', 'Blob'].some(suffix => field.endsWith(suffix))
     const redactedFields = ['callData', 'additionalSessionData', 'serverInfo']
 
+    let resultBlob
+    let isLive = true
+    let isNotMatch = false
+
+    // reads resultBLob from response
+    const fetchResult = response => (resultBlob = get(response, 'scanResultBlob'))
+
     // throws custom exception related to the predefined verification cases
     // e.g. livenes wasn't passed, duplicate found etc
     const throwException = (errorOrMessage, customResponse, originalResponse = {}) => {
@@ -95,17 +103,12 @@ class ZoomProvider implements IEnrollmentProvider {
     const alreadyEnrolled = await this.isEnrollmentExists(enrollmentIdentifier, customLogger)
 
     // 2. performing liveness check and storing facescan / audit trail images (if need)
-    let resultBlob
-    let isLive = true
-    let isNotMatch = false
-
     try {
       // if already enrolled, will call /match-3d
       // othwerise (if not enrolled/stored yet) - /enroll
       const methodToInvoke = (alreadyEnrolled ? 'update' : 'submit') + 'Enrollment'
-      const response = await api[methodToInvoke](enrollmentIdentifier, payload, customLogger)
 
-      resultBlob = get(response, 'scanResultBlob')
+      await api[methodToInvoke](enrollmentIdentifier, payload, customLogger).then(fetchResult)
       log.debug('Received enrollment:', { enrollmentIdentifier, alreadyEnrolled })
     } catch (exception) {
       const { name, message, response } = exception
@@ -123,7 +126,8 @@ class ZoomProvider implements IEnrollmentProvider {
         throwException(message, { isNotMatch }, response)
       }
 
-      resultBlob = get(response, 'scanResultBlob')
+      // fetching resultBlob
+      fetchResult(response)
 
       // if liveness / security issues were detected
       if ([LivenessCheckFailed, SecurityCheckFailed].includes(name)) {
@@ -135,8 +139,8 @@ class ZoomProvider implements IEnrollmentProvider {
         throwException(message, { isLive, resultBlob }, response)
       }
 
-      // if had response - re-throw with scanResultBlob
-      if (response) {
+      // if had response and blob - re-throw with scanResultBlob
+      if (response && resultBlob) {
         throwException(exception, { resultBlob })
       }
 
