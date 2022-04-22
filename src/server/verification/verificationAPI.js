@@ -160,9 +160,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     '/verify/face/:enrollmentIdentifier',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
-      const { user, log, params, body: payload, isE2ERunning } = req
+      const { user, log, params, body: payload } = req
       const { enrollmentIdentifier } = params
-      let enrollmentResult
 
       // checking if request aborted to handle cases when connection is slow
       // and facemap / images were uploaded more that 30sec causing timeout
@@ -171,38 +170,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       try {
-        const { disableFaceVerification, allowDuplicatedFaceRecords } = conf
         const enrollmentProcessor = createEnrollmentProcessor(storage, log)
 
         await enrollmentProcessor.validate(user, enrollmentIdentifier, payload)
-
-        // if FV disabled or dups allowed or running Cypress, we're skipping enrollment logic
-        if (disableFaceVerification || allowDuplicatedFaceRecords || isE2ERunning) {
-          // creating enrollment session manually for this user
-          const enrollmentSession = enrollmentProcessor.createEnrollmentSession(enrollmentIdentifier, user, log)
-
-          // calling onEnrollmentStarted() to lock dispose task in the queue
-          await enrollmentSession.onEnrollmentStarted()
-
-          enrollmentResult = { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } }
-
-          /*
-            1. when FR is enabled and user is already verified,
-              we need to make sure to whitelist him,
-              maybe we changed the whitelisting contract and
-              he is no longer whitelisted there,
-              so we trust that we already whitelisted him in the past
-              and whitelist him again in the new contract
-
-            2. in the session's lifecycle onEnrollmentCompleted() is called
-              after enrollment was successful
-              it whitelists user in the wallet
-              here we're calling it manually as we've skipped enroll()
-          */
-          await enrollmentSession.onEnrollmentCompleted()
-        } else {
-          enrollmentResult = await enrollmentProcessor.enroll(user, enrollmentIdentifier, payload, log)
-        }
+        await enrollmentProcessor
+          .enroll(user, enrollmentIdentifier, payload, log)
+          .then(enrollmentResult => res.json(enrollmentResult))
       } catch (exception) {
         const { message } = exception
         const logArgs = ['Face verification error:', message, exception, { enrollmentIdentifier }]
@@ -214,10 +187,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         }
 
         res.status(400).json({ success: false, error: message })
-        return
       }
-
-      res.json(enrollmentResult)
     })
   )
 

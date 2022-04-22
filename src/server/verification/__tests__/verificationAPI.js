@@ -376,52 +376,6 @@ describe('verificationAPI', () => {
       await testWhitelisted()
     })
 
-    test('PUT /verify/face/:enrollmentIdentifier skips verification and re-whitelists user if request comes from E2E test runs', async () => {
-      const currentEnv = Config.env
-
-      Config.env = 'development'
-
-      await request(server)
-        .put(enrollmentUri)
-        .send(payload)
-        .set('Authorization', `Bearer ${token}`)
-        .set(
-          'User-Agent',
-          'Mozilla/5.0 (X11; Linux x86_64; Cypress) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36'
-        )
-        .expect(200, { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } })
-        .then(testWhitelisted)
-        .finally(() => (Config.env = currentEnv))
-    })
-
-    test('PUT /verify/face/:enrollmentIdentifier skips verification and re-whitelists user if FV disabled', async () => {
-      const currentDisabledState = Config.disableFaceVerification
-
-      Config.disableFaceVerification = true
-
-      await request(server)
-        .put(enrollmentUri)
-        .send(payload)
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200, { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } })
-        .then(testWhitelisted)
-        .finally(() => (Config.disableFaceVerification = currentDisabledState))
-    })
-
-    test('PUT /verify/face/:enrollmentIdentifier skips verification and re-whitelists user if the dups are allowed', async () => {
-      const currentDupsState = Config.allowDuplicatedFaceRecords
-
-      Config.allowDuplicatedFaceRecords = true
-
-      await request(server)
-        .put(enrollmentUri)
-        .send(payload)
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200, { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } })
-        .then(testWhitelisted)
-        .finally(() => (Config.allowDuplicatedFaceRecords = currentDupsState))
-    })
-
     test('DELETE /verify/face/:enrollmentIdentifier returns 200, success = true and enqueues disposal task if signature is valid', async () => {
       await request(server)
         .delete(enrollmentUri)
