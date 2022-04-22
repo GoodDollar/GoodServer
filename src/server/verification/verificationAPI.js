@@ -171,11 +171,10 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       try {
         const enrollmentProcessor = createEnrollmentProcessor(storage, log)
-
         await enrollmentProcessor.validate(user, enrollmentIdentifier, payload)
-        await enrollmentProcessor
-          .enroll(user, enrollmentIdentifier, payload, log)
-          .then(enrollmentResult => res.json(enrollmentResult))
+
+        const enrollmentResult = await enrollmentProcessor.enroll(user, enrollmentIdentifier, payload, log)
+        res.json(enrollmentResult)
       } catch (exception) {
         const { message } = exception
         const logArgs = ['Face verification error:', message, exception, { enrollmentIdentifier }]
