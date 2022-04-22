@@ -13,51 +13,8 @@ on:
     branches:
       - master
 
-  workflow_dispatch:
-    inputs:
-      release:
-        description: 'release type'
-        required: true
-        default: 'qa'
-      targetbranch:
-        description: 'target deployment branch'
-        required: false
-        default: 'staging'
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  release:
-    name: Release
-    if: "github.event_name == 'workflow_dispatch'"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/setup-node@v1
-        with:
-          node-version: 14
-      - uses: actions/checkout@v2
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-          ref: ${{ github.event.inputs.release == 'qa' && 'master' || 'staging' }}
-      - name: setup git
-        run: |
-          git config --local user.email "techadmin@gooddollar.org"
-          git config --local user.name "Techadmin"
-          npm install -g auto-changelog
-      - name: update version qa
-        if: "github.event.inputs.release == 'qa'"
-        run: |
-          npm version prerelease -m "chore: release qa version %s [skip build]"
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/GoodDollar/GoodServer master:${{ github.event.inputs.targetbranch }} --force --follow-tags
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/GoodDollar/GoodServer master --follow-tags
-
-      - name: update version prod
-        if: "github.event.inputs.release != 'qa'"
-        run: |
-          npm version minor -m "chore: release prod version %s [skip build]"
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/GoodDollar/GoodServer staging:${{ github.event.inputs.targetbranch }} --force --follow-tags
-          git checkout master
-          git merge staging
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/GoodDollar/GoodServer master --follow-tags
 
   setup:
     runs-on: ubuntu-latest
