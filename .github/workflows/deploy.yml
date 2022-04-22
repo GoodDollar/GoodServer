@@ -1,4 +1,4 @@
-name: GoodServer - Deploy
+name: GoodServer Deploy
 
 on:
   push:
