@@ -309,12 +309,6 @@ const conf = convict({
     env: 'DISABLE_FACE_VERIFICATION',
     default: false
   },
-  allowDuplicatedFaceRecords: {
-    doc: 'Skips duplicates / liveness check during Zoom API interaction',
-    format: Boolean,
-    env: 'ALLOW_DUPLICATED_FACE_RECORDS',
-    default: false
-  },
   sentryDSN: {
     doc: 'access token for sentry logging',
     format: String,

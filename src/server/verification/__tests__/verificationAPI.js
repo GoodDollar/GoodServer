@@ -64,6 +64,7 @@ describe('verificationAPI', () => {
     const licenseKey = 'fake-license'
     const licenseType = ZoomLicenseType.Browser
     const sessionToken = 'fake-session-id'
+    const enrollmentResultBlob = 'FaKEresULtBloB=='
     const enrollmentIdentifier = 'f0D7A688489Ab3079491d407A03BF16e5B027b2c'
     const signature =
       '0xff612279b69900493cec3e5f8707413ad4734aa1748483b61c856d3093bf0c88458e82722365f35dfedf88438ba1419774bbb67527057d9066eba9a548d4fc751b'
@@ -80,9 +81,9 @@ describe('verificationAPI', () => {
       lowQualityAuditTrailImage: 'data:image/png:FaKEimagE=='
     }
 
-    const mockSuccessVerification = () => {
+    const mockSuccessVerification = (resultBlob = null) => {
       helper.mockEnrollmentNotFound(enrollmentIdentifier)
-      helper.mockSuccessEnrollment(enrollmentIdentifier)
+      helper.mockSuccessEnrollment(enrollmentIdentifier, resultBlob)
       helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
       helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
     }
@@ -95,19 +96,26 @@ describe('verificationAPI', () => {
         .expect(400, { success: false, error: 'Invalid input' })
 
     // eslint-disable-next-line require-await
-    const testVerificationSuccessfull = async (alreadyEnrolled = false) =>
-      request(server)
+    const testVerificationSuccessfull = async (alreadyEnrolled = false, resultBlob = null) => {
+      const enrollmentResult = {
+        alreadyEnrolled,
+        isVerified: true,
+        message: `The FaceMap was ${alreadyEnrolled ? 'already' : 'successfully'} enrolled.`
+      }
+
+      if (resultBlob) {
+        assign(enrollmentResult, { resultBlob })
+      }
+
+      return request(server)
         .put(enrollmentUri)
         .send(payload)
         .set('Authorization', `Bearer ${token}`)
         .expect(200, {
           success: true,
-          enrollmentResult: {
-            alreadyEnrolled,
-            isVerified: true,
-            message: `The FaceMap was ${alreadyEnrolled ? 'already' : 'successfully'} enrolled.`
-          }
+          enrollmentResult
         })
+    }
 
     const testDisposalState = async isDisposing => {
       await request(server)
@@ -303,6 +311,11 @@ describe('verificationAPI', () => {
       await testWhitelisted()
     })
 
+    test('PUT /verify/face/:enrollmentIdentifier returns resultBlob', async () => {
+      mockSuccessVerification(enrollmentResultBlob)
+      await testVerificationSuccessfull(false, enrollmentResultBlob)
+    })
+
     test("PUT /verify/face/:enrollmentIdentifier returns 200 and success: false when verification wasn't successfull", async () => {
       helper.mockEnrollmentNotFound(enrollmentIdentifier)
       helper.mockSuccessEnrollment(enrollmentIdentifier)
@@ -361,52 +374,6 @@ describe('verificationAPI', () => {
 
       await testVerificationSuccessfull(true)
       await testWhitelisted()
-    })
-
-    test('PUT /verify/face/:enrollmentIdentifier skips verification and re-whitelists user if request comes from E2E test runs', async () => {
-      const currentEnv = Config.env
-
-      Config.env = 'development'
-
-      await request(server)
-        .put(enrollmentUri)
-        .send(payload)
-        .set('Authorization', `Bearer ${token}`)
-        .set(
-          'User-Agent',
-          'Mozilla/5.0 (X11; Linux x86_64; Cypress) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36'
-        )
-        .expect(200, { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } })
-        .then(testWhitelisted)
-        .finally(() => (Config.env = currentEnv))
-    })
-
-    test('PUT /verify/face/:enrollmentIdentifier skips verification and re-whitelists user if FV disabled', async () => {
-      const currentDisabledState = Config.disableFaceVerification
-
-      Config.disableFaceVerification = true
-
-      await request(server)
-        .put(enrollmentUri)
-        .send(payload)
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200, { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } })
-        .then(testWhitelisted)
-        .finally(() => (Config.disableFaceVerification = currentDisabledState))
-    })
-
-    test('PUT /verify/face/:enrollmentIdentifier skips verification and re-whitelists user if the dups are allowed', async () => {
-      const currentDupsState = Config.allowDuplicatedFaceRecords
-
-      Config.allowDuplicatedFaceRecords = true
-
-      await request(server)
-        .put(enrollmentUri)
-        .send(payload)
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200, { success: true, enrollmentResult: { isVerified: true, alreadyEnrolled: true } })
-        .then(testWhitelisted)
-        .finally(() => (Config.allowDuplicatedFaceRecords = currentDupsState))
     })
 
     test('DELETE /verify/face/:enrollmentIdentifier returns 200, success = true and enqueues disposal task if signature is valid', async () => {
