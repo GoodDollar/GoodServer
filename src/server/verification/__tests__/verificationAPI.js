@@ -8,7 +8,7 @@ import storage from '../../db/mongo/user-privat-provider'
 import AdminWallet from '../../blockchain/AdminWallet'
 
 import makeServer from '../../server-test'
-import { delay } from '../../utils/timeout'
+import { delay, noopAsync } from '../../utils/async'
 
 import { ZoomLicenseType } from '../../verification/utils/constants'
 import createEnrollmentProcessor from '../processor/EnrollmentProcessor'
@@ -17,7 +17,6 @@ import createMockingHelper from '../api/__tests__/__util__'
 
 import * as awsSes from '../../aws-ses/aws-ses'
 import { DisposeAt, scheduleDisposalTask, DISPOSE_ENROLLMENTS_TASK, forEnrollment } from '../cron/taskUtil'
-import { noopAsync } from '../../utils/async'
 
 describe('verificationAPI', () => {
   let server

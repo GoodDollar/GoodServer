@@ -3,9 +3,7 @@ import Crypto from 'crypto'
 import Web3 from 'web3'
 import HDKey from 'hdkey'
 import bip39 from 'bip39-light'
-import { defer, from as fromPromise, timer } from 'rxjs'
-import { retryWhen, mergeMap, throwError } from 'rxjs/operators'
-import get from 'lodash/get'
+import { get } from 'lodash'
 import * as web3Utils from 'web3-utils'
 import IdentityABI from '@gooddollar/goodcontracts/build/contracts/Identity.min.json'
 import GoodDollarABI from '@gooddollar/goodcontracts/build/contracts/GoodDollar.min.json'
@@ -19,7 +17,7 @@ import FaucetABI from '@gooddollar/goodcontracts/upgradables/build/contracts/Fus
 import conf from '../server.config'
 import logger from '../../imports/logger'
 import { isNonceError, isFundsError } from '../utils/eth'
-import requestTimeout from '../utils/timeout'
+import { requestTimeout } from '../utils/async'
 import { type TransactionReceipt } from './blockchain-types'
 
 import { getManager } from '../utils/tx-manager'
@@ -474,25 +472,6 @@ export class Wallet {
     return tx
   }
 
-  retryTimeout(asyncFnTx, timeout = 10000, retries = 1, interval = 0) {
-    return defer(() => fromPromise(Promise.race([asyncFnTx(), requestTimeout(timeout, 'Adminwallet tx timeout')])))
-      .pipe(
-        retryWhen(attempts =>
-          attempts.pipe(
-            mergeMap((attempt, index) => {
-              const retryAttempt = index + 1
-
-              if (retryAttempt > retries) {
-                return throwError(attempt)
-              }
-
-              return timer(interval || 0)
-            })
-          )
-        )
-      )
-      .toPromise()
-  }
   /**
    * top wallet if needed
    * @param {string} address

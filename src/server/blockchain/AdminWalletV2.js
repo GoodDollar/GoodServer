@@ -3,8 +3,6 @@ import Crypto from 'crypto'
 import Web3 from 'web3'
 import HDKey from 'hdkey'
 import bip39 from 'bip39-light'
-import { defer, from as fromPromise, timer } from 'rxjs'
-import { retryWhen, mergeMap, throwError } from 'rxjs/operators'
 import get from 'lodash/get'
 import assign from 'lodash/assign'
 import * as web3Utils from 'web3-utils'
@@ -18,7 +16,7 @@ import FaucetABI from '@gooddollar/goodcontracts/upgradables/build/contracts/Fus
 import conf from '../server.config'
 import logger from '../../imports/logger'
 import { isNonceError, isFundsError } from '../utils/eth'
-import requestTimeout from '../utils/timeout'
+import { withTimeout } from '../utils/async'
 import { type TransactionReceipt } from './blockchain-types'
 
 import { getManager } from '../utils/tx-manager'
@@ -492,25 +490,6 @@ export class Wallet {
     return tx
   }
 
-  retryTimeout(asyncFnTx, timeout = 10000, retries = 1, interval = 0) {
-    return defer(() => fromPromise(Promise.race([asyncFnTx(), requestTimeout(timeout, 'Adminwallet tx timeout')])))
-      .pipe(
-        retryWhen(attempts =>
-          attempts.pipe(
-            mergeMap((attempt, index) => {
-              const retryAttempt = index + 1
-
-              if (retryAttempt > retries) {
-                return throwError(attempt)
-              }
-
-              return timer(interval || 0)
-            })
-          )
-        )
-      )
-      .toPromise()
-  }
   /**
    * top wallet if needed
    * @param {string} address
@@ -773,16 +752,18 @@ export class Wallet {
           })
       })
 
-      const res = await Promise.race([txPromise, requestTimeout(FUSE_TX_TIMEOUT, 'fuse tx timeout')])
-      return res
+      const response = await withTimeout(txPromise, FUSE_TX_TIMEOUT, 'fuse tx timeout')
+
+      return response
     } catch (e) {
       await this.txManager.unlock(currentAddress)
+
       if (retry && e.message.includes('fuse tx timeout')) {
         logger.warn('sendTransaction timeout retrying:', { uuid, txHash })
         return this.sendTransaction(tx, txCallbacks, { gas, gasPrice }, false, logger)
       }
-      logger.error('sendTransaction error:', e.message, e, { from: currentAddress, uuid })
 
+      logger.error('sendTransaction error:', e.message, e, { from: currentAddress, uuid })
       throw new Error(e)
     }
   }

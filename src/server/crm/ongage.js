@@ -1,13 +1,14 @@
 // @flow
 
 import Axios from 'axios'
-import { get, assign, values, first } from 'lodash'
-import Config from '../server.config'
+import axiosRetry from 'axios-retry'
+import { get, assign, values, first, isError } from 'lodash'
 
+import Config from '../server.config'
 import logger from '../../imports/logger'
 
 import { type UserRecord } from '../../imports/types'
-import { userRecordToContact, type CrmApi, type Contact } from './api'
+import { userRecordToContact, type Contact } from './api'
 import { shouldUpdateEmail } from './utils'
 
 class OnGage implements CrmApi {
@@ -27,7 +28,7 @@ class OnGage implements CrmApi {
       dev_env: env
     }
 
-    this._configureRequests()
+    this._configureRequests(Config)
     this._configureResponses()
   }
 
@@ -203,12 +204,12 @@ class OnGage implements CrmApi {
 
   /** @private */
   _configureClient(Config, log) {
-    const { ongageUrl, ongageAccount, ongageKey, ongageSecret } = Config
+    const { ongageUrl, ongageAccount, ongageKey, ongageSecret, ongageTimeout } = Config
 
     const httpClientOptions = {
       validateStatus: status => status < 300,
       baseURL: ongageUrl,
-      timeout: 15000,
+      timeout: ongageTimeout,
 
       headers: {
         X_USERNAME: ongageKey,
@@ -224,8 +225,16 @@ class OnGage implements CrmApi {
   }
 
   /** @private */
-  _configureRequests() {
-    const { request } = this.http.interceptors
+  _configureRequests(Config) {
+    const { http } = this
+    const { ongageRetryAttempts, ongageRetryDelay } = Config
+    const { request } = http.interceptors
+
+    axiosRetry(http, {
+      retries: ongageRetryAttempts,
+      retryDelay: () => ongageRetryDelay,
+      retryCondition: reason => isError(reason) && /timeout of.+exceeded/i.test(reason.message)
+    })
 
     request.use(({ url, params, logger, ...requestOptions }) => {
       const searchParams = params instanceof URLSearchParams ? params : new URLSearchParams(params || {})

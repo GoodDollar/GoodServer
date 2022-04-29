@@ -8,7 +8,7 @@ import { sha3, toChecksumAddress } from 'web3-utils'
 
 import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync, onlyInEnv } from '../utils/helpers'
-import { withTimeout } from '../utils/timeout'
+import { withTimeout } from '../utils/async'
 import OnGage from '../crm/ongage'
 import conf from '../server.config'
 import { addUserToWhiteList, createCRMRecord } from './addUserSteps'

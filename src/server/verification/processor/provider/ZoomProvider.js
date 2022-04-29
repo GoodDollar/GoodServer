@@ -15,7 +15,6 @@ import { faceSnapshotFields } from '../../utils/logger'
 import logger from '../../../../imports/logger'
 
 import { type IEnrollmentProvider } from '../typings'
-import { response } from 'express'
 
 class ZoomProvider implements IEnrollmentProvider {
   api = null

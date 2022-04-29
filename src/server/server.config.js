@@ -241,6 +241,24 @@ const conf = convict({
     env: 'ONGAGE_SECRET',
     default: ''
   },
+  ongageTimeout: {
+    doc: 'Max time for the OnGage CRM API call',
+    format: Number,
+    default: 15000,
+    env: 'ONGAGE_TIMEOUT'
+  },
+  ongageRetryAttempts: {
+    doc: 'Amount of OnGage CRM API call attempts on timeout',
+    format: Number,
+    default: 3,
+    env: 'ONGAGE_RETRY_ATTEMPTS'
+  },
+  ongageRetryDelay: {
+    doc: 'Delay before next attempt after timeout',
+    format: Number,
+    default: 250,
+    env: 'ONGAGE_RETRY_DELAY'
+  },
   zoomMinimalMatchLevel: {
     doc: 'Minimal FaceTec Match Level threshold to mark enrollment as duplicate',
     format: Number,

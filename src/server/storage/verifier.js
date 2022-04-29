@@ -1,17 +1,16 @@
 import { assign, isEmpty, bindAll, isError, defaults } from 'lodash'
-import { from as fromPromise, defer, throwError, timer } from 'rxjs'
-import { mergeMap, retryWhen, timeout } from 'rxjs/operators'
 
 import Config from '../../server/server.config'
 
 import TorusVerifier from '../../imports/torusVerifier'
 import FacebookVerifier from '../../imports/facebookVerifier'
+import { retry, withTimeout } from '../utils/async'
 
 class DefaultVerificationStrategy {
   constructor(config) {
     const { torusVerificationRetryDelay, torusVerificationAttempts, torusVerificationTimeout } = config
 
-    bindAll(this, '_onRetry', '_callVerifier')
+    bindAll(this, '_callVerifier')
 
     assign(this, {
       torusVerificationRetryDelay,
@@ -22,8 +21,15 @@ class DefaultVerificationStrategy {
 
   async verify(requestPayload, userRecord, logger) {
     const { torusProof } = requestPayload
-    const { _callVerifier, _onRetry, torusVerificationTimeout } = this
     let verificationResult = { emailVerified: false, mobileVerified: false }
+
+    const {
+      _callVerifier,
+      _onRetry,
+      torusVerificationTimeout,
+      torusVerificationRetryDelay,
+      torusVerificationAttempts
+    } = this
 
     if (!torusProof) {
       logger.warn('TorusVerifier skipping because no torusProof was specified')
@@ -31,12 +37,13 @@ class DefaultVerificationStrategy {
     }
 
     try {
-      verificationResult = await defer(() =>
-        // calling TorusProvider
-        fromPromise(_callVerifier(requestPayload)).pipe(timeout(torusVerificationTimeout))
+      // calling TorusProvider
+      verificationResult = await retry(
+        async () => withTimeout(_callVerifier(requestPayload), torusVerificationTimeout),
+        torusVerificationAttempts,
+        torusVerificationRetryDelay,
+        _onRetry
       )
-        .pipe(retryWhen(attempts => attempts.pipe(mergeMap(_onRetry)))) // on each failure passing rejection reason
-        .toPromise() // through the onRetry callback to determine should we retry or not and how long we have to wait before
     } catch (exception) {
       const { message: msg } = exception
 
@@ -55,24 +62,11 @@ class DefaultVerificationStrategy {
     return verifier.verifyProof(torusProof, torusProvider, requestPayload, torusProofNonce)
   }
 
-  _onRetry(reason, attemptIndex) {
+  _onRetry(reason) {
     const { message } = reason || {}
-    const { torusVerificationRetryDelay, torusVerificationAttempts } = this
 
     // checking if the reason related to the some nodes are down
-    if (isError(reason) && message.toLowerCase().includes('node results do not match')) {
-      const retryAttempt = attemptIndex + 1
-
-      // if yes - checking attempts count
-      if (retryAttempt <= torusVerificationAttempts) {
-        // if we aren't reached it yet - retrying call
-        return timer(torusVerificationRetryDelay)
-      }
-    }
-
-    // if the reason not related to the temporary unavailability of the Torus services
-    // or we've reached the verification attempts limit - just re-throwing the reason
-    return throwError(reason)
+    return isError(reason) && message.toLowerCase().includes('node results do not match')
   }
 }
 
