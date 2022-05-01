@@ -534,6 +534,8 @@ export class Wallet {
   async topWalletFaucet(address, logger = log) {
     try {
       const canTop = await this.faucetContract.methods.canTop(address).call()
+      logger.debug('topWalletFaucet canTop result:', { address, canTop })
+
       if (canTop === false) {
         return false
       }
@@ -551,9 +553,11 @@ export class Wallet {
         },
         [address]
       )
-      const transaction = await this.proxyContract.methods.genericCall(this.faucetContract._address, encodedCall, 0)
-
-      const txPromise = this.sendTransaction(transaction, {}, { gas: 200000 }, true, logger)
+      const transaction = this.proxyContract.methods.genericCall(this.faucetContract._address, encodedCall, 0)
+      const onTransactionHash = hash => {
+        logger.debug('topWalletFaucet got txhash:', { hash, address })
+      }
+      const txPromise = this.sendTransaction(transaction, { onTransactionHash }, { gas: 200000 }, true, logger)
       let res = await txPromise
       logger.debug('topWalletFaucet result:', { address, res })
       return res
@@ -701,6 +705,9 @@ export class Wallet {
             txHash = h
             logger.debug('got tx hash:', { uuid, txHash })
             onTransactionHash && onTransactionHash(h)
+          })
+          .on('sent', payload => {
+            logger.debug('tx sent:', { txHash, payload })
           })
           .on('receipt', r => {
             logger.debug('got tx receipt:', { uuid })
