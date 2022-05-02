@@ -697,7 +697,7 @@ export class Wallet {
         balance = await this.web3.eth.getBalance(address)
       }
       currentAddress = address
-      logger.debug(`sending tx from: ${address} | nonce: ${nonce}`, { uuid, balance, gas, gasPrice })
+      logger.debug(`sending tx from:`, { address, nonce, uuid, balance, gas, gasPrice })
       let txPromise = new Promise((res, rej) => {
         tx.send({ gas, gasPrice, chainId: this.networkId, nonce, from: address })
           .on('transactionHash', h => {

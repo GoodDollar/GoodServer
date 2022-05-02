@@ -396,7 +396,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
             return { ok: -1, error: message }
           })
 
-        const txRes = await Promise.race([txPromise, requestTimeout(20000, 'topwallet tx timeout')])
+        const txRes = await txPromise
 
         log.info('topwallet tx done', {
           txRes,

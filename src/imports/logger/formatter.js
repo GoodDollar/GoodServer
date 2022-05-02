@@ -12,7 +12,7 @@ export const extended = () =>
   printf(({ level, timestamp, from, userId, uuid, message, ...rest }) => {
     const context = rest[SPLAT] || []
     const logPayload = { uuid, message }
-    const fromString = from ? ` (FROM ${from} ${userId || ''})` : ''
+    const fromString = from ? ` (FROM: ${from} userId: ${userId || ''})` : ''
 
     const stringifiedConext = `[${context
       .map(item => {
