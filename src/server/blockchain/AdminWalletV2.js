@@ -551,7 +551,7 @@ export class Wallet {
       const txPromise = this.sendTransaction(
         this.proxyContract.methods.topWallet(address),
         { onTransactionHash },
-        undefined,
+        { gas: 500000 },
         true,
         logger
       )
@@ -590,7 +590,7 @@ export class Wallet {
       const onTransactionHash = hash => {
         logger.debug('topWalletFaucet got txhash:', { hash, address })
       }
-      const txPromise = this.sendTransaction(transaction, { onTransactionHash }, undefined, true, logger)
+      const txPromise = this.sendTransaction(transaction, { onTransactionHash }, { gas: 500000 }, true, logger)
       let res = await txPromise
       logger.debug('topWalletFaucet result:', { address, res })
       return res
