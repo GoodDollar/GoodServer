@@ -70,10 +70,12 @@ export default async (app: Router) => {
   )
 
   app.use((error, req, res, next: NextFunction) => {
-    const { log = rootLogger, body } = req
+    const { log = rootLogger, body, url } = req
     const { message } = error
 
-    log.error('Something went wrong while performing request', message, error, { body })
+    const aborted = error.code === 'ECONNABORTED'
+
+    log[aborted ? 'warn' : 'error']('Something went wrong while performing request', message, error, { url, body })
     res.status(400).json({ message })
   })
 
