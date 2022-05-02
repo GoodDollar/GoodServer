@@ -95,6 +95,21 @@ describe('OnGage', () => {
     expect(loggerMock.error.mock.calls[0][0]).toBe('OnGage request warnings:')
   })
 
+  test('should retry on timeout', async () => {
+    helper.mockGetContactTimeoutOnce(contactId)
+    helper.mockSuccessGetContactOnce(contactId, { email: contactEmail })
+
+    await expect(OnGage.getContactById(contactId)).resolves.toEqual({
+      payload: {
+        id: contactId,
+        email: contactEmail
+      },
+      metadata: {
+        error: false
+      }
+    })
+  })
+
   test('should add to contact to DNC / remove from', async () => {
     const map = {
       addContactToDNC: 'unsubscribe',

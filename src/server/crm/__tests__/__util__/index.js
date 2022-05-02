@@ -5,8 +5,8 @@ export default mock => {
   const contactByEmailUrl = email => `contacts/by_email/${encodeURIComponent(email)}`
   const emailWithId = (id, email) => ({ [email]: id })
 
-  const mockSuccessResponse = (url, payload, method = 'GET', metadata = {}) =>
-    mock[`on${capitalize(method)}`](url).reply(200, {
+  const mockSuccessResponse = (url, payload, method = 'GET', metadata = {}, once = false) =>
+    mock[`on${capitalize(method)}`](url)[`reply${once ? 'Once' : ''}`](200, {
       payload,
       metadata: {
         error: false,
@@ -16,7 +16,13 @@ export default mock => {
 
   const mockFailedResponse = (url, method = 'GET') => mock[`on${capitalize(method)}`](url).reply(500)
 
-  const mockSuccessGetContact = (id, contactData) => mockSuccessResponse(contactUrl(id), { ...contactData, id })
+  const _mockSuccessGetContact = (id, contactData, once = false) =>
+    mockSuccessResponse(contactUrl(id), { ...contactData, id }, 'GET', {}, once)
+
+  const mockGetContactTimeoutOnce = id => mock.onGet(contactUrl(id)).timeoutOnce()
+  const mockSuccessGetContact = (id, contactData) => _mockSuccessGetContact(id, contactData, false)
+  const mockSuccessGetContactOnce = (id, contactData) => _mockSuccessGetContact(id, contactData, true)
+
   const mockSuccessGetByEmail = (id, email, contactData) =>
     mockSuccessResponse(contactByEmailUrl(email), { ...contactData, email, id })
 
@@ -57,7 +63,9 @@ export default mock => {
     contactUrl,
     contactByEmailUrl,
 
+    mockGetContactTimeoutOnce,
     mockSuccessGetContact,
+    mockSuccessGetContactOnce,
     mockSuccessGetByEmail,
     mockFailedGetContact,
     mockFailedGetByEmail,

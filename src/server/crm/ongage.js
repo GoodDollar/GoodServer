@@ -268,6 +268,16 @@ class OnGage implements CrmApi {
     response.use(
       async response => {
         const { config, data: json } = response
+        const retryStatus = get(config, 'axios-retry', {})
+
+        // due to the retries we could process response twice
+        // here is a simple check to handle this
+        if (!retryStatus.hasOwnProperty('retryCount')) {
+          // if no retry metadata - response was already processed
+          // so we should just return it 'as is'
+          return response
+        }
+
         const { warnings } = json.payload || {}
         const { url, data: body, logger = log } = config
 
