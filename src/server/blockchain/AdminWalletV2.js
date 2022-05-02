@@ -508,7 +508,19 @@ export class Wallet {
     const faucetRes = await this.topWalletFaucet(address, logger).catch(_ => false)
     if (faucetRes) return faucetRes
 
-    let txHash
+    let txHash = ''
+    //simulate tx to detect revert
+    const canTopOrError = await this.proxyContract.methods
+      .topWallet(address)
+      .call()
+      .then(_ => true)
+      .catch(e => e)
+
+    if (canTopOrError !== true) {
+      logger.debug('Topwallet will revert, skipping', { address, canTopOrError })
+      throw new Error('Topwallet will revert, probably user passed limit')
+    }
+
     try {
       const onTransactionHash = hash => {
         logger.debug('Topwallet got txhash:', { hash, address })

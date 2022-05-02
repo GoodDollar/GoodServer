@@ -391,7 +391,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           })
           .catch(async exception => {
             const { message } = exception
-            log.error('Failed topwallet tx', message, exception, { walletaddress: user.gdAddress })
+            log.warn('Failed topwallet tx', message, exception, { walletaddress: user.gdAddress }) //errors are already logged in adminwallet so jsut warn
 
             return { ok: -1, error: message }
           })
