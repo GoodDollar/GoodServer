@@ -510,17 +510,23 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { user, body } = req
       const verificationData: { code: string } = body.verificationData
       let { email } = user.otp || {}
-      email = email.toLowerCase()
+      email = email && email.toLowerCase()
       const hashedNewEmail = email ? sha3(email) : null
       const currentEmail = user.email
 
-      log.debug('email verified', {
+      log.debug('email verification request', {
         user,
         body,
         email,
         verificationData,
-        currentEmail
+        currentEmail,
+        hashedNewEmail
       })
+
+      if (!email) {
+        log.error('email address to verify is missing')
+        throw new Error('email address to verify is missing')
+      }
 
       if (!user.isEmailConfirmed || currentEmail !== hashedNewEmail) {
         let signedEmail
