@@ -530,7 +530,7 @@ export class Wallet {
       const txPromise = this.sendTransaction(
         this.proxyContract.methods.topWallet(address),
         { onTransactionHash },
-        {},
+        undefined,
         true,
         logger
       )
@@ -569,7 +569,7 @@ export class Wallet {
       const onTransactionHash = hash => {
         logger.debug('topWalletFaucet got txhash:', { hash, address })
       }
-      const txPromise = this.sendTransaction(transaction, { onTransactionHash }, { gas: 200000 }, true, logger)
+      const txPromise = this.sendTransaction(transaction, { onTransactionHash }, undefined, true, logger)
       let res = await txPromise
       logger.debug('topWalletFaucet result:', { address, res })
       return res
@@ -690,7 +690,7 @@ export class Wallet {
         gas ||
         (await tx
           .estimateGas()
-          .then(gas => gas + 200000) //buffer for proxy contract, reimburseGas?
+          .then(gas => parseInt(gas) + 200000) //buffer for proxy contract, reimburseGas?
           .catch(e => {
             logger.warn('Failed to estimate gas for tx', e.message, e)
             return defaultGas
