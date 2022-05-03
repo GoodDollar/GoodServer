@@ -13,8 +13,7 @@ export type UserRecord = {
   mauticId?: string,
   crmId?: string,
   loginToken?: string,
-  walletToken?: string,
-  claimQueue?: { date: Date, status: string }
+  walletToken?: string
 }
 
 export type DelayedTaskStatusType = 'pending' | 'running' | 'failed' | 'complete'
