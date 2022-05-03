@@ -75,8 +75,8 @@ export default new (class {
       const result = await this.http.post(this.verifyWorkerUrl, payload)
       return result.data
     } catch (exception) {
-      const { message } = exception
-      const logFunc = message === 'Max send attempts reached' ? 'warn' : 'error'
+      const { message, status } = exception
+      const logFunc = status === 429 ? 'warn' : 'error' //just warn about rate limits
 
       this.getExceptionText(exception)
 
