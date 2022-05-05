@@ -1,5 +1,5 @@
 // @flow
-import { assign, bindAll, omit } from 'lodash'
+import { assign, bindAll, omit, over } from 'lodash'
 import { type IEnrollmentEventPayload } from './typings'
 import logger from '../../../imports/logger'
 import { DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment, scheduleDisposalTask } from '../cron/taskUtil'
@@ -103,20 +103,32 @@ export default class EnrollmentSession {
 
     log.info('Whitelisting user:', { loggedInAs })
 
-    await Promise.all([
-      storage.updateUser({ identifier: loggedInAs, isVerified: true }),
-      OnGage.setWhitelisted(crmId, log).catch(e =>
-        log.error('CRM setWhitelisted after fv failed', e.message, e, { user })
-      ),
-      adminApi
-        .whitelistUser(gdAddress, profilePublickey)
-        .then(_ => log.info('Successfully whitelisted user:', { loggedInAs }))
-        .catch(e => log.error('whitelisting after fv failed', e.message, e, { user })),
+    const whitelistingTasks = [
+      () => storage.updateUser({ identifier: loggedInAs, isVerified: true }),
 
-      scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.Reauthenticate).catch(e =>
-        log.warn('adding facemap to re-auth dispose queue failed:', e.message, e)
+      () =>
+        scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.Reauthenticate).catch(e =>
+          log.warn('adding facemap to re-auth dispose queue failed:', e.message, e)
+        ),
+
+      () =>
+        adminApi
+          .whitelistUser(gdAddress, profilePublickey)
+          .then(_ => log.info('Successfully whitelisted user:', { loggedInAs }))
+          .catch(e => log.error('whitelisting after fv failed', e.message, e, { user }))
+    ]
+
+    if (crmId) {
+      whitelistingTasks.push(() =>
+        OnGage.setWhitelisted(crmId, log).catch(e =>
+          log.error('CRM setWhitelisted after fv failed', e.message, e, { user })
+        )
       )
-    ])
+    } else {
+      log.warn('missing crmId', { user })
+    }
+
+    await Promise.all(over(whitelistingTasks)())
   }
 
   async onEnrollmentFailed() {

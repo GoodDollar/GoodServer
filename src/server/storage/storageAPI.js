@@ -3,7 +3,7 @@ import moment from 'moment'
 import { Router } from 'express'
 import passport from 'passport'
 import fetch from 'cross-fetch'
-import { first, get, sortBy } from 'lodash'
+import { assign, first, get, omit, sortBy, values } from 'lodash'
 import { sha3, toChecksumAddress } from 'web3-utils'
 
 import { type StorageAPI, UserRecord } from '../../imports/types'
@@ -288,14 +288,15 @@ const setup = (app: Router, storage: StorageAPI) => {
       const { log: logger, user: existingUser } = req
       const { __utmzz: utmString = '' } = req.cookies
 
-      if (!user.email || existingUser.createdDate || existingUser.crmId) return res.json({ ok: 0 })
+      if (!user.email || existingUser.createdDate || existingUser.crmId) {
+        return res.json({ ok: 0 })
+      }
 
-      //fire and forget, don't wait for success or failure
-      createCRMRecord({ user, email: user.email.toLowerCase() }, utmString, logger)
-        .then(r => logger.debug('/user/start createCRMRecord success'))
+      // fire and forget, don't wait for success or failure
+      createCRMRecord({ ...user, email: user.email.toLowerCase() }, utmString, logger)
+        .then(() => logger.debug('/user/start createCRMRecord success'))
         .catch(e => {
           logger.error('/user/start createCRMRecord failed', e.message, e, { user })
-          throw new Error('Failed adding user to crm')
         })
 
       res.json({ ok: 1 })
@@ -437,19 +438,25 @@ const setup = (app: Router, storage: StorageAPI) => {
   app.post(
     '/userExists',
     wrapAsync(async (req, res, next) => {
-      const { log } = req
-      let { identifier = '', email, mobile } = req.body
-      const identifierLC = identifier ? identifier.toLowerCase() : undefined
+      const { log, body, cookies } = req
+      let { identifier = '', email, mobile } = body
+      const sendNotExists = () => res.json({ ok: 0, exists: false })
+
+      const lowerCaseID = identifier ? identifier.toLowerCase() : undefined
       email = email ? email.toLowerCase() : undefined
+
       const queryOrs = [
-        { identifier: identifierLC }, // identifier is stored lowercase in the db. we lowercase addresses in the /auth/eth process
+        // identifier is stored lowercase in the db. we lowercase addresses in the /auth/eth process
+        { identifier: lowerCaseID },
         { email: email && sha3(email) },
         { mobile: mobile && sha3(mobile) }
-      ].filter(or => !!Object.values(or)[0])
+      ].filter(or => !!first(values(or)))
 
       if (queryOrs.length === 0) {
         log.warn('empty data for /userExists', { body: req.body })
-        return res.json({ ok: 0, exists: false })
+        sendNotExists()
+
+        return
       }
 
       let existing = await storage.model
@@ -457,39 +464,58 @@ const setup = (app: Router, storage: StorageAPI) => {
           {
             $or: queryOrs
           },
-          { identifier: 1, email: 1, mobile: 1, createdDate: 1, torusProvider: 1, fullName: 1 }
+          { identifier: 1, email: 1, mobile: 1, createdDate: 1, torusProvider: 1, fullName: 1, regMethod: 1, crmId: 1 }
         ) // sort by importance, prefer oldest verified account
         .sort({ isVerified: -1, createdDate: 1 })
         .lean()
 
       existing = existing.filter(doc => doc.createdDate)
 
-      if (identifierLC && (email || mobile)) {
+      if (lowerCaseID && (email || mobile)) {
         // if email or phone also were specified we want
         // to select matches by id first
         // sortBy sorts in ascending order (and keeps existing sort)
         // so non-matched by id results would be moved to the end
-        existing = sortBy(existing, ({ identifier }) => identifier !== identifierLC)
+        existing = sortBy(existing, ({ identifier }) => identifier !== lowerCaseID)
       }
 
-      log.debug('userExists:', { existing, identifier, identifierLC, email, mobile })
+      log.debug('userExists:', { existing, identifier, identifierLC: lowerCaseID, email, mobile })
 
-      if (existing.length) {
-        const bestExisting = first(existing)
-
-        return res.json({
-          ok: 1,
-          found: existing.length,
-          exists: true,
-          provider: bestExisting.torusProvider,
-          identifier: identifierLC === bestExisting.identifier,
-          email: email && sha3(email) === bestExisting.email,
-          mobile: mobile && sha3(mobile) === bestExisting.mobile,
-          fullName: bestExisting.fullName
-        })
+      if (!existing.length) {
+        sendNotExists()
+        return
       }
 
-      res.json({ ok: 0, exists: false })
+      const bestExisting = first(existing)
+      const foundByEmail = email && sha3(email) === bestExisting.email
+
+      // Won't fix passwordless/FB mobile logins, need to discuss separate solution for that
+      if (foundByEmail && !bestExisting.crmId) {
+        const { __utmzz: utmString = '' } = cookies
+        const crmUserRecord = { ...omit(bestExisting, 'mobile'), email }
+
+        log.warn('userExists:', 'Existing account have no crmId', { email })
+
+        if (mobile) {
+          assign(crmUserRecord, { mobile })
+        }
+
+        // fire and forget, don't wait for success or failure
+        createCRMRecord(crmUserRecord, utmString, log)
+          .then(() => log.debug('userExists: createCRMRecord success'))
+          .catch(e => log.error('userExists: createCRMRecord failed', e.message, e, { crmUserRecord }))
+      }
+
+      return res.json({
+        ok: 1,
+        exists: true,
+        email: foundByEmail,
+        found: existing.length,
+        fullName: bestExisting.fullName,
+        provider: bestExisting.torusProvider,
+        mobile: mobile && sha3(mobile) === bestExisting.mobile,
+        identifier: lowerCaseID === bestExisting.identifier
+      })
     })
   )
 
