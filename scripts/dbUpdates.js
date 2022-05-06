@@ -1,10 +1,6 @@
 //@flow
-import Gun from '@gooddollar/gun'
 import { sha3 } from 'web3-utils'
-import { delay, chunk, flattenDeep } from 'lodash'
 import logger from '../src/imports/logger'
-import { type UserRecord } from '../src/imports/types'
-import AdminWallet from '../src/server/blockchain/AdminWallet'
 
 import conf from '../src/server/server.config'
 
