@@ -487,34 +487,16 @@ const setup = (app: Router, storage: StorageAPI) => {
       }
 
       const bestExisting = first(existing)
-      const foundByEmail = email && sha3(email) === bestExisting.email
-
-      // Won't fix passwordless/FB mobile logins, need to discuss separate solution for that
-      if (foundByEmail && !bestExisting.crmId) {
-        const { __utmzz: utmString = '' } = cookies
-        const crmUserRecord = { ...omit(bestExisting, 'mobile'), email }
-
-        log.warn('userExists:', 'Existing account have no crmId', { email })
-
-        if (mobile) {
-          assign(crmUserRecord, { mobile })
-        }
-
-        // fire and forget, don't wait for success or failure
-        createCRMRecord(crmUserRecord, utmString, log)
-          .then(() => log.debug('userExists: createCRMRecord success'))
-          .catch(e => log.error('userExists: createCRMRecord failed', e.message, e, { crmUserRecord }))
-      }
 
       return res.json({
         ok: 1,
         exists: true,
-        email: foundByEmail,
         found: existing.length,
         fullName: bestExisting.fullName,
         provider: bestExisting.torusProvider,
-        mobile: mobile && sha3(mobile) === bestExisting.mobile,
-        identifier: lowerCaseID === bestExisting.identifier
+        email: email && sha3(email) === bestExisting.email,
+        identifier: lowerCaseID === bestExisting.identifier,
+        mobile: mobile && sha3(mobile) === bestExisting.mobile
       })
     })
   )
