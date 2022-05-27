@@ -1,4 +1,4 @@
-import { encode } from 'punycode/'
+import { encode } from 'punycode'
 
 export const punycodeDomain = email => {
   const splittedEmail = email.split('@')
