@@ -1,6 +1,7 @@
 // @flow
 import SES from 'aws-sdk/clients/ses'
 import conf from '../server.config'
+import { punycodeDomain } from '../utils/email'
 
 const accessKeyId = conf.awsSesAccessKey
 const secretAccessKey = conf.awsSesSecretAccessKey
@@ -63,7 +64,7 @@ export const sendTemplateEmail = async (recipientEmail: string, templateData: Ob
     Source: sourceVerificationEmail,
     Template: templateName,
     Destination: {
-      ToAddresses: [recipientEmail]
+      ToAddresses: [punycodeDomain(recipientEmail)]
     },
     TemplateData: templateDataStr
   }
