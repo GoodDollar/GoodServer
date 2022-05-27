@@ -1,8 +1,9 @@
 import { encode } from 'punycode'
 
-export const punycodeDomain = email => {
-  const splittedEmail = email.split('@')
-  const domain = splittedEmail.pop()
+const AT = '@'
 
-  return splittedEmail.join('@').concat(encode(domain))
+export const punycodeDomain = email => {
+  const [username, domain] = email.split(AT)
+
+  return [username, encode(domain)].join(AT)
 }
