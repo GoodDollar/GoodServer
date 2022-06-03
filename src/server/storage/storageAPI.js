@@ -437,8 +437,8 @@ const setup = (app: Router, storage: StorageAPI) => {
    */
   app.post(
     '/userExists',
-    wrapAsync(async (req, res, next) => {
-      const { log, body, cookies } = req
+    wrapAsync(async (req, res) => {
+      const { log, body } = req
       let { identifier = '', email, mobile } = body
       const sendNotExists = () => res.json({ ok: 0, exists: false })
 
@@ -462,15 +462,24 @@ const setup = (app: Router, storage: StorageAPI) => {
       let existing = await storage.model
         .find(
           {
-            $or: queryOrs
+            $or: queryOrs,
+            torusProvider: { $ne: null }
           },
-          { identifier: 1, email: 1, mobile: 1, createdDate: 1, torusProvider: 1, fullName: 1, regMethod: 1, crmId: 1 }
+          {
+            identifier: 1,
+            email: 1,
+            mobile: 1,
+            createdDate: 1,
+            torusProvider: 1,
+            fullName: 1,
+            regMethod: 1,
+            crmId: 1
+          }
         ) // sort by importance, prefer oldest verified account
         .sort({ isVerified: -1, createdDate: 1 })
         .lean()
 
       existing = existing.filter(doc => doc.createdDate)
-
       if (lowerCaseID && (email || mobile)) {
         // if email or phone also were specified we want
         // to select matches by id first
