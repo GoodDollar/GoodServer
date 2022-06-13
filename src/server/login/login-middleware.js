@@ -24,6 +24,7 @@ const jwtOptions = {
 }
 
 const MSG = 'Login to GoodDAPP'
+const FV_MSG = 'Login to GoodFV'
 
 const isProfileSignatureCompatible = (signature, nonce) => {
   if (isBase64(signature)) {
@@ -177,6 +178,70 @@ const setup = (app: Router) => {
         res.end()
       } else {
         log.warn('/auth/eth', {
+          message: 'SigUtil unable to recover the message signer'
+        })
+
+        throw new Error('Unable to verify credentials')
+      }
+    })
+  )
+
+  app.post(
+    '/auth/fv',
+    wrapAsync(async (req, res) => {
+      const { log, body } = req
+
+      log.debug('/auth/fv', { message: 'authorizing' })
+      log.debug('/auth/fv', { body })
+
+      const { nonce, signature, fvsig } = body
+
+      log.debug('/auth/fv', { signature, nonce, fvsig })
+
+      const seconds = parseInt((Date.now() / 1000).toFixed(0))
+      if (nonce + 300 < seconds) {
+        throw new Error('invalid nonce for fv login')
+      }
+      const recovered = recoverPublickey(signature, FV_MSG, nonce)
+      const fvrecovered = recoverPublickey(fvsig, FV_MSG, '')
+
+      log.debug('/auth/fv', {
+        message: 'Recovered public key',
+        recovered,
+        fvrecovered
+      })
+
+      if (recovered && recovered === fvrecovered) {
+        const userRecord = await UserDBPrivate.getUser(recovered)
+        const hasVerified = userRecord && (userRecord.smsValidated || userRecord.isEmailConfirmed)
+        const hasSignedUp = userRecord && userRecord.createdDate
+
+        if (hasSignedUp && !hasVerified) {
+          log.warn('user doesnt have email nor mobile verified', { recovered })
+        }
+
+        log.info(`SigUtil Successfully verified signer as ${recovered}`, { hasSignedUp })
+
+        const token = jwt.sign(
+          {
+            loggedInAs: recovered,
+            exp: Math.floor(Date.now() / 1000) + (hasSignedUp ? Config.jwtExpiration : 3600), //if not signed up jwt will last only 60 seconds so it will be refreshed after signup
+            aud: hasSignedUp || hasVerified ? `realmdb_wallet_${Config.env}` : 'unsigned',
+            sub: recovered
+          },
+          Config.jwtPassword
+        )
+
+        UserDBPrivate.updateUser({ identifier: recovered, lastLogin: new Date() })
+
+        log.info('/auth/fv', {
+          message: `JWT token: ${token}`
+        })
+
+        res.json({ token })
+        res.end()
+      } else {
+        log.warn('/auth/fv', {
           message: 'SigUtil unable to recover the message signer'
         })
 
