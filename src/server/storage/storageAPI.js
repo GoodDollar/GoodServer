@@ -477,13 +477,12 @@ const setup = (app: Router, storage: StorageAPI) => {
             torusProvider: 1,
             fullName: 1,
             regMethod: 1,
-            crmId: 1,
-            isCompleted: 1
+            crmId: 1
           }
         ) // sort by importance, prefer oldest verified account
         .sort({ isVerified: -1, createdDate: 1 })
         .lean()
-      console.log(existing)
+
       existing = existing.filter(doc => doc.createdDate)
       if (lowerCaseID && (email || mobile)) {
         // if email or phone also were specified we want
