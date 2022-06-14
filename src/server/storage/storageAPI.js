@@ -3,7 +3,7 @@ import moment from 'moment'
 import { Router } from 'express'
 import passport from 'passport'
 import fetch from 'cross-fetch'
-import { assign, first, get, omit, sortBy, values } from 'lodash'
+import { first, get, sortBy, values } from 'lodash'
 import { sha3, toChecksumAddress } from 'web3-utils'
 
 import { type StorageAPI, UserRecord } from '../../imports/types'
@@ -445,14 +445,19 @@ const setup = (app: Router, storage: StorageAPI) => {
       const lowerCaseID = identifier ? identifier.toLowerCase() : undefined
       email = email ? email.toLowerCase() : undefined
 
-      const queryOrs = [
+      const identityOrs = [
         // identifier is stored lowercase in the db. we lowercase addresses in the /auth/eth process
         { identifier: lowerCaseID },
         { email: email && sha3(email) },
         { mobile: mobile && sha3(mobile) }
       ].filter(or => !!first(values(or)))
 
-      if (queryOrs.length === 0) {
+      const providerOrs = [
+        { regMethod: { $type: 'string', $ne: 'torus' } },
+        { regMethod: 'torus', torusProvider: { $type: 'string', $ne: '' } }
+      ]
+
+      if (identityOrs.length === 0) {
         log.warn('empty data for /userExists', { body: req.body })
         sendNotExists()
 
@@ -462,8 +467,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       let existing = await storage.model
         .find(
           {
-            $or: queryOrs,
-            torusProvider: { $ne: null }
+            $and: [{ $or: identityOrs }, { $or: providerOrs }]
           },
           {
             identifier: 1,
@@ -473,12 +477,13 @@ const setup = (app: Router, storage: StorageAPI) => {
             torusProvider: 1,
             fullName: 1,
             regMethod: 1,
-            crmId: 1
+            crmId: 1,
+            isCompleted: 1
           }
         ) // sort by importance, prefer oldest verified account
         .sort({ isVerified: -1, createdDate: 1 })
         .lean()
-
+      console.log(existing)
       existing = existing.filter(doc => doc.createdDate)
       if (lowerCaseID && (email || mobile)) {
         // if email or phone also were specified we want
