@@ -4,6 +4,14 @@ import logger from '../../../imports/logger'
 import Config from '../../server.config'
 
 class CleanupAbandonedSignups {
+  static get mandatoryFields() {
+    return ['createdDate', 'lastLogin', 'isCompleted']
+  }
+
+  static nonExists(field) {
+    return { [field]: { $exists: false } }
+  }
+
   schedule = null
   model = null
   logger = null
@@ -22,15 +30,19 @@ class CleanupAbandonedSignups {
 
   async execute() {
     const { model, logger } = this
-
-    const removeCondition = ['torusProvider', 'regMethod', 'loginToken', 'w3Token', 'createdDate'].map(field => ({
-      [field]: { $exists: false }
-    }))
+    const { nonExists, mandatoryFields } = CleanupAbandonedSignups
+    const missingFields = mandatoryFields.map(nonExists)
 
     try {
-      // TODO: need to check
       await model
-        .find({ $and: removeCondition })
+        .find({
+          $or: [
+            ...missingFields,
+            {
+              $expr: { $lte: ['$lastLogin', '$createdDate'] }
+            }
+          ]
+        })
         .remove()
         .exec()
     } catch (e) {

@@ -445,19 +445,19 @@ const setup = (app: Router, storage: StorageAPI) => {
       const lowerCaseID = identifier ? identifier.toLowerCase() : undefined
       email = email ? email.toLowerCase() : undefined
 
-      const identityOrs = [
+      const identityFilters = [
         // identifier is stored lowercase in the db. we lowercase addresses in the /auth/eth process
         { identifier: lowerCaseID },
         { email: email && sha3(email) },
         { mobile: mobile && sha3(mobile) }
       ].filter(or => !!first(values(or)))
 
-      const providerOrs = [
+      const providerFilters = [
         { regMethod: { $type: 'string', $ne: 'torus' } },
         { regMethod: 'torus', torusProvider: { $type: 'string', $ne: '' } }
       ]
 
-      if (identityOrs.length === 0) {
+      if (identityFilters.length === 0) {
         log.warn('empty data for /userExists', { body: req.body })
         sendNotExists()
 
@@ -467,7 +467,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       let existing = await storage.model
         .find(
           {
-            $and: [{ $or: identityOrs }, { $or: providerOrs }]
+            $and: [{ $or: identityFilters }, { $or: providerFilters }]
           },
           {
             identifier: 1,
