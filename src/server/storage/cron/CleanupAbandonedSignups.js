@@ -23,12 +23,14 @@ class CleanupAbandonedSignups {
   async execute() {
     const { model, logger } = this
 
+    const removeCondition = ['torusProvider', 'regMethod', 'loginToken', 'w3Token', 'createdDate'].map(field => ({
+      [field]: { $exists: false }
+    }))
+
     try {
       // TODO: need to check
       await model
-        .find({
-          torusProvider: { $not: { $type: 'string', $ne: '' } }
-        })
+        .find({ $and: removeCondition })
         .remove()
         .exec()
     } catch (e) {
