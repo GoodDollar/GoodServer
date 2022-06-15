@@ -199,7 +199,7 @@ const setup = (app: Router) => {
       log.debug('/auth/fv', { signature, nonce, fvsig })
 
       const seconds = parseInt((Date.now() / 1000).toFixed(0))
-      if (nonce + 300 < seconds) {
+      if (parseInt(nonce) + 300 < seconds) {
         throw new Error('invalid nonce for fv login')
       }
       const recovered = recoverPublickey(signature, FV_MSG, nonce)
