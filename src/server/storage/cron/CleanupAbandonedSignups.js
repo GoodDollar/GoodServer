@@ -35,14 +35,7 @@ class CleanupAbandonedSignups {
 
     try {
       await model
-        .find({
-          $or: [
-            ...missingFields,
-            {
-              $expr: { $lte: ['$lastLogin', '$createdDate'] }
-            }
-          ]
-        })
+        .find({ $or: missingFields })
         .remove()
         .exec()
     } catch (e) {
