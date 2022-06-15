@@ -467,7 +467,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       let existing = await storage.model
         .find(
           {
-            $and: [{ $or: identityFilters }, { $or: providerFilters }]
+            $and: [identityFilters, providerFilters].map(filters => ({ $or: filters })
           },
           {
             identifier: 1,
