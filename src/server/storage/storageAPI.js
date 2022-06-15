@@ -452,11 +452,6 @@ const setup = (app: Router, storage: StorageAPI) => {
         { mobile: mobile && sha3(mobile) }
       ].filter(or => !!first(values(or)))
 
-      const providerFilters = [
-        { regMethod: { $type: 'string', $ne: 'torus' } },
-        { regMethod: 'torus', torusProvider: { $type: 'string', $ne: '' } }
-      ]
-
       if (identityFilters.length === 0) {
         log.warn('empty data for /userExists', { body: req.body })
         sendNotExists()
@@ -464,10 +459,18 @@ const setup = (app: Router, storage: StorageAPI) => {
         return
       }
 
+      const providerFilters = [
+        { regMethod: { $type: 'string', $ne: 'torus' } },
+        { regMethod: 'torus', torusProvider: { $type: 'string', $ne: '' } }
+      ]      
+      
+      const joinWithOR = filters => ({ $or: filters }) 
+      const filters = [identityFilters, providerFilters]
+      
       let existing = await storage.model
         .find(
           {
-            $and: [identityFilters, providerFilters].map(filters => ({ $or: filters })
+            $and: filters.map(joinWithOR)
           },
           {
             identifier: 1,
