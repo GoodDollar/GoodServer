@@ -139,6 +139,36 @@ class EnrollmentProcessor {
     }
   }
 
+  async dispose(enrollmentIdentifier: string, customLogger = null) {
+    const { provider, logger } = this
+    const log = customLogger || logger
+
+    // check is enrollment indexed firstly (this is faster as server won't return facemap & base64 image)
+    let requiresDisposal = await provider.isEnrollmentIndexed(enrollmentIdentifier, customLogger)
+
+    if (!requiresDisposal) {
+      // if not indexed it could be some low-quality or duplicate wasn't indexed
+      // so we'll check is enrollment exists additionally.
+      // otherwise dups & failed enrollments will be kept forever
+      requiresDisposal = await provider.isEnrollmentExists(enrollmentIdentifier, customLogger)
+      log.debug("Enrollment isn't indexed, checking for existence", { enrollmentIdentifier })
+    }
+
+    log.debug('Preparing to dispose enrollment', { enrollmentIdentifier, requiresDisposal })
+
+    if (!requiresDisposal) {
+      log.info("Enrollment isn't indexed nor exists in the 3D Database, skipping disposal", {
+        enrollmentIdentifier
+      })
+
+      return
+    }
+
+    // .dispose() removes both search index & enrollment and catches "not found" errors gracefully
+    // so if at least the enrollment itself exists, we need to call .dispose()
+    await provider.dispose(enrollmentIdentifier, customLogger)
+  }
+
   async disposeEnqueuedEnrollments(
     onProcessed: (identifier: string, exception?: Error) => void = noop,
     customLogger = null
@@ -218,8 +248,7 @@ class EnrollmentProcessor {
     onProcessed: (identifier: string, exception?: Error) => void,
     customLogger: any
   ): Promise<void> {
-    const { provider, storage, logger } = this
-    const log = customLogger || logger
+    const { storage } = this
     const tasksSucceeded = []
     const tasksFailed = []
 
@@ -229,28 +258,7 @@ class EnrollmentProcessor {
         const { enrollmentIdentifier } = subject
 
         try {
-          // check is enrollment indexed firstly (this is faster as server won't return facemap & base64 image)
-          let requiresDisposal = await provider.isEnrollmentIndexed(enrollmentIdentifier, customLogger)
-
-          if (!requiresDisposal) {
-            // if not indexed it could be some low-quality or duplicate wasn't indexed
-            // so we'll check is enrollment exists additionally.
-            // otherwise dups & failed enrollments will be kept forever
-            requiresDisposal = await provider.isEnrollmentExists(enrollmentIdentifier, customLogger)
-            log.debug("Enrollment isn't indexed, checking for existence", { enrollmentIdentifier })
-          }
-
-          log.debug('Preparing to dispose enrollment', { enrollmentIdentifier, requiresDisposal })
-
-          if (requiresDisposal) {
-            // .dispose() removes both search index & enrollment and catches "not found" errors gracefully
-            // so if at least the enrollment itself exists, we need to call .dispose()
-            await provider.dispose(enrollmentIdentifier, customLogger)
-          } else {
-            log.info("Enrollment isn't indexed nor exists in the 3D Database, skipping disposal", {
-              enrollmentIdentifier
-            })
-          }
+          await this.dispose(enrollmentIdentifier, customLogger)
 
           tasksSucceeded.push(taskId)
           onProcessed(enrollmentIdentifier)

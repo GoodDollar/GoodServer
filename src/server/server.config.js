@@ -327,6 +327,12 @@ const conf = convict({
     env: 'DISABLE_FACE_VERIFICATION',
     default: false
   },
+  faceVerificationDebugTool: {
+    doc: 'Enables face verification debug endpoints allowing to remove duplicated face reconds for debug purposes',
+    format: Boolean,
+    env: 'FACE_VERIFICATION_DEBUG_TOOL',
+    default: false
+  },
   sentryDSN: {
     doc: 'access token for sentry logging',
     format: String,

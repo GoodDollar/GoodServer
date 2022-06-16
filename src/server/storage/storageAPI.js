@@ -3,7 +3,7 @@ import moment from 'moment'
 import { Router } from 'express'
 import passport from 'passport'
 import fetch from 'cross-fetch'
-import { assign, first, get, omit, sortBy, values } from 'lodash'
+import { first, get, sortBy, values } from 'lodash'
 import { sha3, toChecksumAddress } from 'web3-utils'
 
 import { type StorageAPI, UserRecord } from '../../imports/types'
@@ -14,8 +14,11 @@ import conf from '../server.config'
 import { addUserToWhiteList, createCRMRecord } from './addUserSteps'
 import createUserVerifier from './verifier'
 import stakingModelTasks from '../blockchain/stakingModelTasks'
+import { cancelDisposalTask } from '../verification/cron/taskUtil'
+import createEnrollmentProcessor from '../verification/processor/EnrollmentProcessor'
 
-const fishManager = stakingModelTasks.fishManager
+const { fishManager } = stakingModelTasks
+const { faceVerificationDebugTool } = conf
 
 const adminAuthenticate = (req, res, next) => {
   const { body } = req
@@ -437,8 +440,8 @@ const setup = (app: Router, storage: StorageAPI) => {
    */
   app.post(
     '/userExists',
-    wrapAsync(async (req, res, next) => {
-      const { log, body, cookies } = req
+    wrapAsync(async (req, res) => {
+      const { log, body } = req
       let { identifier = '', email, mobile } = body
       const sendNotExists = () => res.json({ ok: 0, exists: false })
 
@@ -549,5 +552,34 @@ const setup = (app: Router, storage: StorageAPI) => {
       res.json({ ok: 1 })
     })
   )
+
+  if (true !== faceVerificationDebugTool) {
+    return
+  }
+
+  app.post(
+    '/admin/verify/face/delete',
+    adminAuthenticate,
+    wrapAsync(async (req, res) => {
+      const { body, log } = req
+      const { enrollmentIdentifier } = body
+
+      try {
+        const processor = createEnrollmentProcessor(storage, log)
+
+        await processor.dispose(enrollmentIdentifier, log)
+        await cancelDisposalTask(storage, enrollmentIdentifier)
+      } catch (exception) {
+        const { message } = exception
+
+        log.error('delete face record failed:', message, exception, { enrollmentIdentifier })
+        res.status(400).json({ ok: 0, error: message })
+        return
+      }
+
+      res.json({ ok: 1 })
+    })
+  )
 }
+
 export default setup
