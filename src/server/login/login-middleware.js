@@ -24,7 +24,13 @@ const jwtOptions = {
 }
 
 const MSG = 'Login to GoodDAPP'
-const FV_MSG = 'Login to GoodFV'
+const FV_LOGIN_MSG = `Sign this message to login into GoodDollar Unique Identity service.
+WARNING: do not sign this message unless you trust the website/application requesting this signature.
+nonce:`
+
+const FV_IDENTIFIER_MSG = `Sign this message to create your own unique identifier for you anonymized record.
+You can use this identifier in the future to delete this anonymized record.
+WARNING: do not sign this message unless you trust the website/application requesting this signature.`
 
 const isProfileSignatureCompatible = (signature, nonce) => {
   if (isBase64(signature)) {
@@ -202,8 +208,8 @@ const setup = (app: Router) => {
       if (parseInt(nonce) + 300 < seconds) {
         throw new Error('invalid nonce for fv login')
       }
-      const recovered = recoverPublickey(signature, FV_MSG, nonce)
-      const fvrecovered = recoverPublickey(fvsig, FV_MSG, '')
+      const recovered = recoverPublickey(signature, FV_LOGIN_MSG, nonce)
+      const fvrecovered = recoverPublickey(fvsig, FV_IDENTIFIER_MSG, '')
 
       log.debug('/auth/fv', {
         message: 'Recovered public key',
