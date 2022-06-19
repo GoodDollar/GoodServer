@@ -7,6 +7,7 @@ import { defaults } from 'lodash'
 import * as Crypto from '@textile/crypto'
 import { TextEncoder } from 'util'
 import isBase64 from 'is-base64'
+import { sha3 } from 'web3-utils'
 
 import logger from '../../imports/logger'
 import { wrapAsync } from '../utils/helpers'
@@ -218,19 +219,21 @@ const setup = (app: Router) => {
       })
 
       if (recovered && recovered === fvrecovered) {
-        const userRecord = await UserDBPrivate.getUser(recovered)
+        const identifier = sha3(recovered)
+        const userRecord = await UserDBPrivate.getUser(identifier)
         const hasVerified = userRecord && (userRecord.smsValidated || userRecord.isEmailConfirmed)
         const hasSignedUp = userRecord && userRecord.createdDate
 
         if (hasSignedUp && !hasVerified) {
-          log.warn('user doesnt have email nor mobile verified', { recovered })
+          log.warn('user doesnt have email nor mobile verified', { recovered, identifier })
         }
 
         log.info(`SigUtil Successfully verified signer as ${recovered}`, { hasSignedUp })
 
         const token = jwt.sign(
           {
-            loggedInAs: recovered,
+            loggedInAs: identifier,
+            gdAddress: recovered,
             exp: Math.floor(Date.now() / 1000) + (hasSignedUp ? Config.jwtExpiration : 3600), //if not signed up jwt will last only 60 seconds so it will be refreshed after signup
             aud: hasSignedUp || hasVerified ? `realmdb_wallet_${Config.env}` : 'unsigned',
             sub: recovered
@@ -238,7 +241,7 @@ const setup = (app: Router) => {
           Config.jwtPassword
         )
 
-        UserDBPrivate.updateUser({ identifier: recovered, lastLogin: new Date() })
+        UserDBPrivate.updateUser({ identifier, lastLogin: new Date() })
 
         log.info('/auth/fv', {
           message: `JWT token: ${token}`
