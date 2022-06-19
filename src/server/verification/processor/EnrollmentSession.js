@@ -113,7 +113,7 @@ export default class EnrollmentSession {
 
       () =>
         adminApi
-          .whitelistUser(gdAddress, profilePublickey)
+          .whitelistUser(gdAddress, profilePublickey || gdAddress)
           .then(_ => log.info('Successfully whitelisted user:', { loggedInAs }))
           .catch(e => log.error('whitelisting after fv failed', e.message, e, { user }))
     ]
