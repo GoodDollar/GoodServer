@@ -448,32 +448,48 @@ const setup = (app: Router, storage: StorageAPI) => {
       const lowerCaseID = identifier ? identifier.toLowerCase() : undefined
       email = email ? email.toLowerCase() : undefined
 
-      const queryOrs = [
+      const identityFilters = [
         // identifier is stored lowercase in the db. we lowercase addresses in the /auth/eth process
         { identifier: lowerCaseID },
         { email: email && sha3(email) },
         { mobile: mobile && sha3(mobile) }
       ].filter(or => !!first(values(or)))
 
-      if (queryOrs.length === 0) {
+      if (identityFilters.length === 0) {
         log.warn('empty data for /userExists', { body: req.body })
         sendNotExists()
 
         return
       }
 
+      const providerFilters = [
+        { regMethod: { $type: 'string', $ne: 'torus' } },
+        { regMethod: 'torus', torusProvider: { $type: 'string', $ne: '' } }
+      ]      
+      
+      const joinWithOR = filters => ({ $or: filters }) 
+      const filters = [identityFilters, providerFilters]
+      
       let existing = await storage.model
         .find(
           {
-            $or: queryOrs
+            $and: filters.map(joinWithOR)
           },
-          { identifier: 1, email: 1, mobile: 1, createdDate: 1, torusProvider: 1, fullName: 1, regMethod: 1, crmId: 1 }
+          {
+            identifier: 1,
+            email: 1,
+            mobile: 1,
+            createdDate: 1,
+            torusProvider: 1,
+            fullName: 1,
+            regMethod: 1,
+            crmId: 1
+          }
         ) // sort by importance, prefer oldest verified account
         .sort({ isVerified: -1, createdDate: 1 })
         .lean()
 
       existing = existing.filter(doc => doc.createdDate)
-
       if (lowerCaseID && (email || mobile)) {
         // if email or phone also were specified we want
         // to select matches by id first

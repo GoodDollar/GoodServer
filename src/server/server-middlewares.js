@@ -15,6 +15,7 @@ import addLoadTestMiddlewares from './loadtest/loadtest-middleware'
 import logger, { addRequestLogger } from '../imports/logger'
 import VerificationAPI from './verification/verification'
 import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
+import createCleanupAbandonedSignupsTask from './storage/cron/CleanupAbandonedSignups'
 import StakingModelTasks from './blockchain/stakingModelTasks'
 import { MessageStrings } from './db/mongo/models/props'
 import Config from './server.config'
@@ -80,9 +81,17 @@ export default async (app: Router) => {
   })
 
   const CronTasksRunner = getTasksRunner()
-  const disposeEnrollmentsTask = createDisposeEnrollmentsTask(UserDBPrivate)
+  const cronTasksFactories = [createDisposeEnrollmentsTask]
 
-  CronTasksRunner.registerTask(disposeEnrollmentsTask)
+  if (true === Config.storageCleanupEnabled) {
+    cronTasksFactories.push(createCleanupAbandonedSignupsTask)
+  }
+
+  for (let taskFactory of cronTasksFactories) {
+    const task = taskFactory(UserDBPrivate)
+
+    CronTasksRunner.registerTask(task)
+  }
 
   if (contractsVersion >= '2.0.0') {
     for (let { task, disabled } of stakingModelTasks) {
