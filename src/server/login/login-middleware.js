@@ -7,6 +7,7 @@ import { defaults } from 'lodash'
 import * as Crypto from '@textile/crypto'
 import { TextEncoder } from 'util'
 import isBase64 from 'is-base64'
+import { sha3 } from 'web3-utils'
 
 import logger from '../../imports/logger'
 import { wrapAsync } from '../utils/helpers'
@@ -24,7 +25,13 @@ const jwtOptions = {
 }
 
 const MSG = 'Login to GoodDAPP'
-const FV_MSG = 'Login to GoodFV'
+const FV_LOGIN_MSG = `Sign this message to login into GoodDollar Unique Identity service.
+WARNING: do not sign this message unless you trust the website/application requesting this signature.
+nonce:`
+
+const FV_IDENTIFIER_MSG = `Sign this message to create your own unique identifier for you anonymized record.
+You can use this identifier in the future to delete this anonymized record.
+WARNING: do not sign this message unless you trust the website/application requesting this signature.`
 
 const isProfileSignatureCompatible = (signature, nonce) => {
   if (isBase64(signature)) {
@@ -202,8 +209,8 @@ const setup = (app: Router) => {
       if (parseInt(nonce) + 300 < seconds) {
         throw new Error('invalid nonce for fv login')
       }
-      const recovered = recoverPublickey(signature, FV_MSG, nonce)
-      const fvrecovered = recoverPublickey(fvsig, FV_MSG, '')
+      const recovered = recoverPublickey(signature, FV_LOGIN_MSG, nonce)
+      const fvrecovered = recoverPublickey(fvsig, FV_IDENTIFIER_MSG, '')
 
       log.debug('/auth/fv', {
         message: 'Recovered public key',
@@ -212,19 +219,22 @@ const setup = (app: Router) => {
       })
 
       if (recovered && recovered === fvrecovered) {
-        const userRecord = await UserDBPrivate.getUser(recovered)
+        const identifier = sha3(recovered)
+        const userRecord = await UserDBPrivate.getUser(identifier)
         const hasVerified = userRecord && (userRecord.smsValidated || userRecord.isEmailConfirmed)
         const hasSignedUp = userRecord && userRecord.createdDate
 
         if (hasSignedUp && !hasVerified) {
-          log.warn('user doesnt have email nor mobile verified', { recovered })
+          log.warn('user doesnt have email nor mobile verified', { recovered, identifier })
         }
 
         log.info(`SigUtil Successfully verified signer as ${recovered}`, { hasSignedUp })
 
         const token = jwt.sign(
           {
-            loggedInAs: recovered,
+            loggedInAs: identifier,
+            gdAddress: recovered,
+            profilePublickey: recovered,
             exp: Math.floor(Date.now() / 1000) + (hasSignedUp ? Config.jwtExpiration : 3600), //if not signed up jwt will last only 60 seconds so it will be refreshed after signup
             aud: hasSignedUp || hasVerified ? `realmdb_wallet_${Config.env}` : 'unsigned',
             sub: recovered
@@ -232,7 +242,7 @@ const setup = (app: Router) => {
           Config.jwtPassword
         )
 
-        UserDBPrivate.updateUser({ identifier: recovered, lastLogin: new Date() })
+        UserDBPrivate.updateUser({ identifier, lastLogin: new Date() })
 
         log.info('/auth/fv', {
           message: `JWT token: ${token}`

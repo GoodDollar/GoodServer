@@ -14,8 +14,11 @@ import conf from '../server.config'
 import { addUserToWhiteList, createCRMRecord } from './addUserSteps'
 import createUserVerifier from './verifier'
 import stakingModelTasks from '../blockchain/stakingModelTasks'
+import { cancelDisposalTask } from '../verification/cron/taskUtil'
+import createEnrollmentProcessor from '../verification/processor/EnrollmentProcessor'
 
-const fishManager = stakingModelTasks.fishManager
+const { fishManager } = stakingModelTasks
+const { faceVerificationDebugTool } = conf
 
 const adminAuthenticate = (req, res, next) => {
   const { body } = req
@@ -565,5 +568,34 @@ const setup = (app: Router, storage: StorageAPI) => {
       res.json({ ok: 1 })
     })
   )
+
+  if (true !== faceVerificationDebugTool) {
+    return
+  }
+
+  app.post(
+    '/admin/verify/face/delete',
+    adminAuthenticate,
+    wrapAsync(async (req, res) => {
+      const { body, log } = req
+      const { enrollmentIdentifier } = body
+
+      try {
+        const processor = createEnrollmentProcessor(storage, log)
+
+        await processor.dispose(enrollmentIdentifier, log)
+        await cancelDisposalTask(storage, enrollmentIdentifier)
+      } catch (exception) {
+        const { message } = exception
+
+        log.error('delete face record failed:', message, exception, { enrollmentIdentifier })
+        res.status(400).json({ ok: 0, error: message })
+        return
+      }
+
+      res.json({ ok: 1 })
+    })
+  )
 }
+
 export default setup

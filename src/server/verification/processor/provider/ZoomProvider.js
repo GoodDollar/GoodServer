@@ -13,6 +13,7 @@ import {
 
 import { faceSnapshotFields } from '../../utils/logger'
 import logger from '../../../../imports/logger'
+import ServerConfig from '../../../server.config'
 
 import { type IEnrollmentProvider } from '../typings'
 
@@ -20,9 +21,12 @@ class ZoomProvider implements IEnrollmentProvider {
   api = null
   logger = null
 
-  constructor(api, logger) {
+  constructor(api, Config, logger) {
+    const { disableFaceVerification } = Config
+
     this.api = api
     this.logger = logger
+    this.storeRecords = !disableFaceVerification
 
     bindAll(this, ['_enrollmentOperation'])
   }
@@ -55,7 +59,7 @@ class ZoomProvider implements IEnrollmentProvider {
     onEnrollmentProcessing: (payload: IEnrollmentEventPayload) => void | Promise<void>,
     customLogger = null
   ): Promise<any> {
-    const { api, logger } = this
+    const { api, logger, storeRecords } = this
     const log = customLogger || logger
     const { defaultMinimalMatchLevel, defaultSearchIndexName } = api
     const { LivenessCheckFailed, SecurityCheckFailed, FacemapDoesNotMatch } = ZoomAPIError
@@ -68,6 +72,7 @@ class ZoomProvider implements IEnrollmentProvider {
     let resultBlob
     let isLive = true
     let isNotMatch = false
+    let isEnrolled = true
 
     // reads resultBLob from response
     const fetchResult = response => (resultBlob = get(response, 'scanResultBlob'))
@@ -96,18 +101,28 @@ class ZoomProvider implements IEnrollmentProvider {
       throw exception
     }
 
-    // 1. checking if facescan already uploaded & enrolled
-    // refactored - using a separate method was added after initial implementation
-    // instead of the direct API call
-    const alreadyEnrolled = await this.isEnrollmentExists(enrollmentIdentifier, customLogger)
+    // 1. Determining which operation we need to perform
+    // a) if face verification disabled we'll check liveness only
+    let alreadyEnrolled = false
+    let methodToInvoke = 'checkLiveness'
+    let methodArgs = [payload, customLogger]
+
+    // b) if face verification enabled, we're checking is facescan already uploaded & enrolled
+    if (storeRecords) {
+      // refactored - using a separate method was added after initial implementation
+      // instead of the direct API call
+      alreadyEnrolled = await this.isEnrollmentExists(enrollmentIdentifier, customLogger)
+      // if already enrolled, will call /match-3d
+      // othwerise (if not enrolled/stored yet) - /enroll
+      methodToInvoke = (alreadyEnrolled ? 'update' : 'submit') + 'Enrollment'
+      // match/enroll requires enromment identifier, pre-prepding it to the args list
+      methodArgs.unshift(enrollmentIdentifier)
+    }
 
     // 2. performing liveness check and storing facescan / audit trail images (if need)
     try {
-      // if already enrolled, will call /match-3d
-      // othwerise (if not enrolled/stored yet) - /enroll
-      const methodToInvoke = (alreadyEnrolled ? 'update' : 'submit') + 'Enrollment'
+      await api[methodToInvoke](...methodArgs).then(fetchResult)
 
-      await api[methodToInvoke](enrollmentIdentifier, payload, customLogger).then(fetchResult)
       log.debug('Received enrollment:', { enrollmentIdentifier, alreadyEnrolled })
     } catch (exception) {
       const { name, message, response } = exception
@@ -150,64 +165,66 @@ class ZoomProvider implements IEnrollmentProvider {
     // notifying about liveness / match passed or not
     await notifyProcessor({ isLive, isNotMatch })
 
-    // 3. checking for duplicates
-    const { results, ...faceSearchResponse } = await api.faceSearch(
-      enrollmentIdentifier,
-      defaultMinimalMatchLevel,
-      defaultSearchIndexName,
-      customLogger
-    )
+    // next steps are performed only if face verification enabled
+    if (storeRecords) {
+      // 3. checking for duplicates
+      const { results, ...faceSearchResponse } = await api.faceSearch(
+        enrollmentIdentifier,
+        defaultMinimalMatchLevel,
+        defaultSearchIndexName,
+        customLogger
+      )
 
-    // excluding own enrollmentIdentifier
-    const duplicate = results.find(
-      ({ identifier: matchId }) => matchId.toLowerCase() !== enrollmentIdentifier.toLowerCase()
-    )
+      // excluding own enrollmentIdentifier
+      const duplicate = results.find(
+        ({ identifier: matchId }) => matchId.toLowerCase() !== enrollmentIdentifier.toLowerCase()
+      )
 
-    // if there're at least one record left - we have a duplicate
-    const isDuplicate = !!duplicate
+      // if there're at least one record left - we have a duplicate
+      const isDuplicate = !!duplicate
 
-    // notifying about duplicates found or not
-    await notifyProcessor({ isDuplicate })
+      // notifying about duplicates found or not
+      await notifyProcessor({ isDuplicate })
 
-    if (isDuplicate) {
-      // if duplicate found - throwing corresponding error
-      log.warn(duplicateFoundMessage, { duplicate, enrollmentIdentifier })
-      throwException(duplicateFoundMessage, { isDuplicate }, faceSearchResponse)
-    }
+      if (isDuplicate) {
+        // if duplicate found - throwing corresponding error
+        log.warn(duplicateFoundMessage, { duplicate, enrollmentIdentifier })
+        throwException(duplicateFoundMessage, { isDuplicate }, faceSearchResponse)
+      }
 
-    // 4. indexing uploaded & stored face scan to the 3D Database
-    let isEnrolled = true
-    // if wasn't already enrolled -  this means it wasn't also indexed
-    let alreadyIndexed = false
+      // 4. indexing uploaded & stored face scan to the 3D Database
+      // if wasn't already enrolled -  this means it wasn't also indexed
+      let alreadyIndexed = false
 
-    if (alreadyEnrolled) {
-      // if already enrolled - need to check was it already indexed or not
-      alreadyIndexed = await this.isEnrollmentIndexed(enrollmentIdentifier, customLogger)
-    }
+      if (alreadyEnrolled) {
+        // if already enrolled - need to check was it already indexed or not
+        alreadyIndexed = await this.isEnrollmentIndexed(enrollmentIdentifier, customLogger)
+      }
 
-    log.debug('Preparing enrollment to index:', { enrollmentIdentifier, alreadyEnrolled, alreadyIndexed })
+      log.debug('Preparing enrollment to index:', { enrollmentIdentifier, alreadyEnrolled, alreadyIndexed })
 
-    if (alreadyIndexed) {
-      log.debug('Enrollment already indexed, skipping:', { enrollmentIdentifier })
-    } else {
-      // if not already enrolled or indexed - indexing
-      try {
-        await api.indexEnrollment(enrollmentIdentifier, defaultSearchIndexName, customLogger)
-        log.debug('Enrollment indexed:', { enrollmentIdentifier })
-      } catch (exception) {
-        const { response, message } = exception
+      if (alreadyIndexed) {
+        log.debug('Enrollment already indexed, skipping:', { enrollmentIdentifier })
+      } else {
+        // if not already enrolled or indexed - indexing
+        try {
+          await api.indexEnrollment(enrollmentIdentifier, defaultSearchIndexName, customLogger)
+          log.debug('Enrollment indexed:', { enrollmentIdentifier })
+        } catch (exception) {
+          const { response, message } = exception
 
-        // if exception has no response (e.g. no conneciton or service error)
-        // just rethrowing it and stopping enrollment
-        if (!response) {
-          throw exception
+          // if exception has no response (e.g. no conneciton or service error)
+          // just rethrowing it and stopping enrollment
+          if (!response) {
+            throw exception
+          }
+
+          // otherwise notifying & throwing enrollment exception
+          isEnrolled = false
+
+          await notifyProcessor({ isEnrolled })
+          throwException(message, { isEnrolled }, response)
         }
-
-        // otherwise notifying & throwing enrollment exception
-        isEnrolled = false
-
-        await notifyProcessor({ isEnrolled })
-        throwException(message, { isEnrolled }, response)
       }
     }
 
@@ -287,4 +304,4 @@ class ZoomProvider implements IEnrollmentProvider {
   }
 }
 
-export default once(() => new ZoomProvider(initZoomAPI(), logger.child({ from: 'ZoomProvider' })))
+export default once(() => new ZoomProvider(initZoomAPI(), ServerConfig, logger.child({ from: 'ZoomProvider' })))

@@ -8,14 +8,13 @@ import storage from '../../db/mongo/user-privat-provider'
 import AdminWallet from '../../blockchain/AdminWallet'
 
 import makeServer from '../../server-test'
-import { delay, noopAsync } from '../../utils/async'
+import { noopAsync } from '../../utils/async'
 
 import { ZoomLicenseType } from '../../verification/utils/constants'
 import createEnrollmentProcessor from '../processor/EnrollmentProcessor'
 import { getToken, getCreds } from '../../__util__/'
 import createMockingHelper from '../api/__tests__/__util__'
 
-import * as awsSes from '../../aws-ses/aws-ses'
 import { DisposeAt, scheduleDisposalTask, DISPOSE_ENROLLMENTS_TASK, forEnrollment } from '../cron/taskUtil'
 
 describe('verificationAPI', () => {
@@ -412,121 +411,121 @@ describe('verificationAPI', () => {
     })
   })
 
-  test('/verify/sendotp without creds -> 401', async () => {
-    await request(server)
-      .post('/verify/sendotp')
-      .expect(401)
-  })
+  // test('/verify/sendotp without creds -> 401', async () => {
+  //   await request(server)
+  //     .post('/verify/sendotp')
+  //     .expect(401)
+  // })
 
-  test('/verify/sendotp saves mobile', async () => {
-    const token = await getToken(server)
-    await storage.updateUser({
-      identifier: userIdentifier,
-      smsValidated: false,
-      fullName: 'test_user_sendemail'
-    })
+  // test('/verify/sendotp saves mobile', async () => {
+  //   const token = await getToken(server)
+  //   await storage.updateUser({
+  //     identifier: userIdentifier,
+  //     smsValidated: false,
+  //     fullName: 'test_user_sendemail'
+  //   })
 
-    await request(server)
-      .post('/verify/sendotp')
-      .send({ user: { mobile: '+972507311111' } })
-      .set('Authorization', `Bearer ${token}`)
-      .expect(200, { ok: 1, alreadyVerified: false })
+  //   await request(server)
+  //     .post('/verify/sendotp')
+  //     .send({ user: { mobile: '+972507311111' } })
+  //     .set('Authorization', `Bearer ${token}`)
+  //     .expect(200, { ok: 1, alreadyVerified: false })
 
-    expect(await storage.getByIdentifier(userIdentifier)).toMatchObject({ otp: { mobile: '+972507311111' } })
-  })
+  //   expect(await storage.getByIdentifier(userIdentifier)).toMatchObject({ otp: { mobile: '+972507311111' } })
+  // })
 
-  test('/verify/sendotp should fail with 429 status - too many requests (rate limiter)', async () => {
-    let isFailsWithRateLimit = false
+  // test('/verify/sendotp should fail with 429 status - too many requests (rate limiter)', async () => {
+  //   let isFailsWithRateLimit = false
 
-    while (!isFailsWithRateLimit) {
-      const res = await request(server).post('/verify/sendotp')
+  //   while (!isFailsWithRateLimit) {
+  //     const res = await request(server).post('/verify/sendotp')
 
-      if (res.status === 429) {
-        isFailsWithRateLimit = true
-      }
-    }
+  //     if (res.status === 429) {
+  //       isFailsWithRateLimit = true
+  //     }
+  //   }
 
-    expect(isFailsWithRateLimit).toBeTruthy()
-  })
+  //   expect(isFailsWithRateLimit).toBeTruthy()
+  // })
 
-  test('/verify/sendemail with creds', async () => {
-    // eslint-disable-next-line import/namespace
-    awsSes.sendTemplateEmail = jest.fn().mockReturnValue({
-      ResponseMetadata: { RequestId: '78ecb4ef-2f7d-4d97-89e7-ccd56423f802' },
-      MessageId: '01020175847408e6-057f405d-f09d-46ce-85eb-811528988332-000000'
-    })
+  // test('/verify/sendemail with creds', async () => {
+  //   // eslint-disable-next-line import/namespace
+  //   awsSes.sendTemplateEmail = jest.fn().mockReturnValue({
+  //     ResponseMetadata: { RequestId: '78ecb4ef-2f7d-4d97-89e7-ccd56423f802' },
+  //     MessageId: '01020175847408e6-057f405d-f09d-46ce-85eb-811528988332-000000'
+  //   })
 
-    const token = await getToken(server)
+  //   const token = await getToken(server)
 
-    await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
+  //   await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
 
-    const user = await storage.updateUser({
-      identifier: userIdentifier,
-      fullName: 'test_user_sendemail'
-    })
+  //   const user = await storage.updateUser({
+  //     identifier: userIdentifier,
+  //     fullName: 'test_user_sendemail'
+  //   })
 
-    expect(user).toBeTruthy()
+  //   expect(user).toBeTruthy()
 
-    await request(server)
-      .post('/verify/sendemail')
-      .send({
-        user: {
-          fullName: 'h r',
-          email: 'johndoe@gooddollar.org'
-        }
-      })
-      .set('Authorization', `Bearer ${token}`)
-      .expect(200, { ok: 1, alreadyVerified: false })
+  //   await request(server)
+  //     .post('/verify/sendemail')
+  //     .send({
+  //       user: {
+  //         fullName: 'h r',
+  //         email: 'johndoe@gooddollar.org'
+  //       }
+  //     })
+  //     .set('Authorization', `Bearer ${token}`)
+  //     .expect(200, { ok: 1, alreadyVerified: false })
 
-    await delay(500)
+  //   await delay(500)
 
-    const dbUser = await storage.getUser(userIdentifier)
+  //   const dbUser = await storage.getUser(userIdentifier)
 
-    expect(dbUser.emailVerificationCode).toBeTruthy()
-    awsSes.sendTemplateEmail.mockRestore()
-  })
+  //   expect(dbUser.emailVerificationCode).toBeTruthy()
+  //   awsSes.sendTemplateEmail.mockRestore()
+  // })
 
-  test('/verify/sendemail should fail with 429 status - too many requests (rate limiter)', async () => {
-    // eslint-disable-next-line import/namespace
-    awsSes.sendTemplateEmail = jest.fn().mockReturnValue({
-      ResponseMetadata: { RequestId: '78ecb4ef-2f7d-4d97-89e7-ccd56423f802' },
-      MessageId: '01020175847408e6-057f405d-f09d-46ce-85eb-811528988332-000000'
-    })
+  // test('/verify/sendemail should fail with 429 status - too many requests (rate limiter)', async () => {
+  //   // eslint-disable-next-line import/namespace
+  //   awsSes.sendTemplateEmail = jest.fn().mockReturnValue({
+  //     ResponseMetadata: { RequestId: '78ecb4ef-2f7d-4d97-89e7-ccd56423f802' },
+  //     MessageId: '01020175847408e6-057f405d-f09d-46ce-85eb-811528988332-000000'
+  //   })
 
-    await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
+  //   await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
 
-    const user = await storage.updateUser({
-      identifier: userIdentifier,
-      fullName: 'test_user_sendemail'
-    })
+  //   const user = await storage.updateUser({
+  //     identifier: userIdentifier,
+  //     fullName: 'test_user_sendemail'
+  //   })
 
-    expect(user).toBeTruthy()
-    let isFailsWithRateLimit = false
+  //   expect(user).toBeTruthy()
+  //   let isFailsWithRateLimit = false
 
-    while (!isFailsWithRateLimit) {
-      const res = await request(server)
-        .post('/verify/sendemail')
-        .send({
-          user: {
-            fullName: 'h r',
-            email: 'johndoe@gooddollar.org'
-          }
-        })
+  //   while (!isFailsWithRateLimit) {
+  //     const res = await request(server)
+  //       .post('/verify/sendemail')
+  //       .send({
+  //         user: {
+  //           fullName: 'h r',
+  //           email: 'johndoe@gooddollar.org'
+  //         }
+  //       })
 
-      if (res.status === 429) {
-        isFailsWithRateLimit = true
-      }
-    }
+  //     if (res.status === 429) {
+  //       isFailsWithRateLimit = true
+  //     }
+  //   }
 
-    expect(isFailsWithRateLimit).toBeTruthy()
-    awsSes.sendTemplateEmail.mockRestore()
-  })
+  //   expect(isFailsWithRateLimit).toBeTruthy()
+  //   awsSes.sendTemplateEmail.mockRestore()
+  // })
 
-  test('/verify/phase', async () => {
-    const { phase } = Config
+  // test('/verify/phase', async () => {
+  //   const { phase } = Config
 
-    await request(server)
-      .get('/verify/phase')
-      .expect(200, { success: true, phase })
-  })
+  //   await request(server)
+  //     .get('/verify/phase')
+  //     .expect(200, { success: true, phase })
+  // })
 })

@@ -19,9 +19,12 @@ export const forEnrollment = (enrollmentIdentifier, executeAt = null) => {
   return mapKeys(pickBy(subject), (_, key) => `subject.${key}`)
 }
 
-// eslint-disable-next-line require-await
-export const scheduleDisposalTask = async (storage, enrollmentIdentifier, executeAt): Promise<DelayedTaskRecord> => {
+export const cancelDisposalTask = async (storage, enrollmentIdentifier): Promise<void> => {
   await storage.cancelTasksQueued(DISPOSE_ENROLLMENTS_TASK, forEnrollment(enrollmentIdentifier))
+}
+
+export const scheduleDisposalTask = async (storage, enrollmentIdentifier, executeAt): Promise<DelayedTaskRecord> => {
+  await cancelDisposalTask(storage, enrollmentIdentifier)
 
   return storage.enqueueTask(DISPOSE_ENROLLMENTS_TASK, createTaskSubject(enrollmentIdentifier, executeAt))
 }
