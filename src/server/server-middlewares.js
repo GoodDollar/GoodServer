@@ -81,8 +81,13 @@ export default async (app: Router) => {
   })
 
   const CronTasksRunner = getTasksRunner()
+  const cronTasksFactories = [createDisposeEnrollmentsTask]
 
-  for (let taskFactory of [createDisposeEnrollmentsTask, createCleanupAbandonedSignupsTask]) {
+  if (true === Config.storageCleanupEnabled) {
+    cronTasksFactories.push(createCleanupAbandonedSignupsTask)
+  }
+
+  for (let taskFactory of cronTasksFactories) {
     const task = taskFactory(UserDBPrivate)
 
     CronTasksRunner.registerTask(task)
