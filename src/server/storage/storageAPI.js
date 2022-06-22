@@ -3,7 +3,7 @@ import moment from 'moment'
 import { Router } from 'express'
 import passport from 'passport'
 import fetch from 'cross-fetch'
-import { first, get, sortBy, values } from 'lodash'
+import { first, get, sortBy, toLower, values } from 'lodash'
 import { sha3, toChecksumAddress } from 'web3-utils'
 
 import { type StorageAPI, UserRecord } from '../../imports/types'
@@ -567,7 +567,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       try {
         const processor = createEnrollmentProcessor(storage, log)
 
-        await processor.dispose(enrollmentIdentifier, log)
+        await processor.dispose(toLower(enrollmentIdentifier), log)
         await cancelDisposalTask(storage, enrollmentIdentifier)
       } catch (exception) {
         const { message } = exception
