@@ -307,6 +307,18 @@ const conf = convict({
     env: 'ENABLE_MONGO_LOCK',
     default: false
   },
+  storageCleanupEnabled: {
+    doc: 'Enables cron job the abandoned signups cleanup',
+    format: Boolean,
+    env: 'STORAGE_CLEANUP_ENABLED',
+    default: false
+  },
+  storageCleanupCron: {
+    doc: 'Cron schedule for the abandoned signups cleanup',
+    format: String,
+    env: 'STORAGE_CLEANUP_CRON',
+    default: '0 0 0 * * *'
+  },
   keepFaceVerificationRecords: {
     doc:
       'Time interval (in hours) to store face verification records after user deletes his account.' +

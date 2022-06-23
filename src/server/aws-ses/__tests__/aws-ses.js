@@ -2,6 +2,7 @@
 import MockSES from 'aws-sdk/clients/ses'
 import { sendTemplateEmail } from '../aws-ses'
 import conf from '../../server.config'
+import { punycodeDomain } from '../../utils/email'
 
 jest.mock('aws-sdk/clients/ses', () => {
   const mSES = {
@@ -32,7 +33,7 @@ describe('sendTemplateEmail', () => {
     expect(mSes.sendTemplatedEmail).toBeCalledWith({
       Source: conf.awsSesSourceVerificationEmail,
       Destination: {
-        ToAddresses: [recipientEmail]
+        ToAddresses: [punycodeDomain(recipientEmail)]
       },
       Template: conf.awsSesTemplateName,
       TemplateData: JSON.stringify(templateData)
