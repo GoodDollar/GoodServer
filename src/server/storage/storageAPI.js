@@ -446,6 +446,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       const sendNotExists = () => res.json({ ok: 0, exists: false })
 
       const lowerCaseID = identifier ? identifier.toLowerCase() : undefined
+      
       email = email ? email.toLowerCase() : undefined
 
       const identityFilters = [
@@ -462,6 +463,7 @@ const setup = (app: Router, storage: StorageAPI) => {
         return
       }
 
+      const sortHandlers = []
       const providerFilters = [
         { regMethod: { $type: 'string', $ne: 'torus' } },
         { regMethod: 'torus', torusProvider: { $type: 'string', $ne: '' } }
@@ -469,6 +471,18 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       const joinWithOR = filters => ({ $or: filters })
       const filters = [identityFilters, providerFilters]
+       
+      if (provider) {
+        sortHandlers.push(({ torusProvider }) => torusProvider !== provider)
+      }
+
+      if (lowerCaseID && (email || mobile)) {
+        // if email or phone also were specified we want
+        // to select matches by id first
+        // sortBy sorts in ascending order (and keeps existing sort)
+        // so non-matched by id results would be moved to the end
+        sortHandlers.push(({ identifier }) => identifier !== lowerCaseID)
+      }
 
       let existing = await storage.model
         .find(
@@ -490,20 +504,6 @@ const setup = (app: Router, storage: StorageAPI) => {
         .lean()
 
       existing = existing.filter(doc => doc.createdDate)
-      const sortHandlers = []
-
-      if (provider) {
-        sortHandlers.push(({ torusProvider }) => torusProvider !== provider)
-      }
-
-      if (lowerCaseID && (email || mobile)) {
-        // if email or phone also were specified we want
-        // to select matches by id first
-        // sortBy sorts in ascending order (and keeps existing sort)
-        // so non-matched by id results would be moved to the end
-        sortHandlers.push(({ identifier }) => identifier !== lowerCaseID)
-      }
-
       existing = sortBy(existing, item => every(over(sortHandlers)(item)))
 
       log.debug('userExists:', { existing, identifier, identifierLC: lowerCaseID, email, mobile })
