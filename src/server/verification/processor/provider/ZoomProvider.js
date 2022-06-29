@@ -22,11 +22,11 @@ class ZoomProvider implements IEnrollmentProvider {
   logger = null
 
   constructor(api, Config, logger) {
-    const { disableFaceVerification } = Config
+    const { skipFaceVerification, disableFaceVerification } = Config
 
     this.api = api
     this.logger = logger
-    this.storeRecords = !disableFaceVerification
+    this.storeRecords = !disableFaceVerification && !skipFaceVerification
 
     bindAll(this, ['_enrollmentOperation'])
   }

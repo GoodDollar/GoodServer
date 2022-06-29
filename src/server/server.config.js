@@ -334,9 +334,15 @@ const conf = convict({
     default: '0 0 * * * *'
   },
   disableFaceVerification: {
-    doc: 'Whitelist user once they register, returns already enrolled with no Zoom API interaction',
+    doc: 'Whitelist user once they register, disables face verification totally',
     format: Boolean,
     env: 'DISABLE_FACE_VERIFICATION',
+    default: false
+  },
+  skipFaceVerification: {
+    doc: 'Skips face verification process, returns already enrolled with no Zoom API interaction',
+    format: Boolean,
+    env: 'SKIP_FACE_VERIFICATION',
     default: false
   },
   faceVerificationDebugTool: {
