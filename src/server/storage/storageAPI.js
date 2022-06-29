@@ -442,13 +442,14 @@ const setup = (app: Router, storage: StorageAPI) => {
     '/userExists',
     wrapAsync(async (req, res) => {
       const { log, body } = req
+      const toHash = value => (value ? sha3(value) : null)
       const sendNotExists = () => res.json({ ok: 0, exists: false })
 
       let { identifier = '', email, mobile } = body
       email = email ? email.toLowerCase() : undefined
 
       const lowerCaseID = identifier ? identifier.toLowerCase() : undefined
-      const [emailHash, mobileHash] = [email, mobile].map(item => item && sha3(item))
+      const [emailHash, mobileHash] = [email, mobile].map(toHash)
 
       const identityFilters = [
         // identifier is stored lowercase in the db. we lowercase addresses in the /auth/eth process
