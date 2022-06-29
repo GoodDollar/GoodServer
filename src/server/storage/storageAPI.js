@@ -3,7 +3,7 @@ import moment from 'moment'
 import { Router } from 'express'
 import passport from 'passport'
 import fetch from 'cross-fetch'
-import { first, get, sortBy, toLower, values } from 'lodash'
+import { every, first, get, over, sortBy, toLower, values } from 'lodash'
 import { sha3, toChecksumAddress } from 'web3-utils'
 
 import { type StorageAPI, UserRecord } from '../../imports/types'
@@ -442,10 +442,11 @@ const setup = (app: Router, storage: StorageAPI) => {
     '/userExists',
     wrapAsync(async (req, res) => {
       const { log, body } = req
-      let { identifier = '', email, mobile } = body
+      let { identifier = '', email, mobile, torusProvider: provider } = body
       const sendNotExists = () => res.json({ ok: 0, exists: false })
 
       const lowerCaseID = identifier ? identifier.toLowerCase() : undefined
+      
       email = email ? email.toLowerCase() : undefined
 
       const identityFilters = [
@@ -456,20 +457,33 @@ const setup = (app: Router, storage: StorageAPI) => {
       ].filter(or => !!first(values(or)))
 
       if (identityFilters.length === 0) {
-        log.warn('empty data for /userExists', { body: req.body })
+        log.warn('empty data for /userExists', { body })
         sendNotExists()
 
         return
       }
 
+      const sortHandlers = []
       const providerFilters = [
         { regMethod: { $type: 'string', $ne: 'torus' } },
         { regMethod: 'torus', torusProvider: { $type: 'string', $ne: '' } }
-      ]      
-      
-      const joinWithOR = filters => ({ $or: filters }) 
+      ]
+
+      const joinWithOR = filters => ({ $or: filters })
       const filters = [identityFilters, providerFilters]
-      
+       
+      if (provider) {
+        sortHandlers.push(({ torusProvider }) => torusProvider !== provider)
+      }
+
+      if (lowerCaseID && (email || mobile)) {
+        // if email or phone also were specified we want
+        // to select matches by id first
+        // sortBy sorts in ascending order (and keeps existing sort)
+        // so non-matched by id results would be moved to the end
+        sortHandlers.push(({ identifier }) => identifier !== lowerCaseID)
+      }
+
       let existing = await storage.model
         .find(
           {
@@ -490,13 +504,7 @@ const setup = (app: Router, storage: StorageAPI) => {
         .lean()
 
       existing = existing.filter(doc => doc.createdDate)
-      if (lowerCaseID && (email || mobile)) {
-        // if email or phone also were specified we want
-        // to select matches by id first
-        // sortBy sorts in ascending order (and keeps existing sort)
-        // so non-matched by id results would be moved to the end
-        existing = sortBy(existing, ({ identifier }) => identifier !== lowerCaseID)
-      }
+      existing = sortBy(existing, item => every(over(sortHandlers)(item)))
 
       log.debug('userExists:', { existing, identifier, identifierLC: lowerCaseID, email, mobile })
 

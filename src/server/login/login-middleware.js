@@ -164,7 +164,7 @@ const setup = (app: Router) => {
 
         const token = jwt.sign(
           {
-            method: method,
+            method,
             loggedInAs: recovered,
             gdAddress: gdPublicAddress,
             profilePublickey: profileReqPublickey,
