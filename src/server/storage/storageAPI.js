@@ -448,7 +448,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       email = email ? email.toLowerCase() : undefined
 
       const lowerCaseID = identifier ? identifier.toLowerCase() : undefined
-      const [emailHash, mobileHash] = [email, mobile].map(sha3)
+      const [emailHash, mobileHash] = [email, mobile].map(item => item && sha3(item))
 
       const identityFilters = [
         // identifier is stored lowercase in the db. we lowercase addresses in the /auth/eth process
@@ -505,9 +505,11 @@ const setup = (app: Router, storage: StorageAPI) => {
         ordering = { identifierMatches: -1, ...ordering }
       }
 
-      const existing = await storage.model
-        .aggregate([{ $match: allFilters }, { $project: projections }, { $sort: ordering }])
-        .lean()
+      const existing = await storage.model.aggregate([
+        { $match: allFilters },
+        { $project: projections },
+        { $sort: ordering }
+      ])
 
       log.debug('userExists:', { existing, identifier, identifierLC: lowerCaseID, email, mobile })
 
