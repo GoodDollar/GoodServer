@@ -3,7 +3,7 @@ import moment from 'moment'
 import { Router } from 'express'
 import passport from 'passport'
 import fetch from 'cross-fetch'
-import { every, first, get, over, sortBy, toLower, values } from 'lodash'
+import { escapeRegExp, every, first, get, over, sortBy, toLower, values } from 'lodash'
 import { sha3, toChecksumAddress } from 'web3-utils'
 
 import { type StorageAPI, UserRecord } from '../../imports/types'
@@ -442,18 +442,19 @@ const setup = (app: Router, storage: StorageAPI) => {
     '/userExists',
     wrapAsync(async (req, res) => {
       const { log, body } = req
-      let { identifier = '', email, mobile, torusProvider: provider } = body
       const sendNotExists = () => res.json({ ok: 0, exists: false })
 
-      const lowerCaseID = identifier ? identifier.toLowerCase() : undefined
-      
+      let { identifier = '', email, mobile } = body
       email = email ? email.toLowerCase() : undefined
+
+      const lowerCaseID = identifier ? identifier.toLowerCase() : undefined
+      const [emailHash, mobileHash] = [email, mobile].map(sha3)
 
       const identityFilters = [
         // identifier is stored lowercase in the db. we lowercase addresses in the /auth/eth process
         { identifier: lowerCaseID },
-        { email: email && sha3(email) },
-        { mobile: mobile && sha3(mobile) }
+        { email: email && emailHash },
+        { mobile: mobile && mobileHash }
       ].filter(or => !!first(values(or)))
 
       if (identityFilters.length === 0) {
@@ -463,48 +464,50 @@ const setup = (app: Router, storage: StorageAPI) => {
         return
       }
 
-      const sortHandlers = []
+      const dateFilters = {
+        createdDate: { $exists: true }
+      }
+
       const providerFilters = [
         { regMethod: { $type: 'string', $ne: 'torus' } },
         { regMethod: 'torus', torusProvider: { $type: 'string', $ne: '' } }
       ]
 
-      const joinWithOR = filters => ({ $or: filters })
-      const filters = [identityFilters, providerFilters]
-       
-      if (provider) {
-        sortHandlers.push(({ torusProvider }) => torusProvider !== provider)
+      const searchFilters = [identityFilters, providerFilters].map(filters => ({ $or: filters }))
+
+      const allFilters = {
+        $and: [dateFilters, ...searchFilters]
       }
+
+      const projections = {
+        identifier: 1,
+        email: 1,
+        mobile: 1,
+        createdDate: 1,
+        torusProvider: 1,
+        fullName: 1,
+        regMethod: 1,
+        crmId: 1
+      }
+
+      // sort by importance, prefer oldest verified account
+      let ordering = { isVerified: -1, createdDate: 1 }
 
       if (lowerCaseID && (email || mobile)) {
         // if email or phone also were specified we want
         // to select matches by id first
         // sortBy sorts in ascending order (and keeps existing sort)
         // so non-matched by id results would be moved to the end
-        sortHandlers.push(({ identifier }) => identifier !== lowerCaseID)
+        projections.identifierMatches = {
+          $eq: ['$identifier', lowerCaseID]
+        }
+
+        ordering = { identifierMatches: -1, ...ordering }
       }
 
-      let existing = await storage.model
-        .find(
-          {
-            $and: filters.map(joinWithOR)
-          },
-          {
-            identifier: 1,
-            email: 1,
-            mobile: 1,
-            createdDate: 1,
-            torusProvider: 1,
-            fullName: 1,
-            regMethod: 1,
-            crmId: 1
-          }
-        ) // sort by importance, prefer oldest verified account
-        .sort({ isVerified: -1, createdDate: 1 })
+      const existing = await storage.model
+        .aggregate([{ $match: allFilters }, { $project: projections }, { $sort: ordering }])
         .lean()
-
-      existing = existing.filter(doc => doc.createdDate)
-      existing = sortBy(existing, item => every(over(sortHandlers)(item)))
 
       log.debug('userExists:', { existing, identifier, identifierLC: lowerCaseID, email, mobile })
 
@@ -521,9 +524,9 @@ const setup = (app: Router, storage: StorageAPI) => {
         found: existing.length,
         fullName: bestExisting.fullName,
         provider: bestExisting.torusProvider,
-        email: email && sha3(email) === bestExisting.email,
-        identifier: lowerCaseID === bestExisting.identifier,
-        mobile: mobile && sha3(mobile) === bestExisting.mobile
+        identifier: bestExisting.identifierMatches,
+        email: email && emailHash === bestExisting.email,
+        mobile: mobile && mobileHash === bestExisting.mobile
       })
     })
   )
