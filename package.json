@@ -89,7 +89,7 @@
     "lodash": "^4.17.21",
     "math-random": "^1.0.4",
     "md5": "^2.3.0",
-    "moment": "^2.29.2",
+    "moment": "^2.29.4",
     "mongoose": "^5.10.7",
     "multer": "^1.4.2",
     "newrelic": "^5.13.1",
