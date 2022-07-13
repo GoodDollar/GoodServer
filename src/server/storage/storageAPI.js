@@ -236,7 +236,8 @@ const setup = (app: Router, storage: StorageAPI) => {
           if (!email) {
             logger.warn('verifyCRM missing user email:', { userPayload, userRecord })
             return res.json({
-              ok: 0
+              ok: 0,
+              error: 'Email is missed for CRM verification'
             })
           }
           email = email.toLowerCase()
@@ -290,9 +291,14 @@ const setup = (app: Router, storage: StorageAPI) => {
       const { user } = req.body
       const { log: logger, user: existingUser } = req
       const { __utmzz: utmString = '' } = req.cookies
+      const sendError = error => res.json({ ok: 0, error })
 
-      if (!user.email || existingUser.createdDate || existingUser.crmId) {
-        return res.json({ ok: 0 })
+      if (existingUser.createdDate || existingUser.crmId) {
+        return sendError('CRM account is already created')
+      }
+
+      if (!user.email) {
+        return sendError('Email is missed')
       }
 
       // fire and forget, don't wait for success or failure
@@ -325,7 +331,7 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       if (!user.crmId) {
         logger.warn('user/claim missing crmId', { user, body: req.body })
-        res.json({ ok: 0 })
+        res.json({ ok: 0, error: 'CRM is missed' })
         return
       }
 
@@ -443,7 +449,7 @@ const setup = (app: Router, storage: StorageAPI) => {
     wrapAsync(async (req, res) => {
       const { log, body } = req
       const toHash = value => (value ? sha3(value) : null)
-      const sendNotExists = () => res.json({ ok: 0, exists: false })
+      const sendNotExists = () => res.json({ ok: 1, exists: false })
 
       let { identifier = '', email, mobile } = body
       email = email ? email.toLowerCase() : undefined
