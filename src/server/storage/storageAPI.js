@@ -502,9 +502,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       // sort by importance, prefer oldest verified account
       let ordering = { isVerified: -1, createdDate: 1 }
 
-      if (lowerCaseID && (email || mobile)) {
-        // if email or phone also were specified we want
-        // to select matches by id first
+      if (lowerCaseID) {
         // sortBy sorts in ascending order (and keeps existing sort)
         // so non-matched by id results would be moved to the end
         projections.identifierMatches = {
@@ -536,7 +534,8 @@ const setup = (app: Router, storage: StorageAPI) => {
         provider: bestExisting.torusProvider,
         identifier: bestExisting.identifierMatches,
         email: email && emailHash === bestExisting.email,
-        mobile: mobile && mobileHash === bestExisting.mobile
+        mobile: mobile && mobileHash === bestExisting.mobile,
+        regMethod: bestExisting.regMethod
       })
     })
   )
