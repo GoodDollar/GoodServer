@@ -513,8 +513,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       log.debug('userExists:', { existing, identifier, identifierLC: lowerCaseID, email, mobile })
 
       if (!existing.length) {
-        sendNotExists()
-        return
+        return res.json({ ok: 1, exists: false })
       }
 
       const bestExisting = first(existing)
