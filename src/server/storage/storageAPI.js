@@ -229,17 +229,20 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       try {
         logger.debug('verify crm:', { data: userPayload, userRecord })
+
         if (userRecord.crmId) {
           logger.debug('verifyCRM already has crmID', { crmId: userRecord.crmId })
         } else {
           let { email, mobile, fullName } = userPayload
+
           if (!email) {
             logger.warn('verifyCRM missing user email:', { userPayload, userRecord })
-            return res.json({
-              ok: 0
-            })
+
+            throw new Error('Email is missed for CRM verification')
           }
+
           email = email.toLowerCase()
+
           const toCRM = {
             identifier: userRecord.loggedInAs,
             fullName,
@@ -263,12 +266,13 @@ const setup = (app: Router, storage: StorageAPI) => {
 
           logger.debug('verifyCRM success', { crmId, toCRM })
         }
-        return res.json({
-          ok: 1
-        })
-      } catch (e) {
-        logger.error('createCRMRecord failed', e.message, e)
-        throw new Error('Failed adding user in verifyCRM')
+
+        return res.json({ ok: 1 })
+      } catch (exception) {
+        const { message } = exception
+
+        logger.error('createCRMRecord failed', message, exception)
+        throw new Error(`Failed adding user in verifyCRM: ${message}`)
       }
     })
   )
@@ -291,8 +295,12 @@ const setup = (app: Router, storage: StorageAPI) => {
       const { log: logger, user: existingUser } = req
       const { __utmzz: utmString = '' } = req.cookies
 
-      if (!user.email || existingUser.createdDate || existingUser.crmId) {
-        return res.json({ ok: 0 })
+      if (existingUser.createdDate || existingUser.crmId) {
+        throw new Error('CRM account is already created')
+      }
+
+      if (!user.email) {
+        throw new Error('Email is missed')
       }
 
       // fire and forget, don't wait for success or failure
@@ -325,19 +333,21 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       if (!user.crmId) {
         logger.warn('user/claim missing crmId', { user, body: req.body })
-        res.json({ ok: 0 })
-        return
+        throw new Error('CRM is missed')
       }
 
       // format date according to OnGage date format
       last_claim = moment(last_claim).format('YYYY/MM/DD')
 
-      await OnGage.updateContact(null, user.crmId, { last_claim, claim_counter }, logger)
-        .then(r => logger.debug('/user/claim updateContact success'))
-        .catch(e => {
-          logger.error('/user/claim updateContact failed', e.message, e, { user, body: req.body })
-          throw new Error('Failed updating user claim in CRM')
-        })
+      try {
+        await OnGage.updateContact(null, user.crmId, { last_claim, claim_counter }, logger)
+        logger.debug('/user/claim updateContact success')
+      } catch (exception) {
+        const { message } = exception
+
+        logger.error('/user/claim updateContact failed', message, exception, { user, body: req.body })
+        throw new Error(`Failed updating user claim in CRM: ${message}`)
+      }
 
       res.json({ ok: 1 })
     })
@@ -443,7 +453,7 @@ const setup = (app: Router, storage: StorageAPI) => {
     wrapAsync(async (req, res) => {
       const { log, body } = req
       const toHash = value => (value ? sha3(value) : null)
-      const sendNotExists = () => res.json({ ok: 0, exists: false })
+      const sendNotExists = () => res.json({ ok: 1, exists: false })
 
       let { identifier = '', email, mobile } = body
       email = email ? email.toLowerCase() : undefined
@@ -460,9 +470,7 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       if (identityFilters.length === 0) {
         log.warn('empty data for /userExists', { body })
-        sendNotExists()
-
-        return
+        return sendNotExists()
       }
 
       const dateFilters = {
@@ -513,7 +521,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       log.debug('userExists:', { existing, identifier, identifierLC: lowerCaseID, email, mobile })
 
       if (!existing.length) {
-        return res.json({ ok: 1, exists: false })
+        return sendNotExists()
       }
 
       const bestExisting = first(existing)
@@ -535,7 +543,7 @@ const setup = (app: Router, storage: StorageAPI) => {
   app.post(
     '/admin/user/get',
     adminAuthenticate,
-    wrapAsync(async (req, res, next) => {
+    wrapAsync(async (req, res) => {
       const { body } = req
       let user = {}
       if (body.email) user = await storage.getUsersByEmail(sha3(body.email))
@@ -555,7 +563,7 @@ const setup = (app: Router, storage: StorageAPI) => {
   app.post(
     '/admin/user/delete',
     adminAuthenticate,
-    wrapAsync(async (req, res, next) => {
+    wrapAsync(async (req, res) => {
       const { body } = req
       let result = {}
       if (body.identifier) result = await storage.deleteUser(body)
@@ -567,7 +575,7 @@ const setup = (app: Router, storage: StorageAPI) => {
   app.post(
     '/admin/model/fish',
     adminAuthenticate,
-    wrapAsync(async (req, res, next) => {
+    wrapAsync(async (req, res) => {
       const { body, log } = req
       const { daysAgo } = body
       if (!daysAgo) return res.json({ ok: 0, error: 'missing daysAgo' })

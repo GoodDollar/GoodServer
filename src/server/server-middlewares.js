@@ -73,11 +73,12 @@ export default async (app: Router) => {
   app.use((error, req, res, next: NextFunction) => {
     const { log = rootLogger, body, url } = req
     const { message } = error
-
     const aborted = error.code === 'ECONNABORTED'
+    const label = 'Something went wrong while performing request'
 
-    log[aborted ? 'warn' : 'error']('Something went wrong while performing request', message, error, { url, body })
-    res.status(400).json({ message })
+    log[aborted ? 'warn' : 'error'](label, message, error, { url, body })
+    // send 'message' for compatibility
+    res.status(400).json({ ok: 0, error: message, message })
   })
 
   const CronTasksRunner = getTasksRunner()
