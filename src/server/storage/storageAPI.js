@@ -543,7 +543,7 @@ const setup = (app: Router, storage: StorageAPI) => {
   app.post(
     '/admin/user/get',
     adminAuthenticate,
-    wrapAsync(async (req, res, next) => {
+    wrapAsync(async (req, res) => {
       const { body } = req
       let user = {}
       if (body.email) user = await storage.getUsersByEmail(sha3(body.email))
@@ -563,7 +563,7 @@ const setup = (app: Router, storage: StorageAPI) => {
   app.post(
     '/admin/user/delete',
     adminAuthenticate,
-    wrapAsync(async (req, res, next) => {
+    wrapAsync(async (req, res) => {
       const { body } = req
       let result = {}
       if (body.identifier) result = await storage.deleteUser(body)
@@ -575,7 +575,7 @@ const setup = (app: Router, storage: StorageAPI) => {
   app.post(
     '/admin/model/fish',
     adminAuthenticate,
-    wrapAsync(async (req, res, next) => {
+    wrapAsync(async (req, res) => {
       const { body, log } = req
       const { daysAgo } = body
       if (!daysAgo) return res.json({ ok: 0, error: 'missing daysAgo' })
