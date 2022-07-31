@@ -229,20 +229,17 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       try {
         logger.debug('verify crm:', { data: userPayload, userRecord })
-
         if (userRecord.crmId) {
           logger.debug('verifyCRM already has crmID', { crmId: userRecord.crmId })
         } else {
           let { email, mobile, fullName } = userPayload
-
           if (!email) {
             logger.warn('verifyCRM missing user email:', { userPayload, userRecord })
-
-            throw new Error('Email is missed for CRM verification')
+            return res.json({
+              ok: 0
+            })
           }
-
           email = email.toLowerCase()
-
           const toCRM = {
             identifier: userRecord.loggedInAs,
             fullName,
@@ -266,13 +263,12 @@ const setup = (app: Router, storage: StorageAPI) => {
 
           logger.debug('verifyCRM success', { crmId, toCRM })
         }
-
-        return res.json({ ok: 1 })
-      } catch (exception) {
-        const { message } = exception
-
-        logger.error('createCRMRecord failed', message, exception)
-        throw new Error(`Failed adding user in verifyCRM: ${message}`)
+        return res.json({
+          ok: 1
+        })
+      } catch (e) {
+        logger.error('createCRMRecord failed', e.message, e)
+        throw new Error('Failed adding user in verifyCRM')
       }
     })
   )
@@ -295,11 +291,12 @@ const setup = (app: Router, storage: StorageAPI) => {
       const { log: logger, user: existingUser } = req
       const { __utmzz: utmString = '' } = req.cookies
 
-      if (existingUser.createdDate || existingUser.crmId) {
-        throw new Error('CRM account is already created')
+      if (existingUser.crmId) {
+        return res.json({ ok: 1 })
       }
 
       if (!user.email) {
+        logger.error('email missing', { user, existingUser })
         throw new Error('Email is missed')
       }
 
@@ -315,7 +312,7 @@ const setup = (app: Router, storage: StorageAPI) => {
   )
 
   /**
-   * @api {post} /user/start user starts registration and we have his email
+   * @api {post} /user/claim collect claim status to crm
    * @apiName Add
    * @apiGroup Storage
    *
@@ -333,21 +330,19 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       if (!user.crmId) {
         logger.warn('user/claim missing crmId', { user, body: req.body })
-        throw new Error('CRM is missed')
+        res.json({ ok: 0 })
+        return
       }
 
       // format date according to OnGage date format
       last_claim = moment(last_claim).format('YYYY/MM/DD')
 
-      try {
-        await OnGage.updateContact(null, user.crmId, { last_claim, claim_counter }, logger)
-        logger.debug('/user/claim updateContact success')
-      } catch (exception) {
-        const { message } = exception
-
-        logger.error('/user/claim updateContact failed', message, exception, { user, body: req.body })
-        throw new Error(`Failed updating user claim in CRM: ${message}`)
-      }
+      await OnGage.updateContact(null, user.crmId, { last_claim, claim_counter }, logger)
+        .then(r => logger.debug('/user/claim updateContact success'))
+        .catch(e => {
+          logger.error('/user/claim updateContact failed', e.message, e, { user, body: req.body })
+          throw new Error('Failed updating user claim in CRM')
+        })
 
       res.json({ ok: 1 })
     })
@@ -470,7 +465,9 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       if (identityFilters.length === 0) {
         log.warn('empty data for /userExists', { body })
-        return sendNotExists()
+        sendNotExists()
+
+        return
       }
 
       const dateFilters = {
