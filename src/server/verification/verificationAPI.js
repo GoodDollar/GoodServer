@@ -1,6 +1,7 @@
 // @flow
 
 import { Router } from 'express'
+import fs from 'fs'
 import passport from 'passport'
 import { get, defaults } from 'lodash'
 import { sha3 } from 'web3-utils'
@@ -9,7 +10,6 @@ import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../
 import AdminWallet from '../blockchain/AdminWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
 import requestRateLimiter from '../utils/requestRateLimiter'
-import { requestTimeout } from '../utils/async'
 // import fuseapi from '../utils/fuseapi'
 import OTP from '../../imports/otp'
 import conf from '../server.config'
@@ -178,6 +178,13 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       } catch (exception) {
         const { message } = exception
         const logArgs = ['Face verification error:', message, exception, { enrollmentIdentifier }]
+
+        if (get(exception, 'response.isDuplicate')) {
+          fs.writeFile(
+            `${enrollmentIdentifier}-${exception.response.duplicate.identifier}.b64`,
+            payload.auditTrailImage
+          )
+        }
 
         if (shouldLogVerificaitonError(exception)) {
           log.error(...logArgs)
