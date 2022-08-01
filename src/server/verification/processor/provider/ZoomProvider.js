@@ -114,7 +114,7 @@ class ZoomProvider implements IEnrollmentProvider {
       alreadyEnrolled = await this.isEnrollmentExists(enrollmentIdentifier, customLogger)
       // if already enrolled, will call /match-3d
       // othwerise (if not enrolled/stored yet) - /enroll
-      methodToInvoke = (alreadyEnrolled ? 'update' : 'submit') + 'Enrollment'
+      methodToInvoke = alreadyEnrolled ? 'updateEnrollment' : 'submitEnrollment'
       // match/enroll requires enromment identifier, pre-prepding it to the args list
       methodArgs.unshift(enrollmentIdentifier)
     }
