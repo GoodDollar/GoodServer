@@ -189,7 +189,7 @@ class ZoomProvider implements IEnrollmentProvider {
       if (isDuplicate) {
         // if duplicate found - throwing corresponding error
         log.warn(duplicateFoundMessage, { duplicate, enrollmentIdentifier })
-        throwException(duplicateFoundMessage, { isDuplicate }, { duplicate, faceSearchResponse })
+        throwException(duplicateFoundMessage, { isDuplicate, duplicate }, faceSearchResponse)
       }
 
       // 4. indexing uploaded & stored face scan to the 3D Database
