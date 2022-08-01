@@ -114,7 +114,7 @@ class ZoomProvider implements IEnrollmentProvider {
       alreadyEnrolled = await this.isEnrollmentExists(enrollmentIdentifier, customLogger)
       // if already enrolled, will call /match-3d
       // othwerise (if not enrolled/stored yet) - /enroll
-      methodToInvoke = (alreadyEnrolled ? 'update' : 'submit') + 'Enrollment'
+      methodToInvoke = alreadyEnrolled ? 'updateEnrollment' : 'submitEnrollment'
       // match/enroll requires enromment identifier, pre-prepding it to the args list
       methodArgs.unshift(enrollmentIdentifier)
     }
@@ -189,7 +189,7 @@ class ZoomProvider implements IEnrollmentProvider {
       if (isDuplicate) {
         // if duplicate found - throwing corresponding error
         log.warn(duplicateFoundMessage, { duplicate, enrollmentIdentifier })
-        throwException(duplicateFoundMessage, { isDuplicate }, { duplicate, faceSearchResponse })
+        throwException(duplicateFoundMessage, { isDuplicate, duplicate }, faceSearchResponse)
       }
 
       // 4. indexing uploaded & stored face scan to the 3D Database

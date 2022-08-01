@@ -179,7 +179,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         const { message } = exception
         const logArgs = ['Face verification error:', message, exception, { enrollmentIdentifier }]
 
-        if (get(exception, 'response.isDuplicate')) {
+        // TODO: remove this after research
+        if (conf.env.startsWith('prod') && get(exception, 'response.isDuplicate', false)) {
           fs.writeFile(
             `${enrollmentIdentifier}-${exception.response.duplicate.identifier}.b64`,
             payload.auditTrailImage
