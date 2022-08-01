@@ -207,9 +207,7 @@ const setup = (app: Router, storage: StorageAPI) => {
           otp: {} //delete trace of mobile,email
         })
 
-        res.json({
-          ok: 1
-        })
+        res.json({ ok: 1 })
       } catch (e) {
         logger.warn('user signup failed', e.message, e)
         throw e
@@ -229,30 +227,41 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       try {
         logger.debug('verify crm:', { data: userPayload, userRecord })
+
         if (userRecord.crmId) {
           logger.debug('verifyCRM already has crmID', { crmId: userRecord.crmId })
         } else {
           let { email, mobile, fullName } = userPayload
+
           if (!email) {
-            logger.warn('verifyCRM missing user email:', { userPayload, userRecord })
-            return res.json({
-              ok: 0
-            })
+            const error = 'verifyCRM missing user email'
+
+            logger.warn(error, { userPayload, userRecord })
+            return res.json({ ok: 0, error })
           }
+
           email = email.toLowerCase()
+
           const toCRM = {
             identifier: userRecord.loggedInAs,
             fullName,
             walletAddress: sha3(userRecord.gdAddress.toLowerCase())
           }
 
-          if (email && sha3(email) === userRecord.email) toCRM.email = email
-          //TODO: verify why this is happening on wallet
-          //for some reason some emails were kept with capital letter while from user they arrive lower case
-          //this line is a patch to handle that case
-          if (email && sha3(email.charAt(0).toUpperCase() + email.slice(1)) === userRecord.email) toCRM.email = email
+          if (email && sha3(email) === userRecord.email) {
+            toCRM.email = email
+          }
 
-          if (mobile && sha3(mobile) === userRecord.mobile) toCRM.mobile = mobile
+          // TODO: verify why this is happening on wallet
+          // for some reason some emails were kept with capital letter while from user they arrive lower case
+          // this line is a patch to handle that case
+          if (email && sha3(email.charAt(0).toUpperCase() + email.slice(1)) === userRecord.email) {
+            toCRM.email = email
+          }
+
+          if (mobile && sha3(mobile) === userRecord.mobile) {
+            toCRM.mobile = mobile
+          }
 
           const crmId = await createCRMRecord(toCRM, '', logger)
 
@@ -263,9 +272,8 @@ const setup = (app: Router, storage: StorageAPI) => {
 
           logger.debug('verifyCRM success', { crmId, toCRM })
         }
-        return res.json({
-          ok: 1
-        })
+
+        res.json({ ok: 1 })
       } catch (e) {
         logger.error('createCRMRecord failed', e.message, e)
         throw new Error('Failed adding user in verifyCRM')
@@ -329,8 +337,10 @@ const setup = (app: Router, storage: StorageAPI) => {
       const { log: logger, user } = req
 
       if (!user.crmId) {
-        logger.warn('user/claim missing crmId', { user, body: req.body })
-        res.json({ ok: 0 })
+        const error = 'user/claim missing crmId'
+
+        logger.warn(error, { user, body: req.body })
+        res.json({ ok: 0, error })
         return
       }
 
@@ -338,7 +348,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       last_claim = moment(last_claim).format('YYYY/MM/DD')
 
       await OnGage.updateContact(null, user.crmId, { last_claim, claim_counter }, logger)
-        .then(r => logger.debug('/user/claim updateContact success'))
+        .then(() => logger.debug('/user/claim updateContact success'))
         .catch(e => {
           logger.error('/user/claim updateContact failed', e.message, e, { user, body: req.body })
           throw new Error('Failed updating user claim in CRM')
