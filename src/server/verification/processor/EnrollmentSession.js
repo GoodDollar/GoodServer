@@ -67,10 +67,8 @@ export default class EnrollmentSession {
       // TODO: remove this after research
       if (conf.env.startsWith('prod') && get(exception, 'response.isDuplicate', false)) {
         const fileName = `${enrollmentIdentifier}-${exception.response.duplicate.identifier}.b64`
-        log.debug('writing duplicate file:', { fileName, payloadKeys: Object.keys(payload) })
-        fs.writeFile(fileName, payload.auditTrailImage).catch(e => {
-          log.warn('failed writing duplicate file', e.message, { fileName })
-        })
+        fs.writeFileSync(fileName, payload.auditTrailImage)
+        log.debug('wrote duplicate file:', { fileName, payloadKeys: Object.keys(payload) })
       }
 
       if (shouldLogVerificaitonError(exception)) {
