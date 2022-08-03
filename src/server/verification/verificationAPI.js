@@ -1,7 +1,6 @@
 // @flow
 
 import { Router } from 'express'
-import fs from 'fs'
 import passport from 'passport'
 import { get, defaults } from 'lodash'
 import { sha3 } from 'web3-utils'
@@ -178,15 +177,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       } catch (exception) {
         const { message } = exception
         const logArgs = ['Face verification error:', message, exception, { enrollmentIdentifier }]
-
-        // TODO: remove this after research
-        if (conf.env.startsWith('prod') && get(exception, 'response.isDuplicate', false)) {
-          const fileName = `${enrollmentIdentifier}-${exception.response.duplicate.identifier}.b64`
-          log.debug('writing duplicate file:', { fileName, payloadKeys: Object.keys(payload) })
-          fs.writeFile(fileName, payload.auditTrailImage).catch(e => {
-            log.warn('failed writing duplicate file', e.message, { fileName })
-          })
-        }
 
         if (shouldLogVerificaitonError(exception)) {
           log.error(...logArgs)
