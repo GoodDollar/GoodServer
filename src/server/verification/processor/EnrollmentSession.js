@@ -1,10 +1,12 @@
 // @flow
-import { assign, bindAll, omit, over } from 'lodash'
+import { assign, bindAll, get, omit, over } from 'lodash'
+import fs from 'fs'
 import { type IEnrollmentEventPayload } from './typings'
 import logger from '../../../imports/logger'
 import { DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment, scheduleDisposalTask } from '../cron/taskUtil'
 import { shouldLogVerificaitonError } from '../utils/logger'
 import OnGage from '../../crm/ongage'
+import conf from '../../server.config'
 
 const log = logger.child({ from: 'EnrollmentSession' })
 
@@ -60,6 +62,15 @@ export default class EnrollmentSession {
           ...(response || {}),
           isVerified: false
         }
+      }
+
+      // TODO: remove this after research
+      if (conf.env.startsWith('prod') && get(exception, 'response.isDuplicate', false)) {
+        const fileName = `${enrollmentIdentifier}-${exception.response.duplicate.identifier}.b64`
+        log.debug('writing duplicate file:', { fileName, payloadKeys: Object.keys(payload) })
+        fs.writeFile(fileName, payload.auditTrailImage).catch(e => {
+          log.warn('failed writing duplicate file', e.message, { fileName })
+        })
       }
 
       if (shouldLogVerificaitonError(exception)) {
