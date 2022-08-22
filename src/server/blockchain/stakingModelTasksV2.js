@@ -34,7 +34,14 @@ export class StakingModelManager {
 
   constructor() {
     this.log = logger.child({ from: 'StakingModelManagerV2' })
+    this.init()
+    // this.managerContract.methods.bridgeContract().call().then(_ => (this.bridge = _))
+    // this.managerContract.methods.ubiRecipient().call().then(_ => (this.ubiScheme = _))
+  }
+
+  init = async () => {
     //polling timeout since ethereum has network congestion and we try to pay little gas so it will take a long time to confirm tx
+    await AdminWallet.ready
     this.managerContract = new AdminWallet.mainnetWeb3.eth.Contract(FundManagerABI.abi, this.managerAddress, {
       transactionPollingTimeout: 1000,
       from: AdminWallet.address
@@ -52,11 +59,7 @@ export class StakingModelManager {
       staking: this.stakingAddresses,
       bridge: this.bridge
     })
-
-    // this.managerContract.methods.bridgeContract().call().then(_ => (this.bridge = _))
-    // this.managerContract.methods.ubiRecipient().call().then(_ => (this.ubiScheme = _))
   }
-
   canCollectFunds = async () => {
     const result = await this.managerContract.methods.calcSortedContracts().call()
     this.log.info('canCollectFunds:', result)

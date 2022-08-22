@@ -26,7 +26,7 @@ const log = logger.child({ from: 'AdminWalletV2' })
 
 const FUSE_TX_TIMEOUT = 25000 //should be confirmed after max 5 blocks (25sec)
 const defaultGas = 200000
-const defaultGasPrice = web3Utils.toWei('1', 'gwei')
+const defaultGasPrice = web3Utils.toWei('10', 'gwei')
 const defaultRopstenGasPrice = web3Utils.toWei('5', 'gwei')
 
 const adminMinBalance = conf.adminMinBalance
@@ -159,8 +159,8 @@ export class Wallet {
       transactionPollingTimeout: 30
     }
     this.web3 = new Web3(this.getWeb3TransportProvider(), null, web3Default)
+    this.gasPrice = (await this.web3.eth.getGasPrice()) || defaultGasPrice
     assign(this.web3.eth, web3Default)
-
     this.mainnetWeb3 = new Web3(this.getMainnetWeb3TransportProvider(), null, web3Default)
     assign(this.mainnetWeb3.eth, web3Default)
     this.mainnetWeb3.eth.transactionPollingTimeout = 600 //slow ropsten
@@ -698,7 +698,7 @@ export class Wallet {
 
       // adminwallet contract might give wrong gas estimates, so if its more than block gas limit reduce it to default
       if (gas > 8000000) gas = defaultGas
-      gasPrice = gasPrice || defaultGasPrice
+      gasPrice = gasPrice || this.gasPrice
 
       logger.debug('getting tx lock:', { uuid })
       const { nonce, release, fail, address } = await this.txManager.lock(this.filledAddresses)
@@ -809,7 +809,7 @@ export class Wallet {
     try {
       const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
       gas = gas || defaultGas
-      gasPrice = gasPrice || defaultGasPrice
+      gasPrice = gasPrice || this.gasPrice
 
       const { nonce, release, fail, address } = await this.txManager.lock(this.filledAddresses)
       log.debug('sendNative', { nonce, gas, gasPrice })
