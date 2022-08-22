@@ -495,6 +495,12 @@ const conf = convict({
     default: 200,
     env: 'MAX_GAS_PRICE'
   },
+  defaultGasPrice: {
+    doc: 'Default gas price in gwei',
+    format: Number,
+    default: 10,
+    env: 'DEFAULT_GAS_PRICE'
+  },
   optionalMobile: {
     doc: 'make mobile verification optional on signup',
     format: Boolean,

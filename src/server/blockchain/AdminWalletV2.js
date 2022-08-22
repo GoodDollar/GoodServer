@@ -26,7 +26,7 @@ const log = logger.child({ from: 'AdminWalletV2' })
 
 const FUSE_TX_TIMEOUT = 25000 //should be confirmed after max 5 blocks (25sec)
 const defaultGas = 200000
-const defaultGasPrice = web3Utils.toWei('10', 'gwei')
+const defaultGasPrice = web3Utils.toWei(String(conf.defaultGasPrice), 'gwei')
 const defaultRopstenGasPrice = web3Utils.toWei('5', 'gwei')
 
 const adminMinBalance = conf.adminMinBalance
