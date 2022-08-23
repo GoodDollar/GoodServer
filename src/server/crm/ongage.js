@@ -233,7 +233,13 @@ class OnGage implements CrmApi {
     axiosRetry(http, {
       retries: ongageRetryAttempts,
       retryDelay: () => ongageRetryDelay,
-      retryCondition: reason => isError(reason) && /timeout of.+exceeded/i.test(reason.message)
+      retryCondition: reason => {
+        const { message, response } = reason || {}
+        const { status } = response || {}
+        const timeoutRe = /timeout of.+exceeded/i
+
+        return isError(reason) && (timeoutRe.test(message) || 429 === status)
+      }
     })
 
     request.use(({ url, params, logger, ...requestOptions }) => {

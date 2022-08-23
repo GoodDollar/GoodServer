@@ -2,7 +2,8 @@
 import random from 'math-random'
 import jwt from 'jsonwebtoken'
 import Axios from 'axios'
-import { get } from 'lodash'
+import axiosRetry from 'axios-retry'
+import { get, isError } from 'lodash'
 
 import conf from '../server/server.config'
 import logger from './logger'
@@ -23,29 +24,40 @@ export default new (class {
     this.jwtAudience = cfWorkerVerifyJwtAudience
     this.jwtSubject = cfWorkerVerifyJwtSubject
     this.verifyWorkerUrl = cfWorkerVerifyUrl
-
-    this.http = Axios.create(this.getHttpOptions())
+    this.http = this.createHttpClient(Axios, Config)
   }
 
-  getExceptionText(exception) {
-    const text = get(exception, 'response.data.text', null)
-    if (text) {
-      exception.message = exception.message + ' ' + text
-    }
-    return exception
-  }
+  createHttpClient(Axios, Config) {
+    const { otpRetryAttempts, otpRetryDelay } = Config
 
-  getHttpOptions() {
-    const httpClientOptions = {
+    const http = Axios.create({
       baseURL: this.verifyWorkerUrl,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: 'Bearer ' + this.generateJWT()
       }
-    }
-    return httpClientOptions
+    })
+
+    axiosRetry(http, {
+      retries: otpRetryAttempts,
+      retryDelay: () => otpRetryDelay,
+      retryCondition: reason => isError(reason) && 429 === get(reason, 'response.status')
+    })
+
+    return http
   }
+
+  getExceptionText(exception) {
+    const text = get(exception, 'response.data.text', null)
+
+    if (text) {
+      exception.message = exception.message + ' ' + text
+    }
+
+    return exception
+  }
+
   /**
    * Creates an OTP code and returns it as a string
    * @param {number} length - length of OTP code

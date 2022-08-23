@@ -248,16 +248,28 @@ const conf = convict({
     env: 'ONGAGE_TIMEOUT'
   },
   ongageRetryAttempts: {
-    doc: 'Amount of OnGage CRM API call attempts on timeout',
+    doc: 'Amount of OnGage CRM API call attempts on timeout/limit exceeded',
     format: Number,
     default: 3,
     env: 'ONGAGE_RETRY_ATTEMPTS'
   },
   ongageRetryDelay: {
-    doc: 'Delay before next attempt after timeout',
+    doc: 'Delay before next OnGage call attempt after timeout',
     format: Number,
     default: 250,
     env: 'ONGAGE_RETRY_DELAY'
+  },
+  otpRetryAttempts: {
+    doc: 'Amount of SMS OTPs send attempts on request rate exceeded',
+    format: Number,
+    default: 3,
+    env: 'OTP_RETRY_ATTEMPTS'
+  },
+  otpRetryDelay: {
+    doc: 'Delay before next OTP send attempt after timeout',
+    format: Number,
+    default: 250,
+    env: 'OTP_RETRY_DELAY'
   },
   zoomMinimalMatchLevel: {
     doc: 'Minimal FaceTec Match Level threshold to mark enrollment as duplicate',
