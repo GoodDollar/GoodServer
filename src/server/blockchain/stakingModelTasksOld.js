@@ -28,6 +28,11 @@ export class StakingModelManager {
 
   constructor() {
     this.log = logger.child({ from: 'StakingModelManager' })
+    this.init()
+  }
+
+  init = async () => {
+    await AdminWallet.ready
     //polling timeout since ethereum has network congestion and we try to pay little gas so it will take a long time to confirm tx
     this.managerContract = new AdminWallet.mainnetWeb3.eth.Contract(FundManagerABI.abi, this.managerAddress, {
       transactionPollingTimeout: 1000
