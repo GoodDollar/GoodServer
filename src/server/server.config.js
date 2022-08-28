@@ -513,6 +513,12 @@ const conf = convict({
     default: 10,
     env: 'DEFAULT_GAS_PRICE'
   },
+  estimateGasPrice: {
+    doc: 'If turned on, gas price received form blockchain will override default value',
+    format: Boolean,
+    default: false,
+    env: 'ESTIMATE_GAS_PRICE'
+  },
   optionalMobile: {
     doc: 'make mobile verification optional on signup',
     format: Boolean,
