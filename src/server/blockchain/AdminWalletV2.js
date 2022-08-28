@@ -21,16 +21,15 @@ import { type TransactionReceipt } from './blockchain-types'
 
 import { getManager } from '../utils/tx-manager'
 import { sendSlackAlert } from '../../imports/slack'
-import { noop } from 'lodash'
 
 const log = logger.child({ from: 'AdminWalletV2' })
 
+const FUSE_TX_TIMEOUT = 25000 //should be confirmed after max 5 blocks (25sec)
 const defaultGas = 200000
-const FUSE_TX_TIMEOUT = 25000 // should be confirmed after max 5 blocks (25sec)
-const { estimateGasPrice } = conf
-const adminMinBalance = conf.adminMinBalance
 const defaultGasPrice = web3Utils.toWei(String(conf.defaultGasPrice), 'gwei')
 const defaultRopstenGasPrice = web3Utils.toWei('5', 'gwei')
+
+const adminMinBalance = conf.adminMinBalance
 
 const getAuthHeader = rpc => {
   const url = new URL(rpc)
@@ -150,10 +149,8 @@ export class Wallet {
 
   async init() {
     log.debug('Initializing wallet:', { conf: conf.ethereum, mainnet: conf.ethereumMainnet })
-
     this.mainnetTxManager = getManager(conf.ethereumMainnet.network_id)
     this.txManager = getManager(conf.ethereum.network_id)
-
     const web3Default = {
       defaultBlock: 'latest',
       defaultGasPrice,
@@ -161,22 +158,12 @@ export class Wallet {
       transactionConfirmationBlocks: 1,
       transactionPollingTimeout: 30
     }
-
     this.web3 = new Web3(this.getWeb3TransportProvider(), null, web3Default)
+    this.gasPrice = (await this.web3.eth.getGasPrice()) || defaultGasPrice
     assign(this.web3.eth, web3Default)
-
-    this.gasPrice = defaultGasPrice
-
-    if (estimateGasPrice) {
-      await this.web3.eth
-        .getGasPrice()
-        .then(price => (this.gasPrice = price))
-        .catch(e => log.warn('failed to get gas price', e.message, e))
-    }
-
     this.mainnetWeb3 = new Web3(this.getMainnetWeb3TransportProvider(), null, web3Default)
     assign(this.mainnetWeb3.eth, web3Default)
-    this.mainnetWeb3.eth.transactionPollingTimeout = 600 // slow ropsten
+    this.mainnetWeb3.eth.transactionPollingTimeout = 600 //slow ropsten
 
     if (conf.privateKey) {
       let account = this.web3.eth.accounts.privateKeyToAccount(conf.privateKey)
@@ -187,19 +174,15 @@ export class Wallet {
 
       this.address = account.address
       this.addWallet(account)
-
       log.info('Initialized by private key:', { address: account.address })
     } else if (this.mnemonic) {
       let root = HDKey.fromMasterSeed(bip39.mnemonicToSeed(this.mnemonic, conf.adminWalletPassword))
-
       for (let i = 0; i < this.numberOfAdminWalletAccounts; i++) {
         const path = "m/44'/60'/0'/0/" + i
         let addrNode = root.derive(path)
         let account = this.web3.eth.accounts.privateKeyToAccount('0x' + addrNode._privateKey.toString('hex'))
-
         this.addWallet(account)
       }
-
       log.info('Initialized by mnemonic:', { address: this.addresses })
     }
 
