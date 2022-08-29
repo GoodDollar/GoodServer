@@ -36,8 +36,12 @@ describe('fishManager', () => {
   })
 
   test(`fishManager get next day should be in the future (need to run script simulateInterestDays.js in goodcontracts)`, async () => {
+    const blockchainNow = await AdminWallet.web3.eth
+      .getBlock('latest')
+      .then(_ => moment(_.timestamp * 1000).startOf('hour'))
+
     const nextDay = await fishManager.getNextDay()
-    expect(nextDay.isAfter()).toBeTruthy()
+    expect(nextDay.isAfter(blockchainNow)).toBeTruthy()
     await setNextDay()
     const nextDay2 = await fishManager.getNextDay()
     expect(nextDay2.diff(nextDay, 'hours')).toEqual(24)
@@ -60,6 +64,9 @@ describe('fishManager', () => {
   })
 
   test(`fishManager should fish account and return next run time (need to run script simulateInterestDays.js in goodcontracts)`, async () => {
+    const blockchainNow = await AdminWallet.web3.eth
+      .getBlock('latest')
+      .then(_ => moment(_.timestamp * 1000).startOf('hour'))
     await setNextDay()
     await setNextDay()
     await AdminWallet.sendTransaction(AdminWallet.UBIContract.methods.claim())
@@ -69,7 +76,7 @@ describe('fishManager', () => {
       .then(parseInt)
     const { result, cronTime, fishers } = await fishManager.run()
     expect(result).toBeTruthy() //success
-    expect(cronTime.isAfter()).toBeTruthy() //crontime in future
+    expect(cronTime.isAfter(blockchainNow)).toBeTruthy() //crontime in future
     expect(fishers.length).not.toEqual(0) //return the fisher admin account
     let gdbalanceAfter = await AdminWallet.tokenContract.methods
       .balanceOf(fishManager.ubiContract._address)

@@ -16,7 +16,7 @@ describe('adminwallet', () => {
     const tx = await AdminWallet.topWallet(unverifiedAddress).catch(e => false)
     expect(tx).toBeTruthy()
     const balance = await AdminWallet.web3.eth.getBalance(unverifiedAddress)
-    expect(balance).toEqual('1000000000000000')
+    expect(balance).toEqual('6000000000000000')
   })
 
   test('adminWallet constructor works', async () => {
