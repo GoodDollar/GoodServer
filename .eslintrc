@@ -1,27 +1,16 @@
 {
   "extends": [
-    "react-app",
     "plugin:flowtype/recommended",
     "plugin:import/recommended",
     "plugin:prettier/recommended",
-    "plugin:react/recommended",
     "prettier",
     "prettier/babel",
-    "prettier/flowtype",
-    "prettier/react"
+    "prettier/flowtype"
   ],
-  "plugins": ["dependencies", "flowtype", "import", "prettier", "react", "jest"],
-  "settings": {
-    "react": {
-      "pragma": "React",
-      "version": "0.58",
-      "flowVersion": "0.91"
-    }
-  },
+  "plugins": ["dependencies", "flowtype", "import", "prettier", "jest"],
+  "settings": {},
   "rules": {
     "prettier/prettier": "error",
-    "react/prop-types": "off",
-    "react/display-name": "off",
     "dependencies/no-cycles": "error",
     "dependencies/no-unresolved": [
       "warn",
