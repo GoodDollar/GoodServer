@@ -11,7 +11,6 @@ import UserDBPrivate from './db/mongo/user-privat-provider'
 import getTasksRunner from './cron/TaskRunner'
 import addStorageMiddlewares from './storage/storageAPI'
 import addVerificationMiddlewares from './verification/verificationAPI'
-import addLoadTestMiddlewares from './loadtest/loadtest-middleware'
 import logger, { addRequestLogger } from '../imports/logger'
 import VerificationAPI from './verification/verification'
 import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
@@ -59,7 +58,6 @@ export default async (app: Router) => {
   addLoginMiddlewares(app)
   addStorageMiddlewares(app, UserDBPrivate)
   addVerificationMiddlewares(app, VerificationAPI, UserDBPrivate)
-  addLoadTestMiddlewares(app)
 
   app.get(
     '/strings',
