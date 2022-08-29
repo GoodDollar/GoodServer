@@ -316,6 +316,35 @@ describe('verificationAPI', () => {
 
     test("PUT /verify/face/:enrollmentIdentifier returns 200 and success: false when verification wasn't successfull", async () => {
       helper.mockEnrollmentNotFound(enrollmentIdentifier)
+      helper.mockFailedEnrollment(enrollmentIdentifier)
+
+      await request(server)
+        .put(enrollmentUri)
+        .send(payload)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200, {
+          success: false,
+          error: helper.failedLivenessMessage,
+          enrollmentResult: {
+            isVerified: false,
+            isLive: false,
+            success: false,
+            error: false,
+            externalDatabaseRefID: enrollmentIdentifier,
+            faceScanSecurityChecks: {
+              replayCheckSucceeded: true,
+              sessionTokenCheckSucceeded: true,
+              auditTrailVerificationCheckSucceeded: true,
+              faceScanLivenessCheckSucceeded: false
+            }
+          }
+        })
+
+      await testNotVerified()
+    })
+
+    test("PUT /verify/face/:enrollmentIdentifier returns duplicate's data", async () => {
+      helper.mockEnrollmentNotFound(enrollmentIdentifier)
       helper.mockSuccessEnrollment(enrollmentIdentifier)
       helper.mockDuplicateFound(enrollmentIdentifier)
 
@@ -330,7 +359,11 @@ describe('verificationAPI', () => {
             isVerified: false,
             isDuplicate: true,
             success: true,
-            error: false
+            error: false,
+            duplicate: {
+              identifier: helper.duplicateEnrollmentIdentifier,
+              matchLevel: 10
+            }
           }
         })
 
