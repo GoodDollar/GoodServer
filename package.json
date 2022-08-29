@@ -4,7 +4,7 @@
   "description": "GoodDollar Server",
   "main": "src/server/index.js",
   "engines": {
-    "node": "10.21.0",
+    "node": "16.x",
     "npm": "8.x"
   },
   "scripts": {
