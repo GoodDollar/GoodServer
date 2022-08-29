@@ -498,18 +498,10 @@ export class Wallet {
    * @returns {PromiEvent<TransactionReceipt>}
    */
   async topWallet(address: string, logger = log): PromiEvent<TransactionReceipt> {
-    let userBalance = await this.web3.eth.getBalance(address)
-    let maxTopWei = parseInt(web3Utils.toWei('1000000', 'gwei'))
-    let toTop = maxTopWei - userBalance
-    logger.debug('TopWallet:', { address, userBalance, toTop })
-    if (toTop <= 0 || toTop / maxTopWei < 0.75) {
-      logger.debug("User doesn't need topping", { address })
-      return { status: 1 }
-    }
-
     const faucetRes = await this.topWalletFaucet(address, logger).catch(_ => false)
     if (faucetRes) return faucetRes
 
+    //if we reached here, either we used the faucet or user should call faucet on its own.
     let txHash = ''
     //simulate tx to detect revert
     const canTopOrError = await this.proxyContract.methods
@@ -552,6 +544,19 @@ export class Wallet {
 
       if (canTop === false) {
         return false
+      }
+
+      let userBalance = web3Utils.toBN(await this.web3.eth.getBalance(address))
+      let faucetTxCost = web3Utils.toBN('150000').mul(web3Utils.toBN(this.gasPrice))
+      logger.debug('topWalletFaucet:', {
+        address,
+        userBalance: userBalance.toString(),
+        faucetTxCost: faucetTxCost.toString()
+      })
+      //user can't call faucet directly
+      if (userBalance.gte(faucetTxCost)) {
+        logger.debug('User has enough gas to call faucet', { address })
+        return true
       }
 
       let encodedCall = this.web3.eth.abi.encodeFunctionCall(
