@@ -13,10 +13,12 @@ export const createLoggerMiddleware = logger => (req, res, next) => {
     .slice(0, 10)
 
   const log = logger.child({ uuid, from: req.url, userId: req.user && req.user.identifier })
+  const whenClosed = once(req, 'close').then(() => req.destroyed)
+  const whenFinished = once(res, 'finish').then(() => false)
 
   assign(req, { log })
 
-  Promise.race([once(req, 'close').then(() => true), once(res, 'finish').then(() => false)]).then(aborted => {
+  Promise.race([whenClosed, whenFinished]).then(aborted => {
     const logMessage = 'Incoming Request' + (aborted ? ' [aborted]' : '')
     const responseTimeSeconds = (Date.now() - startTime) / 1000
     let { url, method, body: logBody, query, headers } = req
