@@ -29,7 +29,7 @@ const FV_LOGIN_MSG = `Sign this message to login into GoodDollar Unique Identity
 WARNING: do not sign this message unless you trust the website/application requesting this signature.
 nonce:`
 
-const FV_IDENTIFIER_MSG = `Sign this message to create your own unique identifier for you anonymized record.
+const FV_IDENTIFIER_MSG = `Sign this message to create your own unique identifier for your anonymized record.
 You can use this identifier in the future to delete this anonymized record.
 WARNING: do not sign this message unless you trust the website/application requesting this signature.`
 
