@@ -599,6 +599,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const log = req.log
       const { token, ipv6 } = req.body
       const clientIp = requestIp.getClientIp(req)
+      const xForwardedFor = requestIp.getClientIpFromXForwardedFor(req.headers['x-forwarded-for'])
 
       try {
         const url = `https://www.google.com/recaptcha/api/siteverify?secret=${conf.recaptchaSecretKey}&response=${token}&remoteip=${clientIp}`
@@ -608,7 +609,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           kvStorageIpKey = ipv6
         }
 
-        log.debug('Verifying recaptcha', { token, ipv6, clientIp, kvStorageIpKey })
+        log.debug('Verifying recaptcha', { token, ipv6, clientIp, kvStorageIpKey, xForwardedFor, headers: req.headers })
 
         const recaptchaRes = await fetch(url, {
           method: 'POST',
