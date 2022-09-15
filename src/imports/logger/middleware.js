@@ -13,8 +13,17 @@ export const createLoggerMiddleware = logger => (req, res, next) => {
     .slice(0, 10)
 
   const log = logger.child({ uuid, from: req.url, userId: req.user && req.user.identifier })
-  const whenClosed = once(req, 'close').then(() => req.destroyed)
-  const whenFinished = once(res, 'finish').then(() => false)
+  const whenClosed = once(req, 'close').then(() => {
+    const { destroyed } = req
+
+    log.debug('request closed', { destroyed })
+    return destroyed
+  })
+
+  const whenFinished = once(res, 'finish').then(() => {
+    log.debug('response sent')
+    return false
+  })
 
   assign(req, { log })
 
