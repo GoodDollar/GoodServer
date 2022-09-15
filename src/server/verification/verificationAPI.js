@@ -608,7 +608,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           kvStorageIpKey = ipv6
         }
 
-        log.debug('Verifying recaptcha', { token })
+        log.debug('Verifying recaptcha', { token, ipv6, clientIp, kvStorageIpKey })
 
         const recaptchaRes = await fetch(url, {
           method: 'POST',
