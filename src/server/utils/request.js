@@ -20,3 +20,42 @@ export const parseUtmString = utmString => {
     return tags
   }, {})
 }
+
+export const whenFinished = async (req, res) =>
+  new Promise(resolve => {
+    let finished = false
+    const { log } = req
+
+    const onAborted = () => {
+      if (finished) {
+        return
+      }
+
+      log.debug('Request aborted')
+
+      res.off('finish', onFinish)
+      resolve(true)
+    }
+
+    const onClose = () => {
+      log.debug('Request closed', { finished })
+
+      if (finished) {
+        return
+      }
+
+      log.debug('Wait up to 30 sec for finish otherwise abort')
+      setTimeout(onAborted, 30000)
+    }
+
+    const onFinish = () => {
+      log.debug('Request finished')
+      req.off('close', onClose)
+
+      finished = true
+      resolve(false)
+    }
+
+    res.once('finish', onFinish)
+    req.once('close', onClose)
+  })
