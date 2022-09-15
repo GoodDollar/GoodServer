@@ -4,6 +4,7 @@ import { omit, isPlainObject, assign } from 'lodash'
 import Crypto from 'crypto'
 
 import { redactFieldsDuringLogging as fvRedact } from '../../server/verification/utils/logger'
+import { whenFinished } from '../../server/utils/request'
 
 export const createLoggerMiddleware = logger => (req, res, next) => {
   const startTime = Date.now()
@@ -12,17 +13,18 @@ export const createLoggerMiddleware = logger => (req, res, next) => {
     .digest('base64')
     .slice(0, 10)
 
-  const log = logger.child({ uuid, from: req.url, userId: req.user && req.user.identifier })
-  const whenClosed = once(req, 'close').then(() => req.destroyed)
-  const whenFinished = once(res, 'finish').then(() => false)
+  const { user, url } = req
+  const log = logger.child({ uuid, from: url, userId: user && user.identifier })
 
   assign(req, { log })
 
-  Promise.race([whenClosed, whenFinished]).then(aborted => {
+  whenFinished(req, res).then(aborted => {
     const logMessage = 'Incoming Request' + (aborted ? ' [aborted]' : '')
     const responseTimeSeconds = (Date.now() - startTime) / 1000
-    let { url, method, body: logBody, query, headers } = req
+
+    let { method, body: logBody, query, headers } = req
     let { statusCode, statusMessage } = res
+
     if (url.startsWith('/verify/face/') && isPlainObject(logBody)) {
       logBody = omit(logBody, fvRedact)
     }
