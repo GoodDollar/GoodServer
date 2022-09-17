@@ -1,6 +1,6 @@
 {
   "name": "@gooddollar/goodserver",
-  "version": "1.47.0",
+  "version": "1.47.1-0",
   "description": "GoodDollar Server",
   "main": "src/server/index.js",
   "engines": {
@@ -97,7 +97,7 @@
     "plivo": "^4.9.0",
     "pm": "^2.2.6",
     "qs": "^6.9.4",
-    "request-ip": "^2.1.3",
+    "request-ip": "^3.3.0",
     "rxjs": "^6.6.3",
     "throng": "^5.0.0",
     "triple-beam": "^1.3.0",
