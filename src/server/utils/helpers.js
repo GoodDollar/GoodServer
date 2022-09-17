@@ -11,7 +11,7 @@ import conf from '../server.config'
  */
 function wrapAsync(fn: Function) {
   return function(req: $Request & { log: any }, res: $Response, next: NextFunction) {
-    fn({ ...req }, res, next).catch(error => {
+    fn(req, res, next).catch(error => {
       next(error)
     })
   }
@@ -24,7 +24,7 @@ function wrapAsync(fn: Function) {
  */
 function lightLogs(fn: Function) {
   return function(req: $Request, res: $Response, next: NextFunction) {
-    fn({ ...req }, res, next)
+    fn(req, res, next)
   }
 }
 
