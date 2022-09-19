@@ -579,7 +579,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     const { phase } = conf
 
     res.json({ success: true, phase })
-    res.end()
   })
 
   /**

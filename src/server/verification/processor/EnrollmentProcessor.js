@@ -123,6 +123,8 @@ class EnrollmentProcessor {
     if (isUserWhitelisted) {
       log.info('Wallet is whitelisted, making user non-whitelisted', { gdAddress })
       await adminApi.removeWhitelisted(gdAddress)
+    } else {
+      throw new Error('User did not supply a whitelisted account')
     }
 
     try {

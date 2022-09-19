@@ -33,6 +33,10 @@ const FV_IDENTIFIER_MSG = `Sign this message to create your own unique identifie
 You can use this identifier in the future to delete this anonymized record.
 WARNING: do not sign this message unless you trust the website/application requesting this signature.`
 
+const FV_IDENTIFIER_MSG2 = `Sign this message to request verifying your account <account> and to create your own secret unique identifier for your anonymized record.
+You can use this identifier in the future to delete this anonymized record.
+WARNING: do not sign this message unless you trust the website/application requesting this signature.`
+
 const isProfileSignatureCompatible = (signature, nonce) => {
   if (isBase64(signature)) {
     return true
@@ -182,7 +186,7 @@ const setup = (app: Router) => {
         })
 
         res.json({ token })
-        res.end()
+        return
       } else {
         log.warn('/auth/eth', {
           message: 'SigUtil unable to recover the message signer'
@@ -249,9 +253,70 @@ const setup = (app: Router) => {
         })
 
         res.json({ token })
-        res.end()
+        return
       } else {
         log.warn('/auth/fv', {
+          message: 'SigUtil unable to recover the message signer'
+        })
+
+        throw new Error('Unable to verify credentials')
+      }
+    })
+  )
+
+  app.post(
+    '/auth/fv2',
+    wrapAsync(async (req, res) => {
+      const { log, body } = req
+
+      log.debug('/auth/fv2', { message: 'authorizing' })
+      log.debug('/auth/fv2', { body })
+
+      const { fvsig, account } = body
+
+      log.debug('/auth/fv2', { account, fvsig })
+
+      const recovered = recoverPublickey(fvsig, FV_IDENTIFIER_MSG2.replace('<account>', account), '')
+
+      log.debug('/auth/fv2', {
+        message: 'Recovered public key',
+        recovered
+      })
+
+      if (recovered === account) {
+        const identifier = sha3(recovered)
+        const userRecord = await UserDBPrivate.getUser(identifier)
+        const hasVerified = userRecord && (userRecord.smsValidated || userRecord.isEmailConfirmed)
+        const hasSignedUp = userRecord && userRecord.createdDate
+
+        if (hasSignedUp && !hasVerified) {
+          log.warn('user doesnt have email nor mobile verified', { recovered, identifier })
+        }
+
+        log.info(`SigUtil Successfully verified signer as ${recovered}`, { hasSignedUp })
+
+        const token = jwt.sign(
+          {
+            loggedInAs: identifier,
+            gdAddress: recovered,
+            profilePublickey: recovered,
+            exp: Math.floor(Date.now() / 1000) + (hasSignedUp ? Config.jwtExpiration : 3600), //if not signed up jwt will last only 60 seconds so it will be refreshed after signup
+            aud: hasSignedUp || hasVerified ? `realmdb_wallet_${Config.env}` : 'unsigned',
+            sub: recovered
+          },
+          Config.jwtPassword
+        )
+
+        UserDBPrivate.updateUser({ identifier, lastLogin: new Date() })
+
+        log.info('/auth/fv2', {
+          message: `JWT token: ${token}`
+        })
+
+        res.json({ token })
+        return
+      } else {
+        log.warn('/auth/f2v', {
           message: 'SigUtil unable to recover the message signer'
         })
 

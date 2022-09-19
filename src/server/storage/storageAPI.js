@@ -16,6 +16,8 @@ import createUserVerifier from './verifier'
 import stakingModelTasks from '../blockchain/stakingModelTasks'
 import { cancelDisposalTask } from '../verification/cron/taskUtil'
 import createEnrollmentProcessor from '../verification/processor/EnrollmentProcessor'
+import requestRateLimiter from '../utils/requestRateLimiter'
+import AdminWallet from '../blockchain/AdminWallet'
 
 const { fishManager } = stakingModelTasks
 const { faceVerificationDebugTool } = conf
@@ -30,6 +32,7 @@ const setup = (app: Router, storage: StorageAPI) => {
   app.use(
     ['/user/*'],
     passport.authenticate('jwt', { session: false }),
+    requestRateLimiter(20, 1),
     wrapAsync(async (req, res, next) => {
       const { user, body, log } = req
       const { loggedInAs } = user
@@ -544,6 +547,18 @@ const setup = (app: Router, storage: StorageAPI) => {
         mobile: mobile && mobileHash === bestExisting.mobile,
         regMethod: bestExisting.regMethod
       })
+    })
+  )
+
+  app.get(
+    '/userWhitelisted/:account',
+    requestRateLimiter(10, 1),
+    wrapAsync(async (req, res, next) => {
+      const { params } = req
+      const { account } = params
+      const isWhitelisted = await AdminWallet.isVerified(account)
+
+      res.json({ ok: 1, isWhitelisted })
     })
   )
 
