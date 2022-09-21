@@ -2,7 +2,7 @@
 import { pick, get } from 'lodash'
 import conf from '../server.config'
 
-import AdminWallet from '../blockchain/AdminWallet'
+import { default as AdminWallet } from '../blockchain/MultiWallet'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
 import OnGage from '../crm/ongage'
 

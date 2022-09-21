@@ -3,6 +3,8 @@ import { EventEmitter } from 'events'
 
 import middlewares from './server-middlewares'
 import AdminWallet from './blockchain/AdminWallet'
+import CeloWallet from './blockchain/CeloAdminWallet'
+
 import { withTimeout } from './utils/async'
 import conf from './server.config'
 
@@ -16,9 +18,12 @@ process.on('uncaughtException', () => process.exit(-1))
 
 const startApp = async () => {
   await withTimeout(
-    AdminWallet.ready.then(() => {
-      log.info('AdminWallet ready', { addresses: AdminWallet.addresses })
-    }),
+    Promise.all([
+      CeloWallet.ready,
+      AdminWallet.ready.then(() => {
+        log.info('AdminWallet ready', { addresses: AdminWallet.addresses })
+      })
+    ]),
     30000,
     'wallet not initialized'
   ).catch(e => {

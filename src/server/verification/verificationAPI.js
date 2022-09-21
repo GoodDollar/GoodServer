@@ -6,7 +6,7 @@ import { get, defaults } from 'lodash'
 import { sha3 } from 'web3-utils'
 import requestIp from 'request-ip'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
-import AdminWallet from '../blockchain/AdminWallet'
+import { default as AdminWallet } from '../blockchain/MultiWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
 import requestRateLimiter from '../utils/requestRateLimiter'
 // import fuseapi from '../utils/fuseapi'
@@ -352,10 +352,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
     '/verify/topwallet',
     requestRateLimiter(1, 1),
-    passport.authenticate('jwt', { session: false }),
+    passport.authenticate(['jwt', 'anonymous'], { session: false }),
     wrapAsync(async (req, res, next) => {
       const log = req.log
-      const user: LoggedUser = req.user
+      const { account, chainId } = req.body || {}
+      const user: LoggedUser = req.user || { gdAddress: account }
 
       //TODO: restore if necessary
       // check if user send ether out of the good dollar system
@@ -381,9 +382,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       //   })
       // }
 
-      log.debug('topwallet tx request:', { address: user.gdAddress })
+      if (!user.gdAddress) {
+        throw new Error('missing wallet address to top')
+      }
+      log.debug('topwallet tx request:', { address: user.gdAddress, chainId })
       try {
-        let txPromise = AdminWallet.topWallet(user.gdAddress, log)
+        let txPromise = AdminWallet.topWallet(user.gdAddress, chainId, log)
           .then(tx => {
             log.debug('topwallet tx', { walletaddress: user.gdAddress, tx })
             return { ok: 1 }

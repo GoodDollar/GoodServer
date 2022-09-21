@@ -1,6 +1,7 @@
 // @flow
 import jwt from 'jsonwebtoken'
 import passport from 'passport'
+import { Strategy as AnonymousStrategy } from 'passport-anonymous'
 import { ExtractJwt, Strategy } from 'passport-jwt'
 import { Router } from 'express'
 import { defaults } from 'lodash'
@@ -89,7 +90,7 @@ export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
 
 const setup = (app: Router) => {
   passport.use(strategy)
-
+  passport.use(new AnonymousStrategy())
   app.use(passport.initialize())
 
   /**

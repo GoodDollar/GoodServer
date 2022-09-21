@@ -124,7 +124,12 @@ export default class EnrollmentSession {
         adminApi
           .whitelistUser(gdAddress, profilePublickey || gdAddress)
           .then(_ => log.info('Successfully whitelisted user:', { loggedInAs }))
-          .catch(e => log.error('whitelisting after fv failed', e.message, e, { user }))
+          .catch(e => log.error('whitelisting after fv failed', e.message, e, { user })),
+      () =>
+        adminApi
+          .topWallet(gdAddress, 'all', log)
+          .then(_ => log.info('topwallet after fv success', { loggedInAs }))
+          .catch(e => log.error('topwallet after fv failed', e.message, e, { user }))
     ]
 
     if (crmId) {

@@ -23,7 +23,7 @@ import { getManager } from '../utils/tx-manager'
 import { sendSlackAlert } from '../../imports/slack'
 import { noop } from 'lodash'
 
-const log = logger.child({ from: 'AdminWalletV2' })
+let log = logger.child({ from: 'AdminWalletV2' })
 
 const defaultGas = 200000
 const FUSE_TX_TIMEOUT = 25000 // should be confirmed after max 5 blocks (25sec)
@@ -31,6 +31,7 @@ const { estimateGasPrice } = conf
 const adminMinBalance = conf.adminMinBalance
 const defaultGasPrice = web3Utils.toWei(String(conf.defaultGasPrice), 'gwei')
 const defaultRopstenGasPrice = web3Utils.toWei('5', 'gwei')
+const defaultCeloGasPrice = (0.2 * 1e9).toFixed(0)
 
 const getAuthHeader = rpc => {
   const url = new URL(rpc)
@@ -79,32 +80,34 @@ export class Wallet {
 
   mainnetAddresses = []
 
-  constructor(mnemonic: string) {
-    this.mnemonic = mnemonic
+  constructor(conf) {
+    this.conf = conf
+    this.mnemonic = this.conf.mnemonic
     this.addresses = []
     this.filledAddresses = []
     this.wallets = {}
-    this.numberOfAdminWalletAccounts = conf.privateKey ? 1 : conf.numberOfAdminWalletAccounts
-    this.network = conf.network
-    this.networkIdMainnet = conf.ethereumMainnet.network_id
-    this.networkId = conf.ethereum.network_id
-    this.maxMainnetGasPrice = conf.maxGasPrice * 1000000000 //maxGasPrice is in gwei, convert to wei
+    this.numberOfAdminWalletAccounts = this.conf.privateKey ? 1 : this.conf.numberOfAdminWalletAccounts
+    this.network = this.conf.network
+    this.networkIdMainnet = this.conf.ethereumMainnet.network_id
+    this.networkId = this.conf.ethereum.network_id
+    this.maxMainnetGasPrice = this.conf.maxGasPrice * 1000000000 //maxGasPrice is in gwei, convert to wei
+    log = logger.child({ from: `AdminWalletV2/${this.networkId}` })
     this.ready = this.init()
   }
 
   getWeb3TransportProvider(): HttpProvider | WebSocketProvider {
     let provider
     let web3Provider
-    let transport = conf.ethereum.web3Transport
+    let transport = this.conf.ethereum.web3Transport
     switch (transport) {
       case 'WebSocket':
-        provider = conf.ethereum.websocketWeb3Provider
+        provider = this.conf.ethereum.websocketWeb3Provider
         web3Provider = new Web3.providers.WebsocketProvider(provider)
         break
 
       case 'HttpProvider':
       default:
-        provider = conf.ethereum.httpWeb3Provider
+        provider = this.conf.ethereum.httpWeb3Provider
         const headers = getAuthHeader(provider)
         web3Provider = new Web3.providers.HttpProvider(provider, {
           timeout: FUSE_TX_TIMEOUT,
@@ -112,7 +115,7 @@ export class Wallet {
         })
         break
     }
-    log.debug({ conf, web3Provider, provider })
+    log.debug({ conf: this.conf, web3Provider, provider })
 
     return web3Provider
   }
@@ -129,16 +132,16 @@ export class Wallet {
   getMainnetWeb3TransportProvider(): HttpProvider | WebSocketProvider {
     let provider
     let web3Provider
-    let transport = conf.ethereumMainnet.web3Transport
+    let transport = this.conf.ethereumMainnet.web3Transport
     switch (transport) {
       case 'WebSocket':
-        provider = conf.ethereumMainnet.websocketWeb3Provider
+        provider = this.conf.ethereumMainnet.websocketWeb3Provider
         web3Provider = new Web3.providers.WebsocketProvider(provider)
         break
 
       default:
       case 'HttpProvider':
-        provider = conf.ethereumMainnet.httpWeb3Provider
+        provider = this.conf.ethereumMainnet.httpWeb3Provider
         const headers = getAuthHeader(provider)
         web3Provider = new Web3.providers.HttpProvider(provider, { headers })
         break
@@ -149,10 +152,10 @@ export class Wallet {
   }
 
   async init() {
-    log.debug('Initializing wallet:', { conf: conf.ethereum, mainnet: conf.ethereumMainnet })
+    log.debug('Initializing wallet:', { conf: this.conf.ethereum, mainnet: this.conf.ethereumMainnet })
 
-    this.mainnetTxManager = getManager(conf.ethereumMainnet.network_id)
-    this.txManager = getManager(conf.ethereum.network_id)
+    this.mainnetTxManager = getManager(this.conf.ethereumMainnet.network_id)
+    this.txManager = getManager(this.conf.ethereum.network_id)
 
     const web3Default = {
       defaultBlock: 'latest',
@@ -165,7 +168,13 @@ export class Wallet {
     this.web3 = new Web3(this.getWeb3TransportProvider(), null, web3Default)
     assign(this.web3.eth, web3Default)
 
-    this.gasPrice = defaultGasPrice
+    switch (this.networkId) {
+      default:
+      case 122:
+        this.gasPrice = defaultGasPrice
+      case 42220:
+        this.gasPrice = defaultCeloGasPrice
+    }
 
     if (estimateGasPrice) {
       await this.web3.eth
@@ -178,8 +187,8 @@ export class Wallet {
     assign(this.mainnetWeb3.eth, web3Default)
     this.mainnetWeb3.eth.transactionPollingTimeout = 600 // slow ropsten
 
-    if (conf.privateKey) {
-      let account = this.web3.eth.accounts.privateKeyToAccount(conf.privateKey)
+    if (this.conf.privateKey) {
+      let account = this.web3.eth.accounts.privateKeyToAccount(this.conf.privateKey)
       this.web3.eth.accounts.wallet.add(account)
       this.web3.eth.defaultAccount = account.address
       this.mainnetWeb3.eth.accounts.wallet.add(account)
@@ -190,7 +199,7 @@ export class Wallet {
 
       log.info('Initialized by private key:', { address: account.address })
     } else if (this.mnemonic) {
-      let root = HDKey.fromMasterSeed(bip39.mnemonicToSeed(this.mnemonic, conf.adminWalletPassword))
+      let root = HDKey.fromMasterSeed(bip39.mnemonicToSeed(this.mnemonic, this.conf.adminWalletPassword))
 
       for (let i = 0; i < this.numberOfAdminWalletAccounts; i++) {
         const path = "m/44'/60'/0'/0/" + i
@@ -211,7 +220,7 @@ export class Wallet {
     if (web3Utils.fromWei(adminWalletContractBalance, 'gwei') < adminMinBalance * this.addresses.length) {
       log.error('AdminWallet contract low funds')
       sendSlackAlert({ msg: 'AdminWallet contract low funds', adminWalletAddress, adminWalletContractBalance })
-      if (conf.env !== 'test' && conf.env !== 'development') process.exit(-1)
+      if (this.conf.env !== 'test' && this.conf.env !== 'development') process.exit(-1)
     }
 
     this.txManager.getTransactionCount = this.web3.eth.getTransactionCount
@@ -219,11 +228,11 @@ export class Wallet {
 
     await this.txManager.createListIfNotExists(this.addresses)
 
-    if (conf.env !== 'production') await this.mainnetTxManager.createListIfNotExists(this.mainnetAddresses)
+    if (this.conf.env !== 'production') await this.mainnetTxManager.createListIfNotExists(this.mainnetAddresses)
 
     log.info('Initialized wallet queue manager')
-    if (conf.topAdminsOnStartup) {
-      await this.topAdmins(0, conf.numberOfAdminWalletAccounts).catch(e => {
+    if (this.conf.topAdminsOnStartup) {
+      await this.topAdmins(0, this.conf.numberOfAdminWalletAccounts).catch(e => {
         log.warn('Top admins failed', { e, errMessage: e.message })
       })
     }
@@ -238,7 +247,7 @@ export class Wallet {
       }
       // else log.warn('Failed adding admin wallet', { addr, balance, isAdminWallet, adminMinBalance })
 
-      if (conf.env !== 'production') {
+      if (this.conf.env !== 'production') {
         const mainnetBalance = await this.mainnetWeb3.eth.getBalance(addr)
         if (parseFloat(web3Utils.fromWei(mainnetBalance, 'gwei')) > adminMinBalance * 100) {
           log.info(`admin wallet ${addr} mainnet balance ${mainnetBalance}`)
@@ -256,7 +265,7 @@ export class Wallet {
       sendSlackAlert({
         msg: 'critical: no fuse admin wallet with funds'
       })
-      if (conf.env !== 'test' && conf.env !== 'development') process.exit(-1)
+      if (this.conf.env !== 'test' && this.conf.env !== 'development') process.exit(-1)
     }
 
     // if (this.mainnetAddresses.length === 0) {
@@ -264,7 +273,7 @@ export class Wallet {
     //     msg: 'critical: no mainnet admin wallet with funds'
     //   })
     //   log.error('no admin wallet with funds for mainnet')
-    //   if (conf.env !== 'test') process.exit(-1)
+    //   if (this.conf.env !== 'test') process.exit(-1)
     // }
 
     this.address = this.filledAddresses[0]
@@ -313,7 +322,7 @@ export class Wallet {
     } catch (e) {
       log.error('Error initializing wallet', e.message, e)
 
-      if (conf.env !== 'test' && conf.env !== 'development') process.exit(-1)
+      if (this.conf.env !== 'test' && this.conf.env !== 'development') process.exit(-1)
     }
     return true
   }
@@ -476,6 +485,16 @@ export class Wallet {
     return tx
   }
 
+  async getDID(address: string): Promise<string> {
+    const tx: boolean = await this.identityContract.methods
+      .addrToDID(address)
+      .call()
+      .catch(e => {
+        log.error('Error getDID', e.message, e)
+        throw e
+      })
+    return tx
+  }
   /**
    *
    * @param {string} address
@@ -712,7 +731,7 @@ export class Wallet {
       logger.debug('got tx lock:', { uuid, address })
 
       let balance = NaN
-      if (conf.env === 'development') {
+      if (this.conf.env === 'development') {
         balance = await this.web3.eth.getBalance(address)
       }
       currentAddress = address
@@ -913,7 +932,7 @@ export class Wallet {
       log.debug('got tx lock mainnet:', { uuid, address, forceAddress })
 
       let balance = NaN
-      if (conf.env === 'development') {
+      if (this.conf.env === 'development') {
         balance = await this.mainnetWeb3.eth.getBalance(address)
       }
       currentAddress = address
@@ -1001,5 +1020,5 @@ export class Wallet {
   }
 }
 
-const AdminWallet = new Wallet(conf.mnemonic)
+const AdminWallet = new Wallet(conf)
 export default AdminWallet

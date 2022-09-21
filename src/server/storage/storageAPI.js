@@ -17,7 +17,7 @@ import stakingModelTasks from '../blockchain/stakingModelTasks'
 import { cancelDisposalTask } from '../verification/cron/taskUtil'
 import createEnrollmentProcessor from '../verification/processor/EnrollmentProcessor'
 import requestRateLimiter from '../utils/requestRateLimiter'
-import AdminWallet from '../blockchain/AdminWallet'
+import { default as AdminWallet } from '../blockchain/MultiWallet'
 
 const { fishManager } = stakingModelTasks
 const { faceVerificationDebugTool } = conf
@@ -559,6 +559,23 @@ const setup = (app: Router, storage: StorageAPI) => {
       const isWhitelisted = await AdminWallet.isVerified(account)
 
       res.json({ ok: 1, isWhitelisted })
+    })
+  )
+
+  app.get(
+    '/syncWhitelist/:account',
+    requestRateLimiter(1, 1),
+    wrapAsync(async (req, res, next) => {
+      const { params, log } = req
+      const { account } = params
+      try {
+        await AdminWallet.syncWhitelist(account)
+        log.debug('syncWhitelist success', { account })
+        res.json({ ok: 1 })
+      } catch (e) {
+        log.error('failed syncWhitelist', e.message, e, { account })
+        res.json({ ok: 0, error: e.message })
+      }
     })
   )
 
