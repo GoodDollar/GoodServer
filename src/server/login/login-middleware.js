@@ -14,6 +14,7 @@ import { wrapAsync } from '../utils/helpers'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
 import Config from '../server.config.js'
 import { recoverPublickey } from '../utils/eth'
+import { mustache } from '../utils/string'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import clientSettings from '../clients.config.js'
 
@@ -33,9 +34,9 @@ const FV_IDENTIFIER_MSG = `Sign this message to create your own unique identifie
 You can use this identifier in the future to delete this anonymized record.
 WARNING: do not sign this message unless you trust the website/application requesting this signature.`
 
-const FV_IDENTIFIER_MSG2 = `Sign this message to request verifying your account <account> and to create your own secret unique identifier for your anonymized record.
+const FV_IDENTIFIER_MSG2 = mustache(`Sign this message to request verifying your account {account} and to create your own secret unique identifier for your anonymized record.
 You can use this identifier in the future to delete this anonymized record.
-WARNING: do not sign this message unless you trust the website/application requesting this signature.`
+WARNING: do not sign this message unless you trust the website/application requesting this signature.`)
 
 const isProfileSignatureCompatible = (signature, nonce) => {
   if (isBase64(signature)) {
@@ -276,52 +277,52 @@ const setup = (app: Router) => {
 
       log.debug('/auth/fv2', { account, fvsig })
 
-      const recovered = recoverPublickey(fvsig, FV_IDENTIFIER_MSG2.replace('<account>', account), '')
+      const recovered = recoverPublickey(fvsig, FV_IDENTIFIER_MSG2({ account }), '')
 
       log.debug('/auth/fv2', {
         message: 'Recovered public key',
         recovered
       })
 
-      if (recovered === account) {
-        const identifier = sha3(recovered)
-        const userRecord = await UserDBPrivate.getUser(identifier)
-        const hasVerified = userRecord && (userRecord.smsValidated || userRecord.isEmailConfirmed)
-        const hasSignedUp = userRecord && userRecord.createdDate
-
-        if (hasSignedUp && !hasVerified) {
-          log.warn('user doesnt have email nor mobile verified', { recovered, identifier })
-        }
-
-        log.info(`SigUtil Successfully verified signer as ${recovered}`, { hasSignedUp })
-
-        const token = jwt.sign(
-          {
-            loggedInAs: identifier,
-            gdAddress: recovered,
-            profilePublickey: recovered,
-            exp: Math.floor(Date.now() / 1000) + (hasSignedUp ? Config.jwtExpiration : 3600), //if not signed up jwt will last only 60 seconds so it will be refreshed after signup
-            aud: hasSignedUp || hasVerified ? `realmdb_wallet_${Config.env}` : 'unsigned',
-            sub: recovered
-          },
-          Config.jwtPassword
-        )
-
-        UserDBPrivate.updateUser({ identifier, lastLogin: new Date() })
-
-        log.info('/auth/fv2', {
-          message: `JWT token: ${token}`
-        })
-
-        res.json({ token })
-        return
-      } else {
+      if (recovered !== account) {
         log.warn('/auth/f2v', {
           message: 'SigUtil unable to recover the message signer'
         })
 
         throw new Error('Unable to verify credentials')
       }
+
+      const identifier = sha3(recovered)
+      const userRecord = await UserDBPrivate.getUser(identifier)
+      const { smsValidated, isEmailConfirmed, createdDate } = userRecord || {}
+      const hasVerified = smsValidated || isEmailConfirmed
+      const hasSignedUp = !!createdDate
+
+      if (hasSignedUp && !hasVerified) {
+        log.warn('user doesnt have email nor mobile verified', { recovered, identifier })
+      }
+
+      log.info(`SigUtil Successfully verified signer as ${recovered}`, { hasSignedUp })
+
+      const token = jwt.sign(
+        {
+          loggedInAs: identifier,
+          gdAddress: recovered,
+          profilePublickey: recovered,
+          exp: Math.floor(Date.now() / 1000) + (hasSignedUp ? Config.jwtExpiration : 3600), //if not signed up jwt will last only 60 seconds so it will be refreshed after signup
+          aud: hasSignedUp || hasVerified ? `realmdb_wallet_${Config.env}` : 'unsigned',
+          sub: recovered
+        },
+        Config.jwtPassword
+      )
+
+      UserDBPrivate.updateUser({ identifier, lastLogin: new Date() })
+
+      log.info('/auth/fv2', {
+        message: `JWT token: ${token}`
+      })
+
+      res.json({ token })
     })
   )
 
