@@ -1,37 +1,82 @@
-import AdminWallet from './AdminWalletV2'
+import { assign, every, forOwn } from 'lodash'
+import AdminWallet from './AdminWallet'
 import CeloAdminWallet from './CeloAdminWallet'
 
-export default {
-  topWallet: async (account, chainId = 122, log) => {
-    switch (chainId) {
-      default:
-      case 122:
-        return AdminWallet.topWallet(account, log)
-      case 42220:
-        return CeloAdminWallet.topWallet(account, log)
-      case 'all':
-        return Promise.all([AdminWallet.topWallet(account, log), CeloAdminWallet.topWallet(account, log)])
+class MultiWallet {
+  mainWallet = null
+  otherWallets = []
+  wallets = []
+  walletsMap = {}
+
+  constructor(walletsMap) {
+    let mainWallet
+
+    forOwn(walletsMap, wallet => {
+      this.wallets.push(wallet)
+
+      if (mainWallet) {
+        this.otherWallets.push(wallet)
+      } else {
+        mainWallet = wallet
+      }
+    })
+
+    assign(this, { walletsMap, mainWallet })
+  }
+
+  async topWallet(account, chainId = 122, log) {
+    const runTx = wallet => wallet.topWallet(account, log)
+
+    if (chainId === 'all') {
+      return Promise.all(this.wallets.map(runTx))
     }
-  },
-  whitelistUser: async (account, did, orgChainId = 122) => {
-    return Promise.all([AdminWallet.whitelistUser(account, did), CeloAdminWallet.whitelistUser(account, did)])
-  },
-  removeWhitelisted: async account => {
-    return Promise.all([AdminWallet.removeWhitelisted(account), CeloAdminWallet.removeWhitelisted(account)])
-  },
-  isVerified: async account => {
-    return AdminWallet.isVerified(account)
-  },
-  syncWhitelist: async account => {
-    const [isFuse, isCelo] = await Promise.all([AdminWallet.isVerified(account), CeloAdminWallet.isVerified(account)])
-    if (isFuse && !isCelo) {
-      const did = await AdminWallet.getDID(account).catch(_ => account)
-      await CeloAdminWallet.whitelistUser(account, did)
-      return true
+
+    const { walletsMap } = this
+    const chain = chainId in walletsMap ? chainId : 122
+
+    return runTx(walletsMap[chain])
+  }
+
+  async whitelistUser(account, did) {
+    return Promise.all(this.wallets.map(wallet => wallet.whitelistUser(account, did)))
+  }
+
+  async removeWhitelisted(account) {
+    return Promise.all(this.wallets.map(wallet => wallet.removeWhitelisted(account)))
+  }
+
+  async isVerified(account) {
+    return this.mainWallet.isVerified(account)
+  }
+
+  async syncWhitelist(account) {
+    const [isVerified, ...atOtherWallets] = await Promise.all(this.wallets.map(wallet => wallet.isVerified(account)))
+
+    if (!isVerified || every(atOtherWallets)) {
+      return false
     }
-    return false
-  },
-  getAuthenticationPeriod: async () => {
-    return AdminWallet.getAuthenticationPeriod()
+
+    const did = await this.mainWallet.getDID(account).catch(_ => account)
+
+    await Promise.all(
+      atOtherWallets.map(async (status, index) => {
+        if (status) {
+          return
+        }
+
+        await this.otherWallets[index].whitelistUser(account, did)
+      })
+    )
+
+    return true
+  }
+
+  async getAuthenticationPeriod() {
+    return this.mainWallet.getAuthenticationPeriod()
   }
 }
+
+export default new MultiWallet({
+  122: AdminWallet, // "main" wallet goes first
+  42220: CeloAdminWallet
+})
