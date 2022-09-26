@@ -7,32 +7,35 @@ class MultiWallet {
   otherWallets = []
   wallets = []
   walletsMap = {}
+  defaultChainId = null
 
   constructor(walletsMap) {
     let mainWallet
+    let defaultChainId
 
-    forOwn(walletsMap, wallet => {
+    forOwn(walletsMap, (wallet, chainId) => {
       this.wallets.push(wallet)
 
       if (mainWallet) {
         this.otherWallets.push(wallet)
       } else {
         mainWallet = wallet
+        defaultChainId = chainId
       }
     })
 
-    assign(this, { walletsMap, mainWallet })
+    assign(this, { walletsMap, mainWallet, defaultChainId })
   }
 
-  async topWallet(account, chainId = 122, log) {
+  async topWallet(account, chainId = null, log) {
     const runTx = wallet => wallet.topWallet(account, log)
 
     if (chainId === 'all') {
       return Promise.all(this.wallets.map(runTx))
     }
 
-    const { walletsMap } = this
-    const chain = chainId in walletsMap ? chainId : 122
+    const { walletsMap, defaultChainId } = this
+    const chain = chainId && chainId in walletsMap ? chainId : defaultChainId
 
     return runTx(walletsMap[chain])
   }
