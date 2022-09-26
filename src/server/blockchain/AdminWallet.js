@@ -1,10 +1,12 @@
 // @flow
 
+import Crypto from 'crypto'
 import Web3 from 'web3'
 import { assign } from 'lodash'
 
 import { Web3Wallet, getAuthHeader, web3Default } from './Web3Wallet'
 import conf from '../server.config'
+import { isNonceError } from '../utils/eth'
 
 const defaultRopstenGasPrice = web3Utils.toWei('5', 'gwei')
 
@@ -162,7 +164,11 @@ class AdminWallet extends Web3Wallet {
 
             res(r)
           })
-          .on('confirmation', c => onConfirmation && onConfirmation(c))
+          .on('confirmation', c => {
+            if (onConfirmation) {
+              onConfirmation(c)
+            }
+          })
           .on('error', async exception => {
             const { message } = exception
 
