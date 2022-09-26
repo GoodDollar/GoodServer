@@ -27,8 +27,6 @@ const FUSE_TX_TIMEOUT = 25000 // should be confirmed after max 5 blocks (25sec)
 const { estimateGasPrice } = conf
 const adminMinBalance = conf.adminMinBalance
 const defaultGasPrice = web3Utils.toWei(String(conf.defaultGasPrice), 'gwei')
-const defaultRopstenGasPrice = web3Utils.toWei('5', 'gwei')
-const defaultCeloGasPrice = (0.2 * 1e9).toFixed(0)
 
 export const web3Default = {
   defaultBlock: 'latest',
@@ -88,7 +86,7 @@ export class Web3Wallet {
 
   mainnetAddresses = []
 
-  constructor(name, conf, ethereum = null, network = null) {
+  constructor(name, conf, ethereum = null, network = null, initialGasPrice = null) {
     this.addresses = []
     this.filledAddresses = []
     this.wallets = {}
@@ -98,7 +96,7 @@ export class Web3Wallet {
     this.ethereum = ethereum || conf.ethereum
     this.networkId = ethereum.network_id
     this.numberOfAdminWalletAccounts = this.conf.privateKey ? 1 : this.conf.numberOfAdminWalletAccounts
-    this.maxMainnetGasPrice = this.conf.maxGasPrice * 1000000000 // maxGasPrice is in gwei, convert to wei
+    this.gasPrice = initialGasPrice || defaultGasPrice
     this.log = logger.child({ from: `${name}/${this.networkId}` })
 
     this.ready = this.init()
@@ -146,14 +144,6 @@ export class Web3Wallet {
     this.txManager = getManager(this.ethereum.network_id)
     this.web3 = new Web3(this.getWeb3TransportProvider(), null, web3Default)
     assign(this.web3.eth, web3Default)
-
-    switch (this.networkId) {
-      default:
-      case 122:
-        this.gasPrice = defaultGasPrice
-      case 42220:
-        this.gasPrice = defaultCeloGasPrice
-    }
 
     if (estimateGasPrice) {
       await this.web3.eth

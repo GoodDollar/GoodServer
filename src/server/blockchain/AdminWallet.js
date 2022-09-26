@@ -6,11 +6,14 @@ import { assign } from 'lodash'
 import { Web3Wallet, getAuthHeader, web3Default } from './Web3Wallet'
 import conf from '../server.config'
 
-class AdminWallet extends Web3Wallet {
-  constructor(conf, ethereum, network) {
-    super(conf, ethereum, network)
+const defaultRopstenGasPrice = web3Utils.toWei('5', 'gwei')
 
-    this.networkIdMainnet = this.conf.ethereumMainnet.network_id
+class AdminWallet extends Web3Wallet {
+  constructor(name, conf, ethereum, network, initialGasPrice) {
+    super(name, conf, ethereum, network, initialGasPrice)
+
+    this.networkIdMainnet = conf.ethereumMainnet.network_id
+    this.maxMainnetGasPrice = conf.maxGasPrice * 1000000000 // maxGasPrice is in gwei, convert to wei
   }
 
   addWallet(account) {
