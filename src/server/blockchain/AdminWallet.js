@@ -5,7 +5,7 @@ import Web3 from 'web3'
 import { assign } from 'lodash'
 import * as web3Utils from 'web3-utils'
 
-import { Web3Wallet, getAuthHeader, web3Default, defaultGas } from './Web3Wallet'
+import { Web3Wallet, getAuthHeader, web3Default, defaultGas, adminMinBalance } from './Web3Wallet'
 import conf from '../server.config'
 import { isNonceError, isFundsError } from '../utils/eth'
 import { getManager } from '../utils/tx-manager'
@@ -61,21 +61,38 @@ class AdminWallet extends Web3Wallet {
     const { log, conf } = this
     const { ethereumMainnet, env } = conf
 
-    await super.init()
-
-    log.debug('Initializing wallet:', { mainnet: ethereumMainnet })
+    log.debug('Initializing wallet mainnet:', { mainnet: ethereumMainnet })
 
     const mainnetWeb3 = new Web3(this.getMainnetWeb3TransportProvider(), null, web3Default)
     const mainnetTxManager = getManager(ethereumMainnet.network_id)
     const { eth } = mainnetWeb3
+    const mainnetAddresses = []
 
     assign(mainnetTxManager, { getTransactionCount: eth.getTransactionCount })
     assign(eth, web3Default, { transactionPollingTimeout: 600 }) // slow ropsten
-    assign(this, { mainnetWeb3, mainnetTxManager })
+    assign(this, { mainnetWeb3, mainnetTxManager, mainnetAddresses })
+
+    await super.init()
 
     if (env !== 'production') {
-      await mainnetTxManager.createListIfNotExists(this.mainnetAddresses)
+      await Promise.all(
+        this.addresses.map(async addr => {
+          const mainnetBalance = await mainnetWeb3.eth.getBalance(addr)
+
+          if (parseFloat(web3Utils.fromWei(mainnetBalance, 'gwei')) > adminMinBalance * 100) {
+            log.info(`admin wallet ${addr} mainnet balance ${mainnetBalance}`)
+            mainnetAddresses.push(addr)
+          }
+        })
+      )
+
+      await mainnetTxManager.createListIfNotExists(mainnetAddresses)
+      log.info('Initialized adminwallet mainnet addresses')
     }
+
+    log.debug('AdminWallet mainnet Ready:', {
+      activeMainnetWallets: mainnetAddresses.length
+    })
 
     return true
   }

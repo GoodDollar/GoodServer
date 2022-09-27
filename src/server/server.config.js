@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import convict from 'convict'
 import dotenv from 'dotenv'
+import formats from 'convict-format-with-validator'
 
 import getNetworks from './networks'
 
@@ -19,6 +20,7 @@ if (process.env.NODE_ENV === 'test') {
   }
 }
 
+convict.addFormats(formats)
 dotenv.config({ path: dotenvPath })
 
 // Define a schema
@@ -604,9 +606,11 @@ const conf = convict({
 // network options
 const networks = getNetworks()
 const network = conf.get('network')
+
 let networkId = 4447
 let mainNetworkId = 4447
 let celoNetworkId = 4447
+
 switch (network) {
   case 'fuse':
   case 'staging':

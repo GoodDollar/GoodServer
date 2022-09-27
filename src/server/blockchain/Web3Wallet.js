@@ -24,8 +24,9 @@ import { sendSlackAlert } from '../../imports/slack'
 
 const FUSE_TX_TIMEOUT = 25000 // should be confirmed after max 5 blocks (25sec)
 const { estimateGasPrice } = conf
-const adminMinBalance = conf.adminMinBalance
 const defaultGasPrice = web3Utils.toWei(String(conf.defaultGasPrice), 'gwei')
+
+export const adminMinBalance = conf.adminMinBalance
 
 export const defaultGas = 200000
 
@@ -59,8 +60,6 @@ export const getAuthHeader = rpc => {
 export class Web3Wallet {
   web3: Web3
 
-  mainnetWeb3: Web3
-
   wallet: HDWallet
 
   accountsContract: Web3.eth.Contract
@@ -85,18 +84,18 @@ export class Web3Wallet {
 
   nonce: number
 
-  mainnetAddresses = []
-
   constructor(name, conf, ethereum = null, network = null, initialGasPrice = null) {
+    const ethOpts = ethereum || conf.ethereum
+
     this.addresses = []
     this.filledAddresses = []
     this.wallets = {}
     this.conf = conf
-    this.mnemonic = this.conf.mnemonic
+    this.mnemonic = conf.mnemonic
     this.network = network || conf.network
-    this.ethereum = ethereum || conf.ethereum
-    this.networkId = ethereum.network_id
-    this.numberOfAdminWalletAccounts = this.conf.privateKey ? 1 : this.conf.numberOfAdminWalletAccounts
+    this.ethereum = ethOpts
+    this.networkId = ethOpts.network_id
+    this.numberOfAdminWalletAccounts = conf.privateKey ? 1 : conf.numberOfAdminWalletAccounts
     this.gasPrice = initialGasPrice || defaultGasPrice
     this.log = logger.child({ from: `${name}/${this.networkId}` })
 
@@ -186,11 +185,13 @@ export class Web3Wallet {
     if (web3Utils.fromWei(adminWalletContractBalance, 'gwei') < adminMinBalance * this.addresses.length) {
       log.error('AdminWallet contract low funds')
       sendSlackAlert({ msg: 'AdminWallet contract low funds', adminWalletAddress, adminWalletContractBalance })
-      if (this.conf.env !== 'test' && this.conf.env !== 'development') process.exit(-1)
+
+      if (this.conf.env !== 'test' && this.conf.env !== 'development') {
+        process.exit(-1)
+      }
     }
 
     this.txManager.getTransactionCount = this.web3.eth.getTransactionCount
-
     await this.txManager.createListIfNotExists(this.addresses)
 
     log.info('Initialized wallet queue manager')
@@ -201,26 +202,18 @@ export class Web3Wallet {
       })
     }
 
-    const ps = this.addresses.map(async addr => {
-      const balance = await this.web3.eth.getBalance(addr)
-      const isAdminWallet = await this.isVerifiedAdmin(addr)
+    await Promise.all(
+      this.addresses.map(async addr => {
+        const balance = await this.web3.eth.getBalance(addr)
+        const isAdminWallet = await this.isVerifiedAdmin(addr)
 
-      if (isAdminWallet && parseFloat(web3Utils.fromWei(balance, 'gwei')) > adminMinBalance) {
-        log.info(`admin wallet ${addr} balance ${balance}`)
-        this.filledAddresses.push(addr)
-      }
-
-      if (this.conf.env !== 'production') {
-        const mainnetBalance = await this.mainnetWeb3.eth.getBalance(addr)
-
-        if (parseFloat(web3Utils.fromWei(mainnetBalance, 'gwei')) > adminMinBalance * 100) {
-          log.info(`admin wallet ${addr} mainnet balance ${mainnetBalance}`)
-          this.mainnetAddresses.push(addr)
+        if (isAdminWallet && parseFloat(web3Utils.fromWei(balance, 'gwei')) > adminMinBalance) {
+          log.info(`admin wallet ${addr} balance ${balance}`)
+          this.filledAddresses.push(addr)
         }
-      }
-    })
+      })
+    )
 
-    await Promise.all(ps)
     log.info('Initialized adminwallet addresses')
 
     if (this.filledAddresses.length === 0) {
@@ -272,7 +265,6 @@ export class Web3Wallet {
 
       log.debug('AdminWallet Ready:', {
         activeWallets: this.filledAddresses.length,
-        activeMainnetWallets: this.mainnetAddresses.length,
         account: this.address,
         gdbalance,
         nativebalance,

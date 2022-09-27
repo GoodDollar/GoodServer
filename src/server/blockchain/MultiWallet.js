@@ -1,6 +1,6 @@
 import { assign, every, forOwn } from 'lodash'
 import AdminWallet from './AdminWallet'
-import CeloAdminWallet from './CeloAdminWallet'
+//import CeloAdminWallet from './CeloAdminWallet'
 
 class MultiWallet {
   mainWallet = null
@@ -80,6 +80,6 @@ class MultiWallet {
 }
 
 export default new MultiWallet({
-  122: AdminWallet, // "main" wallet goes first
-  42220: CeloAdminWallet
+  122: AdminWallet // "main" wallet goes first
+  //42220: CeloAdminWallet
 })
