@@ -13,14 +13,14 @@ describe('adminwallet', () => {
 
   test(`adminWallet top wallet shouldn't throws an error when user is not whitelisted/verified`, async () => {
     const unverifiedAddress = generateWalletAddress()
-    const tx = await AdminWallet.topWallet(unverifiedAddress).catch(e => false)
+    const tx = await AdminWallet.topWallet(unverifiedAddress).catch(() => false)
     expect(tx).toBeTruthy()
     const balance = await AdminWallet.web3.eth.getBalance(unverifiedAddress)
     expect(balance).toEqual('6000000000000000')
   })
 
   test('adminWallet constructor works', async () => {
-    expect(await AdminWallet.ready.catch(_ => false)).toBeTruthy()
+    expect(await AdminWallet.ready.catch(() => false)).toBeTruthy()
   })
 
   test('adminWallet can whitelist user', async () => {
@@ -65,7 +65,7 @@ describe('adminwallet', () => {
   test('adminWallet throws exception', async () => {
     const unverifiedAddress = '0x888185b656fe770677a91412f9f09B23A787242A'
 
-    expect(await AdminWallet.removeWhitelisted(unverifiedAddress).catch(e => false)).toBeFalsy()
+    expect(await AdminWallet.removeWhitelisted(unverifiedAddress).catch(() => false)).toBeFalsy()
   })
 
   test('adminWallet get balance correctly', async () => {

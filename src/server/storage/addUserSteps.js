@@ -75,7 +75,7 @@ export const topUserWallet = async (userRecord: UserRecord, logger: any) => {
   const topWallet = get(user, 'isCompleted.topWallet', false)
   if (!topWallet) {
     return AdminWallet.topWallet(userRecord.gdAddress)
-      .then(r => {
+      .then(() => {
         UserDBPrivate.completeStep(userRecord.identifier, 'topWallet')
         logger.debug('topUserWallet success', { address: userRecord.gdAddress })
         return true

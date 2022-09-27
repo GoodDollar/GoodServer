@@ -3,10 +3,13 @@
 import Crypto from 'crypto'
 import Web3 from 'web3'
 import { assign } from 'lodash'
+import * as web3Utils from 'web3-utils'
 
-import { Web3Wallet, getAuthHeader, web3Default } from './Web3Wallet'
+import { Web3Wallet, getAuthHeader, web3Default, defaultGas } from './Web3Wallet'
 import conf from '../server.config'
-import { isNonceError } from '../utils/eth'
+import { isNonceError, isFundsError } from '../utils/eth'
+import { getManager } from '../utils/tx-manager'
+import { sendSlackAlert } from '../../imports/slack'
 
 const defaultRopstenGasPrice = web3Utils.toWei('5', 'gwei')
 
@@ -32,6 +35,7 @@ class AdminWallet extends Web3Wallet {
     let provider
     let web3Provider
     let transport = this.conf.ethereumMainnet.web3Transport
+    const { log } = this
 
     switch (transport) {
       case 'WebSocket':
@@ -40,11 +44,13 @@ class AdminWallet extends Web3Wallet {
         break
 
       default:
-      case 'HttpProvider':
+      case 'HttpProvider': {
         provider = this.conf.ethereumMainnet.httpWeb3Provider
         const headers = getAuthHeader(provider)
+
         web3Provider = new Web3.providers.HttpProvider(provider, { headers })
         break
+      }
     }
 
     log.debug('mainnet', { web3Provider, provider })
@@ -52,7 +58,8 @@ class AdminWallet extends Web3Wallet {
   }
 
   async init() {
-    const { ethereumMainnet, env } = this.conf
+    const { log, conf } = this
+    const { ethereumMainnet, env } = conf
 
     await super.init()
 

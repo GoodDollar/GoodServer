@@ -203,7 +203,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     '/verify/sendotp',
     requestRateLimiter(),
     passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res, next) => {
+    wrapAsync(async (req, res) => {
       const { user, body } = req
       const log = req.log
 
@@ -261,7 +261,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     requestRateLimiter(),
     passport.authenticate('jwt', { session: false }),
     onlyInEnv('production', 'staging'),
-    wrapAsync(async (req, res, next) => {
+    wrapAsync(async (req, res) => {
       const log = req.log
       const { user, body } = req
       const verificationData: { otp: string } = body.verificationData
@@ -334,7 +334,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
     '/verify/registration',
     passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res, next) => {
+    wrapAsync(async (req, res) => {
       const user = req.user
       res.json({ ok: user && user.createdDate ? 1 : 0 })
     })
@@ -353,34 +353,10 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     '/verify/topwallet',
     requestRateLimiter(1, 1),
     passport.authenticate(['jwt', 'anonymous'], { session: false }),
-    wrapAsync(async (req, res, next) => {
+    wrapAsync(async (req, res) => {
       const log = req.log
       const { account, chainId } = req.body || {}
       const user: LoggedUser = req.user || { gdAddress: account }
-
-      //TODO: restore if necessary
-      // check if user send ether out of the good dollar system
-      // let isUserSendEtherOutOfSystem = false
-      // try {
-      //   const { result = [] } = await fuseapi.getTxList({
-      //     address: user.gdAddress,
-      //     page: 1,
-      //     offset: 10,
-      //     filterby: 'from'
-      //   })
-      //   isUserSendEtherOutOfSystem = result.some(r => Number(r.value) > 0)
-      // } catch (e) {
-      //   log.error('Check user transactions error', e.message, e)
-      // }
-
-      // if (isUserSendEtherOutOfSystem) {
-      //   log.warn('User send ether out of system')
-
-      //   return res.json({
-      //     ok: 0,
-      //     sendEtherOutOfSystem: true
-      //   })
-      // }
 
       if (!user.gdAddress) {
         throw new Error('missing wallet address to top')
@@ -506,7 +482,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
     '/verify/email',
     passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res, next) => {
+    wrapAsync(async (req, res) => {
       let runInEnv = ['production', 'staging', 'test'].includes(conf.env)
       const { __utmzz: utmString = '' } = req.cookies
       const log = req.log

@@ -1,7 +1,7 @@
 // @flow
 
 import MockAdapter from 'axios-mock-adapter'
-import { first, last, mapValues, toPairs } from 'lodash'
+import { first, last, mapValues, omit, toPairs } from 'lodash'
 
 import Config from '../../server.config'
 import OnGage from '../ongage'
@@ -164,7 +164,7 @@ describe('OnGage', () => {
   })
 
   test('upsert: should not add contact without email', async () => {
-    const { email, ...fields } = contactFields
+    const fields = omit(contactFields, 'email')
 
     await expect(OnGage.updateContact(null, null, fields)).rejects.toThrow('Cannot add contact with empty email!')
   })
@@ -185,7 +185,7 @@ describe('OnGage', () => {
   })
 
   test('upsert: should not set empty email on update', async () => {
-    const { email, ...fields } = contactFields
+    const fields = omit(contactFields, 'email')
     const emptyEmails = [null, undefined, '']
 
     helper.mockSuccessUpdateContact(contactEmail, contactId)
@@ -323,7 +323,7 @@ describe('OnGage', () => {
   })
 
   test('createContact: throws on empty email', async () => {
-    const { email, ...record } = userRecord
+    const record = omit(userRecord, 'email')
 
     await expect(OnGage.createContact(record)).rejects.toThrow('OnGage: failed creating contact - no email.')
   })

@@ -1,6 +1,5 @@
 // @flow
 import express, { Router } from 'express'
-import type { NextFunction } from 'express'
 import bodyParser from 'body-parser'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
@@ -68,7 +67,7 @@ export default async (app: Router) => {
     })
   )
 
-  app.use((error, req, res, next: NextFunction) => {
+  app.use((error, req, res) => {
     const { log = rootLogger, body, url } = req
     const { message } = error
     const aborted = error.code === 'ECONNABORTED'

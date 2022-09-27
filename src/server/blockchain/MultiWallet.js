@@ -59,7 +59,7 @@ class MultiWallet {
       return false
     }
 
-    const did = await this.mainWallet.getDID(account).catch(_ => account)
+    const did = await this.mainWallet.getDID(account).catch(() => account)
 
     await Promise.all(
       atOtherWallets.map(async (status, index) => {

@@ -23,7 +23,9 @@
     "prod": "npm start -- --inspect --optimize_for_size --max_old_space_size=460 | pino-pretty -c -f -s \"msg!='request completed'\"",
     "flow": "flow",
     "docs": "node scripts/docs.js",
-    "version": "auto-changelog -p && git add CHANGELOG.md"
+    "version": "auto-changelog -p && git add CHANGELOG.md",
+    "lint": "eslint \"src/**/*.js\" --max-warnings=0",
+    "lint:fix": "npm run lint -- --fix"
   },
   "repository": {
     "type": "git",
@@ -137,6 +139,7 @@
     "eslint-plugin-import": "^2.22.0",
     "eslint-plugin-jest": "^23.20.0",
     "eslint-plugin-jsx-a11y": "^6.3.1",
+    "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-prettier": "^3.1.4",
     "file-loader": "^2.0.0",
     "flow-bin": "^0.91.0",

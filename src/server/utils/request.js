@@ -24,7 +24,6 @@ export const parseUtmString = utmString => {
 export const whenFinished = async (req, res) =>
   new Promise(resolve => {
     let finished = false
-    const { log } = req
 
     const onAborted = () => {
       if (finished) {

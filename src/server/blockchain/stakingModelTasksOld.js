@@ -13,6 +13,7 @@ import moment from 'moment'
 import { toWei } from 'web3-utils'
 import config from '../server.config'
 import { sendSlackAlert } from '../../imports/slack'
+import { retry as retryAttempt } from '../utils/async'
 const BRIDGE_TRANSFER_TIMEOUT = 60 * 1000 * 5 //5 min
 const FUSE_DAY_BLOCKS = (60 * 60 * 24) / 5
 /**
@@ -93,27 +94,37 @@ export class StakingModelManager {
   }
 
   waitForTransferInterest = async txHash => {
-    let retry = 0
-    while (true) {
-      retry += 1
-      this.log.info('retrying timedout tx', { txHash, retry })
-      const receipt = await AdminWallet.mainnetWeb3.eth.getTransactionReceipt(txHash)
-      if (receipt) {
+    const { log } = this
+
+    return retryAttempt(
+      async retry => {
+        log.info('retrying timedout tx', { txHash, retry })
+
+        const receipt = await AdminWallet.mainnetWeb3.eth.getTransactionReceipt(txHash)
+
+        if (!receipt) {
+          throw new Error('No receipt yet, retrying')
+        }
+
         if (receipt.status) {
           const fundsEvents = await this.managerContract.getPastEvents('FundsTransferred', {
             fromBlock: receipt.blockNumber,
             toBlock: receipt.blockNumber
           })
+
           const fundsEvent = get(fundsEvents, 0)
-          this.log.info('retrying timedout tx success transferInterest result event', { txHash, fundsEvent })
+
+          log.info('retrying timedout tx success transferInterest result event', { txHash, fundsEvent })
           return fundsEvent
         }
-        //tx eventually failed
+
+        // tx eventually failed
         throw new Error('retrying timedout tx failed txHash: ' + txHash)
-      }
-      //no receipt yet wait 10 minutes
-      await delay(1000 * 60 * 10)
-    }
+      },
+      -1,
+      1000 * 60 * 10,
+      e => /no\sreceipt/i.test(get(e, 'message', ''))
+    ) // no receipt yet wait 10 minutes
   }
 
   getNextCollectionTime = async () => {
@@ -151,7 +162,7 @@ export class StakingModelManager {
       {},
       {},
       AdminWallet.mainnetAddresses[0]
-    ).catch(e => {
+    ).catch(() => {
       this.log.warn('dai  allocateTo failed')
     })
     await Promise.all([tx1, tx2]).catch(e => {
@@ -315,7 +326,7 @@ class FishingManager {
 
     const daysagoBlocks = dayFuseBlocks * (maxInactiveDays + 1)
     const blocksAgo = Math.max((await AdminWallet.web3.eth.getBlockNumber()) - daysagoBlocks, 0)
-    await AdminWallet.sendTransaction(this.ubiContract.methods.setDay(), {}).catch(e =>
+    await AdminWallet.sendTransaction(this.ubiContract.methods.setDay(), {}).catch(() =>
       this.log.warn('fishManager set day failed')
     )
     const currentUBIDay = await this.ubiContract.methods
@@ -407,7 +418,7 @@ class FishingManager {
       const isActive = await this.ubiContract.methods
         .isActiveUser(e.returnValues.claimer)
         .call()
-        .catch(e => undefined)
+        .catch(() => undefined)
       if (isActive === undefined) {
         inactiveCheckFailed += 1
       }

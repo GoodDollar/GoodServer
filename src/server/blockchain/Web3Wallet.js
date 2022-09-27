@@ -22,11 +22,12 @@ import { type TransactionReceipt } from './blockchain-types'
 import { getManager } from '../utils/tx-manager'
 import { sendSlackAlert } from '../../imports/slack'
 
-const defaultGas = 200000
 const FUSE_TX_TIMEOUT = 25000 // should be confirmed after max 5 blocks (25sec)
 const { estimateGasPrice } = conf
 const adminMinBalance = conf.adminMinBalance
 const defaultGasPrice = web3Utils.toWei(String(conf.defaultGasPrice), 'gwei')
+
+export const defaultGas = 200000
 
 export const web3Default = {
   defaultBlock: 'latest',
@@ -115,14 +116,17 @@ export class Web3Wallet {
         break
 
       case 'HttpProvider':
-      default:
+      default: {
         provider = this.ethereum.httpWeb3Provider
+
         const headers = getAuthHeader(provider)
+
         web3Provider = new Web3.providers.HttpProvider(provider, {
           timeout: FUSE_TX_TIMEOUT,
           headers
         })
         break
+      }
     }
 
     log.debug({ conf: this.conf, web3Provider, provider })
@@ -507,7 +511,7 @@ export class Web3Wallet {
    */
   async topWallet(address: string, customLogger = null): PromiEvent<TransactionReceipt> {
     const logger = customLogger || this.log
-    const faucetRes = await this.topWalletFaucet(address, logger).catch(_ => false)
+    const faucetRes = await this.topWalletFaucet(address, logger).catch(() => false)
 
     if (faucetRes) {
       return faucetRes
@@ -519,7 +523,7 @@ export class Web3Wallet {
     const canTopOrError = await this.proxyContract.methods
       .topWallet(address)
       .call()
-      .then(_ => true)
+      .then(() => true)
       .catch(e => e)
 
     if (canTopOrError !== true) {

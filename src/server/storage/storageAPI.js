@@ -142,7 +142,7 @@ const setup = (app: Router, storage: StorageAPI) => {
 
         const p1 = storage
           .updateUser(toUpdateUser)
-          .then(r => logger.debug('updated new user record', { toUpdateUser }))
+          .then(() => logger.debug('updated new user record', { toUpdateUser }))
           .catch(e => {
             logger.error('failed updating new user record', e.message, e, { toUpdateUser })
             throw e
@@ -189,7 +189,7 @@ const setup = (app: Router, storage: StorageAPI) => {
 
         // don't await, if we failed to update its not critical for user.
         withTimeout(Promise.all(signUpPromises), 30000, 'signup promises timeout')
-          .then(async r => {
+          .then(async () => {
             logger.info('signup promises success')
             if (isNonDevelopMode) {
               const crmId = await p3
@@ -372,7 +372,7 @@ const setup = (app: Router, storage: StorageAPI) => {
    */
   app.post(
     '/user/delete',
-    wrapAsync(async (req, res, next) => {
+    wrapAsync(async (req, res) => {
       const { user, log } = req
       log.info('delete user', { user })
 
@@ -386,19 +386,19 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       const results = await Promise.all([
         (user.identifier ? storage.deleteUser(user) : Promise.reject())
-          .then(r => ({ mongodb: 'ok' }))
-          .catch(e => ({ mongodb: 'failed' })),
+          .then(() => ({ mongodb: 'ok' }))
+          .catch(() => ({ mongodb: 'failed' })),
         crmCount > 1
           ? Promise.resolve({ crm: 'okMultiNotDeleted' })
           : OnGage.deleteContact(user.crmId)
-              .then(r => ({ crm: 'ok' }))
-              .catch(e => ({ crm: 'failed' })),
+              .then(() => ({ crm: 'ok' }))
+              .catch(() => ({ crm: 'failed' })),
         fetch(`https://api.fullstory.com/users/v1/individual/${user.identifier}`, {
           headers: { Authorization: `Basic ${conf.fullStoryKey}` },
           method: 'DELETE'
         })
-          .then(_ => ({ fs: 'ok' }))
-          .catch(e => ({ fs: 'failed' })),
+          .then(() => ({ fs: 'ok' }))
+          .catch(() => ({ fs: 'failed' })),
         fetch(`https://amplitude.com/api/2/deletions/users`, {
           headers: { Authorization: `Basic ${conf.amplitudeBasicAuth}`, 'Content-Type': 'application/json' },
           method: 'POST',
@@ -416,7 +416,7 @@ const setup = (app: Router, storage: StorageAPI) => {
               amplitude: 'ok'
             }
           })
-          .catch(e => ({ amplitude: 'failed' }))
+          .catch(() => ({ amplitude: 'failed' }))
       ])
 
       log.info('delete user results', { user, results })
@@ -437,7 +437,7 @@ const setup = (app: Router, storage: StorageAPI) => {
    */
   app.get(
     '/user/exists',
-    wrapAsync(async (req, res, next) => {
+    wrapAsync(async (req, res) => {
       const { user } = req
 
       res.json({ ok: 1, exists: user.createdDate != null, fullName: user.fullName })
@@ -553,7 +553,7 @@ const setup = (app: Router, storage: StorageAPI) => {
   app.get(
     '/userWhitelisted/:account',
     requestRateLimiter(10, 1),
-    wrapAsync(async (req, res, next) => {
+    wrapAsync(async (req, res) => {
       const { params } = req
       const { account } = params
       const isWhitelisted = await AdminWallet.isVerified(account)
@@ -565,7 +565,7 @@ const setup = (app: Router, storage: StorageAPI) => {
   app.get(
     '/syncWhitelist/:account',
     requestRateLimiter(1, 1),
-    wrapAsync(async (req, res, next) => {
+    wrapAsync(async (req, res) => {
       const { params, log } = req
       const { account } = params
       try {

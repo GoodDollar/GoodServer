@@ -23,8 +23,8 @@ const makeServer = async done => {
     await AdminWallet.ready
   })
   serverPromise
-    .then(x => mongoose.connection.readyState)
-    .then(r => {
+    .then(() => mongoose.connection.readyState)
+    .then(() => {
       setTimeout(done, 1000)
       console.log('make server ready')
     })
