@@ -120,12 +120,12 @@ class EnrollmentProcessor {
     const { gdAddress } = user
     const isUserWhitelisted = await adminApi.isVerified(gdAddress)
 
-    if (isUserWhitelisted) {
-      log.info('Wallet is whitelisted, making user non-whitelisted', { gdAddress })
-      await adminApi.removeWhitelisted(gdAddress)
-    } else {
+    if (!isUserWhitelisted) {
       throw new Error('User did not supply a whitelisted account')
     }
+
+    log.info('Wallet is whitelisted, making user non-whitelisted', { gdAddress })
+    await adminApi.removeWhitelisted(gdAddress)
 
     try {
       // don't pass user to task records to keep privacy
