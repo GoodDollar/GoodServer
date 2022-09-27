@@ -598,6 +598,18 @@ const conf = convict({
     format: String,
     default: '',
     env: 'CF_WORKER_VERIFY_URL'
+  },
+  celoFallbackToProd: {
+    doc: 'Falls back to production-celo if no dev/qa settings in goodprotocol',
+    format: Boolean,
+    default: true,
+    env: 'CELO_FALLBACK_TO_PROD'
+  },
+  celoEnabled: {
+    doc: 'Enables Celo connection',
+    format: Boolean,
+    default: false,
+    env: 'CELO_ENABLED'
   }
 })
 

@@ -1,6 +1,8 @@
-import { assign, every, forOwn } from 'lodash'
+import { assign, every, forOwn, isEmpty } from 'lodash'
 import AdminWallet from './AdminWallet'
-//import CeloAdminWallet from './CeloAdminWallet'
+import CeloAdminWallet from './CeloAdminWallet'
+
+import conf from '../server.config'
 
 class MultiWallet {
   mainWallet = null
@@ -55,7 +57,7 @@ class MultiWallet {
   async syncWhitelist(account) {
     const [isVerified, ...atOtherWallets] = await Promise.all(this.wallets.map(wallet => wallet.isVerified(account)))
 
-    if (!isVerified || every(atOtherWallets)) {
+    if (!isVerified || isEmpty(atOtherWallets) || every(atOtherWallets)) {
       return false
     }
 
@@ -79,7 +81,15 @@ class MultiWallet {
   }
 }
 
-export default new MultiWallet({
+let wallets = {
   122: AdminWallet // "main" wallet goes first
-  //42220: CeloAdminWallet
-})
+}
+
+if (conf.celoEnabled) {
+  wallets = {
+    ...wallets,
+    42220: CeloAdminWallet
+  }
+}
+
+export default new MultiWallet(wallets)

@@ -22,13 +22,8 @@ class AdminWallet extends Web3Wallet {
   }
 
   addWallet(account) {
-    const { eth } = this.mainnetWeb3
-    const { address } = account
-
     super.addWallet(account)
-
-    eth.accounts.wallet.add(account)
-    eth.defaultAccount = address
+    this.addWalletAccount(this.mainnetWeb3, account)
   }
 
   getMainnetWeb3TransportProvider(): HttpProvider | WebSocketProvider {
@@ -75,9 +70,13 @@ class AdminWallet extends Web3Wallet {
     await super.init()
 
     if (env !== 'production') {
+      log.info('Initializing adminwallet mainnet addresses', { addresses: this.addresses })
+
       await Promise.all(
         this.addresses.map(async addr => {
           const mainnetBalance = await mainnetWeb3.eth.getBalance(addr)
+
+          log.info(`try mainnnet address ${addr}:`, { mainnetBalance, adminMinBalance })
 
           if (parseFloat(web3Utils.fromWei(mainnetBalance, 'gwei')) > adminMinBalance * 100) {
             log.info(`admin wallet ${addr} mainnet balance ${mainnetBalance}`)
@@ -86,8 +85,8 @@ class AdminWallet extends Web3Wallet {
         })
       )
 
+      log.info('Initialized adminwallet mainnet addresses', { mainnetAddresses })
       await mainnetTxManager.createListIfNotExists(mainnetAddresses)
-      log.info('Initialized adminwallet mainnet addresses')
     }
 
     log.debug('AdminWallet mainnet Ready:', {

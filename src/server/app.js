@@ -3,7 +3,7 @@ import { EventEmitter } from 'events'
 
 import middlewares from './server-middlewares'
 import AdminWallet from './blockchain/AdminWallet'
-//import CeloWallet from './blockchain/CeloAdminWallet'
+import CeloWallet from './blockchain/CeloAdminWallet'
 
 import { withTimeout } from './utils/async'
 import conf from './server.config'
@@ -19,7 +19,14 @@ EventEmitter.defaultMaxListeners = 100
 process.on('uncaughtException', () => process.exit(-1))
 
 const startApp = async () => {
-  await withTimeout(Promise.all(map([/*CeloWallet, */ AdminWallet], 'ready')), 30000, 'wallet not initialized')
+  const wallets = [AdminWallet]
+
+  // added disabled flag for Celo as there's no admin wallet address so app crashes
+  if (conf.celoEnabled) {
+    wallets.push(CeloWallet)
+  }
+
+  await withTimeout(Promise.all(map(wallets, 'ready')), 30000, 'wallet not initialized')
     .then(() => {
       log.info('AdminWallet ready', { addresses: AdminWallet.addresses })
     })

@@ -84,6 +84,19 @@ export class Web3Wallet {
 
   nonce: number
 
+  // made lazy to prevent auto init on import
+  // (causes uncaught promise exception even if Celo disabled)
+  get ready() {
+    let { _readyPromise } = this
+
+    if (!_readyPromise) {
+      _readyPromise = this.init()
+      assign(this, { _readyPromise })
+    }
+
+    return _readyPromise
+  }
+
   constructor(name, conf, ethereum = null, network = null, initialGasPrice = null) {
     const ethOpts = ethereum || conf.ethereum
 
@@ -98,8 +111,6 @@ export class Web3Wallet {
     this.numberOfAdminWalletAccounts = conf.privateKey ? 1 : conf.numberOfAdminWalletAccounts
     this.gasPrice = initialGasPrice || defaultGasPrice
     this.log = logger.child({ from: `${name}/${this.networkId}` })
-
-    this.ready = this.init()
   }
 
   getWeb3TransportProvider(): HttpProvider | WebSocketProvider {
@@ -132,11 +143,19 @@ export class Web3Wallet {
     return web3Provider
   }
 
+  addWalletAccount(web3, account) {
+    const { eth } = web3
+
+    eth.accounts.wallet.add(account)
+    eth.defaultAccount = account.address
+  }
+
   addWallet(account) {
-    this.web3.eth.accounts.wallet.add(account)
-    this.web3.eth.defaultAccount = account.address
-    this.addresses.push(account.address)
-    this.wallets[account.address] = account
+    const { address } = account
+
+    this.addWalletAccount(this.web3, account)
+    this.addresses.push(address)
+    this.wallets[address] = account
   }
 
   async init() {
@@ -177,10 +196,12 @@ export class Web3Wallet {
     }
 
     const adminWalletAddress = get(ContractsAddress, `${this.network}.AdminWallet`)
+    log.info('Obtained AdminWallet address', { adminWalletAddress, network: this.network })
+
     const adminWalletContractBalance = await this.web3.eth.getBalance(adminWalletAddress)
+    log.info(`AdminWallet contract balance`, { adminWalletContractBalance, adminWalletAddress })
 
     this.proxyContract = new this.web3.eth.Contract(ProxyContractABI.abi, adminWalletAddress, { from: this.address })
-    log.info(`AdminWallet contract balance`, { adminWalletContractBalance, adminWalletAddress })
 
     if (web3Utils.fromWei(adminWalletContractBalance, 'gwei') < adminMinBalance * this.addresses.length) {
       log.error('AdminWallet contract low funds')
@@ -202,10 +223,14 @@ export class Web3Wallet {
       })
     }
 
+    log.info('Initializing adminwallet addresses', { addresses: this.addresses })
+
     await Promise.all(
       this.addresses.map(async addr => {
         const balance = await this.web3.eth.getBalance(addr)
         const isAdminWallet = await this.isVerifiedAdmin(addr)
+
+        log.info(`try address ${addr}:`, { balance, isAdminWallet, adminMinBalance })
 
         if (isAdminWallet && parseFloat(web3Utils.fromWei(balance, 'gwei')) > adminMinBalance) {
           log.info(`admin wallet ${addr} balance ${balance}`)
@@ -214,7 +239,7 @@ export class Web3Wallet {
       })
     )
 
-    log.info('Initialized adminwallet addresses')
+    log.info('Initialized adminwallet addresses', { filled: this.filledAddresses })
 
     if (this.filledAddresses.length === 0) {
       log.error('no admin wallet with funds')
