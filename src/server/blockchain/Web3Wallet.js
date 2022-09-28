@@ -58,31 +58,7 @@ export const getAuthHeader = rpc => {
  * Interface with blockchain contracts via web3 using HDWalletProvider
  */
 export class Web3Wallet {
-  web3: Web3
-
-  wallet: HDWallet
-
-  accountsContract: Web3.eth.Contract
-
-  tokenContract: Web3.eth.Contract
-
-  identityContract: Web3.eth.Contract
-
-  UBIContract: Web3.eth.Contract
-
-  proxyContract: Web3.eth.Contract
-
-  faucetContract: Web3.eth.Contract
-
-  address: string
-
-  networkId: number
-
-  network: string
-
-  mnemonic: string
-
-  nonce: number
+  // defining vars here breaks "inheritance"
 
   constructor(name, conf, ethereum = null, network = null, initialGasPrice = null) {
     const ethOpts = ethereum || conf.ethereum
