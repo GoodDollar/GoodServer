@@ -84,19 +84,6 @@ export class Web3Wallet {
 
   nonce: number
 
-  // made lazy to prevent auto init on import
-  // (causes uncaught promise exception even if Celo disabled)
-  get ready() {
-    let { _readyPromise } = this
-
-    if (!_readyPromise) {
-      _readyPromise = this.init()
-      assign(this, { _readyPromise })
-    }
-
-    return _readyPromise
-  }
-
   constructor(name, conf, ethereum = null, network = null, initialGasPrice = null) {
     const ethOpts = ethereum || conf.ethereum
 
@@ -111,6 +98,8 @@ export class Web3Wallet {
     this.numberOfAdminWalletAccounts = conf.privateKey ? 1 : conf.numberOfAdminWalletAccounts
     this.gasPrice = initialGasPrice || defaultGasPrice
     this.log = logger.child({ from: `${name}/${this.networkId}` })
+
+    this.ready = this.init()
   }
 
   getWeb3TransportProvider(): HttpProvider | WebSocketProvider {

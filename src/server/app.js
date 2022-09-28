@@ -2,14 +2,12 @@ import express from 'express'
 import { EventEmitter } from 'events'
 
 import middlewares from './server-middlewares'
-import AdminWallet from './blockchain/AdminWallet'
-import CeloWallet from './blockchain/CeloAdminWallet'
+import MultiWallet from './blockchain/MultiWallet'
 
 import { withTimeout } from './utils/async'
 import conf from './server.config'
 
 import logger from '../imports/logger'
-import { map } from 'lodash'
 
 const log = logger.child({ from: 'startapp' })
 
@@ -19,16 +17,9 @@ EventEmitter.defaultMaxListeners = 100
 process.on('uncaughtException', () => process.exit(-1))
 
 const startApp = async () => {
-  const wallets = [AdminWallet]
-
-  // added disabled flag for Celo as there's no admin wallet address so app crashes
-  if (conf.celoEnabled) {
-    wallets.push(CeloWallet)
-  }
-
-  await withTimeout(Promise.all(map(wallets, 'ready')), 30000, 'wallet not initialized')
-    .then(() => {
-      log.info('AdminWallet ready', { addresses: AdminWallet.addresses })
+  await withTimeout(MultiWallet.ready, 30000, 'wallet not initialized')
+    .then(addresses => {
+      log.info('AdminWallet ready', { addresses })
     })
     .catch(e => {
       if (conf.env === 'test') {

@@ -1,8 +1,6 @@
-import { assign, every, forOwn, isEmpty } from 'lodash'
+import { assign, every, forOwn, isEmpty, map } from 'lodash'
 import AdminWallet from './AdminWallet'
 import CeloAdminWallet from './CeloAdminWallet'
-
-import conf from '../server.config'
 
 class MultiWallet {
   mainWallet = null
@@ -10,6 +8,10 @@ class MultiWallet {
   wallets = []
   walletsMap = {}
   defaultChainId = null
+
+  get ready() {
+    return Promise.all(map(this.wallets, 'ready')).then(() => this.mainWallet.addresses)
+  }
 
   constructor(walletsMap) {
     let mainWallet
@@ -81,15 +83,7 @@ class MultiWallet {
   }
 }
 
-let wallets = {
-  122: AdminWallet // "main" wallet goes first
-}
-
-if (conf.celoEnabled) {
-  wallets = {
-    ...wallets,
-    42220: CeloAdminWallet
-  }
-}
-
-export default new MultiWallet(wallets)
+export default new MultiWallet({
+  122: AdminWallet, // "main" wallet goes first
+  42220: CeloAdminWallet
+})
