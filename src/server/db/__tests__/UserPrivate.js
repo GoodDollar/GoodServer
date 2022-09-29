@@ -15,6 +15,11 @@ const testUser = { identifier: '00', fullName: testUserName, email: 'test@test.t
 describe('UserPrivate', () => {
   const { model: userModel, taskModel } = storage
 
+  const testUsersCleanup = async () => userModel.deleteMany({ fullName: new RegExp(testUserName, 'i') })
+
+  const testUserAddCreateDate = async () =>
+    await storage.updateUser({ identifier: testUser.identifier, createdDate: new Date().toString() })
+
   const testTasksExists = async isExists =>
     expect(taskModel.exists({ taskName: testTaskName, subject: testTaskSubject })).resolves.toBe(isExists)
 
@@ -51,10 +56,8 @@ describe('UserPrivate', () => {
 
   beforeEach(async () => {
     await taskModel.deleteMany({ taskName: testTaskName })
-  })
-
-  afterAll(async () => {
-    await userModel.deleteMany({ fullName: new RegExp(testUserName, 'i') })
+    await testUsersCleanup()
+    await storage.addUser(testUser)
   })
 
   it('Should mongo connect', async () => {
@@ -62,8 +65,8 @@ describe('UserPrivate', () => {
   })
 
   it('Should addUser user', async () => {
-    let res = await storage.addUser(testUser)
-    expect(res).toBeTruthy()
+    await testUsersCleanup()
+    await expect(storage.addUser(testUser)).resolves.toBeTruthy()
   })
 
   it('Should updateUser user', async () => {
@@ -81,97 +84,111 @@ describe('UserPrivate', () => {
 
   it('Should getUserField user', async () => {
     let email = await storage.getUserField(testUser.identifier, 'email')
+
     expect(email === testUser.email).toBeTruthy()
   })
 
   it('Should getByIdentifier user', async () => {
     let user = await storage.getByIdentifier(testUser.identifier)
     const userDb = pick(user, keys(testUser))
+
     expect(userDb).toMatchObject(testUser)
   })
 
   it('Should getUser user', async () => {
     let user = await storage.getUser(testUser.identifier)
     const userDb = pick(user, keys(testUser))
+
     expect(userDb).toMatchObject(testUser)
   })
 
   it('Should getByIdentifier unidentified identifier', async () => {
     let user = await storage.getByIdentifier('unidentified identifier')
+
     expect(user).not.toBeTruthy()
   })
 
   it('Should not duplicate by email', async () => {
     let isDupUser = await storage.isDupUserData({ email: testUser.email })
+
     expect(isDupUser).not.toBeTruthy()
   })
 
   it('Should not duplicate by mobile', async () => {
     let isDupUser = await storage.isDupUserData({ mobile: testUser.mobile })
+
     expect(isDupUser).not.toBeTruthy()
   })
 
   it('Should updateUser user add createdDate', async () => {
-    let res = await storage.updateUser({ identifier: testUser.identifier, createdDate: new Date().toString() })
+    let res = await testUserAddCreateDate()
+
     expect(res).toBeTruthy()
   })
 
-  it('Should isDupUserData by email', async () => {
-    let isDupUser = await storage.isDupUserData({ email: testUser.email })
-    expect(isDupUser).toBeTruthy()
+  it('Should isDupUserData by email if createdDate set', async () => {
+    await testUserAddCreateDate()
+    await expect(storage.isDupUserData({ email: testUser.email })).resolves.toBeTruthy()
   })
 
   it('Should isDupUserData by email(is dup) and mobile(not is dup)', async () => {
-    let isDupUser = await storage.isDupUserData({ email: testUser.email, mobile: '321987' })
-    expect(isDupUser).toBeTruthy()
+    await testUserAddCreateDate()
+    await expect(storage.isDupUserData({ email: testUser.email, mobile: '321987' })).resolves.toBeTruthy()
   })
 
   it('Should isDupUserData by email(is not dup) and mobile(is dup)', async () => {
-    let isDupUser = await storage.isDupUserData({ email: 'asdd@sdd.dd', mobile: testUser.mobile })
-    expect(isDupUser).toBeTruthy()
+    await testUserAddCreateDate()
+    await expect(storage.isDupUserData({ email: 'asdd@sdd.dd', mobile: testUser.mobile })).resolves.toBeTruthy()
   })
 
   it('Should is not dublicate by email', async () => {
     let isDupUser = await storage.isDupUserData({ email: 'test@tst.ss' })
+
     expect(isDupUser).not.toBeTruthy()
   })
 
   it('Should isDupUserData by mobile', async () => {
-    let isDupUser = await storage.isDupUserData({ mobile: testUser.mobile })
-    expect(isDupUser).toBeTruthy()
+    await testUserAddCreateDate()
+    await expect(storage.isDupUserData({ mobile: testUser.mobile })).resolves.toBeTruthy()
   })
 
   it('Should is not dublicate by mobile', async () => {
     let isDupUser = await storage.isDupUserData({ mobile: '987654' })
+
     expect(isDupUser).not.toBeTruthy()
   })
 
   it('Should getUserByEmail', async () => {
-    let user = (await storage.getUsersByEmail(testUser.email))[0]
-    expect(user).toBeTruthy()
+    const [user] = await storage.getUsersByEmail(testUser.email)
     const userDb = pick(user, keys(testUser))
+
+    expect(user).toBeTruthy()
     expect(userDb).toMatchObject(testUser)
   })
 
   it('Should getUserByMobile', async () => {
-    let user = (await storage.getUsersByMobile(testUser.mobile))[0]
+    const [user] = await storage.getUsersByMobile(testUser.mobile)
+
     expect(user).toBeTruthy()
   })
 
   it('Should getUserByEmail bad req', async () => {
-    let user = await storage.getUsersByEmail('asdd@sdd.dd')[0]
+    const [user] = await storage.getUsersByEmail('asdd@sdd.dd')
+
     expect(user).not.toBeTruthy()
   })
 
   it('Should getUserByMobile bad req', async () => {
-    let user = await storage.getUsersByMobile('987')[0]
+    const [user] = await storage.getUsersByMobile('987')
+
     expect(user).not.toBeTruthy()
   })
 
   it('Should delete user', async () => {
-    let result = await storage.deleteUser(testUser)
+    const result = await storage.deleteUser(testUser)
+    const user = await storage.getByIdentifier(testUser.identifier)
+
     expect(result).toBeTruthy()
-    let user = await storage.getByIdentifier(testUser.identifier)
     expect(user).not.toBeTruthy()
   })
 
@@ -184,6 +201,7 @@ describe('UserPrivate', () => {
 
     for (let i in listUsers) {
       let res = await storage.addUser(listUsers[i])
+
       expect(res).toBeTruthy()
     }
 
