@@ -14,8 +14,8 @@ import { sendSlackAlert } from '../../imports/slack'
 const defaultRopstenGasPrice = web3Utils.toWei('5', 'gwei')
 
 class AdminWallet extends Web3Wallet {
-  constructor(name, conf, ethereum, network, initialGasPrice) {
-    super(name, conf, ethereum, network, initialGasPrice)
+  constructor(name, conf, options) {
+    super(name, conf, options)
 
     this.networkIdMainnet = conf.ethereumMainnet.network_id
     this.maxMainnetGasPrice = conf.maxGasPrice * 1000000000 // maxGasPrice is in gwei, convert to wei

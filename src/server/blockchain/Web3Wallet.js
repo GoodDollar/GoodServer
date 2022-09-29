@@ -60,7 +60,12 @@ export const getAuthHeader = rpc => {
 export class Web3Wallet {
   // defining vars here breaks "inheritance"
 
-  constructor(name, conf, ethereum = null, network = null, initialGasPrice = null) {
+  get ready() {
+    return this.initialize()
+  }
+
+  constructor(name, conf, options = null) {
+    const { ethereum = null, network = null, initialGasPrice = null, lazyInitialize = false } = options || {}
     const ethOpts = ethereum || conf.ethereum
 
     this.addresses = []
@@ -75,7 +80,20 @@ export class Web3Wallet {
     this.gasPrice = initialGasPrice || defaultGasPrice
     this.log = logger.child({ from: `${name}/${this.networkId}` })
 
-    this.ready = this.init()
+    if (!lazyInitialize) {
+      this.initialize()
+    }
+  }
+
+  async initialize() {
+    let { _readyPromise } = this
+
+    if (!_readyPromise) {
+      _readyPromise = this.init()
+      assign(this, { _readyPromise })
+    }
+
+    return _readyPromise
   }
 
   getWeb3TransportProvider(): HttpProvider | WebSocketProvider {
