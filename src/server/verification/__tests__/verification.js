@@ -12,9 +12,10 @@ const testUser = {
 }
 
 describe('verification', () => {
-  beforeAll(async () => UserDBPrivate.updateUser(testUser))
-
-  afterAll(async () => UserDBPrivate.model.deleteMany({ fullName: new RegExp('mongo_test', 'i') }))
+  beforeEach(async () => {
+    await UserDBPrivate.model.deleteMany({ fullName: new RegExp('mongo_test', 'i') })
+    await UserDBPrivate.addUser(testUser)
+  })
 
   test('verifyUser email true', async () => {
     const code = emailVerificationCode
