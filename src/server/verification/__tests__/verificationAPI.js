@@ -156,6 +156,9 @@ describe('verificationAPI', () => {
       AdminWallet.isVerified = isVerifiedMock
       AdminWallet.removeWhitelisted = removeWhitelistedMock
 
+      await storage.deleteUser({ identifier: userIdentifier })
+      await storage.addUser({ identifier: userIdentifier })
+
       zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
       helper = createMockingHelper(zoomServiceMock)
       token = await getToken(server)
