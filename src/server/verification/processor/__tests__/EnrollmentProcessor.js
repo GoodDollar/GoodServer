@@ -23,6 +23,7 @@ const cancelTasksQueuedMock = jest.fn()
 const removeDelayedTasksMock = jest.fn()
 const fetchTasksForProcessingMock = jest.fn()
 const unlockDelayedTasksMock = jest.fn()
+const topWalletMock = jest.fn()
 
 // wallet mocks
 const whitelistUserMock = jest.fn()
@@ -73,6 +74,7 @@ describe('EnrollmentProcessor', () => {
     AdminWallet.removeWhitelisted = removeWhitelistedMock
     AdminWallet.isVerified = isVerifiedMock
     AdminWallet.getAuthenticationPeriod = getAuthenticationPeriodMock
+    AdminWallet.topWallet = topWalletMock
     OnGage.setWhitelisted = whitelistContactMock
 
     zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
@@ -87,6 +89,7 @@ describe('EnrollmentProcessor', () => {
     unlockDelayedTasksMock.mockImplementation(noopAsync)
     whitelistUserMock.mockImplementation(noopAsync)
     whitelistContactMock.mockImplementation(noopAsync)
+    topWalletMock.mockImplementation(noopAsync)
 
     invokeMap(
       [
@@ -96,6 +99,7 @@ describe('EnrollmentProcessor', () => {
         failDelayedTasksMock,
         removeDelayedTasksMock,
 
+        topWalletMock,
         removeWhitelistedMock
       ],
       'mockResolvedValue'
@@ -117,7 +121,8 @@ describe('EnrollmentProcessor', () => {
         whitelistContactMock,
         isVerifiedMock,
         getAuthenticationPeriodMock,
-        removeWhitelistedMock
+        removeWhitelistedMock,
+        topWalletMock
       ],
       'mockReset'
     )
@@ -126,7 +131,7 @@ describe('EnrollmentProcessor', () => {
   })
 
   afterAll(() => {
-    const restoreWalletMethods = ['whitelistUser', 'removeWhitelisted', 'isVerified']
+    const restoreWalletMethods = ['whitelistUser', 'removeWhitelisted', 'isVerified', 'topWallet']
 
     restoreWalletMethods.forEach(method => (AdminWallet[method] = AdminWallet.constructor.prototype[method]))
     OnGage.setWhitelisted = OnGage.constructor.prototype.setWhitelisted
@@ -188,6 +193,8 @@ describe('EnrollmentProcessor', () => {
 
     expect(updateUserMock).toHaveBeenCalledWith({ identifier: loggedInAs, isVerified: true })
     expect(whitelistUserMock).toHaveBeenCalledWith(gdAddress, profilePublickey)
+    // topWalllet after FV isn't called on master branch
+    // expect(topWalletMock).toHaveBeenCalledWith(gdAddress, 'all', expect.anything())
     expect(whitelistContactMock.mock.calls[0][0]).toBe(crmId)
   })
 
@@ -248,6 +255,9 @@ describe('EnrollmentProcessor', () => {
   })
 
   test('enqueueDisposal() enqueues disposal task', async () => {
+    isVerifiedMock.mockReset()
+    isVerifiedMock.mockResolvedValue(true)
+
     await expect(enrollmentProcessor.enqueueDisposal(user, enrollmentIdentifier)).resolves.toBeUndefined()
 
     const subject = createTaskSubject(enrollmentIdentifier, DisposeAt.AccountRemoved)

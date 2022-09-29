@@ -57,6 +57,8 @@ describe('verificationAPI', () => {
 
     // wallet mocks
     const whitelistUserMock = jest.fn()
+    const removeWhitelistedMock = jest.fn()
+    const topWalletMock = jest.fn()
     const isVerifiedMock = jest.fn()
 
     const licenseKey = 'fake-license'
@@ -124,9 +126,12 @@ describe('verificationAPI', () => {
 
     const testWhitelisted = async () => {
       const { address, profilePublickey } = await getCreds()
+      const lcAddress = address.toLowerCase()
 
       // checking is user was actrally re-whitelisted in the wallet
-      expect(whitelistUserMock).toHaveBeenCalledWith(address.toLowerCase(), profilePublickey)
+      expect(whitelistUserMock).toHaveBeenCalledWith(lcAddress, profilePublickey)
+      // top wallet afgter FV doesn't called on master
+      // expect(topWalletMock).toHaveBeenCalledWith(lcAddress, 'all', expect.anything())
     }
 
     const testNotVerified = async () => {
@@ -137,11 +142,19 @@ describe('verificationAPI', () => {
       expect(isVerified).toBeFalsy()
       // and in the wallet
       expect(whitelistUserMock).not.toHaveBeenCalled()
+      expect(topWalletMock).not.toHaveBeenCalled()
+    }
+
+    const mockWhitelisted = () => {
+      isVerifiedMock.mockReset()
+      isVerifiedMock.mockResolvedValue(true)
     }
 
     beforeAll(async () => {
       AdminWallet.whitelistUser = whitelistUserMock
+      AdminWallet.topWallet = topWalletMock
       AdminWallet.isVerified = isVerifiedMock
+      AdminWallet.removeWhitelisted = removeWhitelistedMock
 
       zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
       helper = createMockingHelper(zoomServiceMock)
@@ -155,15 +168,19 @@ describe('verificationAPI', () => {
       enrollmentProcessor.keepEnrollments = 24
       isVerifiedMock.mockResolvedValue(false)
       whitelistUserMock.mockImplementation(noopAsync)
+      topWalletMock.mockImplementation(noopAsync)
+      removeWhitelistedMock.mockImplementation(noopAsync)
     })
 
     afterEach(() => {
       whitelistUserMock.mockReset()
+      topWalletMock.mockReset()
+      removeWhitelistedMock.mockReset()
       zoomServiceMock.reset()
     })
 
     afterAll(() => {
-      const restoreWalletMethods = ['whitelistUser', 'isVerified']
+      const restoreWalletMethods = ['whitelistUser', 'isVerified', 'topWallet', 'removeWhitelisted']
 
       restoreWalletMethods.forEach(method => (AdminWallet[method] = AdminWallet.constructor.prototype[method]))
 
@@ -408,6 +425,8 @@ describe('verificationAPI', () => {
     })
 
     test('DELETE /verify/face/:enrollmentIdentifier returns 200, success = true and enqueues disposal task if signature is valid', async () => {
+      mockWhitelisted()
+
       await request(server)
         .delete(enrollmentUri)
         .query({ signature })
@@ -417,6 +436,17 @@ describe('verificationAPI', () => {
       const filters = forEnrollment(enrollmentIdentifier, DisposeAt.AccountRemoved)
 
       await expect(storage.hasTasksQueued(DISPOSE_ENROLLMENTS_TASK, filters)).resolves.toBe(true)
+    })
+
+    test("DELETE /verify/face/:enrollmentIdentifier returns 400, success = false if user isn't whitelisted", async () => {
+      await request(server)
+        .delete(enrollmentUri)
+        .query({ signature })
+        .set('Authorization', `Bearer ${token}`)
+        .expect(400, {
+          success: false,
+          error: 'User did not supply a whitelisted account'
+        })
     })
 
     test('DELETE /verify/face/:enrollmentIdentifier returns 400 and success = false if signature is invalid', async () => {
@@ -435,6 +465,8 @@ describe('verificationAPI', () => {
     })
 
     test('GET /verify/face/:enrollmentIdentifier returns isDisposing = true if face snapshot has been enqueued for the disposal', async () => {
+      mockWhitelisted()
+
       await request(server)
         .delete(enrollmentUri)
         .query({ signature })
@@ -443,122 +475,4 @@ describe('verificationAPI', () => {
       await testDisposalState(true)
     })
   })
-
-  // test('/verify/sendotp without creds -> 401', async () => {
-  //   await request(server)
-  //     .post('/verify/sendotp')
-  //     .expect(401)
-  // })
-
-  // test('/verify/sendotp saves mobile', async () => {
-  //   const token = await getToken(server)
-  //   await storage.updateUser({
-  //     identifier: userIdentifier,
-  //     smsValidated: false,
-  //     fullName: 'test_user_sendemail'
-  //   })
-
-  //   await request(server)
-  //     .post('/verify/sendotp')
-  //     .send({ user: { mobile: '+972507311111' } })
-  //     .set('Authorization', `Bearer ${token}`)
-  //     .expect(200, { ok: 1, alreadyVerified: false })
-
-  //   expect(await storage.getByIdentifier(userIdentifier)).toMatchObject({ otp: { mobile: '+972507311111' } })
-  // })
-
-  // test('/verify/sendotp should fail with 429 status - too many requests (rate limiter)', async () => {
-  //   let isFailsWithRateLimit = false
-
-  //   while (!isFailsWithRateLimit) {
-  //     const res = await request(server).post('/verify/sendotp')
-
-  //     if (res.status === 429) {
-  //       isFailsWithRateLimit = true
-  //     }
-  //   }
-
-  //   expect(isFailsWithRateLimit).toBeTruthy()
-  // })
-
-  // test('/verify/sendemail with creds', async () => {
-  //   // eslint-disable-next-line import/namespace
-  //   awsSes.sendTemplateEmail = jest.fn().mockReturnValue({
-  //     ResponseMetadata: { RequestId: '78ecb4ef-2f7d-4d97-89e7-ccd56423f802' },
-  //     MessageId: '01020175847408e6-057f405d-f09d-46ce-85eb-811528988332-000000'
-  //   })
-
-  //   const token = await getToken(server)
-
-  //   await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
-
-  //   const user = await storage.updateUser({
-  //     identifier: userIdentifier,
-  //     fullName: 'test_user_sendemail'
-  //   })
-
-  //   expect(user).toBeTruthy()
-
-  //   await request(server)
-  //     .post('/verify/sendemail')
-  //     .send({
-  //       user: {
-  //         fullName: 'h r',
-  //         email: 'johndoe@gooddollar.org'
-  //       }
-  //     })
-  //     .set('Authorization', `Bearer ${token}`)
-  //     .expect(200, { ok: 1, alreadyVerified: false })
-
-  //   await delay(500)
-
-  //   const dbUser = await storage.getUser(userIdentifier)
-
-  //   expect(dbUser.emailVerificationCode).toBeTruthy()
-  //   awsSes.sendTemplateEmail.mockRestore()
-  // })
-
-  // test('/verify/sendemail should fail with 429 status - too many requests (rate limiter)', async () => {
-  //   // eslint-disable-next-line import/namespace
-  //   awsSes.sendTemplateEmail = jest.fn().mockReturnValue({
-  //     ResponseMetadata: { RequestId: '78ecb4ef-2f7d-4d97-89e7-ccd56423f802' },
-  //     MessageId: '01020175847408e6-057f405d-f09d-46ce-85eb-811528988332-000000'
-  //   })
-
-  //   await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
-
-  //   const user = await storage.updateUser({
-  //     identifier: userIdentifier,
-  //     fullName: 'test_user_sendemail'
-  //   })
-
-  //   expect(user).toBeTruthy()
-  //   let isFailsWithRateLimit = false
-
-  //   while (!isFailsWithRateLimit) {
-  //     const res = await request(server)
-  //       .post('/verify/sendemail')
-  //       .send({
-  //         user: {
-  //           fullName: 'h r',
-  //           email: 'johndoe@gooddollar.org'
-  //         }
-  //       })
-
-  //     if (res.status === 429) {
-  //       isFailsWithRateLimit = true
-  //     }
-  //   }
-
-  //   expect(isFailsWithRateLimit).toBeTruthy()
-  //   awsSes.sendTemplateEmail.mockRestore()
-  // })
-
-  // test('/verify/phase', async () => {
-  //   const { phase } = Config
-
-  //   await request(server)
-  //     .get('/verify/phase')
-  //     .expect(200, { success: true, phase })
-  // })
 })

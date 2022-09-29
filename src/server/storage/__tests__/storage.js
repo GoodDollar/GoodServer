@@ -10,14 +10,23 @@ import { getCreds } from '../../__util__'
 import AdminWallet from '../../blockchain/AdminWallet'
 
 describe('storageAPI', () => {
+  const mockedFunc = AdminWallet.whitelistUser
+  const { disableFaceVerification } = config
+
+  let creds
+  let userIsCompleted
+  let userRecord
+
   const isCompletedAllFalse = {
     whiteList: false,
     topWallet: false
   }
+
   const isCompletedAllTrue = {
     whiteList: true,
     topWallet: false
   }
+
   const user: UserRecord = {
     identifier: 'test_user',
     email: 'test@test.tt',
@@ -26,28 +35,31 @@ describe('storageAPI', () => {
   }
 
   beforeAll(async () => {
+    creds = await getCreds(true)
+    userRecord = { ...creds, ...user, gdAddress: creds.address }
+
+    AdminWallet.whitelistUser = jest.fn().mockImplementation(() => Promise.resolve(true))
     await UserDBPrivate.addUser(user)
   })
 
   afterAll(async () => {
+    AdminWallet.whitelistUser = mockedFunc
     await UserDBPrivate.deleteUser(user)
   })
 
   test('check isCompletedAllFalse', async () => {
-    const userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')
+    userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')
+
     expect(userIsCompleted).toMatchObject(isCompletedAllFalse)
   })
 
   test('should not addUserToWhiteList when faceverification enabled', async () => {
     const { disableFaceVerification } = config
 
-    let userIsCompleted
-    const creds = await getCreds(true)
-    let userRecord = { ...creds, ...user, gdAddress: creds.address }
-
     try {
       config.disableFaceVerification = false
       userRecord.profilePublickey = String(Math.random())
+
       await addUserToWhiteList(userRecord, console)
       userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')
     } finally {
@@ -58,17 +70,10 @@ describe('storageAPI', () => {
   })
 
   test('should addUserToWhiteList when faceverification disabled', async () => {
-    const mockedFunc = AdminWallet.whitelistUser
-    AdminWallet.whitelistUser = jest.fn().mockImplementation(() => Promise.resolve(true))
-    const { disableFaceVerification } = config
-
-    let userIsCompleted
-    const creds = await getCreds(true)
-    let userRecord = { ...creds, ...user, gdAddress: creds.address }
-
     try {
       config.disableFaceVerification = true
       userRecord.profilePublickey = String(Math.random())
+
       await addUserToWhiteList(userRecord, console)
       userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')
     } finally {
@@ -76,11 +81,12 @@ describe('storageAPI', () => {
     }
 
     expect(userIsCompleted.whiteList).toBeTruthy()
-    AdminWallet.whitelistUser = mockedFunc
   })
 
   test('check isCompletedAllTrue', async () => {
     const userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')
+    console.log(userIsCompleted)
+
     expect(userIsCompleted).toMatchObject(isCompletedAllTrue)
   })
 })
