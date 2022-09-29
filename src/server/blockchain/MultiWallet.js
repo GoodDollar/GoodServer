@@ -1,6 +1,7 @@
 import { assign, every, forOwn, isEmpty, map } from 'lodash'
 import AdminWallet from './AdminWallet'
 import CeloAdminWallet from './CeloAdminWallet'
+import conf from '../server.config'
 
 class MultiWallet {
   mainWallet = null
@@ -83,7 +84,8 @@ class MultiWallet {
   }
 }
 
+//exclude celo wallet from tests
 export default new MultiWallet({
   122: AdminWallet, // "main" wallet goes first
-  42220: CeloAdminWallet
+  ...(conf.env === 'test' ? { 42220: CeloAdminWallet } : {})
 })
