@@ -1,5 +1,7 @@
 {
   "extends": [
+    "eslint:recommended",
+    "plugin:node/recommended",
     "plugin:flowtype/recommended",
     "plugin:import/recommended",
     "plugin:prettier/recommended",
@@ -7,9 +9,21 @@
     "prettier/babel",
     "prettier/flowtype"
   ],
+  "parserOptions": {
+    "ecmaVersion": 2020
+  },
   "plugins": ["dependencies", "flowtype", "import", "prettier", "jest"],
   "settings": {},
+  "env": {
+    "jest/globals": true
+  },
   "rules": {
+    "node/no-unpublished-import": "off",
+    "node/no-extraneous-import": "off",
+    "node/no-deprecated-api": "off",
+    "no-console": "off",
+    "no-process-exit": "off",
+    "node/no-unsupported-features/es-syntax": "off",
     "prettier/prettier": "error",
     "dependencies/no-cycles": "error",
     "dependencies/no-unresolved": [

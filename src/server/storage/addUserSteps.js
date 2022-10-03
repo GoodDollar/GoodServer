@@ -2,7 +2,7 @@
 import { pick, get } from 'lodash'
 import conf from '../server.config'
 
-import AdminWallet from '../blockchain/AdminWallet'
+import { default as AdminWallet } from '../blockchain/MultiWallet'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
 import OnGage from '../crm/ongage'
 
@@ -75,7 +75,7 @@ export const topUserWallet = async (userRecord: UserRecord, logger: any) => {
   const topWallet = get(user, 'isCompleted.topWallet', false)
   if (!topWallet) {
     return AdminWallet.topWallet(userRecord.gdAddress)
-      .then(r => {
+      .then(() => {
         UserDBPrivate.completeStep(userRecord.identifier, 'topWallet')
         logger.debug('topUserWallet success', { address: userRecord.gdAddress })
         return true

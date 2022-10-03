@@ -3,7 +3,7 @@ import { chunk, noop } from 'lodash'
 import moment from 'moment'
 
 import Config from '../../server.config'
-import AdminWallet from '../../blockchain/AdminWallet'
+import { default as AdminWallet } from '../../blockchain/MultiWallet'
 import logger from '../../../imports/logger'
 
 import { type IEnrollmentProvider } from './typings'

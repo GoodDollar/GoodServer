@@ -29,9 +29,10 @@ export default class queueMongo {
 
     const options = { fullDocument: 'updateLookup' }
 
-    this.model.watch(filter, options).on('change', async data => {
+    this.model.watch(filter, options).on('change', async () => {
       await this.run()
     })
+
     this.log.info('queueMongo created')
   }
 

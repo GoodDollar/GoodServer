@@ -7,7 +7,7 @@ import type { UserRecord } from '../../../imports/types'
 
 import { addUserToWhiteList } from '../addUserSteps'
 import { getCreds } from '../../__util__'
-import AdminWallet from '../../blockchain/AdminWallet'
+import AdminWallet from '../../blockchain/MultiWallet'
 
 describe('storageAPI', () => {
   const mockedFunc = AdminWallet.whitelistUser

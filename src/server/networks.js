@@ -36,5 +36,11 @@ export default once(() => ({
     web3Transport: 'HttpProvider',
     httpWeb3Provider: process.env.FUSE_RPC || 'https://rpc.fuse.io/',
     websocketWeb3Provider: 'wss://rpc.fuse.io/ws'
+  },
+  42220: {
+    network_id: 42220,
+    web3Transport: 'HttpProvider',
+    httpWeb3Provider: process.env.CELO_RPC || 'https://rpc.ankr.com/celo',
+    websocketWeb3Provider: ''
   }
 }))

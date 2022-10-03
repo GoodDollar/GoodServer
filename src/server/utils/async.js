@@ -1,6 +1,6 @@
 import { promisify } from 'util'
-import { defer, from as fromPromise, timer } from 'rxjs'
-import { retryWhen, mergeMap, throwError } from 'rxjs/operators'
+import { defer, from as fromPromise, timer, throwError } from 'rxjs'
+import { retryWhen, mergeMap } from 'rxjs/operators'
 import { constant } from 'lodash'
 
 const promisifiedTimeout = promisify(setTimeout)
@@ -31,20 +31,19 @@ export const requestTimeout = async (millis, timeoutReason = null) => {
 export const withTimeout = (promise, millis, timeoutReason = null) =>
   Promise.race([promise, requestTimeout(millis, timeoutReason)])
 
-export const retry = (asyncFn, retries = 1, interval = 0, onRetry = null) =>
-  defer(() => fromPromise(asyncFn()))
+export const retry = (asyncFn, retries = 1, interval = 0, onRetry = null) => {
+  let retryAttempt = 1
+
+  return defer(() => fromPromise(asyncFn(retryAttempt)))
     .pipe(
       retryWhen(attempts =>
         attempts.pipe(
-          mergeMap((reason, index) => {
+          mergeMap(reason => {
             const shouldRetry = onRetry || constant(true)
 
-            if (shouldRetry(reason)) {
-              const retryAttempt = index + 1
-
-              if (retryAttempt <= retries) {
-                return timer(interval || 0)
-              }
+            if (shouldRetry(reason) && (retries < 0 || retryAttempt <= retries)) {
+              retryAttempt += 1
+              return timer(interval || 0)
             }
 
             return throwError(reason)
@@ -53,3 +52,4 @@ export const retry = (asyncFn, retries = 1, interval = 0, onRetry = null) =>
       )
     )
     .toPromise()
+}

@@ -7,8 +7,6 @@ import Config from '../server/server.config'
 import logger from '../imports/logger'
 
 class FacebookVerifier {
-  static factory(log = logger.child({ from: 'TorusVerifier' })) {}
-
   constructor(Config, httpFactory, logger) {
     const { facebookGraphApiUrl } = Config
 

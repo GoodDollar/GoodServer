@@ -6,7 +6,7 @@ import { get, defaults } from 'lodash'
 import { sha3 } from 'web3-utils'
 import requestIp from 'request-ip'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
-import AdminWallet from '../blockchain/AdminWallet'
+import { default as AdminWallet } from '../blockchain/MultiWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
 import requestRateLimiter from '../utils/requestRateLimiter'
 // import fuseapi from '../utils/fuseapi'
@@ -203,7 +203,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     '/verify/sendotp',
     requestRateLimiter(),
     passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res, next) => {
+    wrapAsync(async (req, res) => {
       const { user, body } = req
       const log = req.log
 
@@ -261,7 +261,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     requestRateLimiter(),
     passport.authenticate('jwt', { session: false }),
     onlyInEnv('production', 'staging'),
-    wrapAsync(async (req, res, next) => {
+    wrapAsync(async (req, res) => {
       const log = req.log
       const { user, body } = req
       const verificationData: { otp: string } = body.verificationData
@@ -334,7 +334,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
     '/verify/registration',
     passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res, next) => {
+    wrapAsync(async (req, res) => {
       const user = req.user
       res.json({ ok: user && user.createdDate ? 1 : 0 })
     })
@@ -352,38 +352,20 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
     '/verify/topwallet',
     requestRateLimiter(1, 1),
-    passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res, next) => {
+    passport.authenticate(['jwt', 'anonymous'], { session: false }),
+    wrapAsync(async (req, res) => {
       const log = req.log
-      const user: LoggedUser = req.user
+      const { account, chainId } = req.body || {}
+      const user: LoggedUser = req.user || { gdAddress: account }
 
-      //TODO: restore if necessary
-      // check if user send ether out of the good dollar system
-      // let isUserSendEtherOutOfSystem = false
-      // try {
-      //   const { result = [] } = await fuseapi.getTxList({
-      //     address: user.gdAddress,
-      //     page: 1,
-      //     offset: 10,
-      //     filterby: 'from'
-      //   })
-      //   isUserSendEtherOutOfSystem = result.some(r => Number(r.value) > 0)
-      // } catch (e) {
-      //   log.error('Check user transactions error', e.message, e)
-      // }
+      if (!user.gdAddress) {
+        throw new Error('missing wallet address to top')
+      }
 
-      // if (isUserSendEtherOutOfSystem) {
-      //   log.warn('User send ether out of system')
+      log.debug('topwallet tx request:', { address: user.gdAddress, chainId })
 
-      //   return res.json({
-      //     ok: 0,
-      //     sendEtherOutOfSystem: true
-      //   })
-      // }
-
-      log.debug('topwallet tx request:', { address: user.gdAddress })
       try {
-        let txPromise = AdminWallet.topWallet(user.gdAddress, log)
+        let txPromise = AdminWallet.topWallet(user.gdAddress, chainId, log)
           .then(tx => {
             log.debug('topwallet tx', { walletaddress: user.gdAddress, tx })
             return { ok: 1 }
@@ -401,6 +383,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           txRes,
           loggedInAs: user.loggedInAs
         })
+
         res.json(txRes)
       } catch (e) {
         log.error('topwallet timeout or unexpected', e.message, e, { walletaddress: user.gdAddress })
@@ -426,8 +409,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     wrapAsync(async (req, res) => {
       let runInEnv = ['production', 'staging', 'test'].includes(conf.env)
       const log = req.log
-
       const { user, body } = req
+
       let { email } = body.user
       email = email.toLowerCase()
 
@@ -441,24 +424,28 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       let userRec: UserRecord = defaults(body.user, user)
       const isEmailChanged = currentEmail && currentEmail !== sha3(email)
 
+      let code
       log.debug('email verification request:', { email, currentEmail, isEmailChanged, body, user })
 
-      let code
       if (runInEnv === true && conf.skipEmailVerification === false) {
         code = OTP.generateOTP(6)
 
         if (!user.isEmailConfirmed || isEmailChanged) {
           try {
             const { fullName } = userRec
+
             if (!code || !fullName || !email) {
               log.error('missing input for sending verification email', { code, fullName, email })
               throw new Error('missing input for sending verification email')
             }
+
             const templateData = {
               firstname: fullName,
               code: parseInt(code)
             }
+
             const sesResponse = await sendTemplateEmail(email, templateData)
+
             log.debug('sent new user email validation code', {
               email,
               code,
@@ -502,14 +489,16 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
     '/verify/email',
     passport.authenticate('jwt', { session: false }),
-    wrapAsync(async (req, res, next) => {
+    wrapAsync(async (req, res) => {
       let runInEnv = ['production', 'staging', 'test'].includes(conf.env)
       const { __utmzz: utmString = '' } = req.cookies
       const log = req.log
       const { user, body } = req
       const verificationData: { code: string } = body.verificationData
+
       let { email } = user.otp || {}
       email = email && email.toLowerCase()
+
       const hashedNewEmail = email ? sha3(email) : null
       const currentEmail = user.email
 
@@ -599,6 +588,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { token, ipv6 } = req.body
       const clientIp = requestIp.getClientIp(req)
       const xForwardedFor = (req.headers || {})['x-forwarded-for']
+
       try {
         const url = `https://www.google.com/recaptcha/api/siteverify?secret=${conf.recaptchaSecretKey}&response=${token}&remoteip=${clientIp}`
         let kvStorageIpKey = clientIp
@@ -630,8 +620,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         }
       } catch (exception) {
         const { message } = exception
-        log.error('Recaptcha verification failed', message, exception, { clientIp, token })
 
+        log.error('Recaptcha verification failed', message, exception, { clientIp, token })
         res.status(400).json({ success: false, error: message })
       }
     })

@@ -13,14 +13,14 @@ describe('adminwallet', () => {
 
   test(`adminWallet top wallet shouldn't throws an error when user is not whitelisted/verified`, async () => {
     const unverifiedAddress = generateWalletAddress()
-    const tx = await AdminWallet.topWallet(unverifiedAddress).catch(e => false)
+    const tx = await AdminWallet.topWallet(unverifiedAddress).catch(() => false)
     expect(tx).toBeTruthy()
     const balance = await AdminWallet.web3.eth.getBalance(unverifiedAddress)
     expect(balance).toEqual('6000000000000000')
   })
 
   test('adminWallet constructor works', async () => {
-    expect(await AdminWallet.ready.catch(_ => false)).toBeTruthy()
+    expect(await AdminWallet.ready.catch(() => false)).toBeTruthy()
   })
 
   test('adminWallet can whitelist user', async () => {
@@ -33,22 +33,24 @@ describe('adminwallet', () => {
 
   test('adminWallet can authenticate user', async () => {
     const unverifiedAddress = generateWalletAddress()
-
-    await AdminWallet.authenticateUser(unverifiedAddress)
-
-    const isVerified = await AdminWallet.isVerified(unverifiedAddress)
+    await AdminWallet.whitelistUser(unverifiedAddress, 'did:gd' + Math.random())
     const lastAuth = await AdminWallet.identityContract.methods
       .lastAuthenticated(unverifiedAddress)
       .call()
       .then(parseInt)
 
-    expect(isVerified).toBeFalsy()
-    expect(lastAuth).toBeGreaterThan(0)
+    await AdminWallet.authenticateUser(unverifiedAddress)
+    const lastAuth2 = await AdminWallet.identityContract.methods
+      .lastAuthenticated(unverifiedAddress)
+      .call()
+      .then(parseInt)
+
+    expect(lastAuth2).toBeGreaterThan(lastAuth)
   })
 
   test('adminWallet get authenticationPeriod', async () => {
     const result = await AdminWallet.getAuthenticationPeriod()
-    expect(parseInt(result)).toEqual(365)
+    expect(parseInt(result)).toEqual(1095)
   })
 
   test('adminWallet can blacklist user', async () => {
@@ -60,12 +62,6 @@ describe('adminwallet', () => {
     const isVerified = await AdminWallet.isVerified(unverifiedAddress)
 
     expect(isVerified).not.toBeTruthy()
-  })
-
-  test('adminWallet throws exception', async () => {
-    const unverifiedAddress = '0x888185b656fe770677a91412f9f09B23A787242A'
-
-    expect(await AdminWallet.removeWhitelisted(unverifiedAddress).catch(e => false)).toBeFalsy()
   })
 
   test('adminWallet get balance correctly', async () => {

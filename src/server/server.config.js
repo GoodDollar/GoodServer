@@ -128,6 +128,12 @@ const conf = convict({
     websocketWeb3Provider: 'wss://kovan.infura.io/ws',
     web3Transport: 'HttpProvider'
   },
+  celo: {
+    network_id: 42220,
+    web3Transport: 'HttpProvider',
+    httpWeb3Provider: 'https://rpc.ankr.com/celo',
+    websocketWeb3Provider: ''
+  },
   ethereumMainnet: {
     network_id: 42,
     httpWeb3Provider: 'https://kovan.infura.io/v3/',
@@ -600,16 +606,21 @@ const conf = convict({
 // network options
 const networks = getNetworks()
 const network = conf.get('network')
+
 let networkId = 4447
 let mainNetworkId = 4447
+let celoNetworkId = 4447
+
 switch (network) {
   case 'fuse':
   case 'staging':
     networkId = 122
+    celoNetworkId = 42220
     mainNetworkId = 3
     break
   case 'production':
     networkId = 122
+    celoNetworkId = 42220
     mainNetworkId = 1
     break
   default:
@@ -618,6 +629,7 @@ switch (network) {
 
 conf.set('ethereumMainnet', networks[mainNetworkId])
 conf.set('ethereum', networks[networkId])
+conf.set('celo', networks[celoNetworkId])
 
 // Perform validation
 conf.validate({ allowed: 'strict' })

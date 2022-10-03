@@ -29,7 +29,7 @@ export default class EnrollmentSession {
       enrollmentIdentifier
     })
 
-    bindAll(this, 'onEnrollmentProcessing')
+    bindAll(this, 'onEnrollmentProcessing', '_logWrap')
   }
 
   async enroll(payload: any): Promise<any> {
@@ -67,6 +67,7 @@ export default class EnrollmentSession {
       // TODO: remove this after research
       if (conf.env.startsWith('prod') && get(exception, 'response.isDuplicate', false)) {
         const fileName = `${enrollmentIdentifier}-${exception.response.duplicate.identifier}.b64`
+
         fs.writeFileSync(fileName, payload.auditTrailImage)
         log.debug('wrote duplicate file:', { fileName, payloadKeys: Object.keys(payload) })
       }
@@ -107,36 +108,47 @@ export default class EnrollmentSession {
   }
 
   async onEnrollmentCompleted() {
-    const { user, storage, adminApi, log, enrollmentIdentifier } = this
+    const { user, storage, adminApi, log, enrollmentIdentifier, _logWrap } = this
     const { gdAddress, profilePublickey, loggedInAs, crmId } = user
-
-    log.info('Whitelisting user:', { loggedInAs })
 
     const whitelistingTasks = [
       () => storage.updateUser({ identifier: loggedInAs, isVerified: true }),
 
-      () =>
-        scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.Reauthenticate).catch(e =>
-          log.warn('adding facemap to re-auth dispose queue failed:', e.message, e)
-        ),
+      _logWrap(
+        () => scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.Reauthenticate),
+        null,
+        'adding facemap to re-auth dispose queue failed:',
+        { enrollmentIdentifier },
+        {}
+      ),
 
-      () =>
-        adminApi
-          .whitelistUser(gdAddress, profilePublickey || gdAddress)
-          .then(_ => log.info('Successfully whitelisted user:', { loggedInAs }))
-          .catch(e => log.error('whitelisting after fv failed', e.message, e, { user }))
+      _logWrap(
+        () => adminApi.whitelistUser(gdAddress, profilePublickey || gdAddress),
+        'Successfully whitelisted user:',
+        'whitelisting after fv failed'
+      ),
+
+      _logWrap(
+        () => adminApi.topWallet(gdAddress, 'all', log),
+        'topwallet after fv success',
+        'topwallet after fv failed'
+      )
     ]
 
     if (crmId) {
-      whitelistingTasks.push(() =>
-        OnGage.setWhitelisted(crmId, log).catch(e =>
-          log.error('CRM setWhitelisted after fv failed', e.message, e, { user })
+      whitelistingTasks.push(
+        _logWrap(
+          () => OnGage.setWhitelisted(crmId, log),
+          'CRM setWhitelisted after fv success',
+          'CRM setWhitelisted after fv failed',
+          { crmId }
         )
       )
     } else {
       log.warn('missing crmId', { user })
     }
 
+    log.info('Whitelisting user:', { loggedInAs })
     await Promise.all(over(whitelistingTasks)())
   }
 
@@ -145,5 +157,15 @@ export default class EnrollmentSession {
     const filters = forEnrollment(enrollmentIdentifier)
 
     await storage.unlockDelayedTasks(DISPOSE_ENROLLMENTS_TASK, filters)
+  }
+
+  _logWrap(fn, successMsg, failedMsg, logPayload = null, errorPayload = null) {
+    const { user, log } = this
+    const { loggedInAs } = user
+
+    return () =>
+      fn()
+        .then(() => successMsg && log.info(successMsg, logPayload || { loggedInAs }))
+        .catch(e => failedMsg && log.error(failedMsg, e.message, e, errorPayload || { user }))
   }
 }

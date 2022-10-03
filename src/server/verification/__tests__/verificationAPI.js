@@ -5,7 +5,7 @@ import { assign, omit } from 'lodash'
 import Config from '../../server.config'
 
 import storage from '../../db/mongo/user-privat-provider'
-import AdminWallet from '../../blockchain/AdminWallet'
+import AdminWallet from '../../blockchain/MultiWallet'
 
 import makeServer from '../../server-test'
 import { noopAsync } from '../../utils/async'
@@ -130,8 +130,7 @@ describe('verificationAPI', () => {
 
       // checking is user was actrally re-whitelisted in the wallet
       expect(whitelistUserMock).toHaveBeenCalledWith(lcAddress, profilePublickey)
-      // top wallet afgter FV doesn't called on master
-      // expect(topWalletMock).toHaveBeenCalledWith(lcAddress, 'all', expect.anything())
+      expect(topWalletMock).toHaveBeenCalledWith(lcAddress, 'all', expect.anything())
     }
 
     const testNotVerified = async () => {

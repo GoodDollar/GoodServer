@@ -4,7 +4,7 @@ import MockAdapter from 'axios-mock-adapter'
 import { omit, invokeMap, map } from 'lodash'
 import { ZoomLicenseType } from '../../../verification/utils/constants'
 import createEnrollmentProcessor from '../EnrollmentProcessor'
-import AdminWallet from '../../../blockchain/AdminWallet'
+import AdminWallet from '../../../blockchain/MultiWallet'
 import OnGage from '../../../crm/ongage'
 
 import createMockingHelper from '../../api/__tests__/__util__'
@@ -193,8 +193,7 @@ describe('EnrollmentProcessor', () => {
 
     expect(updateUserMock).toHaveBeenCalledWith({ identifier: loggedInAs, isVerified: true })
     expect(whitelistUserMock).toHaveBeenCalledWith(gdAddress, profilePublickey)
-    // topWalllet after FV isn't called on master branch
-    // expect(topWalletMock).toHaveBeenCalledWith(gdAddress, 'all', expect.anything())
+    expect(topWalletMock).toHaveBeenCalledWith(gdAddress, 'all', expect.anything())
     expect(whitelistContactMock.mock.calls[0][0]).toBe(crmId)
   })
 
