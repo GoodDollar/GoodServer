@@ -598,6 +598,12 @@ const conf = convict({
     format: String,
     default: '',
     env: 'CF_WORKER_VERIFY_URL'
+  },
+  celoEnabled: {
+    doc: 'Enables Celo network integration',
+    format: Boolean,
+    env: 'CELO_ENABLED',
+    default: true
   }
 })
 
@@ -630,6 +636,11 @@ switch (network) {
 conf.set('ethereumMainnet', networks[mainNetworkId])
 conf.set('ethereum', networks[networkId])
 conf.set('celo', networks[celoNetworkId])
+
+// exclude celo wallet from tests
+if (conf.get('env') === 'test') {
+  conf.set('celoEnabled', false)
+}
 
 // Perform validation
 conf.validate({ allowed: 'strict' })

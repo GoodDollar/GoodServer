@@ -788,7 +788,11 @@ export class Web3Wallet {
 
             res(r)
           })
-          .on('confirmation', c => onConfirmation && onConfirmation(c))
+          .on('confirmation', c => {
+            if (onConfirmation) {
+              onConfirmation(c)
+            }
+          })
           .on('error', async e => {
             if (isFundsError(e)) {
               balance = await this.web3.eth.getBalance(address)
@@ -833,7 +837,11 @@ export class Web3Wallet {
               }
             } else {
               fail()
-              onError && onError(e)
+
+              if (onError) {
+                onError(e)
+              }
+
               rej(e)
             }
           })
