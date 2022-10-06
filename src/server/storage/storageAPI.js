@@ -568,10 +568,12 @@ const setup = (app: Router, storage: StorageAPI) => {
     wrapAsync(async (req, res) => {
       const { params, log } = req
       const { account } = params
+
       try {
-        const res = await AdminWallet.syncWhitelist(account)
-        log.debug('syncWhitelist success', { account, res })
-        res.json({ ok: 1, whitelisted: res })
+        const whitelisted = await AdminWallet.syncWhitelist(account)
+
+        log.debug('syncWhitelist success', { account, whitelisted })
+        res.json({ ok: 1, whitelisted })
       } catch (e) {
         log.error('failed syncWhitelist', e.message, e, { account })
         res.json({ ok: 0, error: e.message })

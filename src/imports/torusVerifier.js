@@ -6,6 +6,7 @@ import Config from '../server/server.config'
 import { recoverPublickey } from '../server/utils/eth'
 import logger from '../imports/logger'
 
+const { PROXY_ADDRESS_TESTNET, PROXY_ADDRESS_MAINNET } = FetchNodeDetails
 class GoogleLegacyStrategy {
   getVerificationOptions(userRecord) {
     return {
@@ -59,9 +60,9 @@ class TorusVerifier {
 
     const fetchNodeDetails = new FetchNodeDetails({
       network: torusNetwork,
-      proxyAddress:
-        torusNetwork !== 'mainnet' ? FetchNodeDetails.PROXY_ADDRESS_TESTNET : FetchNodeDetails.PROXY_ADDRESS_MAINNET
+      proxyAddress: torusNetwork !== 'mainnet' ? PROXY_ADDRESS_TESTNET : PROXY_ADDRESS_MAINNET
     })
+
     // incapsulating verifier initialization using factory pattern
     const verifier = new TorusVerifier(torus, fetchNodeDetails, log)
 
