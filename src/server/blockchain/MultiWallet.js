@@ -84,13 +84,12 @@ class MultiWallet {
   }
 }
 
-// exclude celo wallet from tests
-const celoWallet =
-  conf.env === 'test'
-    ? {}
-    : {
-        42220: CeloAdminWallet
-      }
+// adds celo wallet if feature enabled
+const celoWallet = conf.celoEnabled
+  ? {}
+  : {
+      42220: CeloAdminWallet
+    }
 
 export default new MultiWallet({
   122: AdminWallet, // "main" wallet goes first
