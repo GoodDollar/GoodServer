@@ -445,15 +445,19 @@ const conf = convict({
   },
   torusNetwork: {
     doc: 'Torus network. Default: ropsten (mainnet, kovan, fuse, etoro, production, develop)',
-    format: ['mainnet', 'ropsten', 'kovan', 'fuse', 'etoro', 'production', 'develop', 'testnet'],
-    default: 'testnet',
+    format: [
+      'mainnet',
+      'ropsten',
+      'kovan',
+      'fuse',
+      'etoro',
+      'production',
+      'develop',
+      'testnet',
+      'https://billowing-responsive-arm.ropsten.discover.quiknode.pro/e1f91ad991da6c4a3558e1d2450238ea1fe17af1/'
+    ],
+    default: 'https://billowing-responsive-arm.ropsten.discover.quiknode.pro/e1f91ad991da6c4a3558e1d2450238ea1fe17af1/',
     env: 'TORUS_NETWORK'
-  },
-  torusProxyContract: {
-    doc: 'Torus proxy contract address',
-    format: '*',
-    env: 'TORUS_PROXY_CONTRACT',
-    default: '0x4023d2a0D330bF11426B12C6144Cfb96B7fa6183'
   },
   torusGoogle: {
     doc: 'torus google verifier',
