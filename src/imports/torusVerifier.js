@@ -54,12 +54,13 @@ class TorusVerifier {
   strategies = {}
 
   static factory(log = logger.child({ from: 'TorusVerifier' })) {
-    const { torusNetwork, torusProxyContract } = Config
+    const { torusNetwork } = Config
     const torus = new TorusUtils()
 
     const fetchNodeDetails = new FetchNodeDetails({
       network: torusNetwork,
-      proxyAddress: torusProxyContract
+      proxyAddress:
+        torusNetwork !== 'mainnet' ? FetchNodeDetails.PROXY_ADDRESS_TESTNET : FetchNodeDetails.PROXY_ADDRESS_MAINNET
     })
     // incapsulating verifier initialization using factory pattern
     const verifier = new TorusVerifier(torus, fetchNodeDetails, log)
@@ -82,7 +83,10 @@ class TorusVerifier {
 
   async isIdentifierOwner(publicAddress, verifier, identifier) {
     const { torus, logger, fetchNodeDetails } = this
-    const { torusNodeEndpoints, torusNodePub } = await fetchNodeDetails.getNodeDetails()
+    const { torusNodeEndpoints, torusNodePub } = await fetchNodeDetails.getNodeDetails({
+      verifier,
+      verifierId: identifier
+    })
 
     const response = await torus.getPublicAddress(
       torusNodeEndpoints,
