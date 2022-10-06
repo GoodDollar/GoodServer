@@ -19,6 +19,12 @@ export default once(() => ({
     httpWeb3Provider: `https://eth-ropsten.alchemyapi.io/v2/${process.env.ALCHEMY_API}`,
     websocketWeb3Provider: 'wss://ropsten.infura.io/ws'
   },
+  5: {
+    network_id: 5,
+    web3Transport: 'HttpProvider',
+    httpWeb3Provider: `https://eth-goerli.alchemyapi.io/v2/${process.env.ALCHEMY_API}`,
+    websocketWeb3Provider: 'wss://goerli.infura.io/ws'
+  },
   4447: {
     network_id: 4447,
     web3Transport: 'HttpProvider',

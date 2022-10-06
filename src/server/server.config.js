@@ -429,7 +429,7 @@ const conf = convict({
     doc: 'Disables staking model cron task (default true)',
     format: Boolean,
     env: 'STAKE_TASK_DISABLED',
-    default: false
+    default: true
   },
   stakeTaskCron: {
     doc: 'cron string for staking model task',
@@ -445,8 +445,8 @@ const conf = convict({
   },
   torusNetwork: {
     doc: 'Torus network. Default: ropsten (mainnet, kovan, fuse, etoro, production, develop)',
-    format: ['mainnet', 'ropsten', 'kovan', 'fuse', 'etoro', 'production', 'develop'],
-    default: 'ropsten',
+    format: ['mainnet', 'ropsten', 'kovan', 'fuse', 'etoro', 'production', 'develop', 'testnet'],
+    default: 'testnet',
     env: 'TORUS_NETWORK'
   },
   torusProxyContract: {
@@ -622,7 +622,7 @@ switch (network) {
   case 'staging':
     networkId = 122
     celoNetworkId = 42220
-    mainNetworkId = 3
+    mainNetworkId = 5
     break
   case 'production':
     networkId = 122
