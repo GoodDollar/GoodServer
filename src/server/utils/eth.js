@@ -1,5 +1,5 @@
 import Accounts from 'web3-eth-accounts'
-import { get } from 'lodash'
+import { messageContains } from './exception'
 
 const accounts = new Accounts()
 
@@ -28,12 +28,6 @@ export const verifySignature = async (message, signature) => {
  * @param e Error
  * @returns boolean
  */
-export const isNonceError = e => {
-  const message = String(get(e, 'message', ''))
-  return message.toLowerCase().indexOf('nonce') >= 0
-}
+export const isNonceError = e => messageContains(e, 'nonce')
 
-export const isFundsError = e => {
-  const message = String(get(e, 'message', ''))
-  return message.toLowerCase().indexOf('funds') >= 0
-}
+export const isFundsError = e => messageContains(e, 'funds')

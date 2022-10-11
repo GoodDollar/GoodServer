@@ -1,4 +1,4 @@
-import { cloneDeep, has, keys } from 'lodash'
+import { cloneDeep, get, has, keys } from 'lodash'
 
 import { propertyDescriptor } from './object'
 
@@ -38,4 +38,10 @@ export const cloneErrorObject = exception => {
   }
 
   return err
+}
+
+export const messageContains = (e, substring) => {
+  const message = String(get(e, 'message', ''))
+
+  return message.toLowerCase().includes(substring.toLowerCase())
 }

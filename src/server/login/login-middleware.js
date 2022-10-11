@@ -15,7 +15,7 @@ import { wrapAsync } from '../utils/helpers'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
 import Config from '../server.config.js'
 import { recoverPublickey } from '../utils/eth'
-import { mustache } from '../utils/string'
+import { mustache, strcasecmp } from '../utils/string'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import clientSettings from '../clients.config.js'
 
@@ -89,6 +89,43 @@ export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
   next(null, user)
 })
 
+const generateJWT = async (recovered, identifier = null, payload = {}) => {
+  const { env, jwtPassword, jwtExpiration } = Config
+  const userId = identifier || sha3(recovered)
+  const userRecord = await UserDBPrivate.getUser(userId)
+  const { smsValidated, isEmailConfirmed, createdDate } = userRecord || {}
+  const hasVerified = smsValidated || isEmailConfirmed
+  const hasSignedUp = !!createdDate
+
+  if (hasSignedUp && !hasVerified) {
+    const logPayload = { recovered }
+
+    if (userId !== recovered) {
+      logPayload.identifier = userId
+    }
+
+    log.warn('user doesnt have email nor mobile verified', logPayload)
+  }
+
+  log.info(`SigUtil Successfully verified signer as ${recovered}`, { hasSignedUp })
+
+  const token = jwt.sign(
+    {
+      loggedInAs: userId,
+      gdAddress: recovered,
+      profilePublickey: recovered,
+      exp: Math.floor(Date.now() / 1000) + (hasSignedUp ? jwtExpiration : 3600), //if not signed up jwt will last only 60 seconds so it will be refreshed after signup
+      aud: hasSignedUp || hasVerified ? `realmdb_wallet_${env}` : 'unsigned',
+      sub: recovered,
+      ...payload
+    },
+    jwtPassword
+  )
+
+  UserDBPrivate.updateUser({ identifier: userId, lastLogin: new Date() })
+  return token
+}
+
 const setup = (app: Router) => {
   passport.use(strategy)
   passport.use(new AnonymousStrategy())
@@ -157,45 +194,25 @@ const setup = (app: Router) => {
         profileReqPublickey
       })
 
-      if (recovered && gdPublicAddress && profileVerified) {
-        const userRecord = await UserDBPrivate.getUser(recovered)
-        const hasVerified = userRecord && (userRecord.smsValidated || userRecord.isEmailConfirmed)
-        const hasSignedUp = userRecord && userRecord.createdDate
-
-        if (hasSignedUp && !hasVerified) {
-          log.warn('user doesnt have email nor mobile verified', { recovered })
-        }
-
-        log.info(`SigUtil Successfully verified signer as ${recovered}`, { hasSignedUp })
-
-        const token = jwt.sign(
-          {
-            method,
-            loggedInAs: recovered,
-            gdAddress: gdPublicAddress,
-            profilePublickey: profileReqPublickey,
-            exp: Math.floor(Date.now() / 1000) + (hasSignedUp ? Config.jwtExpiration : 3600), //if not signed up jwt will last only 60 seconds so it will be refreshed after signup
-            aud: hasSignedUp || hasVerified ? `realmdb_wallet_${Config.env}` : 'unsigned',
-            sub: recovered
-          },
-          Config.jwtPassword
-        )
-
-        UserDBPrivate.updateUser({ identifier: recovered, lastLogin: new Date() })
-
-        log.info('/auth/eth', {
-          message: `JWT token: ${token}`
-        })
-
-        res.json({ token })
-        return
-      } else {
+      if (!recovered || !gdPublicAddress || !profileVerified) {
         log.warn('/auth/eth', {
           message: 'SigUtil unable to recover the message signer'
         })
 
         throw new Error('Unable to verify credentials')
       }
+
+      const token = await generateJWT(recovered, recovered, {
+        method,
+        gdAddress: gdPublicAddress,
+        profilePublickey: profileReqPublickey
+      })
+
+      log.info('/auth/eth', {
+        message: `JWT token: ${token}`
+      })
+
+      res.json({ token })
     })
   )
 
@@ -212,9 +229,11 @@ const setup = (app: Router) => {
       log.debug('/auth/fv', { signature, nonce, fvsig })
 
       const seconds = parseInt((Date.now() / 1000).toFixed(0))
+
       if (parseInt(nonce) + 300 < seconds) {
         throw new Error('invalid nonce for fv login')
       }
+
       const recovered = recoverPublickey(signature, FV_LOGIN_MSG, nonce)
       const fvrecovered = recoverPublickey(fvsig, FV_IDENTIFIER_MSG, '')
 
@@ -224,45 +243,21 @@ const setup = (app: Router) => {
         fvrecovered
       })
 
-      if (recovered && recovered === fvrecovered) {
-        const identifier = sha3(recovered)
-        const userRecord = await UserDBPrivate.getUser(identifier)
-        const hasVerified = userRecord && (userRecord.smsValidated || userRecord.isEmailConfirmed)
-        const hasSignedUp = userRecord && userRecord.createdDate
-
-        if (hasSignedUp && !hasVerified) {
-          log.warn('user doesnt have email nor mobile verified', { recovered, identifier })
-        }
-
-        log.info(`SigUtil Successfully verified signer as ${recovered}`, { hasSignedUp })
-
-        const token = jwt.sign(
-          {
-            loggedInAs: identifier,
-            gdAddress: recovered,
-            profilePublickey: recovered,
-            exp: Math.floor(Date.now() / 1000) + (hasSignedUp ? Config.jwtExpiration : 3600), //if not signed up jwt will last only 60 seconds so it will be refreshed after signup
-            aud: hasSignedUp || hasVerified ? `realmdb_wallet_${Config.env}` : 'unsigned',
-            sub: recovered
-          },
-          Config.jwtPassword
-        )
-
-        UserDBPrivate.updateUser({ identifier, lastLogin: new Date() })
-
-        log.info('/auth/fv', {
-          message: `JWT token: ${token}`
-        })
-
-        res.json({ token })
-        return
-      } else {
+      if (!recovered || strcasecmp(recovered, fvrecovered)) {
         log.warn('/auth/fv', {
           message: 'SigUtil unable to recover the message signer'
         })
 
         throw new Error('Unable to verify credentials')
       }
+
+      const token = await generateJWT(recovered)
+
+      log.info('/auth/fv', {
+        message: `JWT token: ${token}`
+      })
+
+      res.json({ token })
     })
   )
 
@@ -285,7 +280,8 @@ const setup = (app: Router) => {
         recovered
       })
 
-      if (recovered.toLowerCase() !== account.toLowerCase()) {
+      // strcasemp returns non-zero if not match
+      if (strcasecmp(recovered, account)) {
         log.warn('/auth/f2v', {
           message: 'SigUtil unable to recover the message signer'
         })
@@ -293,31 +289,7 @@ const setup = (app: Router) => {
         throw new Error('Unable to verify credentials')
       }
 
-      const identifier = sha3(recovered)
-      const userRecord = await UserDBPrivate.getUser(identifier)
-      const { smsValidated, isEmailConfirmed, createdDate } = userRecord || {}
-      const hasVerified = smsValidated || isEmailConfirmed
-      const hasSignedUp = !!createdDate
-
-      if (hasSignedUp && !hasVerified) {
-        log.warn('user doesnt have email nor mobile verified', { recovered, identifier })
-      }
-
-      log.info(`SigUtil Successfully verified signer as ${recovered}`, { hasSignedUp })
-
-      const token = jwt.sign(
-        {
-          loggedInAs: identifier,
-          gdAddress: recovered,
-          profilePublickey: recovered,
-          exp: Math.floor(Date.now() / 1000) + (hasSignedUp ? Config.jwtExpiration : 3600), //if not signed up jwt will last only 60 seconds so it will be refreshed after signup
-          aud: hasSignedUp || hasVerified ? `realmdb_wallet_${Config.env}` : 'unsigned',
-          sub: recovered
-        },
-        Config.jwtPassword
-      )
-
-      UserDBPrivate.updateUser({ identifier, lastLogin: new Date() })
+      const token = await generateJWT(recovered)
 
       log.info('/auth/fv2', {
         message: `JWT token: ${token}`

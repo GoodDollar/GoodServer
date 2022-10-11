@@ -16,6 +16,7 @@ import logger from '../../../../imports/logger'
 import ServerConfig from '../../../server.config'
 
 import { type IEnrollmentProvider } from '../typings'
+import { strcasecmp } from '../../../utils/string'
 
 class ZoomProvider implements IEnrollmentProvider {
   api = null
@@ -178,7 +179,7 @@ class ZoomProvider implements IEnrollmentProvider {
       // excluding own enrollmentIdentifier
       const duplicate = results.find(
         ({ identifier: matchId, matchLevel }) =>
-          matchId.toLowerCase() !== enrollmentIdentifier.toLowerCase() && Number(matchLevel) >= defaultMinimalMatchLevel
+          strcasecmp(matchId, enrollmentIdentifier) && Number(matchLevel) >= defaultMinimalMatchLevel
       )
 
       // if there're at least one record left - we have a duplicate
