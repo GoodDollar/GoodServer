@@ -177,7 +177,8 @@ class ZoomProvider implements IEnrollmentProvider {
 
       // excluding own enrollmentIdentifier
       const duplicate = results.find(
-        ({ identifier: matchId }) => matchId.toLowerCase() !== enrollmentIdentifier.toLowerCase()
+        ({ identifier: matchId, matchLevel }) =>
+          matchId.toLowerCase() !== enrollmentIdentifier.toLowerCase() && Number(matchLevel) >= defaultMinimalMatchLevel
       )
 
       // if there're at least one record left - we have a duplicate
