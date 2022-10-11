@@ -285,7 +285,7 @@ const setup = (app: Router) => {
         recovered
       })
 
-      if (recovered !== account) {
+      if (recovered.toLowerCase() !== account.toLowerCase()) {
         log.warn('/auth/f2v', {
           message: 'SigUtil unable to recover the message signer'
         })
