@@ -148,6 +148,7 @@ export class Web3Wallet {
 
     this.txManager = getManager(this.ethereum.network_id)
     this.web3 = new Web3(this.getWeb3TransportProvider(), null, web3Default)
+
     assign(this.web3.eth, web3Default)
 
     if (estimateGasPrice) {
@@ -188,6 +189,7 @@ export class Web3Wallet {
 
     const maxAdminBalance = await this.proxyContract.methods.adminToppingAmount().call()
     const minAdminBalance = parseInt(web3Utils.fromWei(maxAdminBalance, 'gwei')) / 2
+
     if (web3Utils.fromWei(adminWalletContractBalance, 'gwei') < minAdminBalance * this.addresses.length) {
       log.error('AdminWallet contract low funds')
       sendSlackAlert({ msg: 'AdminWallet contract low funds', adminWalletAddress, adminWalletContractBalance })
@@ -330,7 +332,6 @@ export class Web3Wallet {
    */
   async whitelistUser(address: string, did: string, customLogger): Promise<TransactionReceipt | boolean> {
     const log = customLogger || this.log
-
     const isVerified = await this.isVerified(address)
 
     if (isVerified) {
@@ -540,15 +541,13 @@ export class Web3Wallet {
         txHash = hash
       }
 
-      const txPromise = this.sendTransaction(
+      const res = await this.sendTransaction(
         this.proxyContract.methods.topWallet(address),
         { onTransactionHash },
         { gas: 500000 },
         true,
         logger
       )
-
-      let res = await txPromise
 
       logger.debug('Topwallet result:', { txHash, address, res })
       return res
@@ -601,8 +600,7 @@ export class Web3Wallet {
 
       const transaction = this.proxyContract.methods.genericCall(this.faucetContract._address, encodedCall, 0)
       const onTransactionHash = hash => void logger.debug('topWalletFaucet got txhash:', { hash, address })
-      const txPromise = this.sendTransaction(transaction, { onTransactionHash }, { gas: 500000 }, true, logger)
-      let res = await txPromise
+      const res = await this.sendTransaction(transaction, { onTransactionHash }, { gas: 500000 }, true, logger)
 
       logger.debug('topWalletFaucet result:', { address, res })
       return res
