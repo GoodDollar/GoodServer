@@ -46,7 +46,7 @@ export default once(() => ({
   42220: {
     network_id: 42220,
     web3Transport: 'HttpProvider',
-    httpWeb3Provider: process.env.CELO_RPC || 'https://rpc.ankr.com/celo',
+    httpWeb3Provider: process.env.CELO_RPC || 'https://forno.celo.org',
     websocketWeb3Provider: ''
   }
 }))

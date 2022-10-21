@@ -2,6 +2,7 @@ import { assign, every, forOwn, isEmpty, map } from 'lodash'
 import AdminWallet from './AdminWallet'
 import CeloAdminWallet from './CeloAdminWallet'
 import conf from '../server.config'
+import logger from '../../imports/logger'
 
 class MultiWallet {
   mainWallet = null
@@ -9,12 +10,13 @@ class MultiWallet {
   wallets = []
   walletsMap = {}
   defaultChainId = null
+  logger = null
 
   get ready() {
     return Promise.all(map(this.wallets, 'ready')).then(() => this.mainWallet.addresses)
   }
 
-  constructor(walletsMap) {
+  constructor(walletsMap, logger) {
     let mainWallet
     let defaultChainId
 
@@ -29,11 +31,17 @@ class MultiWallet {
       }
     })
 
-    assign(this, { walletsMap, mainWallet, defaultChainId })
+    logger.debug('MultiWallet constructor:', {
+      wallets: Object.keys(walletsMap),
+      mainWallet: mainWallet.networkId,
+      otherWallets: this.otherWallets.map(_ => _.networkId)
+    })
+
+    assign(this, { walletsMap, mainWallet, defaultChainId, logger })
   }
 
-  async topWallet(account, chainId = null, log) {
-    const runTx = wallet => wallet.topWallet(account, log)
+  async topWallet(account, chainId = null, customLogger = null) {
+    const runTx = wallet => wallet.topWallet(account, customLogger || this.logger)
 
     if (chainId === 'all') {
       return Promise.all(this.wallets.map(runTx))
@@ -57,22 +65,31 @@ class MultiWallet {
     return this.mainWallet.isVerified(account)
   }
 
-  async syncWhitelist(account) {
-    const [isVerified, ...atOtherWallets] = await Promise.all(this.wallets.map(wallet => wallet.isVerified(account)))
+  async syncWhitelist(account, customLogger = null) {
+    const log = customLogger || this.logger
+    const [isVerifiedMain, ...atOtherWallets] = await Promise.all(
+      this.wallets.map(wallet => wallet.isVerified(account))
+    )
 
-    if (!isVerified || isEmpty(atOtherWallets) || every(atOtherWallets)) {
+    log.debug('syncwhitelist:', { account, isVerifiedMain, atOtherWallets })
+
+    if (!isVerifiedMain || isEmpty(atOtherWallets) || every(atOtherWallets)) {
       return false
     }
 
     const did = await this.mainWallet.getDID(account).catch(() => account)
 
+    log.debug('syncwhitelist:', { account, did })
+
     await Promise.all(
       atOtherWallets.map(async (status, index) => {
+        log.debug('syncwhitelist whitelisting on wallet:', { status, index, account })
+
         if (status) {
           return
         }
 
-        await this.otherWallets[index].whitelistUser(account, did)
+        await this.otherWallets[index].whitelistUser(account, did, log)
       })
     )
 
@@ -85,13 +102,16 @@ class MultiWallet {
 }
 
 // adds celo wallet if feature enabled
-const celoWallet = conf.celoEnabled
+const celoWallet = !conf.celoEnabled // here was the issue - had to be NOT celo enabled
   ? {}
   : {
       42220: CeloAdminWallet
     }
 
-export default new MultiWallet({
-  122: AdminWallet, // "main" wallet goes first
-  ...celoWallet
-})
+export default new MultiWallet(
+  {
+    122: AdminWallet, // "main" wallet goes first
+    ...celoWallet
+  },
+  logger.child({ from: 'MultiWallet' })
+)

@@ -131,7 +131,7 @@ const conf = convict({
   celo: {
     network_id: 42220,
     web3Transport: 'HttpProvider',
-    httpWeb3Provider: 'https://rpc.ankr.com/celo',
+    httpWeb3Provider: 'https://forno.celo.org',
     websocketWeb3Provider: ''
   },
   ethereumMainnet: {

@@ -186,7 +186,9 @@ export class Web3Wallet {
 
     this.proxyContract = new this.web3.eth.Contract(ProxyContractABI.abi, adminWalletAddress, { from: this.address })
 
-    if (web3Utils.fromWei(adminWalletContractBalance, 'gwei') < adminMinBalance * this.addresses.length) {
+    const maxAdminBalance = await this.proxyContract.methods.adminToppingAmount().call()
+    const minAdminBalance = parseInt(web3Utils.fromWei(maxAdminBalance, 'gwei')) / 2
+    if (web3Utils.fromWei(adminWalletContractBalance, 'gwei') < minAdminBalance * this.addresses.length) {
       log.error('AdminWallet contract low funds')
       sendSlackAlert({ msg: 'AdminWallet contract low funds', adminWalletAddress, adminWalletContractBalance })
 
@@ -213,9 +215,9 @@ export class Web3Wallet {
         const balance = await this.web3.eth.getBalance(addr)
         const isAdminWallet = await this.isVerifiedAdmin(addr)
 
-        log.info(`try address ${addr}:`, { balance, isAdminWallet, adminMinBalance })
+        log.info(`try address ${addr}:`, { balance, isAdminWallet, minAdminBalance })
 
-        if (isAdminWallet && parseFloat(web3Utils.fromWei(balance, 'gwei')) > adminMinBalance) {
+        if (isAdminWallet && parseFloat(web3Utils.fromWei(balance, 'gwei')) > minAdminBalance) {
           log.info(`admin wallet ${addr} balance ${balance}`)
           this.filledAddresses.push(addr)
         }
@@ -326,8 +328,9 @@ export class Web3Wallet {
    * @param {string} did
    * @returns {Promise<TransactionReceipt>}
    */
-  async whitelistUser(address: string, did: string): Promise<TransactionReceipt | boolean> {
-    const { log } = this
+  async whitelistUser(address: string, did: string, customLogger): Promise<TransactionReceipt | boolean> {
+    const log = customLogger || this.log
+
     const isVerified = await this.isVerified(address)
 
     if (isVerified) {
@@ -765,7 +768,7 @@ export class Web3Wallet {
       logger.debug(`sending tx from:`, { address, nonce, uuid, balance, gas, gasPrice })
 
       let txPromise = new Promise((res, rej) => {
-        tx.send({ gas, gasPrice, chainId: this.networkId, nonce, from: address })
+        tx.send({ gas, gasPrice, chainId: this.networkId, nonce, from: address, type: 0 })
           .on('transactionHash', h => {
             release()
 

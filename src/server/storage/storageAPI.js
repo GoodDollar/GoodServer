@@ -570,7 +570,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       const { account } = params
 
       try {
-        const whitelisted = await AdminWallet.syncWhitelist(account)
+        const whitelisted = await AdminWallet.syncWhitelist(account, log)
 
         log.debug('syncWhitelist success', { account, whitelisted })
         res.json({ ok: 1, whitelisted })
