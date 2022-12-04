@@ -183,6 +183,12 @@ const conf = convict({
     env: 'RECAPTCHA_SECRET_KEY',
     default: ''
   },
+  hcaptchaSecretKey: {
+    doc: 'hcaptcha secret key',
+    format: '*',
+    env: 'HCAPTCHA_SECRET_KEY',
+    default: '0x0000000000000000000000000000000000000000'
+  },
   sendGrid: {
     apiKey: {
       doc: 'Sendgrid API KEY',
