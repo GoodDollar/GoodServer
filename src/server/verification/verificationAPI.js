@@ -597,33 +597,51 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     requestRateLimiter(60, 10),
     wrapAsync(async (req, res) => {
       const log = req.log
-      const { token, ipv6 } = req.body
+      const { token, ipv6, captchaType } = req.body
       const clientIp = requestIp.getClientIp(req)
       const xForwardedFor = (req.headers || {})['x-forwarded-for']
-      try {
-        const url = `https://www.google.com/recaptcha/api/siteverify?secret=${conf.recaptchaSecretKey}&response=${token}&remoteip=${clientIp}`
-        let kvStorageIpKey = clientIp
+      let kvStorageIpKey = clientIp
 
+      try {
         if (ipv6 && ipv6 !== clientIp) {
           kvStorageIpKey = ipv6
         }
 
-        log.debug('Verifying recaptcha', { token, ipv6, clientIp, kvStorageIpKey, xForwardedFor })
+        log.debug('Verifying recaptcha', { token, ipv6, clientIp, kvStorageIpKey, xForwardedFor, captchaType })
 
-        const recaptchaRes = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: '*/*'
-          }
-        })
+        let parsedRes = {}
 
-        const parsedRes = await recaptchaRes.json()
+        //hcaptcha verify
+        if (captchaType === 'hcaptcha') {
+          const recaptchaRes = await fetch('https://hcaptcha.com/siteverify', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({
+              secret: conf.hcaptchaSecretKey,
+              response: token
+            })
+          })
+          parsedRes = await recaptchaRes.json()
+        } else {
+          const url = `https://www.google.com/recaptcha/api/siteverify?secret=${conf.recaptchaSecretKey}&response=${token}&remoteip=${clientIp}`
+
+          const recaptchaRes = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: '*/*'
+            }
+          })
+
+          parsedRes = await recaptchaRes.json()
+        }
 
         if (parsedRes.success) {
           const verifyResult = await OTP.verifyCaptcha(kvStorageIpKey)
 
-          log.debug('Recaptcha verified', verifyResult)
+          log.debug('Recaptcha verified', { verifyResult, parsedRes })
 
           res.json({ success: true })
         } else {
@@ -631,8 +649,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         }
       } catch (exception) {
         const { message } = exception
-        log.error('Recaptcha verification failed', message, exception, { clientIp, token })
 
+        log.error('Recaptcha verification failed', message, exception, {
+          clientIp,
+          token,
+          captchaType
+        })
         res.status(400).json({ success: false, error: message })
       }
     })
