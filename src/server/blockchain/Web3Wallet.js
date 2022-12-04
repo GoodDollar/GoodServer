@@ -332,6 +332,7 @@ export class Web3Wallet {
    */
   async whitelistUser(address: string, did: string, customLogger): Promise<TransactionReceipt | boolean> {
     const log = customLogger || this.log
+
     const isVerified = await this.isVerified(address)
 
     if (isVerified) {
