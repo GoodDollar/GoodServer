@@ -580,22 +580,39 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    * @apiSuccess {Number} ok
    * @ignore
    */
+  const visitorsCounter = {}
   app.post(
     '/verify/recaptcha',
     requestRateLimiter(60, 10),
     wrapAsync(async (req, res) => {
       const log = req.log
-      const { token, ipv6, captchaType } = req.body
+      const { token, ipv6, captchaType, fingerprint } = req.body
       const clientIp = requestIp.getClientIp(req)
       const xForwardedFor = (req.headers || {})['x-forwarded-for']
+      const { visitorId } = fingerprint || {}
       let kvStorageIpKey = clientIp
 
       try {
+        if (!visitorId) {
+          throw new Error('missing visitorId')
+        }
+        let visitsCounter = visitorsCounter[fingerprint.visitorId] || 0
+        visitsCounter++
+        visitorsCounter[fingerprint.visitorId] = visitsCounter
         if (ipv6 && ipv6 !== clientIp) {
           kvStorageIpKey = ipv6
         }
 
-        log.debug('Verifying recaptcha', { token, ipv6, clientIp, kvStorageIpKey, xForwardedFor, captchaType })
+        log.debug('Verifying recaptcha', {
+          token,
+          ipv6,
+          clientIp,
+          kvStorageIpKey,
+          xForwardedFor,
+          captchaType,
+          visitorId,
+          visitsCounter
+        })
 
         let parsedRes = {}
 
