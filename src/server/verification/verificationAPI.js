@@ -598,7 +598,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     requestRateLimiter(60, 10),
     wrapAsync(async (req, res) => {
       const log = req.log
-      const { token, ipv6, captchaType, fingerprint } = req.body
+      const { payload: token, ipv6, captchaType, fingerprint } = req.body
       const clientIp = requestIp.getClientIp(req)
       const xForwardedFor = (req.headers || {})['x-forwarded-for']
       const { visitorId } = fingerprint || {}
