@@ -603,6 +603,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const xForwardedFor = (req.headers || {})['x-forwarded-for']
       const { visitorId } = fingerprint || {}
       let kvStorageIpKey = clientIp
+      let parsedRes = {}
 
       try {
         if (!visitorId) {
@@ -625,8 +626,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           visitorId,
           visitsCounter
         })
-
-        let parsedRes = {}
 
         //hcaptcha verify
         if (captchaType === 'hcaptcha') {
@@ -670,7 +669,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         log.error('Recaptcha verification failed', message, exception, {
           clientIp,
           token,
-          captchaType
+          captchaType,
+          parsedRes
         })
         res.status(400).json({ success: false, error: message })
       }
