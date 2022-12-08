@@ -617,7 +617,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         }
 
         log.debug('Verifying recaptcha', {
-          token,
+          token: token.slice(0, 10),
           ipv6,
           clientIp,
           kvStorageIpKey,
@@ -668,7 +668,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
         log.error('Recaptcha verification failed', message, exception, {
           clientIp,
-          token,
+          token: token.slice(0, 10),
           captchaType,
           parsedRes
         })
