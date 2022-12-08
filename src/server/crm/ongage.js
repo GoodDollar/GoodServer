@@ -232,7 +232,7 @@ class OnGage implements CrmApi {
 
     axiosRetry(http, {
       retries: ongageRetryAttempts,
-      retryDelay: () => ongageRetryDelay,
+      retryDelay: count => ongageRetryDelay * 2 ** count,
       retryCondition: reason => {
         const { message, response } = reason || {}
         const { status } = response || {}
