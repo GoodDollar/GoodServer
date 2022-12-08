@@ -67,7 +67,8 @@ export default async (app: Router) => {
     })
   )
 
-  app.use((error, req, res) => {
+  // error handler
+  app.use((error, req, res, next) => {
     const { log = rootLogger, body, url } = req
     const { message } = error
     const aborted = error.code === 'ECONNABORTED'
@@ -76,6 +77,7 @@ export default async (app: Router) => {
     log[aborted ? 'warn' : 'error'](label, message, error, { url, body })
     // send 'message' for compatibility
     res.status(400).json({ ok: 0, error: message, message })
+    next(error)
   })
 
   const CronTasksRunner = getTasksRunner()
