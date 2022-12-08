@@ -606,14 +606,14 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       let parsedRes = {}
 
       try {
-        if (!visitorId) {
-          throw new Error('missing visitorId')
-        }
-        let visitsCounter = visitorsCounter[fingerprint.visitorId] || 0
-        visitsCounter++
-        visitorsCounter[fingerprint.visitorId] = visitsCounter
         if (ipv6 && ipv6 !== clientIp) {
           kvStorageIpKey = ipv6
+        }
+        let visitsCounter = 0
+        if (visitorId) {
+          visitsCounter = visitorsCounter[visitorId] || 0
+          visitsCounter++
+          visitorsCounter[visitorId] = visitsCounter
         }
 
         log.debug('Verifying recaptcha', {
@@ -629,6 +629,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
         //hcaptcha verify
         if (captchaType === 'hcaptcha') {
+          if (!visitorId) {
+            //we use fingerprint only for web with hcaptcha at the moment
+            throw new Error('missing visitorId')
+          }
+
           const recaptchaRes = await fetch('https://hcaptcha.com/siteverify', {
             method: 'POST',
             headers: {
