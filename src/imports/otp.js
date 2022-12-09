@@ -41,7 +41,7 @@ export default new (class {
 
     axiosRetry(http, {
       retries: otpRetryAttempts,
-      retryDelay: () => otpRetryDelay,
+      retryDelay: count => otpRetryDelay * 2 ** count,
       retryCondition: reason => isError(reason) && 429 === get(reason, 'response.status')
     })
 
