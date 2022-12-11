@@ -247,6 +247,10 @@ class ZoomProvider implements IEnrollmentProvider {
     )
   }
 
+  async getEnrollment(enrollmentIdentifier: string, customLogger = null): Promise<any> {
+    return this.api.readEnrollment(enrollmentIdentifier, customLogger)
+  }
+
   // eslint-disable-next-line require-await
   async isEnrollmentIndexed(enrollmentIdentifier: string, customLogger = null): Promise<boolean> {
     const { api } = this
