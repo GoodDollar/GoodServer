@@ -654,11 +654,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
           res.json({ success: true })
         } else {
-          throw new Error('Recaptcha verification failed')
+          throw new Error('user failed captcha')
         }
       } catch (exception) {
         const { message } = exception
-        const logFunc = message === 'missing visitorId' ? 'warn' : 'error'
+        const logFunc = ['user failed captcha', 'missing visitorId'].includes(message) ? 'warn' : 'error'
         log[logFunc]('Recaptcha verification failed', message, exception, {
           clientIp,
           token: token.slice(0, 10),
