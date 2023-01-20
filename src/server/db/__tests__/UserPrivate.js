@@ -20,8 +20,15 @@ describe('UserPrivate', () => {
   const testUserAddCreateDate = async () =>
     await storage.updateUser({ identifier: testUser.identifier, createdDate: new Date().toString() })
 
-  const testTasksExists = async isExists =>
-    expect(taskModel.exists({ taskName: testTaskName, subject: testTaskSubject })).resolves.toBe(isExists)
+  const testTasksExists = async isExists => {
+    let wrapped = expect(taskModel.exists({ taskName: testTaskName, subject: testTaskSubject })).resolves
+
+    if (!isExists) {
+      wrapped = wrapped.not
+    }
+
+    await wrapped.toBeTruthy()
+  }
 
   // check if result obtained from raw query is the same like from storage method
   const testHasTasksQueued = async () =>

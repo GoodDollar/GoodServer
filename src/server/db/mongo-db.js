@@ -4,17 +4,15 @@ import config from '../server.config'
 
 const { uri } = config.mongodb
 const mongoOpts = {
-  useNewUrlParser: true,
-  useCreateIndex: true,
   autoIndex: true,
-  useFindAndModify: false,
-  useUnifiedTopology: true,
-  poolSize: 20
+  minPoolSize: 20,
+  maxPoolSize: 100
 }
 
 export const { Schema } = mongoose
 export const { Types } = Schema
 
+mongoose.set('strictQuery', true)
 mongoose.connect(uri, mongoOpts)
 
 export default mongoose
