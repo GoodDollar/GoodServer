@@ -583,6 +583,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   })
 
   /**
+   * @depracated now using goodcfverify cloudflare worker
    * @api {post} /verify/recaptcha verify recaptcha token
    * @apiName Recaptcha
    * @apiGroup Verification
@@ -592,6 +593,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    * @apiSuccess {Number} ok
    * @ignore
    */
+
   const visitorsCounter = {}
   app.post(
     '/verify/recaptcha',

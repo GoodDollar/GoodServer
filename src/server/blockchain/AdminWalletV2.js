@@ -25,14 +25,24 @@ import { noop } from 'lodash'
 
 const log = logger.child({ from: 'AdminWalletV2' })
 
-const defaultGas = 200000
 const FUSE_TX_TIMEOUT = 25000 // should be confirmed after max 5 blocks (25sec)
 const { estimateGasPrice } = conf
-const adminMinBalance = conf.adminMinBalance
 const defaultGasPrice = web3Utils.toWei(String(conf.defaultGasPrice), 'gwei')
 const defaultRopstenGasPrice = web3Utils.toWei('5', 'gwei')
 
-const getAuthHeader = rpc => {
+export const adminMinBalance = conf.adminMinBalance
+
+export const defaultGas = 500000
+
+export const web3Default = {
+  defaultBlock: 'latest',
+  defaultGasPrice,
+  transactionBlockTimeout: 5,
+  transactionConfirmationBlocks: 1,
+  transactionPollingTimeout: 30
+}
+
+export const getAuthHeader = rpc => {
   const url = new URL(rpc)
   if (url.password) {
     return [
