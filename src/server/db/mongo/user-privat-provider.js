@@ -226,7 +226,7 @@ class UserPrivate {
   async hasTasksQueued(taskName: string, filters: object = {}): Promise<boolean> {
     const { taskModel } = this
 
-    return !!taskModel.exists({ ...filters, taskName })
+    return taskModel.exists({ ...filters, taskName }).then(Boolean)
   }
 
   /**
