@@ -28,7 +28,7 @@ const defaultGasPrice = web3Utils.toWei(String(conf.defaultGasPrice), 'gwei')
 
 export const adminMinBalance = conf.adminMinBalance
 
-export const defaultGas = 200000
+export const defaultGas = 500000
 
 export const web3Default = {
   defaultBlock: 'latest',

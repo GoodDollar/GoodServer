@@ -27,7 +27,8 @@ export const createLoggerMiddleware = logger => (req, res, next) => {
       logBody = omit(logBody, fvRedact)
     }
 
-    log[aborted ? 'warn' : 'info']('http', logMessage, {
+    // trace will reduce heroku logs clutter
+    log[aborted ? 'warn' : 'trace']('http', logMessage, {
       responseTimeSeconds,
       method,
       body: logBody,
