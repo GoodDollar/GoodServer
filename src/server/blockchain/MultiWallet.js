@@ -5,6 +5,7 @@ import conf from '../server.config'
 import logger from '../../imports/logger'
 
 const multiLogger = logger.child({ from: 'MultiWallet' })
+
 class MultiWallet {
   mainWallet = null
   otherWallets = []
@@ -19,9 +20,6 @@ class MultiWallet {
   constructor(walletsMap) {
     let mainWallet
     let defaultChainId
-    if (conf.celoEnabled === false) {
-      delete walletsMap[42220]
-    }
 
     forOwn(walletsMap, (wallet, chainId) => {
       this.wallets.push(wallet)
@@ -39,6 +37,7 @@ class MultiWallet {
       mainWallet: mainWallet.networkId,
       otherWallets: this.otherWallets.map(_ => _.networkId)
     })
+
     assign(this, { walletsMap, mainWallet, defaultChainId })
   }
 
@@ -104,7 +103,14 @@ class MultiWallet {
   }
 }
 
+const celoWallet =
+  conf.celoEnabled === false
+    ? {}
+    : {
+        42220: CeloAdminWallet
+      }
+
 export default new MultiWallet({
   122: AdminWallet, // "main" wallet goes first
-  42220: CeloAdminWallet
+  ...celoWallet
 })
