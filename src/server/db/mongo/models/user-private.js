@@ -49,8 +49,8 @@ export const UserPrivateSchema = new Schema(
       default: false
     },
     otp: {
-      code: String,
-      expirationDate: String
+      email: String,
+      mobile: String
     },
     emailVerificationCode: {
       type: String
