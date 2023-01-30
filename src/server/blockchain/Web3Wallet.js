@@ -330,7 +330,12 @@ export class Web3Wallet {
    * @param {string} did
    * @returns {Promise<TransactionReceipt>}
    */
-  async whitelistUser(address: string, did: string, customLogger): Promise<TransactionReceipt | boolean> {
+  async whitelistUser(
+    address: string,
+    did: string,
+    chainId?: number,
+    customLogger
+  ): Promise<TransactionReceipt | boolean> {
     const log = customLogger || this.log
 
     const isVerified = await this.isVerified(address)
@@ -357,9 +362,16 @@ export class Web3Wallet {
         txHash = hash
       }
 
-      const txPromise = this.sendTransaction(this.proxyContract.methods.whitelist(address, did), {
-        onTransactionHash
-      })
+      let txPromise
+      if (chainId && conf.celoEnabled) {
+        txPromise = this.sendTransaction(this.proxyContract.methods.whitelist(address, did, chainId, 0), {
+          onTransactionHash
+        })
+      } else {
+        txPromise = this.sendTransaction(this.proxyContract.methods.whitelist(address, did), {
+          onTransactionHash
+        })
+      }
 
       let tx = await txPromise
 

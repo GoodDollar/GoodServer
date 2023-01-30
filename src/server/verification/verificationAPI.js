@@ -169,6 +169,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       try {
+        const { chainId } = payload
+        delete payload['chainId']
+        user.chainId = chainId || conf.defaultWhitelistChainId
         const enrollmentProcessor = createEnrollmentProcessor(storage, log)
         await enrollmentProcessor.validate(user, enrollmentIdentifier, payload)
 

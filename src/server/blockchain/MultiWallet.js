@@ -57,8 +57,8 @@ class MultiWallet {
     return runTx(walletsMap[chain])
   }
 
-  async whitelistUser(account, did) {
-    return Promise.all(this.wallets.map(wallet => wallet.whitelistUser(account, did)))
+  async whitelistUser(account, did, chainId, log = multiLogger) {
+    return Promise.all(this.wallets.map(wallet => wallet.whitelistUser(account, did, chainId, log)))
   }
 
   async removeWhitelisted(account) {
@@ -91,7 +91,7 @@ class MultiWallet {
           return
         }
 
-        await this.otherWallets[index].whitelistUser(account, did, log)
+        await this.otherWallets[index].whitelistUser(account, did, conf.defaultWhitelistChainId, log)
       })
     )
 
