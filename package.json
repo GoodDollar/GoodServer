@@ -60,7 +60,7 @@
     "@toruslabs/torus.js": "^6.2.0",
     "add": "^2.0.6",
     "apidoc": "^0.51.1",
-    "apidoc-markdown": "^0.2.1",
+    "apidoc-markdown": "^7.2.5",
     "async-lock": "^1.2.4",
     "auto-changelog": "^1.16.4",
     "await-mutex": "^1.0.2",
