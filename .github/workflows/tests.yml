@@ -70,8 +70,8 @@ jobs:
           node-version: 16
           cache: 'npm'
       - run: npm i -g patch-package
-      # - name: Install npm dependencies
-      #   uses: bahmutov/npm-install@v1
+      - name: Install npm dependencies
+        uses: bahmutov/npm-install@v1
       - name: prepare blockchain for blockchain related tests
         if: contains(fromJson(env.BLOCKCHAIN_CHUNKS),matrix.chunk)
         env:
