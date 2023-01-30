@@ -855,12 +855,20 @@ export class Web3Wallet {
     } catch (e) {
       await this.txManager.unlock(currentAddress)
 
+      //check if tx did go through after timeout or not
+      if (txHash && e.message.toLowerCase().includes('timeout')) {
+        const receipt = await this.web3.eth.getTransactionReceipt(txHash).catch()
+        if (receipt) {
+          logger.info('receipt found for timedout tx', { uuid, txHash, receipt })
+          return receipt
+        }
+      }
       if (retry && e.message.includes('fuse tx timeout')) {
         logger.warn('sendTransaction timeout retrying:', { uuid, txHash })
         return this.sendTransaction(tx, txCallbacks, { gas, gasPrice }, false, logger)
       }
 
-      logger.error('sendTransaction error:', e.message, e, { from: currentAddress, uuid })
+      logger.error('sendTransaction error:', e.message, e, { from: currentAddress, uuid, txHash, retry })
       throw new Error(e)
     }
   }

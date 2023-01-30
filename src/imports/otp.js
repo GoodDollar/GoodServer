@@ -87,12 +87,11 @@ export default new (class {
       const result = await this.http.post(this.verifyWorkerUrl, payload)
       return result.data
     } catch (exception) {
-      const { message, status } = exception
-      const logFunc = status === 429 ? 'warn' : 'error' //just warn about rate limits
+      const { message } = exception
 
       this.getExceptionText(exception)
 
-      log[logFunc]('Error sending OTP:', message, exception, { mobile })
+      log.warn('Error sending OTP:', message, exception, { mobile })
       throw exception
     }
   }
@@ -106,11 +105,10 @@ export default new (class {
       return result.data
     } catch (exception) {
       const { message } = exception
-      const logFunc = message === 'Max send attempts reached' ? 'warn' : 'error'
 
       this.getExceptionText(exception)
 
-      log[logFunc]('Error verifying captcha:', message, exception, { clientIp })
+      log.warn('Error verifying captcha:', message, exception, { clientIp })
       throw exception
     }
   }
@@ -132,7 +130,7 @@ export default new (class {
       const { message } = exception
 
       this.getExceptionText(exception)
-      log.error('Error verification OTP:', message, exception, { mobile, code })
+      log.warn('Error verification OTP:', message, exception, { mobile, code })
       throw exception
     }
   }
