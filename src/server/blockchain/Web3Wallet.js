@@ -333,11 +333,10 @@ export class Web3Wallet {
   async whitelistUser(
     address: string,
     did: string,
-    chainId?: number,
-    customLogger
+    chainId: number = null,
+    logger = null
   ): Promise<TransactionReceipt | boolean> {
-    const log = customLogger || this.log
-
+    const log = logger || this.log
     const isVerified = await this.isVerified(address)
 
     if (isVerified) {
@@ -353,7 +352,7 @@ export class Web3Wallet {
         .then(parseInt)
 
       if (lastAuth > 0) {
-        //user was already whitelisted in the past, just needs re-authentication
+        // user was already whitelisted in the past, just needs re-authentication
         return this.authenticateUser(address)
       }
 
@@ -362,18 +361,13 @@ export class Web3Wallet {
         txHash = hash
       }
 
-      let txPromise
-      if (chainId && conf.celoEnabled) {
-        txPromise = this.sendTransaction(this.proxyContract.methods.whitelist(address, did, chainId, 0), {
-          onTransactionHash
-        })
-      } else {
-        txPromise = this.sendTransaction(this.proxyContract.methods.whitelist(address, did), {
-          onTransactionHash
-        })
-      }
+      const txExtraArgs = chainId !== null ? [chainId, 0] : []
 
-      let tx = await txPromise
+      const txPromise = this.sendTransaction(this.proxyContract.methods.whitelist(address, did, ...txExtraArgs), {
+        onTransactionHash
+      })
+
+      const tx = await txPromise
 
       log.info('Whitelisted user', { txHash, address, did, tx })
       return tx
