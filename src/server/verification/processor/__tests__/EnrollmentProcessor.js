@@ -192,7 +192,27 @@ describe('EnrollmentProcessor', () => {
     await wrappedResponse.toHaveProperty('enrollmentResult.isVerified', true)
 
     expect(updateUserMock).toHaveBeenCalledWith({ identifier: loggedInAs, isVerified: true })
-    expect(whitelistUserMock).toHaveBeenCalledWith(gdAddress, profilePublickey)
+    expect(whitelistUserMock).toHaveBeenCalledWith(gdAddress, profilePublickey, undefined, {})
+    expect(topWalletMock).toHaveBeenCalledWith(gdAddress, 'all', expect.anything())
+    expect(whitelistContactMock.mock.calls[0][0]).toBe(crmId)
+  })
+
+  test("enroll() proxies provider's response and whitelists user with chainId on success", async () => {
+    helper.mockEnrollmentNotFound(enrollmentIdentifier)
+    helper.mockSuccessEnrollment(enrollmentIdentifier)
+    helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
+    helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
+
+    const { gdAddress, loggedInAs, profilePublickey, crmId } = user
+    user.chainId = 1234
+    const wrappedResponse = expect(enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)).resolves
+
+    await wrappedResponse.toBeDefined()
+    await wrappedResponse.toHaveProperty('success', true)
+    await wrappedResponse.toHaveProperty('enrollmentResult.isVerified', true)
+
+    expect(updateUserMock).toHaveBeenCalledWith({ identifier: loggedInAs, isVerified: true })
+    expect(whitelistUserMock).toHaveBeenCalledWith(gdAddress, profilePublickey, 1234, {})
     expect(topWalletMock).toHaveBeenCalledWith(gdAddress, 'all', expect.anything())
     expect(whitelistContactMock.mock.calls[0][0]).toBe(crmId)
   })

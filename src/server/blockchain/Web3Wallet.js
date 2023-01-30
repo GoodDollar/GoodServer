@@ -330,9 +330,13 @@ export class Web3Wallet {
    * @param {string} did
    * @returns {Promise<TransactionReceipt>}
    */
-  async whitelistUser(address: string, did: string, customLogger): Promise<TransactionReceipt | boolean> {
-    const log = customLogger || this.log
-
+  async whitelistUser(
+    address: string,
+    did: string,
+    chainId: number = null,
+    logger = null
+  ): Promise<TransactionReceipt | boolean> {
+    const log = logger || this.log
     const isVerified = await this.isVerified(address)
 
     if (isVerified) {
@@ -348,7 +352,7 @@ export class Web3Wallet {
         .then(parseInt)
 
       if (lastAuth > 0) {
-        //user was already whitelisted in the past, just needs re-authentication
+        // user was already whitelisted in the past, just needs re-authentication
         return this.authenticateUser(address)
       }
 
@@ -357,11 +361,13 @@ export class Web3Wallet {
         txHash = hash
       }
 
-      const txPromise = this.sendTransaction(this.proxyContract.methods.whitelist(address, did), {
+      const txExtraArgs = chainId !== null ? [chainId, 0] : []
+
+      const txPromise = this.sendTransaction(this.proxyContract.methods.whitelist(address, did, ...txExtraArgs), {
         onTransactionHash
       })
 
-      let tx = await txPromise
+      const tx = await txPromise
 
       log.info('Whitelisted user', { txHash, address, did, tx })
       return tx

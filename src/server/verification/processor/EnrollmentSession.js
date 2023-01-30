@@ -116,7 +116,7 @@ export default class EnrollmentSession {
 
   async onEnrollmentCompleted() {
     const { user, storage, adminApi, log, enrollmentIdentifier, _logWrap } = this
-    const { gdAddress, profilePublickey, loggedInAs, crmId } = user
+    const { gdAddress, profilePublickey, loggedInAs, crmId, chainId } = user
 
     const whitelistingTasks = [
       () => storage.updateUser({ identifier: loggedInAs, isVerified: true }),
@@ -130,7 +130,7 @@ export default class EnrollmentSession {
       ),
 
       _logWrap(
-        () => adminApi.whitelistUser(gdAddress, profilePublickey || gdAddress),
+        () => adminApi.whitelistUser(gdAddress, profilePublickey || gdAddress, chainId, log),
         'Successfully whitelisted user:',
         'whitelisting after fv failed'
       ),

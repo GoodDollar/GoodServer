@@ -614,6 +614,12 @@ const conf = convict({
     format: Boolean,
     env: 'CELO_ENABLED',
     default: true
+  },
+  defaultWhitelistChainId: {
+    doc: 'Mark user as whitelisted on chainId if not supplied',
+    format: Number,
+    env: 'WHITELIST_CHAINID',
+    default: 122
   }
 })
 

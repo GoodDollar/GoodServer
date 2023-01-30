@@ -23,7 +23,7 @@ jobs:
       wallet-chunk-id: ${{ steps['set-test-chunk-ids'].outputs['wallet-chunk-id'] }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - id: set-test-chunks
         name: Set Chunks
         run: echo "::set-output name=test-chunks::$(find ./src -path \*/__tests__/*.js | sort | jq -R -s -c 'split("\n")[:-1] | map(select(contains("__util") == false))' | jq -cM '[_nwise(length / 5 | floor)]')"
@@ -64,13 +64,14 @@ jobs:
 
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: 16
+          cache: 'npm'
       - run: npm i -g patch-package
-      - name: Install npm dependencies
-        uses: bahmutov/npm-install@v1
+      # - name: Install npm dependencies
+      #   uses: bahmutov/npm-install@v1
       - name: prepare blockchain for blockchain related tests
         if: contains(fromJson(env.BLOCKCHAIN_CHUNKS),matrix.chunk)
         env:
