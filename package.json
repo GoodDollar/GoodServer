@@ -130,7 +130,7 @@
     "concurrently": "^4.1.2",
     "coveralls": "^3.1.0",
     "css-loader": "^1.0.0",
-    "documentation": "9.3.1",
+    "documentation": "14.0.1",
     "enzyme": "^3.11.0",
     "eslint": "^5.16.0",
     "eslint-config-airbnb": "^17.1.1",
