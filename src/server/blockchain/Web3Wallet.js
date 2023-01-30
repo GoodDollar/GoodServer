@@ -65,8 +65,11 @@ export class Web3Wallet {
   }
 
   constructor(name, conf, options = null) {
-    const { ethereum = null, network = null, initialGasPrice = null, lazyInitialize = false } = options || {}
+    const { ethereum = null, network = null, initialGasPrice = null, lazyInitialize = conf.env === 'test' } =
+      options || {}
     const ethOpts = ethereum || conf.ethereum
+    const { network_id: networkId } = ethOpts
+    const log = logger.child({ from: `${name}/${this.networkId}` })
 
     this.addresses = []
     this.filledAddresses = []
@@ -75,12 +78,16 @@ export class Web3Wallet {
     this.mnemonic = conf.mnemonic
     this.network = network || conf.network
     this.ethereum = ethOpts
-    this.networkId = ethOpts.network_id
+    this.networkId = networkId
     this.numberOfAdminWalletAccounts = conf.privateKey ? 1 : conf.numberOfAdminWalletAccounts
     this.gasPrice = initialGasPrice || defaultGasPrice
-    this.log = logger.child({ from: `${name}/${this.networkId}` })
+    this.log = log
 
-    if (!lazyInitialize) {
+    log.debug('Lazy initialize:', { lazyInitialize })
+
+    if (lazyInitialize) {
+      log.debug('Skipping init till the first .ready await')
+    } else {
       this.initialize()
     }
   }

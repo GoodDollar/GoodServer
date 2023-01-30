@@ -3,13 +3,13 @@ import StakingABI from '@gooddollar/goodprotocol/artifacts/contracts/staking/Sim
 import UBISchemeABI from '@gooddollar/goodprotocol/artifacts/contracts/ubi/UBIScheme.sol/UBIScheme.json'
 import NameServiceABI from '@gooddollar/goodprotocol/artifacts/contracts/utils/NameService.sol/NameService.json'
 
-//needed for ropsten allocateTo - mint fake dai
+// needed for ropsten allocateTo - mint fake dai
 import DaiABI from '@gooddollar/goodcontracts/build/contracts/DAIMock.min.json'
 import cDaiABI from '@gooddollar/goodprotocol/artifacts/contracts/Interfaces.sol/cERC20.json'
 import ContractsAddress from '@gooddollar/goodprotocol/releases/deployment.json'
 import fetch from 'cross-fetch'
 import AdminWallet from './AdminWallet'
-import { get, chunk, range, flatten, mapValues } from 'lodash'
+import { get, chunk, range, flatten, mapValues, once } from 'lodash'
 import logger from '../../imports/logger'
 import delay from 'delay'
 import moment from 'moment'
@@ -17,8 +17,10 @@ import { toWei } from 'web3-utils'
 import config from '../server.config'
 import { sendSlackAlert } from '../../imports/slack'
 import { retry as retryAttempt } from '../utils/async'
+
 const BRIDGE_TRANSFER_TIMEOUT = 60 * 1000 * 5 //5 min
 const FUSE_DAY_BLOCKS = (60 * 60 * 24) / 5
+
 /**
  * a manager to make sure we collect and transfer the interest from the staking contract
  */
@@ -33,16 +35,22 @@ export class StakingModelManager {
   bridge = this.addresses['ForeignBridge']
   nameServiceAddress = this.addresses['NameService']
 
-  constructor() {
-    this.log = logger.child({ from: 'StakingModelManagerV2' })
-    this.init()
-    // this.managerContract.methods.bridgeContract().call().then(_ => (this.bridge = _))
-    // this.managerContract.methods.ubiRecipient().call().then(_ => (this.ubiScheme = _))
+  get ready() {
+    return this.init()
   }
 
-  init = async () => {
-    //polling timeout since ethereum has network congestion and we try to pay little gas so it will take a long time to confirm tx
+  constructor() {
+    this.log = logger.child({ from: 'StakingModelManagerV2' })
+
+    if (config.env !== 'test') {
+      this.init()
+    }
+  }
+
+  init = once(async () => {
+    // polling timeout since ethereum has network congestion and we try to pay little gas so it will take a long time to confirm tx
     await AdminWallet.ready
+
     this.managerContract = new AdminWallet.mainnetWeb3.eth.Contract(FundManagerABI.abi, this.managerAddress, {
       transactionPollingTimeout: 1000,
       from: AdminWallet.address
@@ -60,7 +68,8 @@ export class StakingModelManager {
       staking: this.stakingAddresses,
       bridge: this.bridge
     })
-  }
+  })
+
   canCollectFunds = async () => {
     const result = await this.managerContract.methods.calcSortedContracts().call()
     this.log.info('canCollectFunds:', result)
@@ -332,10 +341,23 @@ class FishingManager {
 
   constructor() {
     this.log = logger.child({ from: 'FishingManager' })
+
+    if (config.env !== 'test') {
+      this.init()
+    }
+  }
+
+  get ready() {
+    return this.init()
+  }
+
+  init = once(async () => {
+    await AdminWallet.ready
+
     this.ubiContract = new AdminWallet.web3.eth.Contract(UBISchemeABI.abi, this.ubiScheme, {
       from: AdminWallet.address
     })
-  }
+  })
 
   /**
    * calculate the next claim epoch

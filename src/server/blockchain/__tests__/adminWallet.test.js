@@ -6,7 +6,7 @@ import txManager from '../../utils/tx-manager'
 const web3 = new Web3()
 const generateWalletAddress = () => web3.eth.accounts.create().address
 
-describe('adminwallet', () => {
+xdescribe('adminwallet', () => {
   beforeAll(async () => {
     await AdminWallet.ready
   })

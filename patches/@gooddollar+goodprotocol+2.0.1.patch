@@ -1,0 +1,81 @@
+diff --git a/node_modules/@gooddollar/goodprotocol/releases/deployment.json b/node_modules/@gooddollar/goodprotocol/releases/deployment.json
+index 1220cf7..fecd5bf 100644
+--- a/node_modules/@gooddollar/goodprotocol/releases/deployment.json
++++ b/node_modules/@gooddollar/goodprotocol/releases/deployment.json
+@@ -141,6 +141,76 @@
+         "BancorFormula": "0x57b2c85934Ef1A891eC9b9945f3fdbcf1104c302",
+         "FeeFormula": "0x416B5A5e12235De6838D62Fd053e7Ce59E944426"
+     },
++    "dapptest": {
++        "NameService": "0x9059f66843F564f7870f7135fB039EB2034a23a3",
++        "GReputation": "0x90dE2F86DBdB2110a798326e880c83bc8779d149",
++        "CompoundVotingMachine": "0x2EF9f88EEB737655FF01F9b5017f1e3399726AF1",
++        "ClaimersDistribution": "0x035A59F228e776Cc396a8F5E1cEF989E235B0035",
++        "GovernanceStaking": "0xC65cCB966873969179B6b0bA53D67D14Bbf1204C",
++        "UBIScheme": "0xBb02F06762FBc51aD222915e6855f7482a93F9Cd",
++        "ProtocolUpgradeFuse": "0xBb976201B607f16dc76586dB8Ca5EF6C50C41c22",
++        "HomeBridge": "0x180FAF09AdD6a27554b11a131DCe6f6A3ddF4cBf",
++        "AdminWallet": "0xB8357F7f41125d4b24AD052c1b7288BeF5C43446",
++        "Identity": "0x63766F0efAa46a86E9055bB46e41ff7bc64CBEA2",
++        "GoodDollar": "0x94a9D2532DA2d9153336159907604A01c3E91C11",
++        "Controller": "0x0B57Fd12F7A95c322aD176D23765507ce09892Cb",
++        "Avatar": "0xf6Ee31185AC05C2b558fF2a561C600AF3E9486dd",
++        "FirstClaimPool": "0xC20654dB7F9483f10c91dc94924dC8F04F79bfd5",
++        "BancorFormula": "0x6852Adb5Fce1D73c08A9b3Aa7edE9A03437ac2fE",
++        "DAI": "0x0000000000000000000000000000000000000000",
++        "cDAI": "0x0000000000000000000000000000000000000000",
++        "COMP": "0x0000000000000000000000000000000000000000",
++        "networkId": 4447,
++        "network": "dapptest",
++        "FeeFormula": "0x24ef01de6baE76eE73Da210940A296F739d87952",
++        "OneTimePayments": "0xB10982193B39Eda3428d6AaeBbd7986f2A2Baa1a",
++        "Invites": "0x74156A1F9736307b7AD34e3691f3A5B54A0B3Eb8",
++        "FuseFaucet": "0x0Db32f0b116773fDD78C2e1b5E6609CC502e6784",
++        "ProxyFactory": "0xCD8a1C3ba11CF5ECfa6267617243239504a98d90"
++    },
++    "dapptest-mainnet": {
++        "NameService": "0xe528aaCA8E7cD3ce503bB4a2dEadFD4088229E1F",
++        "GReputation": "0x77423AE3ce64482ef3BB601a2EA42cf30349735A",
++        "CompoundVotingMachine": "0x6804DB9596c651A1CA24bBB821712A8899932d76",
++        "GoodMarketMaker": "0xa36ADAE77B1f6f87eD60aafEF9c080c38Ca30D0F",
++        "GoodReserveCDai": "0x411CEb987F801CdEa5a301a0CCfa4a5Df37f3f7F",
++        "ExchangeHelper": "0x1333788523bEA7C7cBdd0684Bd1ee75E940fF0Eb",
++        "GoodFundManager": "0x50589243cb1d8eEF751f4BAb253Aabef6e434c0d",
++        "StakersDistribution": "0x214c3C71191AB9bD868a5f408A61c540c787662F",
++        "ProtocolUpgrade": "0x1Fb0D426927Dab092Def63b73E1397b3F29E7b33",
++        "CompoundStakingFactory": "0xe4FEed16F54b4244C174b408Ba3B5F1f19DD1E4D",
++        "AaveStakingFactory": "0xe7213b68DC25bf30bC7f1DE9BAead075c66979F9",
++        "ForeignBridge": "0x570ADc5880D778aE5935f199aa590091586CDf75",
++        "Contribution": "0x24F2D7c50357C7B1156Ca85945D3A901c88651cB",
++        "StakingContracts": [
++            [
++                "0xc782Ee4B0d6204Ff77471884bB95d2D2f8D60fE6",
++                13888
++            ]
++        ],
++        "DonationsStaking": "0x4bfd12E943f25621d4FA368Ca7a5c0E7F6488000",
++        "Identity": "0xb2377aAE57F2072F52FBc38696BE573af2ce5bd9",
++        "GoodDollar": "0x5Bbaf48c102373B55079F941c40822C96E715d62",
++        "Controller": "0x67d49FAF26CA6A34D483B6BDFA45824EdA64D509",
++        "Avatar": "0xE9ED26a450aC15ea88b5801E5940B58F2f778b03",
++        "FirstClaimPool": "0xe3963EF7CC3044B64842d0AAe7F2Bf1543D341Ec",
++        "BancorFormula": "0x30474Ce2DE03045B8D0AE76F8a30DbfC8f000cea",
++        "DAI": "0xadf7b0f46EB35C748438F3e215F064E01cc7f5dF",
++        "cDAI": "0x0037272a7048132b10Dd8970AC964Bab2fDB3F62",
++        "COMP": "0xE8E9B139c6477D4EaD599bE5f2bB9335533D14f7",
++        "networkId": 4447,
++        "network": "dapptest-mainnet",
++        "FeeFormula": "0x8B87065fdfe4A130108E50f74ae7F85cD20A5967",
++        "ProxyFactory": "0xF47e3B0A1952A81F1afc41172762CB7CE8700133",
++        "UniswapV2SwapHelper": "0xB4059a6808Af368A69d12FBbD104Bb6B9c37e629",
++        "ETHUsdOracle": "0x79613D7834Ad35EE8dC3F9298030eaADc2A8c250",
++        "DAIEthOracle": "0x6397866132887b206EEA19f910730443E71a8CfB",
++        "DAIUsdOracle": "0xC2E1FC63cE06C279c5De18D7119C7cA123B42C1c",
++        "COMPUsdOracle": "0x9301981F27950e6546033EADD046C86754263f2D",
++        "USDCUsdOracle": "0x89Be7D874a17cD0295B2d86436a920593b5f4480",
++        "AAVEUsdOracle": "0xDFF3455E08AB33B1599D1c5B5A1D65de63d3FCd0",
++        "GasPriceOracle": "0xFAE6fA2097792Edfd7429A282F21ec2D955279D9"
++    },
+     "staging-mainnet": {
+         "NameService": "0xC87FAb8A8CDD346079ca6177e47408Ba18066104",
+         "GReputation": "0xD50604E530fF36B2747aE8574b37B21B9f779d37",

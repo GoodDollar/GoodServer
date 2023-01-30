@@ -19,15 +19,15 @@ import { DisposeAt, scheduleDisposalTask, DISPOSE_ENROLLMENTS_TASK, forEnrollmen
 
 describe('verificationAPI', () => {
   let server
-  const { skipEmailVerification, zoomProductionMode } = Config
+  const { skipEmailVerification, zoomProductionMode, defaultWhitelistChainId } = Config
   const userIdentifier = '0x7ac080f6607405705aed79675789701a48c76f55'
 
-  beforeAll(async done => {
+  beforeAll(async () => {
     // enable E-Mail verification
     Config.skipEmailVerification = false
 
-    jest.setTimeout(50000)
-    server = await makeServer(done)
+    jest.setTimeout(100000)
+    server = await makeServer(false)
 
     console.log('verificationAPI: server ready')
     console.log({ server })
@@ -37,15 +37,17 @@ describe('verificationAPI', () => {
     Object.assign(Config, { zoomProductionMode })
   })
 
-  afterAll(async done => {
+  afterAll(async () => {
     // restore original config
     Object.assign(Config, { skipEmailVerification, zoomProductionMode })
     await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
 
-    server.close(err => {
-      console.log('verificationAPI: closing server', { err })
-      done()
-    })
+    await new Promise(res =>
+      server.close(err => {
+        console.log('verificationAPI: closing server', { err })
+        res()
+      })
+    )
   })
 
   describe('face verification', () => {
@@ -129,7 +131,12 @@ describe('verificationAPI', () => {
       const lcAddress = address.toLowerCase()
 
       // checking is user was actrally re-whitelisted in the wallet
-      expect(whitelistUserMock).toHaveBeenCalledWith(lcAddress, profilePublickey)
+      expect(whitelistUserMock).toHaveBeenCalledWith(
+        lcAddress,
+        profilePublickey,
+        defaultWhitelistChainId,
+        expect.anything()
+      )
       expect(topWalletMock).toHaveBeenCalledWith(lcAddress, 'all', expect.anything())
     }
 

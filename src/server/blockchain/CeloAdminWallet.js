@@ -5,8 +5,7 @@ const { celo, env } = conf
 const options = {
   ethereum: celo,
   network: `${env}-celo`,
-  initialGasPrice: (0.2 * 1e9).toFixed(0),
-  lazyInitialize: env === 'test' // disable auto init as Celo is disabled during tests
+  initialGasPrice: (0.2 * 1e9).toFixed(0)
 }
 
 export default new Web3Wallet('CeloAdminWallet', conf, options)

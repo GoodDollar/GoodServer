@@ -80,6 +80,10 @@ export default async (app: Router) => {
     next(error)
   })
 
+  if (env === 'test') {
+    return
+  }
+
   const CronTasksRunner = getTasksRunner()
   const cronTasksFactories = [createDisposeEnrollmentsTask]
 

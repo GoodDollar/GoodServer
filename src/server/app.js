@@ -16,24 +16,32 @@ EventEmitter.defaultMaxListeners = 100
 // we're logging uncaught exceptions in logger monitor so just exiting process
 process.on('uncaughtException', () => process.exit(-1))
 
-const startApp = async () => {
-  await withTimeout(MultiWallet.ready, 30000, 'wallet not initialized')
-    .then(addresses => {
-      log.info('AdminWallet ready', { addresses })
-    })
-    .catch(e => {
-      if (conf.env === 'test') {
-        return
-      }
+const startWallet = async () => {
+  const isTest = conf.env === 'test'
 
-      console.log('wallet failed... quiting', e)
+  try {
+    const addresses = await withTimeout(MultiWallet.ready, 30000, 'wallet not initialized')
+
+    log.info('AdminWallet ready', { addresses })
+  } catch (e) {
+    console.log('wallet failed...' + (isTest ? '' : ' quiting'), e)
+
+    if (!isTest) {
       process.exit(-1)
-    })
+    }
+  }
+}
 
+const startApp = async (withWallet = true) => {
   const app = express()
+
+  if (withWallet) {
+    startWallet()
+  }
 
   app.use(express.static('public'))
   middlewares(app)
+
   return app
 }
 

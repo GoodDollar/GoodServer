@@ -6,7 +6,7 @@ import cDaiABI from '@gooddollar/goodcontracts/build/contracts/cDAIMock.min.json
 import ContractsAddress from '@gooddollar/goodcontracts/stakingModel/releases/deployment.json'
 import fetch from 'cross-fetch'
 import AdminWallet from './AdminWallet'
-import { get, chunk, result, range, flatten } from 'lodash'
+import { get, chunk, result, range, flatten, once } from 'lodash'
 import logger from '../../imports/logger'
 import delay from 'delay'
 import moment from 'moment'
@@ -27,17 +27,26 @@ export class StakingModelManager {
   daiAddress = this.addresses['DAI']
   cDaiAddress = this.addresses['cDAI']
 
-  constructor() {
-    this.log = logger.child({ from: 'StakingModelManager' })
-    this.init()
+  get ready() {
+    return this.init()
   }
 
-  init = async () => {
+  constructor() {
+    this.log = logger.child({ from: 'StakingModelManager' })
+
+    if (config.env !== 'test') {
+      this.init()
+    }
+  }
+
+  init = once(async () => {
     await AdminWallet.ready
-    //polling timeout since ethereum has network congestion and we try to pay little gas so it will take a long time to confirm tx
+
+    // polling timeout since ethereum has network congestion and we try to pay little gas so it will take a long time to confirm tx
     this.managerContract = new AdminWallet.mainnetWeb3.eth.Contract(FundManagerABI.abi, this.managerAddress, {
       transactionPollingTimeout: 1000
     })
+
     this.stakingContract = new AdminWallet.mainnetWeb3.eth.Contract(StakingABI.abi, this.stakingAddress)
     this.dai = new AdminWallet.mainnetWeb3.eth.Contract(DaiABI.abi, this.daiAddress)
     this.cDai = new AdminWallet.mainnetWeb3.eth.Contract(cDaiABI.abi, this.cDaiAddress)
@@ -49,7 +58,7 @@ export class StakingModelManager {
       .ubiRecipient()
       .call()
       .then(_ => (this.ubiScheme = _))
-  }
+  })
 
   canCollectFunds = async () => this.managerContract.methods.canRun().call()
 
@@ -289,10 +298,23 @@ export const fundManager = new StakingModelManager()
 class FishingManager {
   ubiScheme = get(ContractsAddress, `${AdminWallet.network}.UBIScheme`)
 
+  get ready() {
+    return this.init()
+  }
+
   constructor() {
     this.log = logger.child({ from: 'FishingManager' })
-    this.ubiContract = new AdminWallet.web3.eth.Contract(UBISchemeABI.abi, this.ubiScheme)
+
+    if (config.env !== 'test') {
+      this.init()
+    }
   }
+
+  init = once(async () => {
+    await AdminWallet.ready
+
+    this.ubiContract = new AdminWallet.web3.eth.Contract(UBISchemeABI.abi, this.ubiScheme)
+  })
 
   /**
    * calculate the next claim epoch

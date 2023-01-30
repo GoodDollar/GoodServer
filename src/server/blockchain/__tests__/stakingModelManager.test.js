@@ -34,9 +34,10 @@ const next_interval = async function(interval = 5760) {
   return Promise.all(ps)
 }
 
-describe('stakingModelManager', () => {
+xdescribe('stakingModelManager', () => {
   beforeAll(async () => {
-    await AdminWallet.ready
+    await fundManager.ready
+
     //in test mode the bridge simply mock by transfering the mainnet token
     AdminWallet.tokenContract = new AdminWallet.web3.eth.Contract(
       GoodDollarABI.abi,

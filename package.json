@@ -10,7 +10,7 @@
   "scripts": {
     "build": "webpack --mode production --config webpack.server.config.js",
     "postbuild": "babel-node scripts/dbUpdates.js",
-    "test": "jest --silent=false --verbose=false --forceExit --detectOpenHandles --maxWorkers=1",
+    "test": "jest --silent=false --forceExit --detectOpenHandles --maxWorkers=1",
     "test:staging": "jest --forceExit --detectOpenHandles",
     "test:setup": "./scripts/blockchainTestSetup.sh",
     "coverage": "jest --forceExit --detectOpenHandles --coverage --maxWorkers=1",
@@ -25,7 +25,8 @@
     "docs": "node scripts/docs.js",
     "version": "auto-changelog -p && git add CHANGELOG.md",
     "lint": "eslint \"src/**/*.js\" --max-warnings=0",
-    "lint:fix": "npm run lint -- --fix"
+    "lint:fix": "npm run lint -- --fix",
+    "postinstall": "patch-package"
   },
   "repository": {
     "type": "git",
@@ -160,7 +161,7 @@
     "nodemon": "^2.0.20",
     "nodemon-webpack-plugin": "^4.3.2",
     "optimize-css-assets-webpack-plugin": "^6.0.1",
-    "patch-package": "^6.4.7",
+    "patch-package": "^6.5.1",
     "pino-pretty": "^2.6.1",
     "prettier": "^1.19.1",
     "promise.allsettled": "^1.0.2",

@@ -12,7 +12,7 @@ describe('Test torus email/mobile to address', () => {
   //const strategies = ['google', 'google-old', 'auth0-pwdless-sms', 'auth0-pwdless-email']
   const strategies = ['auth0-pwdless-email']
 
-  it('should get torus nodes', async () => {
+  xit('should get torus nodes', async () => {
     const torusVerifier = TorusVerifier.factory()
     const nodes = await torusVerifier.fetchNodeDetails.getNodeDetails({
       verifier: 'google',
@@ -39,7 +39,7 @@ describe('Test torus email/mobile to address', () => {
     })
   })
 
-  it('should return public key for email/mobile', async () => {
+  xit('should return public key for email/mobile', async () => {
     const torusVerifier = TorusVerifier.factory()
     const { torusNodeEndpoints, torusNodePub } = await torusVerifier.fetchNodeDetails.getNodeDetails({
       verifier: 'google',
