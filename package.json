@@ -86,7 +86,7 @@
     "hdkey": "^1.1.2",
     "i": "^0.3.7",
     "is-base64": "^1.1.0",
-    "jsonwebtoken": "^8.5.1",
+    "jsonwebtoken": "^9.0.0",
     "lodash": "^4.17.21",
     "math-random": "^1.0.4",
     "md5": "^2.3.0",
