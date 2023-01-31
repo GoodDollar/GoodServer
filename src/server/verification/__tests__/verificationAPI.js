@@ -27,7 +27,7 @@ describe('verificationAPI', () => {
     Config.skipEmailVerification = false
 
     jest.setTimeout(50000)
-    server = await makeServer(false)
+    server = await makeServer()
 
     console.log('verificationAPI: server ready')
     console.log({ server })

@@ -14,7 +14,6 @@ class MultiWallet {
   defaultChainId = null
 
   get ready() {
-    multiLogger.debug('MultiWallet await for ready')
     return Promise.all(map(this.wallets, 'ready')).then(() => this.mainWallet.addresses)
   }
 

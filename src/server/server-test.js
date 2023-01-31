@@ -5,9 +5,9 @@ import startApp from './app'
 
 const PORT = conf.port || 4000
 
-const makeServer = async (withWallet = true) => {
+const makeServer = async () => {
   let server
-  const app = await startApp(withWallet)
+  const app = await startApp()
 
   await new Promise((res, rej) => (server = app.listen(PORT, err => (err ? rej(err) : res()))))
   console.log(`App listening to ${PORT}....`)

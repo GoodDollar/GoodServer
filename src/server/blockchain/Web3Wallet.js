@@ -59,14 +59,12 @@ export const getAuthHeader = rpc => {
  */
 export class Web3Wallet {
   // defining vars here breaks "inheritance"
-
   get ready() {
     return this.initialize()
   }
 
   constructor(name, conf, options = null) {
-    const { ethereum = null, network = null, initialGasPrice = null, lazyInitialize = conf.env === 'test' } =
-      options || {}
+    const { ethereum = null, network = null, initialGasPrice = null, lazyInitialize = false } = options || {}
     const ethOpts = ethereum || conf.ethereum
     const { network_id: networkId } = ethOpts
     const log = logger.child({ from: `${name}/${this.networkId}` })

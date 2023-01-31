@@ -33,7 +33,7 @@ const setNextDay = async () => {
 
 xdescribe('fishManager', () => {
   beforeAll(async () => {
-    await fishManager.init()
+    await AdminWallet.ready
   })
 
   test(`fishManager get next day should be in the future (need to run script simulateInterestDays.js in goodcontracts)`, async () => {

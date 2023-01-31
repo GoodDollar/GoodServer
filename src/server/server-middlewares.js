@@ -80,6 +80,7 @@ export default async (app: Router) => {
     next(error)
   })
 
+  // do not add background tasks whilte running tests
   if (env === 'test') {
     return
   }

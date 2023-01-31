@@ -27,16 +27,9 @@ export class StakingModelManager {
   daiAddress = this.addresses['DAI']
   cDaiAddress = this.addresses['cDAI']
 
-  get ready() {
-    return this.init()
-  }
-
   constructor() {
     this.log = logger.child({ from: 'StakingModelManager' })
-
-    if (config.env !== 'test') {
-      this.init()
-    }
+    this.init()
   }
 
   init = once(async () => {
@@ -298,16 +291,9 @@ export const fundManager = new StakingModelManager()
 class FishingManager {
   ubiScheme = get(ContractsAddress, `${AdminWallet.network}.UBIScheme`)
 
-  get ready() {
-    return this.init()
-  }
-
   constructor() {
     this.log = logger.child({ from: 'FishingManager' })
-
-    if (config.env !== 'test') {
-      this.init()
-    }
+    this.init()
   }
 
   init = once(async () => {

@@ -32,13 +32,10 @@ const startWallet = async () => {
   }
 }
 
-const startApp = async (withWallet = true) => {
+const startApp = async () => {
   const app = express()
 
-  if (withWallet) {
-    startWallet()
-  }
-
+  await startWallet()
   app.use(express.static('public'))
   middlewares(app)
 

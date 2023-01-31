@@ -35,16 +35,9 @@ export class StakingModelManager {
   bridge = this.addresses['ForeignBridge']
   nameServiceAddress = this.addresses['NameService']
 
-  get ready() {
-    return this.init()
-  }
-
   constructor() {
     this.log = logger.child({ from: 'StakingModelManagerV2' })
-
-    if (config.env !== 'test') {
-      this.init()
-    }
+    this.init()
   }
 
   init = once(async () => {
@@ -341,14 +334,7 @@ class FishingManager {
 
   constructor() {
     this.log = logger.child({ from: 'FishingManager' })
-
-    if (config.env !== 'test') {
-      this.init()
-    }
-  }
-
-  get ready() {
-    return this.init()
+    this.init()
   }
 
   init = once(async () => {
