@@ -368,7 +368,7 @@ export class Web3Wallet {
         txHash = hash
       }
 
-      const txExtraArgs = chainId !== null ? [chainId, 0] : []
+      const txExtraArgs = conf.enableWhitelistAtChain && chainId !== null ? [chainId, 0] : []
 
       const txPromise = this.sendTransaction(this.proxyContract.methods.whitelist(address, did, ...txExtraArgs), {
         onTransactionHash

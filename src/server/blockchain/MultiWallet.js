@@ -59,13 +59,7 @@ class MultiWallet {
   }
 
   async whitelistUser(account, did, chainId = null, log = multiLogger) {
-    // instead of conf.celoEnabled check in Web3Wallet, should be performed here
-    // and without direct CELO references, see syncWhitelisted for example
-    // idea is to consider the case "other (extra)" wallet(s) available
-    // rathert than just CELO exactly
-    const chain = this.otherWallets.length > 0 ? chainId : null
-
-    return Promise.all(this.wallets.map(wallet => wallet.whitelistUser(account, did, chain, log)))
+    return Promise.all(this.wallets.map(wallet => wallet.whitelistUser(account, did, chainId, log)))
   }
 
   async removeWhitelisted(account) {
