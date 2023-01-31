@@ -20,7 +20,6 @@ import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 import { verifySignature } from '../utils/eth'
 import { shouldLogVerificaitonError } from './utils/logger'
 import { syncUserEmail } from '../storage/addUserSteps'
-import { setUserChainIdMiddleware } from '../blockchain/middleware'
 
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   /**
@@ -159,19 +158,18 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.put(
     '/verify/face/:enrollmentIdentifier',
     passport.authenticate('jwt', { session: false }),
-    // removes chainId from body and adds to user. moved to small middleware
-    // because req object modifications is theirs job in ExpressJS
-    // while endpoints should just read data received keeping it immutable
-    setUserChainIdMiddleware(),
     wrapAsync(async (req, res) => {
-      const { user, log, params, body: payload } = req
+      const { user, log, params, body } = req
       const { enrollmentIdentifier } = params
+      const { chainId, ...payload } = body || {}
 
       // checking if request aborted to handle cases when connection is slow
       // and facemap / images were uploaded more that 30sec causing timeout
       if (req.aborted) {
         return
       }
+
+      user.chainId = chainId || conf.defaultWhitelistChainId
 
       try {
         const enrollmentProcessor = createEnrollmentProcessor(storage, log)
