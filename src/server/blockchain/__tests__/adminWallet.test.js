@@ -6,7 +6,7 @@ import txManager from '../../utils/tx-manager'
 const web3 = new Web3()
 const generateWalletAddress = () => web3.eth.accounts.create().address
 
-xdescribe('adminwallet', () => {
+describe('adminwallet', () => {
   beforeAll(async () => {
     await AdminWallet.ready
   })
@@ -29,6 +29,17 @@ xdescribe('adminwallet', () => {
     const isVerified = await AdminWallet.isVerified(unverifiedAddress)
 
     expect(isVerified).toBeTruthy()
+  })
+
+  test('adminWallet can whitelist user with chainid', async () => {
+    const unverifiedAddress = generateWalletAddress()
+    await AdminWallet.whitelistUser(unverifiedAddress, 'did:gd' + Math.random(), 123)
+    const isVerified = await AdminWallet.isVerified(unverifiedAddress)
+    const registeredChainId = await AdminWallet.identityContract.methods
+      .getWhitelistedOnChainId(unverifiedAddress)
+      .call()
+    expect(isVerified).toBeTruthy()
+    expect(registeredChainId).toBe('123')
   })
 
   test('adminWallet can authenticate user', async () => {

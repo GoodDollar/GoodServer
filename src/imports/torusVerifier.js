@@ -59,7 +59,7 @@ class TorusVerifier {
     const torus = new TorusUtils()
 
     const fetchNodeDetails = new FetchNodeDetails({
-      network: torusNetwork,
+      network: torusNetwork !== 'mainnet' ? 'testnet' : 'mainnet',
       proxyAddress: torusNetwork !== 'mainnet' ? PROXY_ADDRESS_TESTNET : PROXY_ADDRESS_MAINNET
     })
 

@@ -9,7 +9,6 @@ import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../
 import { default as AdminWallet } from '../blockchain/MultiWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
 import requestRateLimiter from '../utils/requestRateLimiter'
-// import fuseapi from '../utils/fuseapi'
 import OTP from '../../imports/otp'
 import conf from '../server.config'
 import OnGage from '../crm/ongage'

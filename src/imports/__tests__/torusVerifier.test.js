@@ -12,7 +12,7 @@ describe('Test torus email/mobile to address', () => {
   //const strategies = ['google', 'google-old', 'auth0-pwdless-sms', 'auth0-pwdless-email']
   const strategies = ['auth0-pwdless-email']
 
-  xit('should get torus nodes', async () => {
+  it('should get torus nodes', async () => {
     const torusVerifier = TorusVerifier.factory()
     const nodes = await torusVerifier.fetchNodeDetails.getNodeDetails({
       verifier: 'google',
@@ -20,7 +20,7 @@ describe('Test torus email/mobile to address', () => {
     })
 
     expect(nodes).toMatchObject({
-      nodeListAddress: '0x6258c9d6c12ed3edda59a1a6527e469517744aa7',
+      nodeListAddress: '0xd084604e5FA387FbC2Da8bAab07fDD6aDED4614A',
       torusNodeEndpoints: expect.any(Array)
     })
   })
@@ -39,7 +39,7 @@ describe('Test torus email/mobile to address', () => {
     })
   })
 
-  xit('should return public key for email/mobile', async () => {
+  it('should return public key for email/mobile', async () => {
     const torusVerifier = TorusVerifier.factory()
     const { torusNodeEndpoints, torusNodePub } = await torusVerifier.fetchNodeDetails.getNodeDetails({
       verifier: 'google',
