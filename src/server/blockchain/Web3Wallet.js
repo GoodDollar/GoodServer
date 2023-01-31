@@ -183,95 +183,94 @@ export class Web3Wallet {
 
       log.info('Initialized by mnemonic:', { address: this.addresses })
     }
-
-    const adminWalletAddress = get(ContractsAddress, `${this.network}.AdminWallet`)
-    log.info('Obtained AdminWallet address', { adminWalletAddress, network: this.network })
-
-    const adminWalletContractBalance = await this.web3.eth.getBalance(adminWalletAddress)
-    log.info(`AdminWallet contract balance`, { adminWalletContractBalance, adminWalletAddress })
-
-    this.proxyContract = new this.web3.eth.Contract(ProxyContractABI.abi, adminWalletAddress, { from: this.address })
-
-    const maxAdminBalance = await this.proxyContract.methods.adminToppingAmount().call()
-    const minAdminBalance = parseInt(web3Utils.fromWei(maxAdminBalance, 'gwei')) / 2
-
-    if (web3Utils.fromWei(adminWalletContractBalance, 'gwei') < minAdminBalance * this.addresses.length) {
-      log.error('AdminWallet contract low funds')
-      sendSlackAlert({ msg: 'AdminWallet contract low funds', adminWalletAddress, adminWalletContractBalance })
-
-      if (this.conf.env !== 'test' && this.conf.env !== 'development') {
-        process.exit(-1)
-      }
-    }
-
-    this.txManager.getTransactionCount = this.web3.eth.getTransactionCount
-    await this.txManager.createListIfNotExists(this.addresses)
-
-    log.info('Initialized wallet queue manager')
-
-    if (this.conf.topAdminsOnStartup) {
-      await this.topAdmins(0, this.conf.numberOfAdminWalletAccounts).catch(e => {
-        log.warn('Top admins failed', { e, errMessage: e.message })
-      })
-    }
-
-    log.info('Initializing adminwallet addresses', { addresses: this.addresses })
-
-    await Promise.all(
-      this.addresses.map(async addr => {
-        const balance = await this.web3.eth.getBalance(addr)
-        const isAdminWallet = await this.isVerifiedAdmin(addr)
-
-        log.info(`try address ${addr}:`, { balance, isAdminWallet, minAdminBalance })
-
-        if (isAdminWallet && parseFloat(web3Utils.fromWei(balance, 'gwei')) > minAdminBalance) {
-          log.info(`admin wallet ${addr} balance ${balance}`)
-          this.filledAddresses.push(addr)
-        }
-      })
-    )
-
-    log.info('Initialized adminwallet addresses', { filled: this.filledAddresses })
-
-    if (this.filledAddresses.length === 0) {
-      log.error('no admin wallet with funds')
-
-      sendSlackAlert({
-        msg: 'critical: no fuse admin wallet with funds'
-      })
-
-      if (this.conf.env !== 'test' && this.conf.env !== 'development') {
-        process.exit(-1)
-      }
-    }
-
-    this.address = this.filledAddresses[0]
-
-    this.identityContract = new this.web3.eth.Contract(
-      IdentityABI.abi,
-      get(ContractsAddress, `${this.network}.Identity`),
-      { from: this.address }
-    )
-
-    this.tokenContract = new this.web3.eth.Contract(
-      GoodDollarABI.abi,
-      get(ContractsAddress, `${this.network}.GoodDollar`),
-      { from: this.address }
-    )
-
-    this.UBIContract = new this.web3.eth.Contract(UBIABI.abi, get(ContractsAddress, `${this.network}.UBIScheme`), {
-      from: this.address
-    })
-
-    this.faucetContract = new this.web3.eth.Contract(
-      FaucetABI.abi,
-      get(ContractsAddress, `${this.network}.FuseFaucet`),
-      {
-        from: this.address
-      }
-    )
-
     try {
+      const adminWalletAddress = get(ContractsAddress, `${this.network}.AdminWallet`)
+      log.info('Obtained AdminWallet address', { adminWalletAddress, network: this.network })
+
+      const adminWalletContractBalance = await this.web3.eth.getBalance(adminWalletAddress)
+      log.info(`AdminWallet contract balance`, { adminWalletContractBalance, adminWalletAddress })
+
+      this.proxyContract = new this.web3.eth.Contract(ProxyContractABI.abi, adminWalletAddress, { from: this.address })
+
+      const maxAdminBalance = await this.proxyContract.methods.adminToppingAmount().call()
+      const minAdminBalance = parseInt(web3Utils.fromWei(maxAdminBalance, 'gwei')) / 2
+
+      if (web3Utils.fromWei(adminWalletContractBalance, 'gwei') < minAdminBalance * this.addresses.length) {
+        log.error('AdminWallet contract low funds')
+        sendSlackAlert({ msg: 'AdminWallet contract low funds', adminWalletAddress, adminWalletContractBalance })
+
+        if (this.conf.env !== 'test' && this.conf.env !== 'development') {
+          process.exit(-1)
+        }
+      }
+
+      this.txManager.getTransactionCount = this.web3.eth.getTransactionCount
+      await this.txManager.createListIfNotExists(this.addresses)
+
+      log.info('Initialized wallet queue manager')
+
+      if (this.conf.topAdminsOnStartup) {
+        await this.topAdmins(0, this.conf.numberOfAdminWalletAccounts).catch(e => {
+          log.warn('Top admins failed', { e, errMessage: e.message })
+        })
+      }
+
+      log.info('Initializing adminwallet addresses', { addresses: this.addresses })
+
+      await Promise.all(
+        this.addresses.map(async addr => {
+          const balance = await this.web3.eth.getBalance(addr)
+          const isAdminWallet = await this.isVerifiedAdmin(addr)
+
+          log.info(`try address ${addr}:`, { balance, isAdminWallet, minAdminBalance })
+
+          if (isAdminWallet && parseFloat(web3Utils.fromWei(balance, 'gwei')) > minAdminBalance) {
+            log.info(`admin wallet ${addr} balance ${balance}`)
+            this.filledAddresses.push(addr)
+          }
+        })
+      )
+
+      log.info('Initialized adminwallet addresses', { filled: this.filledAddresses })
+
+      if (this.filledAddresses.length === 0) {
+        log.error('no admin wallet with funds')
+
+        sendSlackAlert({
+          msg: 'critical: no fuse admin wallet with funds'
+        })
+
+        if (this.conf.env !== 'test' && this.conf.env !== 'development') {
+          process.exit(-1)
+        }
+      }
+
+      this.address = this.filledAddresses[0]
+
+      this.identityContract = new this.web3.eth.Contract(
+        IdentityABI.abi,
+        get(ContractsAddress, `${this.network}.Identity`),
+        { from: this.address }
+      )
+
+      this.tokenContract = new this.web3.eth.Contract(
+        GoodDollarABI.abi,
+        get(ContractsAddress, `${this.network}.GoodDollar`),
+        { from: this.address }
+      )
+
+      this.UBIContract = new this.web3.eth.Contract(UBIABI.abi, get(ContractsAddress, `${this.network}.UBIScheme`), {
+        from: this.address
+      })
+
+      this.faucetContract = new this.web3.eth.Contract(
+        FaucetABI.abi,
+        get(ContractsAddress, `${this.network}.FuseFaucet`),
+        {
+          from: this.address
+        }
+      )
+
       let gdbalance = await this.tokenContract.methods
         .balanceOf(this.address)
         .call()
