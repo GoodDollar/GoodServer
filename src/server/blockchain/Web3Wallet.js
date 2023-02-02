@@ -67,8 +67,8 @@ export class Web3Wallet {
     const { ethereum = null, network = null, initialGasPrice = null, fetchGasPrice = false } = options || {}
     const ethOpts = ethereum || conf.ethereum
     const { network_id: networkId } = ethOpts
-    const log = logger.child({ from: `${name}/${this.networkId}` })
 
+    this.name = name
     this.addresses = []
     this.filledAddresses = []
     this.wallets = {}
@@ -81,6 +81,7 @@ export class Web3Wallet {
     this.gasPrice = initialGasPrice || defaultGasPrice
     this.log = log
     this.fetchGasPrice = fetchGasPrice || estimateGasPrice
+    const log = logger.child({ from: `${name}/${this.networkId}` })
 
     this.initialize()
   }
@@ -192,7 +193,11 @@ export class Web3Wallet {
 
       if (web3Utils.fromWei(adminWalletContractBalance, 'gwei') < minAdminBalance * this.addresses.length) {
         log.error('AdminWallet contract low funds')
-        sendSlackAlert({ msg: 'AdminWallet contract low funds', adminWalletAddress, adminWalletContractBalance })
+        sendSlackAlert({
+          msg: `AdminWallet contract low funds ${this.name}`,
+          adminWalletAddress,
+          adminWalletContractBalance
+        })
 
         if (this.conf.env !== 'test' && this.conf.env !== 'development') {
           process.exit(-1)
@@ -232,7 +237,7 @@ export class Web3Wallet {
         log.error('no admin wallet with funds')
 
         sendSlackAlert({
-          msg: 'critical: no fuse admin wallet with funds'
+          msg: `critical: no fuse admin wallet with funds ${this.name}`
         })
 
         if (this.conf.env !== 'test' && this.conf.env !== 'development') {
@@ -813,7 +818,7 @@ export class Web3Wallet {
                 balance
               })
 
-              sendSlackAlert({ msg: 'admin account funds low', address, balance })
+              sendSlackAlert({ msg: 'admin account funds low', address, balance, name: this.name })
               await this.txManager.unlock(address)
 
               try {
