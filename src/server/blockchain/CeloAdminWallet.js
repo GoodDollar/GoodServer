@@ -5,8 +5,8 @@ const { celo, env } = conf
 const options = {
   ethereum: celo,
   network: `${env}-celo`,
-  initialGasPrice: (0.25 * 1e9).toFixed(0),
-  fetchGasPrice: true
+  initialGasPrice: (1 * 1e9).toFixed(0),
+  fetchGasPrice: false
 }
 
 export default new Web3Wallet('CeloAdminWallet', conf, options)
