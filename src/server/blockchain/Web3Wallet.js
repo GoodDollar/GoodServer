@@ -79,9 +79,8 @@ export class Web3Wallet {
     this.networkId = networkId
     this.numberOfAdminWalletAccounts = conf.privateKey ? 1 : conf.numberOfAdminWalletAccounts
     this.gasPrice = initialGasPrice || defaultGasPrice
-    this.log = log
     this.fetchGasPrice = fetchGasPrice || estimateGasPrice
-    const log = logger.child({ from: `${name}/${this.networkId}` })
+    this.log = logger.child({ from: `${name}/${this.networkId}` })
 
     this.initialize()
   }
