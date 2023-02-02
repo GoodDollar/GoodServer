@@ -64,7 +64,7 @@ export class Web3Wallet {
   }
 
   constructor(name, conf, options = null) {
-    const { ethereum = null, network = null, initialGasPrice = null, lazyInitialize = false } = options || {}
+    const { ethereum = null, network = null, initialGasPrice = null, fetchGasPrice = false } = options || {}
     const ethOpts = ethereum || conf.ethereum
     const { network_id: networkId } = ethOpts
     const log = logger.child({ from: `${name}/${this.networkId}` })
@@ -80,14 +80,9 @@ export class Web3Wallet {
     this.numberOfAdminWalletAccounts = conf.privateKey ? 1 : conf.numberOfAdminWalletAccounts
     this.gasPrice = initialGasPrice || defaultGasPrice
     this.log = log
+    this.fetchGasPrice = fetchGasPrice || estimateGasPrice
 
-    log.debug('Lazy initialize:', { lazyInitialize })
-
-    if (lazyInitialize) {
-      log.debug('Skipping init till the first .ready await')
-    } else {
-      this.initialize()
-    }
+    this.initialize()
   }
 
   async initialize() {
@@ -156,7 +151,7 @@ export class Web3Wallet {
 
     assign(this.web3.eth, web3Default)
 
-    if (estimateGasPrice) {
+    if (this.fetchGasPrice) {
       await this.web3.eth
         .getGasPrice()
         .then(price => (this.gasPrice = price))
