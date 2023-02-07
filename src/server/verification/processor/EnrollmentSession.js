@@ -49,7 +49,7 @@ export default class EnrollmentSession {
 
       log.info('Enrollment session completed with result:', enrollmentResult)
 
-      await this.onEnrollmentCompleted()
+      this.onEnrollmentCompleted() //dont await for all blockchain etc tasks and return response
       assign(result, { enrollmentResult })
     } catch (exception) {
       const { response, message } = exception
