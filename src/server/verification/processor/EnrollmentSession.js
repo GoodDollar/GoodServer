@@ -49,7 +49,7 @@ export default class EnrollmentSession {
 
       log.info('Enrollment session completed with result:', enrollmentResult)
 
-      this.onEnrollmentCompleted() //dont await for all blockchain etc tasks and return response
+      await this.onEnrollmentCompleted()
       assign(result, { enrollmentResult })
     } catch (exception) {
       const { response, message } = exception
@@ -118,9 +118,10 @@ export default class EnrollmentSession {
     const { user, storage, adminApi, log, enrollmentIdentifier, _logWrap } = this
     const { gdAddress, profilePublickey, loggedInAs, crmId, chainId } = user
 
-    const whitelistingTasks = [
-      () => storage.updateUser({ identifier: loggedInAs, isVerified: true }),
+    log.info('Whitelisting user:', { loggedInAs })
+    await storage.updateUser({ identifier: loggedInAs, isVerified: true })
 
+    const whitelistingTasks = [
       _logWrap(
         () => scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.Reauthenticate),
         null,
@@ -155,8 +156,8 @@ export default class EnrollmentSession {
       log.warn('missing crmId', { user })
     }
 
-    log.info('Whitelisting user:', { loggedInAs })
-    await Promise.all(over(whitelistingTasks)())
+    // dont await for all blockchain etc tasks and return response
+    over(whitelistingTasks)()
   }
 
   async onEnrollmentFailed() {
