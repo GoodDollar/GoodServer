@@ -122,7 +122,7 @@ export class Web3Wallet {
       }
     }
 
-    log.debug({ conf: this.conf, web3Provider, provider })
+    log.debug({ conf: this.conf, web3Provider, provider, wallet: this.name, network: this.networkId })
     return web3Provider
   }
 
@@ -366,9 +366,15 @@ export class Web3Wallet {
 
       const txExtraArgs = conf.enableWhitelistAtChain && chainId !== null ? [chainId, 0] : []
 
-      const txPromise = this.sendTransaction(this.proxyContract.methods.whitelist(address, did, ...txExtraArgs), {
-        onTransactionHash
-      })
+      const txPromise = this.sendTransaction(
+        this.proxyContract.methods.whitelist(address, did, ...txExtraArgs),
+        {
+          onTransactionHash
+        },
+        undefined,
+        true,
+        log
+      )
 
       const tx = await txPromise
 
@@ -748,7 +754,7 @@ export class Web3Wallet {
           .estimateGas()
           .then(gas => parseInt(gas) + 200000) //buffer for proxy contract, reimburseGas?
           .catch(e => {
-            logger.warn('Failed to estimate gas for tx', e.message, e)
+            logger.warn('Failed to estimate gas for tx', e.message, e, { wallet: this.name, network: this.networkId })
             return defaultGas
           }))
 
@@ -814,10 +820,18 @@ export class Web3Wallet {
                 gas,
                 gasPrice,
                 address,
-                balance
+                balance,
+                wallet: this.name,
+                network: this.networkId
               })
 
-              sendSlackAlert({ msg: 'admin account funds low', address, balance, name: this.name })
+              sendSlackAlert({
+                msg: 'admin account funds low',
+                address,
+                balance,
+                wallet: this.name,
+                network: this.networkId
+              })
               await this.txManager.unlock(address)
 
               try {
@@ -835,7 +849,9 @@ export class Web3Wallet {
                 gas,
                 gasPrice,
                 address,
-                newNonce: netNonce
+                newNonce: netNonce,
+                wallet: this.name,
+                network: this.networkId
               })
 
               await this.txManager.unlock(address, netNonce)
@@ -858,7 +874,7 @@ export class Web3Wallet {
           })
       })
 
-      const response = await withTimeout(txPromise, FUSE_TX_TIMEOUT, 'fuse tx timeout')
+      const response = await withTimeout(txPromise, FUSE_TX_TIMEOUT, `${this.name} tx timeout`)
 
       return response
     } catch (e) {
@@ -868,16 +884,29 @@ export class Web3Wallet {
       if (txHash && e.message.toLowerCase().includes('timeout')) {
         const receipt = await this.web3.eth.getTransactionReceipt(txHash).catch()
         if (receipt) {
-          logger.info('receipt found for timedout tx', { uuid, txHash, receipt })
+          logger.info('receipt found for timedout tx', {
+            uuid,
+            txHash,
+            receipt,
+            wallet: this.name,
+            network: this.networkId
+          })
           return receipt
         }
       }
       if (retry && e.message.includes('fuse tx timeout')) {
-        logger.warn('sendTransaction timeout retrying:', { uuid, txHash })
+        logger.warn('sendTransaction timeout retrying:', { uuid, txHash, wallet: this.name, network: this.networkId })
         return this.sendTransaction(tx, txCallbacks, { gas, gasPrice }, false, logger)
       }
 
-      logger.error('sendTransaction error:', e.message, e, { from: currentAddress, uuid, txHash, retry })
+      logger.error('sendTransaction error:', e.message, e, {
+        from: currentAddress,
+        uuid,
+        txHash,
+        retry,
+        wallet: this.name,
+        network: this.networkId
+      })
       throw new Error(e)
     }
   }
@@ -948,7 +977,9 @@ export class Web3Wallet {
                 gas,
                 gasPrice,
                 address,
-                newNonce: netNonce
+                newNonce: netNonce,
+                wallet: this.name,
+                network: this.networkId
               })
 
               await this.txManager.unlock(address, netNonce)
@@ -966,7 +997,7 @@ export class Web3Wallet {
                 onError(e)
               }
 
-              log.error('sendNative failed', message, e)
+              log.error('sendNative failed', message, e, { wallet: this.name, network: this.networkId })
               rej(e)
             }
           })
