@@ -49,7 +49,7 @@ export default class EnrollmentSession {
 
       log.info('Enrollment session completed with result:', enrollmentResult)
 
-      this.onEnrollmentCompleted() //dont await for all blockchain etc tasks and return response
+      await this.onEnrollmentCompleted()
       assign(result, { enrollmentResult })
     } catch (exception) {
       const { response, message } = exception
@@ -118,6 +118,12 @@ export default class EnrollmentSession {
     const { user, storage, adminApi, log, enrollmentIdentifier, _logWrap } = this
     const { gdAddress, profilePublickey, loggedInAs, crmId, chainId } = user
 
+    const whitelistTask = _logWrap(
+      () => adminApi.whitelistUser(gdAddress, profilePublickey || gdAddress, chainId, log),
+      'Successfully whitelisted user:',
+      'whitelisting after fv failed'
+    )()
+
     const whitelistingTasks = [
       () => storage.updateUser({ identifier: loggedInAs, isVerified: true }),
 
@@ -127,12 +133,6 @@ export default class EnrollmentSession {
         'adding facemap to re-auth dispose queue failed:',
         { enrollmentIdentifier },
         {}
-      ),
-
-      _logWrap(
-        () => adminApi.whitelistUser(gdAddress, profilePublickey || gdAddress, chainId, log),
-        'Successfully whitelisted user:',
-        'whitelisting after fv failed'
       ),
 
       _logWrap(
@@ -156,7 +156,8 @@ export default class EnrollmentSession {
     }
 
     log.info('Whitelisting user:', { loggedInAs })
-    await Promise.all(over(whitelistingTasks)())
+    over(whitelistingTasks)() //dont wait on tasks that can be done in background
+    await whitelistTask // wait only for whitelisting to be done successfully
   }
 
   async onEnrollmentFailed() {
