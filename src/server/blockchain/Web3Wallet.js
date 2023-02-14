@@ -264,7 +264,7 @@ export class Web3Wallet {
 
       this.faucetContract = new this.web3.eth.Contract(
         FaucetABI.abi,
-        get(ContractsAddress, `${this.network}.FuseFaucet`),
+        get(ContractsAddress, `${this.network}.FuseFaucet`, get(ContractsAddress, `${this.network}.Faucet`)),
         {
           from: this.address
         }
@@ -337,9 +337,10 @@ export class Web3Wallet {
     address: string,
     did: string,
     chainId: number = null,
-    logger = null
+    customLogger = null
   ): Promise<TransactionReceipt | boolean> {
-    const log = logger || this.log
+    const log = customLogger || this.log
+
     const isVerified = await this.isVerified(address)
 
     if (isVerified) {
@@ -360,7 +361,7 @@ export class Web3Wallet {
       }
 
       const onTransactionHash = hash => {
-        log.debug('WhitelistUser got txhash:', { hash, address, did })
+        log.debug('WhitelistUser got txhash:', { hash, address, did, wallet: this.name })
         txHash = hash
       }
 
@@ -378,12 +379,12 @@ export class Web3Wallet {
 
       const tx = await txPromise
 
-      log.info('Whitelisted user', { txHash, address, did, tx })
+      log.info('Whitelisted user', { txHash, address, did, tx, wallet: this.name })
       return tx
     } catch (exception) {
       const { message } = exception
 
-      log.warn('Error whitelistUser', message, exception, { txHash, address, did })
+      log.warn('Error whitelistUser', message, exception, { txHash, address, did, wallet: this.name })
       throw exception
     }
   }
@@ -409,7 +410,7 @@ export class Web3Wallet {
       const transaction = await this.proxyContract.methods.genericCall(this.identityContract._address, encodedCall, 0)
       const tx = await this.sendTransaction(transaction, {}, { gas: 500000 })
 
-      log.info('authenticated user', { address, tx })
+      log.info('authenticated user', { address, tx, wallet: this.name })
       return tx
     } catch (exception) {
       const { message } = exception
@@ -547,13 +548,13 @@ export class Web3Wallet {
       .catch(e => e)
 
     if (canTopOrError !== true) {
-      logger.debug('Topwallet will revert, skipping', { address, canTopOrError })
-      throw new Error('Topwallet will revert, probably user passed limit')
+      logger.debug('Topwallet will revert, skipping', { address, canTopOrError, wallet: this.name })
+      throw new Error(`${this.name}: Topwallet will revert, probably user passed limit`)
     }
 
     try {
       const onTransactionHash = hash => {
-        logger.debug('Topwallet got txhash:', { hash, address })
+        logger.debug('Topwallet got txhash:', { hash, address, wallet: this.name })
         txHash = hash
       }
 
@@ -565,10 +566,10 @@ export class Web3Wallet {
         logger
       )
 
-      logger.debug('Topwallet result:', { txHash, address, res })
+      logger.debug('Topwallet result:', { txHash, address, res, wallet: this.name })
       return res
     } catch (e) {
-      logger.error('Error topWallet', e.message, e, { txHash, address })
+      logger.error('Error topWallet', e.message, e, { txHash, address, wallet: this.name })
       throw e
     }
   }
@@ -579,7 +580,7 @@ export class Web3Wallet {
     try {
       const canTop = await this.faucetContract.methods.canTop(address).call()
 
-      logger.debug('topWalletFaucet canTop result:', { address, canTop })
+      logger.debug('topWalletFaucet canTop result:', { address, canTop, wallet: this.name })
 
       if (canTop === false) {
         return false
@@ -591,12 +592,13 @@ export class Web3Wallet {
       logger.debug('topWalletFaucet:', {
         address,
         userBalance: userBalance.toString(),
-        faucetTxCost: faucetTxCost.toString()
+        faucetTxCost: faucetTxCost.toString(),
+        wallet: this.name
       })
 
       // user can't call faucet directly
       if (userBalance.gte(faucetTxCost)) {
-        logger.debug('User has enough gas to call faucet', { address })
+        logger.debug('User has enough gas to call faucet', { address, wallet: this.name })
         return true
       }
 
@@ -615,13 +617,14 @@ export class Web3Wallet {
       )
 
       const transaction = this.proxyContract.methods.genericCall(this.faucetContract._address, encodedCall, 0)
-      const onTransactionHash = hash => void logger.debug('topWalletFaucet got txhash:', { hash, address })
+      const onTransactionHash = hash =>
+        void logger.debug('topWalletFaucet got txhash:', { hash, address, wallet: this.name })
       const res = await this.sendTransaction(transaction, { onTransactionHash }, { gas: 500000 }, true, logger)
 
-      logger.debug('topWalletFaucet result:', { address, res })
+      logger.debug('topWalletFaucet result:', { address, res, wallet: this.name })
       return res
     } catch (e) {
-      logger.error('Error topWalletFaucet', e.message, e, { address })
+      logger.error('Error topWalletFaucet', e.message, e, { address, wallet: this.name })
       throw e
     }
   }
@@ -741,8 +744,8 @@ export class Web3Wallet {
     retry = true,
     customLogger = null
   ) {
-    let currentAddress, txHash
-    const uuid = Crypto.randomBytes(5).toString('base64')
+    let currentAddress, txHash, currentNonce
+    const txuuid = Crypto.randomBytes(5).toString('base64')
     const logger = customLogger || this.log
 
     try {
@@ -765,11 +768,11 @@ export class Web3Wallet {
 
       gasPrice = gasPrice || this.gasPrice
 
-      logger.debug('getting tx lock:', { uuid })
+      logger.debug('getting tx lock:', { txuuid })
 
       const { nonce, release, fail, address } = await this.txManager.lock(this.filledAddresses)
 
-      logger.debug('got tx lock:', { uuid, address })
+      logger.debug('got tx lock:', { txuuid, address })
 
       let balance = NaN
 
@@ -778,8 +781,8 @@ export class Web3Wallet {
       }
 
       currentAddress = address
-
-      logger.debug(`sending tx from:`, { address, nonce, uuid, balance, gas, gasPrice })
+      currentNonce = nonce
+      logger.debug(`sending tx from:`, { address, nonce, txuuid, balance, gas, gasPrice, wallet: this.name })
 
       let txPromise = new Promise((res, rej) => {
         tx.send({ gas, gasPrice, chainId: this.networkId, nonce, from: address, type: 0 })
@@ -787,17 +790,17 @@ export class Web3Wallet {
             release()
 
             txHash = h
-            logger.debug('got tx hash:', { uuid, txHash })
+            logger.debug('got tx hash:', { txuuid, txHash, wallet: this.name })
 
             if (onTransactionHash) {
               onTransactionHash(h)
             }
           })
           .on('sent', payload => {
-            logger.debug('tx sent:', { txHash, payload })
+            logger.debug('tx sent:', { txHash, payload, txuuid, wallet: this.name })
           })
           .on('receipt', r => {
-            logger.debug('got tx receipt:', { uuid })
+            logger.debug('got tx receipt:', { txuuid, txHash, wallet: this.name })
 
             if (onReceipt) {
               onReceipt(r)
@@ -878,14 +881,16 @@ export class Web3Wallet {
 
       return response
     } catch (e) {
-      await this.txManager.unlock(currentAddress)
+      //reset nonce on every error, on celo we dont get nonce errors
+      let netNonce = parseInt(await this.web3.eth.getTransactionCount(currentAddress))
+      await this.txManager.unlock(currentAddress, netNonce)
 
       //check if tx did go through after timeout or not
       if (txHash && e.message.toLowerCase().includes('timeout')) {
         const receipt = await this.web3.eth.getTransactionReceipt(txHash).catch()
         if (receipt) {
           logger.info('receipt found for timedout tx', {
-            uuid,
+            txuuid,
             txHash,
             receipt,
             wallet: this.name,
@@ -894,14 +899,24 @@ export class Web3Wallet {
           return receipt
         }
       }
-      if (retry && e.message.includes('fuse tx timeout')) {
-        logger.warn('sendTransaction timeout retrying:', { uuid, txHash, wallet: this.name, network: this.networkId })
+      if (retry && e.message.includes('tx timeout')) {
+        logger.warn('sendTransaction timeout retrying:', {
+          currentAddress,
+          currentNonce,
+          netNonce,
+          txuuid,
+          txHash,
+          wallet: this.name,
+          network: this.networkId
+        })
         return this.sendTransaction(tx, txCallbacks, { gas, gasPrice }, false, logger)
       }
 
       logger.error('sendTransaction error:', e.message, e, {
         from: currentAddress,
-        uuid,
+        currentNonce,
+        netNonce,
+        txuuid,
         txHash,
         retry,
         wallet: this.name,
