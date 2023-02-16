@@ -137,7 +137,7 @@ class OnGage implements CrmApi {
 
       return get(existingContact, 'payload.id')
     } catch (exception) {
-      if (404 !== get(exception, 'response.data.payload.code')) {
+      if (404 !== get(exception, 'response.status')) {
         throw exception
       }
     }
@@ -297,9 +297,13 @@ class OnGage implements CrmApi {
       },
       async exception => {
         const { message, response = {} } = exception
-        const { url, data: body, logger = log } = response.config || {}
+        const { config, status } = response
+        const { url, data: body, logger = log } = config || {}
 
-        logger.warn('OnGage error:', message, exception, { url, body })
+        if (404 !== status) {
+          logger.warn('OnGage error:', message, exception, { url, body })
+        }
+
         throw exception
       }
     )
