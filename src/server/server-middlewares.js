@@ -37,7 +37,7 @@ const stakingModelTasks = [
 export default async (app: Router) => {
   const corsConfig = {
     credentials: true,
-    origin: env === 'production' ? /(\.gooddollar\.org$)|localhost|localhost:3000/ : true
+    origin: env === 'production' ? /(\.?goodd(ollar|app)\.org$)|localhost|localhost:3000/ : true
   }
 
   if (env === 'production') {
