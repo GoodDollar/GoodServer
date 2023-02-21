@@ -64,10 +64,12 @@ export class Web3Wallet {
   }
 
   constructor(name, conf, options = null) {
-    const { ethereum = null, network = null, initialGasPrice = null, fetchGasPrice = false } = options || {}
+    const { ethereum = null, network = null, initialGasPrice = null, fetchGasPrice = false, faucetTxCost = 150000 } =
+      options || {}
     const ethOpts = ethereum || conf.ethereum
     const { network_id: networkId } = ethOpts
 
+    this.faucetTxCost = faucetTxCost
     this.name = name
     this.addresses = []
     this.filledAddresses = []
@@ -587,7 +589,7 @@ export class Web3Wallet {
       }
 
       let userBalance = web3Utils.toBN(await this.web3.eth.getBalance(address))
-      let faucetTxCost = web3Utils.toBN('150000').mul(web3Utils.toBN(this.gasPrice))
+      let faucetTxCost = web3Utils.toBN(this.faucetTxCost).mul(web3Utils.toBN(this.gasPrice))
 
       logger.debug('topWalletFaucet:', {
         address,
@@ -693,7 +695,7 @@ export class Web3Wallet {
       logger.info('transferWalletGooDollars sending tx', { encodedCall, to, value })
 
       const transaction = await this.proxyContract.methods.genericCall(this.tokenContract._address, encodedCall, 0)
-      const tx = await this.sendTransaction(transaction, {}, { gas: 200000 }, false, logger)
+      const tx = await this.sendTransaction(transaction, {}, { gas: 500000 }, false, logger)
 
       logger.info('transferWalletGooDollars success', { to, value, tx: tx.transactionHash })
       return tx

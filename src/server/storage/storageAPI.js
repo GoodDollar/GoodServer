@@ -393,7 +393,9 @@ const setup = (app: Router, storage: StorageAPI) => {
           .catch(() => ({ mongodb: 'failed' })),
         crmCount > 1
           ? Promise.resolve({ crm: 'okMultiNotDeleted' })
-          : OnGage.deleteContact(user.crmId)
+          : crmCount === 0
+          ? Promise.resolve({ crm: 'missingId' })
+          : OnGage.deleteContact(user.crmId, log)
               .then(() => ({ crm: 'ok' }))
               .catch(() => ({ crm: 'failed' })),
         fetch(`https://api.fullstory.com/users/v1/individual/${user.identifier}`, {
