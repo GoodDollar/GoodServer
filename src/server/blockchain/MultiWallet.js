@@ -1,6 +1,6 @@
 import { assign, every, forOwn, isEmpty, map } from 'lodash'
 import AdminWallet from './AdminWallet'
-import CeloAdminWallet from './CeloAdminWallet'
+import { CeloAdminWallet } from './CeloAdminWallet'
 import conf from '../server.config'
 import logger from '../../imports/logger'
 
@@ -108,7 +108,7 @@ const celoWallet =
   conf.celoEnabled === false
     ? {}
     : {
-        42220: CeloAdminWallet
+        42220: new CeloAdminWallet()
       }
 
 export default new MultiWallet({
