@@ -10,4 +10,6 @@ const options = {
   faucetTxCost: 250000
 }
 
-export default new Web3Wallet('CeloAdminWallet', conf, options)
+export function CeloAdminWallet(opts = {}) {
+  return new Web3Wallet('CeloAdminWallet', conf, { ...options, ...opts })
+}
