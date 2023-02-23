@@ -26,7 +26,7 @@ export default mock => {
   const mockSuccessGetByEmail = (id, email, contactData) =>
     mockSuccessResponse(contactByEmailUrl(email), { ...contactData, email, id })
 
-  const mockFailedGetContact = id => mockFailedResponse(id)
+  const mockFailedGetContact = id => mockFailedResponse(contactUrl(id))
   const mockFailedGetByEmail = email => mock.onGet(contactByEmailUrl(email)).reply(404, { payload: { code: 404 } })
 
   const mockSuccessChangeStatus = () => mockSuccessResponse('v2/contacts/change_status', {}, 'POST')
