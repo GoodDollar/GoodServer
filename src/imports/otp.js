@@ -34,11 +34,14 @@ export default new (class {
       baseURL: this.verifyWorkerUrl,
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + this.generateJWT()
+        'Content-Type': 'application/json'
       }
     })
 
+    http.interceptors.request.use(config => {
+      config.headers.Authorization = 'Bearer ' + this.generateJWT()
+      return config
+    })
     axiosRetry(http, {
       retries: otpRetryAttempts,
       retryDelay: count => otpRetryDelay * 2 ** count,
