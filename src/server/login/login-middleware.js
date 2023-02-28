@@ -81,7 +81,7 @@ export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
   if (identifier) {
     user = await UserDBPrivate.getUser(identifier) // usually this would be a database call
 
-    log.debug('payload received', { jwtPayload, user })
+    log.trace('payload received', { jwtPayload, user })
     // if user is empty make sure we have something
     user = defaults(jwtPayload, user, { identifier })
   }
