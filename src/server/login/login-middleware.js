@@ -150,32 +150,23 @@ const setup = (app: Router) => {
     '/auth/eth',
     wrapAsync(async (req, res) => {
       const { log, body } = req
-      const { network_id: configNetworkId } = Config.ethereum
 
       log.debug('/auth/eth', { message: 'authorizing' })
       log.debug('/auth/eth', { body })
 
-      const {
-        nonce,
-        method,
-        networkId,
-        signature,
-        gdSignature,
-        profileSignature,
-        profilePublickey: profileReqPublickey
-      } = body
+      const { nonce, method, signature, gdSignature, profileSignature, profilePublickey: profileReqPublickey } = body
 
       log.debug('/auth/eth', { signature, method })
 
-      if (networkId !== configNetworkId) {
-        log.warn('/auth/eth', {
-          message: 'Networkd id mismatch',
-          client: networkId,
-          server: configNetworkId
-        })
+      // if (networkId !== configNetworkId) {
+      //   log.warn('/auth/eth', {
+      //     message: 'Networkd id mismatch',
+      //     client: networkId,
+      //     server: configNetworkId
+      //   })
 
-        throw new Error(`Network ID mismatch client: ${networkId} ours: ${configNetworkId}`)
-      }
+      //   throw new Error(`Network ID mismatch client: ${networkId} ours: ${configNetworkId}`)
+      // }
 
       const recovered = recoverPublickey(signature, MSG, nonce)
       const gdPublicAddress = recoverPublickey(gdSignature, MSG, nonce)
