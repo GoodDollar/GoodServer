@@ -112,21 +112,24 @@ class EnrollmentProcessor {
   }
 
   async enqueueDisposal(user: any, enrollmentIdentifier: string, customLogger = null) {
-    const { storage, adminApi, logger } = this
+    const { storage, adminApi, logger, provider } = this
     const log = customLogger || logger
 
     log.info('Requested disposal for enrollment', { enrollmentIdentifier })
 
+    // checks if identifier has passed uniquness and needs to supply a valid address to de-whitelist
+    let isUnique = await provider.isEnrollmentIndexed(enrollmentIdentifier, customLogger)
+
     const { gdAddress } = user
     const isUserWhitelisted = await adminApi.isVerified(gdAddress)
 
-    if (!isUserWhitelisted) {
+    log.info('user uniqeness status:', { isUnique, isUserWhitelisted, gdAddress })
+
+    if (isUnique && !isUserWhitelisted) {
       throw new Error('User did not supply a whitelisted account')
     }
 
-    log.info('Wallet is whitelisted, making user non-whitelisted', { gdAddress })
-    await adminApi.removeWhitelisted(gdAddress)
-
+    isUserWhitelisted && (await adminApi.removeWhitelisted(gdAddress))
     try {
       // don't pass user to task records to keep privacy
       const task = await scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.AccountRemoved)
