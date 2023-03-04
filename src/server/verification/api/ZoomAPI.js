@@ -331,7 +331,7 @@ class ZoomAPI {
     const logger = customLogger || this.logger
 
     requestCopy.data = this._createLoggingSafeCopy(data)
-    logger.debug('Calling Zoom API:', requestCopy)
+    logger.trace('Calling Zoom API:', requestCopy)
   }
 
   _logResponse(logMessage, response) {
