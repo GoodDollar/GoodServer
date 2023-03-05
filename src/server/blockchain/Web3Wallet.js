@@ -770,11 +770,11 @@ export class Web3Wallet {
 
       gasPrice = gasPrice || this.gasPrice
 
-      logger.debug('getting tx lock:', { txuuid })
+      logger.trace('getting tx lock:', { txuuid })
 
       const { nonce, release, fail, address } = await this.txManager.lock(this.filledAddresses)
 
-      logger.debug('got tx lock:', { txuuid, address })
+      logger.trace('got tx lock:', { txuuid, address })
 
       let balance = NaN
 
@@ -792,7 +792,7 @@ export class Web3Wallet {
             release()
 
             txHash = h
-            logger.debug('got tx hash:', { txuuid, txHash, wallet: this.name })
+            logger.trace('got tx hash:', { txuuid, txHash, wallet: this.name })
 
             if (onTransactionHash) {
               onTransactionHash(h)
@@ -901,8 +901,9 @@ export class Web3Wallet {
           return receipt
         }
       }
-      if (retry && e.message.includes('tx timeout')) {
-        logger.warn('sendTransaction timeout retrying:', {
+      if (retry && e.message.toLowerCase().includes('revert') === false) {
+        logger.warn('sendTransaction retrying non reverted error:', {
+          error: e.message,
           currentAddress,
           currentNonce,
           netNonce,
