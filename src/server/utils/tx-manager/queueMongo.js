@@ -134,7 +134,7 @@ export default class queueMongo {
     const update = {
       isLock: false
     }
-    if (nextNonce) {
+    if (nextNonce != null) {
       update.nonce = nextNonce
     }
     try {
