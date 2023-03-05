@@ -38,7 +38,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       const { loggedInAs } = user
       const identifier = get(body, 'user.identifier', loggedInAs)
 
-      log.debug(`${req.baseUrl} auth:`, { user, body })
+      log.trace(`/user/* ${req.baseUrl} auth:`, { user, body })
 
       if (loggedInAs !== identifier) {
         log.warn(`Trying to update other user data! ${loggedInAs}!==${identifier}`)
@@ -353,12 +353,10 @@ const setup = (app: Router, storage: StorageAPI) => {
       // format date according to OnGage date format
       last_claim = moment(last_claim).format('YYYY/MM/DD')
 
-      await OnGage.updateContact(null, user.crmId, { last_claim, claim_counter }, logger)
-        .then(() => logger.debug('/user/claim updateContact success'))
-        .catch(e => {
-          logger.error('/user/claim updateContact failed', e.message, e, { user, body: req.body })
-          throw new Error('Failed updating user claim in CRM')
-        })
+      await OnGage.updateContact(null, user.crmId, { last_claim, claim_counter }, logger).catch(e => {
+        logger.error('/user/claim updateContact failed', e.message, e, { user, body: req.body })
+        throw new Error('Failed updating user claim in CRM')
+      })
 
       res.json({ ok: 1 })
     })
