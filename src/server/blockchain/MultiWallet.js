@@ -65,6 +65,11 @@ class MultiWallet {
     return Promise.all(this.wallets.map(wallet => wallet.removeWhitelisted(account)))
   }
 
+  async verifiedStatus(account) {
+    return Promise.all(
+      this.wallets.map(wallet => wallet.isVerified(account).then(_ => ({ chainId: wallet.networkId, status: _ })))
+    )
+  }
   async isVerified(account) {
     return this.mainWallet.isVerified(account)
   }

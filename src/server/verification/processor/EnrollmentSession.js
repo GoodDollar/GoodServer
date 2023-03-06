@@ -120,8 +120,10 @@ export default class EnrollmentSession {
 
     const whitelistTask = _logWrap(
       () => adminApi.whitelistUser(gdAddress, profilePublickey || gdAddress, chainId, log),
-      'Successfully whitelisted user:',
-      'whitelisting after fv failed'
+      'Whitelisting success:',
+      'Whitelisting failed:',
+      { gdAddress, loggedInAs, chainId },
+      { gdAddress, loggedInAs, chainId }
     )()
 
     const whitelistingTasks = [
@@ -155,7 +157,7 @@ export default class EnrollmentSession {
       log.warn('missing crmId', { user })
     }
 
-    log.info('Whitelisting user:', { loggedInAs })
+    log.info('Whitelisting user:', { loggedInAs, gdAddress })
     over(whitelistingTasks)() //dont wait on tasks that can be done in background
     await whitelistTask // wait only for whitelisting to be done successfully
   }

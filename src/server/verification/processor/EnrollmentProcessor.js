@@ -125,9 +125,9 @@ class EnrollmentProcessor {
 
     log.info('user uniqeness status:', { isUnique, isUserWhitelisted, gdAddress })
 
-    if (isUnique && !isUserWhitelisted) {
-      throw new Error('User did not supply a whitelisted account')
-    }
+    // if (isUnique && !isUserWhitelisted) {
+    //   throw new Error('User did not supply a whitelisted account')
+    // }
 
     isUserWhitelisted && (await adminApi.removeWhitelisted(gdAddress))
     try {
