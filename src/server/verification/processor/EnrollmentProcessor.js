@@ -125,10 +125,6 @@ class EnrollmentProcessor {
 
     log.info('user uniqeness status:', { isUnique, isUserWhitelisted, gdAddress })
 
-    // if (isUnique && !isUserWhitelisted) {
-    //   throw new Error('User did not supply a whitelisted account')
-    // }
-
     isUserWhitelisted && (await adminApi.removeWhitelisted(gdAddress))
     try {
       // don't pass user to task records to keep privacy
@@ -144,6 +140,10 @@ class EnrollmentProcessor {
     }
   }
 
+  async isIdentifierExists(enrollmentIdentifier: string) {
+    return this.provider.isEnrollmentExists(enrollmentIdentifier)
+  }
+
   async dispose(enrollmentIdentifier: string, customLogger = null) {
     const { provider, logger } = this
     const log = customLogger || logger
@@ -155,8 +155,8 @@ class EnrollmentProcessor {
       // if not indexed it could be some low-quality or duplicate wasn't indexed
       // so we'll check is enrollment exists additionally.
       // otherwise dups & failed enrollments will be kept forever
-      requiresDisposal = await provider.isEnrollmentExists(enrollmentIdentifier, customLogger)
       log.debug("Enrollment isn't indexed, checking for existence", { enrollmentIdentifier })
+      requiresDisposal = await provider.isEnrollmentExists(enrollmentIdentifier, customLogger)
     }
 
     log.debug('Preparing to dispose enrollment', { enrollmentIdentifier, requiresDisposal })

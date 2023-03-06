@@ -17,6 +17,7 @@ export const verifySignature = async (message, signature) => {
     if (recovered.substr(2) !== message.toLowerCase()) {
       throw new Error("Public key doesn't matches")
     }
+    return recovered
   } catch (exception) {
     exception.message = `SigUtil unable to recover the message signer`
     throw exception

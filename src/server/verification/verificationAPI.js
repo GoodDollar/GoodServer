@@ -16,10 +16,20 @@ import { sendTemplateEmail } from '../aws-ses/aws-ses'
 import fetch from 'cross-fetch'
 
 import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
-import { verifySignature } from '../utils/eth'
+import { recoverPublickey } from '../utils/eth'
 import { shouldLogVerificaitonError } from './utils/logger'
 import { syncUserEmail } from '../storage/addUserSteps'
+import { FV_IDENTIFIER_MSG2 } from '../login/login-middleware'
 
+const verifyFVIdentifier = async (identifier, gdAddress) => {
+  //check v2, v2 identifier is expected to be the whole signature
+  if (identifier.length >= 42) {
+    const signer = recoverPublickey(identifier, FV_IDENTIFIER_MSG2({ account: gdAddress }), '')
+    if (signer.toLowerCase() !== gdAddress.toLowerCase()) {
+      throw new Error("identifier signer doesn't match user")
+    }
+  }
+}
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   /**
    * @api {delete} /verify/face/:enrollmentIdentifier Enqueue user's face snapshot for disposal since 24h
@@ -37,17 +47,34 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     wrapAsync(async (req, res) => {
       const { params, query, log, user } = req
       const { enrollmentIdentifier } = params
-      const { signature } = query
+      const { gdAddress } = user
+      const { fvSigner = '' } = query
 
       try {
         const processor = createEnrollmentProcessor(storage, log)
 
-        await verifySignature(enrollmentIdentifier, signature)
-        await processor.enqueueDisposal(user, enrollmentIdentifier, log)
+        // for v2 identifier - verify that identifier is for the address we are going to whitelist
+        await verifyFVIdentifier(enrollmentIdentifier, gdAddress)
+
+        let v2Identifier = enrollmentIdentifier.slice(0, 42)
+        let v1Identifier = fvSigner.slice(2) // wallet will also supply the v1 identifier as fvSigner, we remove '0x' for public address
+
+        // here we check if wallet was registered using v1 of v2 identifier
+        const [isV2, isV1] = await Promise.all([
+          processor.isIdentifierExists(v2Identifier),
+          v1Identifier && processor.isIdentifierExists(v1Identifier)
+        ])
+        if (isV2) {
+          //in v2 we expect the enrollmentidentifier to be the whole signature, so we cut it down to 42
+          await processor.enqueueDisposal(user, v2Identifier, log)
+        }
+        if (isV1) {
+          await processor.enqueueDisposal(user, v1Identifier, log)
+        }
       } catch (exception) {
         const { message } = exception
 
-        log.error('delete face record failed:', message, exception, { enrollmentIdentifier, user })
+        log.error('delete face record failed:', message, exception, { enrollmentIdentifier, fvSigner, user })
         res.status(400).json({ success: false, error: message })
         return
       }
@@ -69,18 +96,25 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     '/verify/face/:enrollmentIdentifier',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
-      const { params, log, user } = req
+      const { params, log, user, query } = req
       const { enrollmentIdentifier } = params
+      const { fvSigner = '' } = query
 
       try {
-        const processor = createEnrollmentProcessor(storage, log)
-        const isDisposing = await processor.isEnqueuedForDisposal(enrollmentIdentifier, log)
+        let v2Identifier = enrollmentIdentifier.slice(0, 42)
+        let v1Identifier = fvSigner.slice(2) // wallet also provide older identifier in case it was created before v2
 
-        res.json({ success: true, isDisposing })
+        const processor = createEnrollmentProcessor(storage, log)
+        const [isDisposingV2, isDisposingV1] = await Promise.all([
+          processor.isEnqueuedForDisposal(v2Identifier, log),
+          v1Identifier && processor.isEnqueuedForDisposal(v1Identifier, log)
+        ])
+
+        res.json({ success: true, isDisposing: isDisposingV2 || isDisposingV1 })
       } catch (exception) {
         const { message } = exception
 
-        log.error('face record disposing check failed:', message, exception, { enrollmentIdentifier, user })
+        log.error('face record disposing check failed:', message, exception, { enrollmentIdentifier, fvSigner, user })
         res.status(400).json({ success: false, error: message })
       }
     })
@@ -159,8 +193,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { user, log, params, body } = req
-      const { enrollmentIdentifier } = params
+      const { enrollmentIdentifier, fvSigner = '' } = params
       const { chainId, ...payload } = body || {}
+      const { gdAddress } = user
 
       // checking if request aborted to handle cases when connection is slow
       // and facemap / images were uploaded more that 30sec causing timeout
@@ -171,14 +206,18 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       user.chainId = chainId || conf.defaultWhitelistChainId
 
       try {
-        const enrollmentProcessor = createEnrollmentProcessor(storage, log)
-        await enrollmentProcessor.validate(user, enrollmentIdentifier, payload)
+        // for v2 identifier - verify that identifier is for the address we are going to whitelist
+        // for v1 this will do nothing
+        await verifyFVIdentifier(enrollmentIdentifier, gdAddress)
 
-        const enrollmentResult = await enrollmentProcessor.enroll(user, enrollmentIdentifier, payload, log)
+        const enrollmentProcessor = createEnrollmentProcessor(storage, log)
+        await enrollmentProcessor.validate(user, enrollmentIdentifier.slice(0, 42), payload)
+
+        const enrollmentResult = await enrollmentProcessor.enroll(user, enrollmentIdentifier.slice(0, 42), payload, log)
         res.json(enrollmentResult)
       } catch (exception) {
         const { message } = exception
-        const logArgs = ['Face verification error:', message, exception, { enrollmentIdentifier }]
+        const logArgs = ['Face verification error:', message, exception, { enrollmentIdentifier, fvSigner }]
 
         if (shouldLogVerificaitonError(exception)) {
           log.error(...logArgs)
