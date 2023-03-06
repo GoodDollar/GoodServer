@@ -125,11 +125,10 @@ class EnrollmentProcessor {
 
     log.info('user uniqeness status:', { isUnique, isUserWhitelisted, gdAddress })
 
-    // if (isUnique && !isUserWhitelisted) {
-    //   throw new Error('User did not supply a whitelisted account')
-    // }
+    if (isUserWhitelisted) {
+      await adminApi.removeWhitelisted(gdAddress)
+    }
 
-    isUserWhitelisted && (await adminApi.removeWhitelisted(gdAddress))
     try {
       // don't pass user to task records to keep privacy
       const task = await scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.AccountRemoved)
