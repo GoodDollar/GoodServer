@@ -112,18 +112,15 @@ class EnrollmentProcessor {
   }
 
   async enqueueDisposal(user: any, enrollmentIdentifier: string, customLogger = null) {
-    const { storage, adminApi, logger, provider } = this
+    const { storage, adminApi, logger } = this
     const log = customLogger || logger
 
     log.info('Requested disposal for enrollment', { enrollmentIdentifier })
 
-    // checks if identifier has passed uniquness and needs to supply a valid address to de-whitelist
-    let isUnique = await provider.isEnrollmentIndexed(enrollmentIdentifier, customLogger)
-
     const { gdAddress } = user
     const isUserWhitelisted = await adminApi.isVerified(gdAddress)
 
-    log.info('user uniqeness status:', { isUnique, isUserWhitelisted, gdAddress })
+    log.info('user uniqeness status:', { isUserWhitelisted, gdAddress })
 
     if (isUserWhitelisted) {
       await adminApi.removeWhitelisted(gdAddress)
