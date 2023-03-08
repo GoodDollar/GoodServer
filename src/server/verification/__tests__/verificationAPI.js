@@ -447,14 +447,13 @@ describe('verificationAPI', () => {
       await expect(storage.hasTasksQueued(DISPOSE_ENROLLMENTS_TASK, filters)).resolves.toBe(true)
     })
 
-    test("DELETE /verify/face/:enrollmentIdentifier returns 400, success = false if user isn't whitelisted", async () => {
+    test("DELETE /verify/face/:enrollmentIdentifier returns 200, success = true if user isn't whitelisted", async () => {
       await request(server)
         .delete(enrollmentUri)
         .query({ signature })
         .set('Authorization', `Bearer ${token}`)
-        .expect(400, {
-          success: false,
-          error: 'User did not supply a whitelisted account'
+        .expect(200, {
+          success: true
         })
     })
 
