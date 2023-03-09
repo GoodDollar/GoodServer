@@ -90,6 +90,10 @@ export const UserPrivateSchema = new Schema(
     },
     lastLogin: {
       type: Date
+    },
+    locked: {
+      type: Boolean,
+      default: false
     }
   },
   { minimize: false }

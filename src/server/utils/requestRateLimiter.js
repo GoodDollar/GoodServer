@@ -6,6 +6,6 @@ const n = config.rateLimitRequestsCount
 
 export default (limit, minutesWindow) =>
   rateLimit({
-    windowMs: (minutesWindow || +m) * 60 * 1000, // minutes
+    windowMs: Math.round((minutesWindow || +m) * 60 * 1000), // minutes
     max: limit || +n // limit each IP to n requests per windowMs
   })

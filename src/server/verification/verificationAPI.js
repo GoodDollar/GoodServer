@@ -203,7 +203,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    */
   app.post(
     '/verify/sendotp',
-    requestRateLimiter(),
+    requestRateLimiter(1, 0.5), // 1 req / 30 sec
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { user, body } = req
@@ -218,6 +218,10 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       let userRec: UserRecord = defaults(body.user, user, { identifier: user.loggedInAs })
 
       const savedMobile = user.mobile
+
+      if (user.locked) {
+        return res.json({ ok: 0, error: 'Your account had been locked due to the abnormous activity' })
+      }
 
       if (conf.allowDuplicateUserData === false && (await storage.isDupUserData({ mobile: hashedMobile }))) {
         return res.json({ ok: 0, error: 'mobile_already_exists' })
