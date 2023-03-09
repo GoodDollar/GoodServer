@@ -219,10 +219,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       const savedMobile = user.mobile
 
-      if (user.locked) {
-        return res.json({ ok: 0, error: 'Your account had been locked due to the abnormous activity' })
-      }
-
       if (conf.allowDuplicateUserData === false && (await storage.isDupUserData({ mobile: hashedMobile }))) {
         return res.json({ ok: 0, error: 'mobile_already_exists' })
       }
