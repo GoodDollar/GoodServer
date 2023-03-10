@@ -23,8 +23,12 @@ const { fishManager } = stakingModelTasks
 const { faceVerificationDebugTool } = conf
 
 const adminAuthenticate = (req, res, next) => {
-  const { body } = req
-  if (body.password !== conf.gundbPassword) return res.json({ ok: 0 })
+  const { password } = req.body || {}
+
+  if (password !== conf.adminPassword) {
+    return res.json({ ok: 0 })
+  }
+
   next()
 }
 

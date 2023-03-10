@@ -68,11 +68,11 @@ const conf = convict({
     default: 3003,
     env: 'PORT'
   },
-  gundbPassword: {
-    doc: 'The password to gundb',
+  adminPassword: {
+    doc: 'The password to adminAuth middleware',
     format: '*',
     default: '',
-    env: 'GUNDB_PASS'
+    env: 'ADMIN_PASS'
   },
   jwtPassword: {
     doc: 'The password to sign the JWT token with',
