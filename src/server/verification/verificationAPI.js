@@ -203,7 +203,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    */
   app.post(
     '/verify/sendotp',
-    requestRateLimiter(1, 0.5), // 1 req / 30 sec
+    requestRateLimiter(1, 5), // 1 req / 5min
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { user, body } = req
