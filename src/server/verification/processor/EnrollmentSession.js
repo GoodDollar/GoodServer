@@ -119,7 +119,7 @@ export default class EnrollmentSession {
     const { gdAddress, profilePublickey, loggedInAs, crmId, chainId } = user
 
     const whitelistTask = _logWrap(
-      () => adminApi.whitelistUser(gdAddress, profilePublickey || gdAddress, chainId, log),
+      () => adminApi.whitelistUser(gdAddress, profilePublickey || gdAddress, chainId, 0, log),
       'Whitelisting success:',
       'Whitelisting failed:',
       { gdAddress, loggedInAs, chainId },
