@@ -96,7 +96,7 @@ class MultiWallet {
 
     const [did, lastAuthenticated] = await Promise.all([
       mainWallet.getDID(account).catch(() => account),
-      mainWallet.getLastAuthenticated().catch(() => 0)
+      mainWallet.getLastAuthenticated(account).catch(() => 0)
     ])
     const chainId = mainWallet.networkId
 
