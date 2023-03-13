@@ -9,3 +9,10 @@ export default (limit, minutesWindow) =>
     windowMs: Math.round((minutesWindow || +m) * 60 * 1000), // minutes
     max: limit || +n // limit each IP to n requests per windowMs
   })
+
+export const userRateLimiter = (limit, minutesWindow) =>
+  rateLimit({
+    windowMs: Math.round((minutesWindow || +m) * 60 * 1000), // minutes
+    max: limit || +n, // limit each IP to n requests per windowMs
+    keyGenerator: request => request.user?.loggedInAs || request.ip
+  })
