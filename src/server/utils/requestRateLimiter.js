@@ -1,19 +1,25 @@
 import rateLimit from 'express-rate-limit'
 import config from '../server.config'
 
-const m = config.rateLimitMinutes
-const n = config.rateLimitRequestsCount
+const { rateLimitMinutes, rateLimitRequestsCount } = config
 
-export default (limit, minutesWindow) =>
-  rateLimit({
-    windowMs: Math.round((minutesWindow || +m) * 60 * 1000), // minutes
-    max: limit || +n // limit each IP to n requests per windowMs
-  })
+const makeOpts = (limit, minutesWindow) => ({
+  windowMs: Math.round((minutesWindow || +rateLimitMinutes) * 60 * 1000), // minutes
+  max: limit || +rateLimitRequestsCount // limit each IP to n requests per windowMs
+})
+
+const makeUserKey = request => {
+  const { ip, user } = request
+  const { loggedInAs } = user || {}
+
+  return loggedInAs || ip
+}
 
 export const userRateLimiter = (limit, minutesWindow) =>
   rateLimit({
-    windowMs: Math.round((minutesWindow || +m) * 60 * 1000), // minutes
-    max: limit || +n, // limit each IP to n requests per windowMs
-    keyGenerator: request => request.user?.loggedInAs || request.ip,
+    ...makeOpts(limit, minutesWindow),
+    keyGenerator: makeUserKey,
     message: 'per account rate limit exceeded'
   })
+
+export default (limit, minutesWindow) => rateLimit(makeOpts(limit, minutesWindow))
