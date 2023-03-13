@@ -901,7 +901,6 @@ export class Web3Wallet {
               try {
                 res(await this.sendTransaction(tx, txCallbacks, { gas, gasPrice }, retry, logger))
               } catch (e) {
-                await this.txManager.unlock(address)
                 rej(e)
               }
             } else if (isNonceError(e)) {
@@ -923,7 +922,6 @@ export class Web3Wallet {
               try {
                 await this.sendTransaction(tx, txCallbacks, { gas, gasPrice }, retry, logger).then(res)
               } catch (e) {
-                await this.txManager.unlock(address)
                 rej(e)
               }
             } else {
@@ -1064,7 +1062,6 @@ export class Web3Wallet {
               try {
                 await this.sendNative(params, txCallbacks, { gas, gasPrice }).then(res)
               } catch (e) {
-                await this.txManager.unlock(address)
                 rej(e)
               }
             } else {
@@ -1080,7 +1077,8 @@ export class Web3Wallet {
           })
       })
     } catch (e) {
-      await this.txManager.unlock(currentAddress)
+      let netNonce = parseInt(await this.web3.eth.getTransactionCount(currentAddress))
+      await this.txManager.unlock(currentAddress, netNonce)
       throw new Error(e)
     }
   }
