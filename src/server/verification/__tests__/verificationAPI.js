@@ -135,8 +135,10 @@ describe('verificationAPI', () => {
         lcAddress,
         profilePublickey,
         defaultWhitelistChainId,
+        expect.anything(),
         expect.anything()
       )
+
       expect(topWalletMock).toHaveBeenCalledWith(lcAddress, 'all', expect.anything())
     }
 
