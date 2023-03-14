@@ -626,6 +626,12 @@ const conf = convict({
     format: Number,
     env: 'WHITELIST_CHAINID',
     default: 122
+  },
+  forceFaucetCall: {
+    doc: 'If user has enough gas to call faucet dont call faucet for them',
+    format: Boolean,
+    env: 'FORCE_FAUCET_CALL',
+    default: false // turn on when gooddapp supports faucet txs
   }
 })
 

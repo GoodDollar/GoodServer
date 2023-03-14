@@ -28,6 +28,8 @@ const defaultGasPrice = web3Utils.toWei(String(conf.defaultGasPrice), 'gwei')
 
 export const adminMinBalance = conf.adminMinBalance
 
+export const forceUserToUseFaucet = conf.forceFaucetCall
+
 export const defaultGas = 500000
 
 export const web3Default = {
@@ -658,9 +660,9 @@ export class Web3Wallet {
       })
 
       // user can't call faucet directly
-      if (userBalance.gte(faucetTxCost)) {
+      if (forceUserToUseFaucet && userBalance.gte(faucetTxCost)) {
         logger.debug('User has enough gas to call faucet', { address, wallet: this.name })
-        return true
+        return true //return true so we don't call AdminWallet to topwallet
       }
 
       let encodedCall = this.web3.eth.abi.encodeFunctionCall(
