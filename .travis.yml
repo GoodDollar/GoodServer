@@ -6,7 +6,7 @@ cache:
 
 env:
   global:
-    - GUNDB_PASS=test
+    - ADMIN_PASS=test
     - JWT_PASS=test
     - MNEMONIC="myth like bonus scare over problem client lizard pioneer submit female collect"
     - ADMIN_MNEMONIC="they bus duty candy uncover assault bullet kitchen kit acid spin physical"

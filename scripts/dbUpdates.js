@@ -23,35 +23,16 @@ class DBUpdates {
     const { version } = dbversion.value
     // await this.testWrite()
     logger.info('runUpgrades:', { version })
+
     if (version < 1) {
-      await Promise.all([
-        this.upgrade()
-          .then(_ => logger.info('upgrade done'))
-          .catch(e => {
-            logger.error('upgrade failed', { err: e.message, e })
-            throw e
-          }),
-        this.upgradeGun()
-          .then(_ => logger.info('gun upgrade done'))
-          .catch(e => {
-            logger.error('gun upgrade failed', { err: e.message, e })
-            throw e
-          })
-      ])
-
-      dbversion.value.version = 1
-      await dbversion.save()
-    }
-
-    if (version >= 1 && version < 2) {
-      await this.fixGunTrustProfiles()
-        .then(_ => logger.info('gun fixGunTrustProfiles done', { results: _ }))
+      await this.upgrade()
+        .then(_ => logger.info('upgrade done'))
         .catch(e => {
-          logger.error('gun fixGunTrustProfiles failed', { err: e.message, e })
+          logger.error('upgrade failed', { err: e.message, e })
           throw e
         })
 
-      dbversion.value.version = 2
+      dbversion.value.version = 1
       await dbversion.save()
     }
 
