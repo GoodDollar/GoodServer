@@ -8,7 +8,7 @@ import requestIp from 'request-ip'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import { default as AdminWallet } from '../blockchain/MultiWallet'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
-import requestRateLimiter from '../utils/requestRateLimiter'
+import requestRateLimiter, { userRateLimiter } from '../utils/requestRateLimiter'
 import OTP from '../../imports/otp'
 import conf from '../server.config'
 import OnGage from '../crm/ongage'
@@ -242,8 +242,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    */
   app.post(
     '/verify/sendotp',
-    requestRateLimiter(),
     passport.authenticate('jwt', { session: false }),
+    userRateLimiter(1, 1), // 1 req / 1min, should be applied AFTER auth to have req.user been set
+    // also no need for reqRateLimiter as user limiter falls back to the ip (e.g. works as default limiter if no user)
     wrapAsync(async (req, res) => {
       const { user, body } = req
       const log = req.log

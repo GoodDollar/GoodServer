@@ -45,7 +45,7 @@ jobs:
         chunk: ${{ fromJson(needs.setup.outputs['test-chunk-ids']) }}
     if: "github.event_name != 'workflow_dispatch' && !contains(github.event.head_commit.message,'skip ci') && !contains(github.event.head_commit.message,'skip build')"
     env:
-      GUNDB_PASS: test
+      ADMIN_PASS: test
       JWT_PASS: test
       TRAVIS: true
       NETWORK: dapptest
@@ -88,7 +88,7 @@ jobs:
         run: |
           echo "using mnemonic for admin: ${MNEMONIC}"
           echo $CHUNKS | jq '.[${{ matrix.chunk }}] | .[] | @text' | xargs npm run coverage
-          # npm run test -- src/server/gun/__tests__/GunDB.js src/server/send/__tests__/sendAPI.js
+          # npm run test -- src/server/send/__tests__/sendAPI.js
           # npm run coverage -- --silent
           # npm run coveralls
           npm run build

@@ -46,7 +46,7 @@ const conf = convict({
   },
   logLevel: {
     doc: 'Log level',
-    format: ['error', 'warn', 'info', 'debug', 'silent'],
+    format: ['error', 'warn', 'info', 'debug', 'silent', 'trace'],
     default: 'debug',
     env: 'LOG_LEVEL'
   },
@@ -68,11 +68,11 @@ const conf = convict({
     default: 3003,
     env: 'PORT'
   },
-  gundbPassword: {
-    doc: 'The password to gundb',
+  adminPassword: {
+    doc: 'The password to adminAuth middleware',
     format: '*',
     default: '',
-    env: 'GUNDB_PASS'
+    env: 'ADMIN_PASS'
   },
   jwtPassword: {
     doc: 'The password to sign the JWT token with',
@@ -626,6 +626,12 @@ const conf = convict({
     format: Number,
     env: 'WHITELIST_CHAINID',
     default: 122
+  },
+  forceFaucetCall: {
+    doc: 'If user has enough gas to call faucet dont call faucet for them',
+    format: Boolean,
+    env: 'FORCE_FAUCET_CALL',
+    default: false // turn on when gooddapp supports faucet txs
   }
 })
 

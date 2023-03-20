@@ -28,6 +28,8 @@ const defaultGasPrice = web3Utils.toWei(String(conf.defaultGasPrice), 'gwei')
 
 export const adminMinBalance = conf.adminMinBalance
 
+export const forceUserToUseFaucet = conf.forceFaucetCall
+
 export const defaultGas = 500000
 
 export const web3Default = {
@@ -254,6 +256,11 @@ export class Web3Wallet {
         { from: this.address }
       )
 
+      const oldIdentity = get(ContractsAddress, `${this.network}.IdentityOld`)
+      if (oldIdentity) {
+        this.oldIdentityContract = new this.web3.eth.Contract(IdentityABI.abi, oldIdentity, { from: this.address })
+      }
+
       this.tokenContract = new this.web3.eth.Contract(
         GoodDollarABI.abi,
         get(ContractsAddress, `${this.network}.GoodDollar`),
@@ -339,6 +346,7 @@ export class Web3Wallet {
     address: string,
     did: string,
     chainId: number = null,
+    lastAuthenticated: number = 0,
     customLogger = null
   ): Promise<TransactionReceipt | boolean> {
     const log = customLogger || this.log
@@ -363,11 +371,11 @@ export class Web3Wallet {
       }
 
       const onTransactionHash = hash => {
-        log.debug('WhitelistUser got txhash:', { hash, address, did, wallet: this.name })
+        log.debug('Whitelisting user got txhash:', { hash, address, did, wallet: this.name })
         txHash = hash
       }
 
-      const txExtraArgs = conf.enableWhitelistAtChain && chainId !== null ? [chainId, 0] : []
+      const txExtraArgs = conf.enableWhitelistAtChain && chainId !== null ? [chainId, lastAuthenticated] : []
 
       const txPromise = this.sendTransaction(
         this.proxyContract.methods.whitelist(address, did, ...txExtraArgs),
@@ -381,12 +389,19 @@ export class Web3Wallet {
 
       const tx = await txPromise
 
-      log.info('Whitelisted user', { txHash, address, did, tx, wallet: this.name })
+      log.info('Whitelisting user success:', { txHash, address, did, chainId, lastAuthenticated, wallet: this.name })
       return tx
     } catch (exception) {
       const { message } = exception
 
-      log.warn('Error whitelistUser', message, exception, { txHash, address, did, wallet: this.name })
+      log.warn('Whitelisting user failed:', message, exception, {
+        txHash,
+        address,
+        did,
+        chainId,
+        lastAuthenticated,
+        wallet: this.name
+      })
       throw exception
     }
   }
@@ -412,12 +427,12 @@ export class Web3Wallet {
       const transaction = await this.proxyContract.methods.genericCall(this.identityContract._address, encodedCall, 0)
       const tx = await this.sendTransaction(transaction, {}, { gas: 500000 })
 
-      log.info('authenticated user', { address, tx, wallet: this.name })
+      log.info('authenticating user success:', { address, tx, wallet: this.name })
       return tx
     } catch (exception) {
       const { message } = exception
 
-      log.warn('Error authenticateUser', message, exception, { address })
+      log.warn('authenticating user failed:', message, exception, { address })
       throw exception
     }
   }
@@ -436,6 +451,52 @@ export class Web3Wallet {
       const { message } = exception
 
       log.warn('Error getAuthenticationPeriod', message, exception)
+      throw exception
+    }
+  }
+
+  async getWhitelistedOnChainId(account): Promise<number> {
+    const { log } = this
+
+    try {
+      const result = await this.identityContract.methods
+        .getWhitelistedOnChainId(account)
+        .call()
+        .then(parseInt)
+
+      return result
+    } catch (exception) {
+      const { message } = exception
+
+      log.warn('Error getWhitelistedOnChainId', message, exception)
+      throw exception
+    }
+  }
+
+  async getLastAuthenticated(account): Promise<number> {
+    const { log } = this
+
+    try {
+      const [newResult, oldResult] = await Promise.all([
+        this.identityContract.methods
+          .lastAuthenticated(account)
+          .call()
+          .then(parseInt)
+          .catch(() => 0),
+        this.oldIdentityContract
+          ? this.oldIdentityContract.methods
+              .lastAuthenticated(account)
+              .call()
+              .then(parseInt)
+              .catch(() => 0)
+          : Promise.resolve(0)
+      ])
+
+      return newResult || oldResult
+    } catch (exception) {
+      const { message } = exception
+
+      log.warn('Error getLastAuthenticated', message, exception)
       throw exception
     }
   }
@@ -599,9 +660,9 @@ export class Web3Wallet {
       })
 
       // user can't call faucet directly
-      if (userBalance.gte(faucetTxCost)) {
+      if (forceUserToUseFaucet && userBalance.gte(faucetTxCost)) {
         logger.debug('User has enough gas to call faucet', { address, wallet: this.name })
-        return true
+        return true //return true so we don't call AdminWallet to topwallet
       }
 
       let encodedCall = this.web3.eth.abi.encodeFunctionCall(
@@ -842,7 +903,6 @@ export class Web3Wallet {
               try {
                 res(await this.sendTransaction(tx, txCallbacks, { gas, gasPrice }, retry, logger))
               } catch (e) {
-                await this.txManager.unlock(address)
                 rej(e)
               }
             } else if (isNonceError(e)) {
@@ -864,7 +924,6 @@ export class Web3Wallet {
               try {
                 await this.sendTransaction(tx, txCallbacks, { gas, gasPrice }, retry, logger).then(res)
               } catch (e) {
-                await this.txManager.unlock(address)
                 rej(e)
               }
             } else {
@@ -1005,7 +1064,6 @@ export class Web3Wallet {
               try {
                 await this.sendNative(params, txCallbacks, { gas, gasPrice }).then(res)
               } catch (e) {
-                await this.txManager.unlock(address)
                 rej(e)
               }
             } else {
@@ -1021,7 +1079,8 @@ export class Web3Wallet {
           })
       })
     } catch (e) {
-      await this.txManager.unlock(currentAddress)
+      let netNonce = parseInt(await this.web3.eth.getTransactionCount(currentAddress))
+      await this.txManager.unlock(currentAddress, netNonce)
       throw new Error(e)
     }
   }

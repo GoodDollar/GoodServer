@@ -118,14 +118,6 @@ export default class EnrollmentSession {
     const { user, storage, adminApi, log, enrollmentIdentifier, _logWrap } = this
     const { gdAddress, profilePublickey, loggedInAs, crmId, chainId } = user
 
-    const whitelistTask = _logWrap(
-      () => adminApi.whitelistUser(gdAddress, profilePublickey || gdAddress, chainId, log),
-      'Whitelisting success:',
-      'Whitelisting failed:',
-      { gdAddress, loggedInAs, chainId },
-      { gdAddress, loggedInAs, chainId }
-    )()
-
     const whitelistingTasks = [
       () => storage.updateUser({ identifier: loggedInAs, isVerified: true }),
 
@@ -158,8 +150,23 @@ export default class EnrollmentSession {
     }
 
     log.info('Whitelisting user:', { loggedInAs, gdAddress })
-    over(whitelistingTasks)() //dont wait on tasks that can be done in background
-    await whitelistTask // wait only for whitelisting to be done successfully
+
+    // wait only for whitelisting to be done successfully
+    await _logWrap(
+      () => adminApi.whitelistUser(gdAddress, profilePublickey || gdAddress, chainId, 0, log),
+      'Whitelisting success:',
+      'Whitelisting failed:',
+      { gdAddress, loggedInAs, chainId },
+      { gdAddress, loggedInAs, chainId }
+    )()
+
+    // dont wait on tasks that can be done in background
+    const [updateDatabase] = over(whitelistingTasks)()
+
+    // should await for DB update while running tests as we're checking was the records updated there
+    if (conf.env === 'test') {
+      await updateDatabase
+    }
   }
 
   async onEnrollmentFailed() {
