@@ -231,7 +231,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
             const clientIp = requestIp.getClientIp(req)
             const sendResult = await OTP.sendOTP(mobile, get(body, 'user.otpChannel', 'sms'), clientIp)
 
-            log.debug('otp sent:', user.loggedInAs, sendResult)
+            log.info('otp sent:', mobile, { user: user.loggedInAs, sendResult })
           }
 
           await storage.updateUser({
