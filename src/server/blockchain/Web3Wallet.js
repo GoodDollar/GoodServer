@@ -21,6 +21,7 @@ import { type TransactionReceipt } from './blockchain-types'
 
 import { getManager } from '../utils/tx-manager'
 import { sendSlackAlert } from '../../imports/slack'
+import { HttpProviderFactory, WebsocketProvider } from './transport'
 
 const FUSE_TX_TIMEOUT = 25000 // should be confirmed after max 5 blocks (25sec)
 const { estimateGasPrice } = conf
@@ -38,21 +39,6 @@ export const web3Default = {
   transactionBlockTimeout: 5,
   transactionConfirmationBlocks: 1,
   transactionPollingTimeout: 30
-}
-
-export const getAuthHeader = rpc => {
-  const url = new URL(rpc)
-
-  if (!url.password) {
-    return []
-  }
-
-  return [
-    {
-      name: 'Authorization',
-      value: `Basic ${Buffer.from(`${url.username}:${url.password}`).toString('base64')}`
-    }
-  ]
 }
 
 /**
@@ -103,24 +89,20 @@ export class Web3Wallet {
   getWeb3TransportProvider(): HttpProvider | WebSocketProvider {
     let provider
     let web3Provider
-    let transport = this.ethereum.web3Transport
+    const { web3Transport, websocketWeb3Provider, httpWeb3Provider } = this.ethereum
     const { log } = this
 
-    switch (transport) {
+    switch (web3Transport) {
       case 'WebSocket':
-        provider = this.ethereum.websocketWeb3Provider
-        web3Provider = new Web3.providers.WebsocketProvider(provider)
+        provider = websocketWeb3Provider
+        web3Provider = new WebsocketProvider(provider)
         break
 
       case 'HttpProvider':
       default: {
-        provider = this.ethereum.httpWeb3Provider
-
-        const headers = getAuthHeader(provider)
-
-        web3Provider = new Web3.providers.HttpProvider(provider, {
-          timeout: FUSE_TX_TIMEOUT,
-          headers
+        provider = httpWeb3Provider
+        web3Provider = HttpProviderFactory.create(provider, {
+          timeout: FUSE_TX_TIMEOUT
         })
         break
       }

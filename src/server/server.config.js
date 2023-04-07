@@ -159,6 +159,12 @@ const conf = convict({
     default: 'develop',
     env: 'NETWORK'
   },
+  httpProviderStrategy: {
+    doc: 'A way to pick up other RPC endpoint on fallback',
+    format: ['next', 'random'],
+    default: 'next',
+    env: 'HTTP_PROVIDER_STRATEGY'
+  },
   twilioAuthID: {
     doc: "Twilio's authorization ID",
     format: '*',

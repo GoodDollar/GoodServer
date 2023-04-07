@@ -5,11 +5,12 @@ import Web3 from 'web3'
 import { assign } from 'lodash'
 import * as web3Utils from 'web3-utils'
 
-import { Web3Wallet, getAuthHeader, web3Default, defaultGas, adminMinBalance } from './Web3Wallet'
+import { Web3Wallet, web3Default, defaultGas, adminMinBalance } from './Web3Wallet'
 import conf from '../server.config'
 import { isNonceError, isFundsError } from '../utils/eth'
 import { getManager } from '../utils/tx-manager'
 import { sendSlackAlert } from '../../imports/slack'
+import { HttpProviderFactory, WebsocketProvider } from './transport'
 
 const defaultRopstenGasPrice = web3Utils.toWei('5', 'gwei')
 
@@ -29,21 +30,19 @@ class AdminWallet extends Web3Wallet {
   getMainnetWeb3TransportProvider(): HttpProvider | WebSocketProvider {
     let provider
     let web3Provider
-    let transport = this.conf.ethereumMainnet.web3Transport
+    const { web3Transport, websocketWeb3Provider, httpWeb3Provider } = this.conf.ethereumMainnet
     const { log } = this
 
-    switch (transport) {
+    switch (web3Transport) {
       case 'WebSocket':
-        provider = this.conf.ethereumMainnet.websocketWeb3Provider
-        web3Provider = new Web3.providers.WebsocketProvider(provider)
+        provider = websocketWeb3Provider
+        web3Provider = new WebsocketProvider(provider)
         break
 
       default:
       case 'HttpProvider': {
-        provider = this.conf.ethereumMainnet.httpWeb3Provider
-        const headers = getAuthHeader(provider)
-
-        web3Provider = new Web3.providers.HttpProvider(provider, { headers })
+        provider = httpWeb3Provider
+        web3Provider = HttpProviderFactory.create(provider)
         break
       }
     }
