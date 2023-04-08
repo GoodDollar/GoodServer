@@ -361,11 +361,10 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { account, chainId } = req.body || {}
       const user: LoggedUser = req.user || { gdAddress: account }
 
+      log.debug('topwallet tx request:', { address: user.gdAddress, chainId, user: req.user })
       if (!user.gdAddress) {
         throw new Error('missing wallet address to top')
       }
-
-      log.debug('topwallet tx request:', { address: user.gdAddress, chainId })
 
       try {
         let txPromise = AdminWallet.topWallet(user.gdAddress, chainId, log)
