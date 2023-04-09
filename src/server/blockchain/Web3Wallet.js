@@ -959,8 +959,7 @@ export class Web3Wallet {
           })
           return receipt
         }
-      }
-      if (retry && e.message.toLowerCase().includes('revert') === false) {
+      } else if (retry && e.message.toLowerCase().includes('revert') === false) {
         logger.warn('sendTransaction retrying non reverted error:', {
           error: e.message,
           currentAddress,
@@ -971,6 +970,7 @@ export class Web3Wallet {
           wallet: this.name,
           network: this.networkId
         })
+
         return this.sendTransaction(tx, txCallbacks, { gas, gasPrice }, false, logger)
       }
 
