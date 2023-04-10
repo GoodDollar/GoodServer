@@ -41,7 +41,7 @@ export default once(() => ({
     network_id: 122,
     web3Transport: 'HttpProvider',
     httpWeb3Provider:
-      (process.env.FUSE_RPC ?? '') +
+      (process.env.FUSE_RPC || '') +
       ',https://rpc.fuse.io/,https://fuse-mainnet.chainstacklabs.com'
         .split(',')
         .filter(_ => _)
@@ -52,7 +52,7 @@ export default once(() => ({
     network_id: 42220,
     web3Transport: 'HttpProvider',
     httpWeb3Provider:
-      (process.env.CELO_RPC ?? '') +
+      (process.env.CELO_RPC || '') +
       ',https://forno.celo.org/,https://rpc.ankr.com/celo,https://1rpc.io/celo'
         .split(',')
         .filter(_ => _)
