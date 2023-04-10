@@ -4,7 +4,7 @@ export default once(() => ({
   1: {
     network_id: 1,
     web3Transport: 'HttpProvider',
-    httpWeb3Provider: `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_API}`,
+    httpWeb3Provider: `https://rpc.ankr.com/eth,https://eth-rpc.gateway.pokt.network,https://cloudflare-eth.com,https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_API}`,
     websocketWeb3Provider: 'wss://mainnet.infura.io/ws'
   },
   42: {
@@ -40,13 +40,23 @@ export default once(() => ({
   122: {
     network_id: 122,
     web3Transport: 'HttpProvider',
-    httpWeb3Provider: process.env.FUSE_RPC || 'https://rpc.fuse.io/',
+    httpWeb3Provider:
+      (process.env.FUSE_RPC ?? '') +
+      ',https://rpc.fuse.io/,https://fuse-mainnet.chainstacklabs.com'
+        .split(',')
+        .filter(_ => _)
+        .join(','),
     websocketWeb3Provider: 'wss://rpc.fuse.io/ws'
   },
   42220: {
     network_id: 42220,
     web3Transport: 'HttpProvider',
-    httpWeb3Provider: process.env.CELO_RPC || 'https://forno.celo.org',
+    httpWeb3Provider:
+      (process.env.CELO_RPC ?? '') +
+      ',https://forno.celo.org/,https://rpc.ankr.com/celo,https://1rpc.io/celo'
+        .split(',')
+        .filter(_ => _)
+        .join(','),
     websocketWeb3Provider: ''
   }
 }))
