@@ -1,5 +1,6 @@
 import request from 'supertest'
 import Web3 from 'web3'
+import { FV_IDENTIFIER_MSG2 } from '../login/login-middleware'
 
 const web3 = new Web3()
 
@@ -26,9 +27,20 @@ export const getCreds = async (random = false) => {
   if (random) {
     let account = web3.eth.accounts.create()
     web3.eth.accounts.wallet.add(account)
-    const signature = (await web3.eth.sign('Login to GoodDAPP' + creds.nonce, account.address)).signature
+    const signature = await web3.eth.sign('Login to GoodDAPP' + creds.nonce, account.address)
+    const fvV2Identifier = await web3.eth.sign(
+      FV_IDENTIFIER_MSG2({ account: account.address.toLowerCase() }),
+      account.address
+    )
     const gdSignature = signature
-    randomCreds = { signature, gdSignature, address: account.address.toLowerCase() }
+    randomCreds = {
+      signature,
+      gdSignature,
+      address: account.address.toLowerCase(),
+      privateKey: account.privateKey,
+      fvV2Identifier,
+      nonce: ''
+    }
   }
   return { ...creds, ...randomCreds }
 }

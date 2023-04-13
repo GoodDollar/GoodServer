@@ -57,7 +57,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         await verifyFVIdentifier(enrollmentIdentifier, gdAddress)
 
         let v2Identifier = enrollmentIdentifier.slice(0, 42)
-        let v1Identifier = fvSigner.slice(2) // wallet will also supply the v1 identifier as fvSigner, we remove '0x' for public address
+        let v1Identifier = fvSigner.replace('0x', '') // wallet will also supply the v1 identifier as fvSigner, we remove '0x' for public address
 
         // here we check if wallet was registered using v1 of v2 identifier
         const [isV2, isV1] = await Promise.all([
@@ -84,7 +84,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   )
 
   /**
-   * @api {get} /verify/face/:enrollmentIdentifier Checks is face snapshot enqueued enqueued for disposal. Return disposal state
+   * @api {get} /verify/face/:enrollmentIdentifier Checks is face snapshot enqueued for disposal. Return disposal state
    * @apiName Check face disposal state
    * @apiGroup Verification
    *
@@ -102,7 +102,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       try {
         let v2Identifier = enrollmentIdentifier.slice(0, 42)
-        let v1Identifier = fvSigner.slice(2) // wallet also provide older identifier in case it was created before v2
+        let v1Identifier = fvSigner.replace('0x', '') // wallet also provide older identifier in case it was created before v2
 
         const processor = createEnrollmentProcessor(storage, log)
         const [isDisposingV2, isDisposingV1] = await Promise.all([
@@ -110,7 +110,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           v1Identifier && processor.isEnqueuedForDisposal(v1Identifier, log)
         ])
 
-        res.json({ success: true, isDisposing: isDisposingV2 || isDisposingV1 })
+        res.json({ success: true, isDisposing: !!isDisposingV2 || !!isDisposingV1 })
       } catch (exception) {
         const { message } = exception
 
