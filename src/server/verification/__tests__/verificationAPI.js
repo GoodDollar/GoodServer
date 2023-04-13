@@ -54,6 +54,8 @@ describe('verificationAPI', () => {
     let token
     let helper
     let zoomServiceMock
+    let v2Creds
+    let v2Token
     const enrollmentProcessor = createEnrollmentProcessor(storage)
     const { keepEnrollments } = enrollmentProcessor
 
@@ -169,11 +171,14 @@ describe('verificationAPI', () => {
 
       zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
       helper = createMockingHelper(zoomServiceMock)
+      v2Creds = await getCreds(true)
       token = await getToken(server)
+      await storage.addUser({ identifier: v2Creds.address })
+      v2Token = await getToken(server, v2Creds)
     })
 
     beforeEach(async () => {
-      await storage.updateUser({ identifier: userIdentifier, isVerified: false })
+      await storage.updateUser({ identifier: userIdentifier, gdAddress: userIdentifier, isVerified: false })
       await storage.taskModel.deleteMany(forEnrollment(enrollmentIdentifier))
 
       enrollmentProcessor.keepEnrollments = 24
@@ -437,10 +442,11 @@ describe('verificationAPI', () => {
 
     test('DELETE /verify/face/:enrollmentIdentifier returns 200, success = true and enqueues disposal task if signature is valid', async () => {
       mockWhitelisted()
+      helper.mockEnrollmentFound(enrollmentIdentifier)
 
       await request(server)
         .delete(enrollmentUri)
-        .query({ signature })
+        .query({ fvSigner: '0x' + enrollmentIdentifier })
         .set('Authorization', `Bearer ${token}`)
         .expect(200, { success: true })
 
@@ -450,6 +456,8 @@ describe('verificationAPI', () => {
     })
 
     test("DELETE /verify/face/:enrollmentIdentifier returns 200, success = true if user isn't whitelisted", async () => {
+      helper.mockEnrollmentFound(enrollmentIdentifier)
+
       await request(server)
         .delete(enrollmentUri)
         .query({ signature })
@@ -460,21 +468,36 @@ describe('verificationAPI', () => {
     })
 
     test('DELETE /verify/face/:enrollmentIdentifier returns 400 and success = false if signature is invalid', async () => {
+      const fakeCreds = await getCreds(true)
       await request(server)
-        .delete(enrollmentUri)
-        .query({ signature: 'invalid signature' })
-        .set('Authorization', `Bearer ${token}`)
+        .delete(baseUri + '/' + encodeURIComponent(fakeCreds.fvV2Identifier))
+        .query()
+        .set('Authorization', `Bearer ${v2Token}`)
         .expect(400, {
           success: false,
-          error: 'SigUtil unable to recover the message signer'
+          error: "identifier signer doesn't match user"
+        })
+    })
+
+    test('DELETE /verify/face/:enrollmentIdentifier returns 200 and success = true if v2 signature is valid', async () => {
+      helper.mockEnrollmentFound(v2Creds.fvV2Identifier.slice(0, 42))
+
+      await request(server)
+        .delete(baseUri + '/' + encodeURIComponent(v2Creds.fvV2Identifier))
+        .query()
+        .set('Authorization', `Bearer ${v2Token}`)
+        .expect(200, {
+          success: true
         })
     })
 
     test("GET /verify/face/:enrollmentIdentifier returns isDisposing = false if face snapshot hasn't been enqueued yet for the disposal", async () => {
+      helper.mockEnrollmentFound(enrollmentIdentifier)
       await testDisposalState(false)
     })
 
     test('GET /verify/face/:enrollmentIdentifier returns isDisposing = true if face snapshot has been enqueued for the disposal', async () => {
+      helper.mockEnrollmentFound(enrollmentIdentifier)
       mockWhitelisted()
 
       await request(server)
