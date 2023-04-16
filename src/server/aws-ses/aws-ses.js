@@ -66,7 +66,8 @@ export const sendTemplateEmail = async (recipientEmail: string, templateData: Ob
     Destination: {
       ToAddresses: [punycodeDomain(recipientEmail)]
     },
-    TemplateData: templateDataStr
+    TemplateData: templateDataStr,
+    ConfigurationSetName: 'walletEmails'
   }
 
   return ses.sendTemplatedEmail(params).promise()
