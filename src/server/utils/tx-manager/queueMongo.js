@@ -161,14 +161,19 @@ export default class queueMongo {
   lock(addresses, timeout = 15000, id) {
     return new Promise((resolve, reject) => {
       let timer
+      let released = false
 
+      //this callback is called by the queue to resolve the promise
       const cb = ({ nonce, address }) => {
         timer && clearTimeout(timer)
         resolve({
           address,
           nonce,
-          release: async () => await this.unlock(address, nonce + 1),
-          fail: async () => await this.unlock(address)
+          release: async () => {
+            released = true
+            await this.unlock(address, nonce + 1)
+          },
+          fail: async () => !released && (await this.unlock(address))
         })
       }
 

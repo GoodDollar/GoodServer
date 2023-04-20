@@ -832,8 +832,6 @@ export class Web3Wallet {
       let txPromise = new Promise((res, rej) => {
         tx.send({ gas, gasPrice, chainId: this.networkId, nonce, from: address, type: 0 })
           .on('transactionHash', h => {
-            release()
-
             txHash = h
             logger.trace('got tx hash:', { txuuid, txHash, wallet: this.name })
 
@@ -842,6 +840,7 @@ export class Web3Wallet {
             }
           })
           .on('sent', payload => {
+            release()
             logger.debug('tx sent:', { txHash, payload, txuuid, wallet: this.name })
           })
           .on('receipt', r => {
@@ -880,43 +879,15 @@ export class Web3Wallet {
                 wallet: this.name,
                 network: this.networkId
               })
-              await this.txManager.unlock(address)
-
-              try {
-                res(await this.sendTransaction(tx, txCallbacks, { gas, gasPrice }, retry, logger))
-              } catch (e) {
-                rej(e)
-              }
-            } else if (isNonceError(e)) {
-              let netNonce = parseInt(await this.web3.eth.getTransactionCount(address))
-
-              logger.warn('sendTransaciton nonce failure retry', {
-                errMessage: e.message,
-                nonce,
-                gas,
-                gasPrice,
-                address,
-                newNonce: netNonce,
-                wallet: this.name,
-                network: this.networkId
-              })
-
-              await this.txManager.unlock(address, netNonce)
-
-              try {
-                await this.sendTransaction(tx, txCallbacks, { gas, gasPrice }, retry, logger).then(res)
-              } catch (e) {
-                rej(e)
-              }
-            } else {
-              fail()
-
-              if (onError) {
-                onError(e)
-              }
-
-              rej(e)
             }
+
+            fail()
+
+            if (onError) {
+              onError(e)
+            }
+
+            rej(e)
           })
       })
 
@@ -941,6 +912,26 @@ export class Web3Wallet {
           })
           return receipt
         }
+      } else if (retry && e.message.includes('FeeTooLowToCompete')) {
+        logger.warn('sendTransaction retrying with higher fee:', {
+          error: e.message,
+          gasPrice,
+          currentAddress,
+          currentNonce,
+          netNonce,
+          txuuid,
+          txHash,
+          wallet: this.name,
+          network: this.networkId
+        })
+
+        return this.sendTransaction(
+          tx,
+          txCallbacks,
+          { gas, gasPrice: (Number(gasPrice) * 1.2).toFixed(0) },
+          false,
+          logger
+        )
       } else if (retry && e.message.toLowerCase().includes('revert') === false) {
         logger.warn('sendTransaction retrying non reverted error:', {
           error: e.message,
@@ -959,6 +950,7 @@ export class Web3Wallet {
       logger.error('sendTransaction error:', e.message, e, {
         from: currentAddress,
         currentNonce,
+        gasPrice,
         netNonce,
         txuuid,
         txHash,
