@@ -26,7 +26,7 @@ const verifyFVIdentifier = async (identifier, gdAddress) => {
   if (identifier.length >= 42) {
     const signer = recoverPublickey(identifier, FV_IDENTIFIER_MSG2({ account: gdAddress }), '')
     if (signer.toLowerCase() !== gdAddress.toLowerCase()) {
-      throw new Error("identifier signer doesn't match user")
+      throw new Error(`identifier signer doesn't match user ${signer} != ${gdAddress}`)
     }
   }
 }
