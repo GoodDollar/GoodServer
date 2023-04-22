@@ -51,6 +51,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { fvSigner = '' } = query
 
       try {
+        log.debug('delete face request:', { fvSigner, enrollmentIdentifier, user })
         const processor = createEnrollmentProcessor(storage, log)
 
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
@@ -217,7 +218,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         res.json(enrollmentResult)
       } catch (exception) {
         const { message } = exception
-        const logArgs = ['Face verification error:', message, exception, { enrollmentIdentifier, fvSigner }]
+        const logArgs = ['Face verification error:', message, exception, { enrollmentIdentifier, fvSigner, gdAddress }]
 
         if (shouldLogVerificaitonError(exception)) {
           log.error(...logArgs)
