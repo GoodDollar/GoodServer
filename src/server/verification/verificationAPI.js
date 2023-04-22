@@ -100,6 +100,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { params, log, user, query } = req
       const { enrollmentIdentifier } = params
       const { fvSigner = '' } = query
+      log.debug('check face status request:', { fvSigner, enrollmentIdentifier, user })
 
       try {
         let v2Identifier = enrollmentIdentifier.slice(0, 42)
@@ -135,6 +136,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { log, user, params } = req
       const { licenseType } = params
 
+      log.debug('license face request:', { licenseType, user })
+
       try {
         if (!conf.zoomProductionMode) {
           throw new Error('Cannot obtain production license running non-production mode.')
@@ -164,6 +167,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { log, user } = req
+
+      log.debug('session face request:', { user })
 
       try {
         const processor = createEnrollmentProcessor(storage, log)
@@ -195,8 +200,10 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     wrapAsync(async (req, res) => {
       const { user, log, params, body } = req
       const { enrollmentIdentifier, fvSigner = '' } = params
-      const { chainId, ...payload } = body || {}
+      const { chainId, ...payload } = body || {} // payload is the facetec data
       const { gdAddress } = user
+
+      log.debug('enroll face request:', { fvSigner, enrollmentIdentifier, chainId, user })
 
       // checking if request aborted to handle cases when connection is slow
       // and facemap / images were uploaded more that 30sec causing timeout
