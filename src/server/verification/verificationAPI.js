@@ -3,7 +3,7 @@
 import { Router } from 'express'
 import passport from 'passport'
 import { get, defaults } from 'lodash'
-import { sha3 } from 'web3-utils'
+import { sha3, toChecksumAddress } from 'web3-utils'
 import requestIp from 'request-ip'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import { default as AdminWallet } from '../blockchain/MultiWallet'
@@ -24,7 +24,7 @@ import { FV_IDENTIFIER_MSG2 } from '../login/login-middleware'
 const verifyFVIdentifier = async (identifier, gdAddress) => {
   //check v2, v2 identifier is expected to be the whole signature
   if (identifier.length >= 42) {
-    const signer = recoverPublickey(identifier, FV_IDENTIFIER_MSG2({ account: gdAddress }), '')
+    const signer = recoverPublickey(identifier, FV_IDENTIFIER_MSG2({ account: toChecksumAddress(gdAddress) }), '')
     if (signer.toLowerCase() !== gdAddress.toLowerCase()) {
       throw new Error(`identifier signer doesn't match user ${signer} != ${gdAddress}`)
     }
