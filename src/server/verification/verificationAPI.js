@@ -199,8 +199,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { user, log, params, body } = req
-      const { enrollmentIdentifier, fvSigner = '' } = params
-      const { chainId, ...payload } = body || {} // payload is the facetec data
+      const { enrollmentIdentifier } = params
+      const { chainId, fvSigner = '', ...payload } = body || {} // payload is the facetec data
       const { gdAddress } = user
 
       log.debug('enroll face request:', { fvSigner, enrollmentIdentifier, chainId, user })
@@ -218,10 +218,22 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         // for v1 this will do nothing
         await verifyFVIdentifier(enrollmentIdentifier, gdAddress)
 
-        const enrollmentProcessor = createEnrollmentProcessor(storage, log)
-        await enrollmentProcessor.validate(user, enrollmentIdentifier.slice(0, 42), payload)
+        let v2Identifier = enrollmentIdentifier.slice(0, 42)
+        let v1Identifier = fvSigner.replace('0x', '') // wallet will also supply the v1 identifier as fvSigner, we remove '0x' for public address
 
-        const enrollmentResult = await enrollmentProcessor.enroll(user, enrollmentIdentifier.slice(0, 42), payload, log)
+        const enrollmentProcessor = createEnrollmentProcessor(storage, log)
+
+        // here we check if wallet was registered using v1 of v2 identifier
+        const [, isV1] = await Promise.all([
+          enrollmentProcessor.isIdentifierExists(v2Identifier),
+          v1Identifier && enrollmentProcessor.isIdentifierExists(v1Identifier)
+        ])
+
+        const activeIdentifier = isV1 ? v1Identifier : v2Identifier
+
+        await enrollmentProcessor.validate(user, activeIdentifier, payload)
+
+        const enrollmentResult = await enrollmentProcessor.enroll(user, activeIdentifier, payload, log)
         res.json(enrollmentResult)
       } catch (exception) {
         const { message } = exception
