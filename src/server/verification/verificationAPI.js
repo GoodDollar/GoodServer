@@ -25,6 +25,7 @@ const verifyFVIdentifier = async (identifier, gdAddress) => {
   //check v2, v2 identifier is expected to be the whole signature
   if (identifier.length >= 42) {
     const signer = recoverPublickey(identifier, FV_IDENTIFIER_MSG2({ account: toChecksumAddress(gdAddress) }), '')
+
     if (signer.toLowerCase() !== gdAddress.toLowerCase()) {
       throw new Error(`identifier signer doesn't match user ${signer} != ${gdAddress}`)
     }
@@ -65,10 +66,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           processor.isIdentifierExists(v2Identifier),
           v1Identifier && processor.isIdentifierExists(v1Identifier)
         ])
+
         if (isV2) {
           //in v2 we expect the enrollmentidentifier to be the whole signature, so we cut it down to 42
           await processor.enqueueDisposal(user, v2Identifier, log)
         }
+
         if (isV1) {
           await processor.enqueueDisposal(user, v1Identifier, log)
         }
@@ -224,16 +227,13 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         const enrollmentProcessor = createEnrollmentProcessor(storage, log)
 
         // here we check if wallet was registered using v1 of v2 identifier
-        const [, isV1] = await Promise.all([
-          enrollmentProcessor.isIdentifierExists(v2Identifier),
-          v1Identifier && enrollmentProcessor.isIdentifierExists(v1Identifier)
-        ])
-
+        const isV1 = !!v1Identifier && (await enrollmentProcessor.isIdentifierExists(v1Identifier))
         const activeIdentifier = isV1 ? v1Identifier : v2Identifier
 
         await enrollmentProcessor.validate(user, activeIdentifier, payload)
 
         const enrollmentResult = await enrollmentProcessor.enroll(user, activeIdentifier, payload, log)
+
         res.json(enrollmentResult)
       } catch (exception) {
         const { message } = exception
