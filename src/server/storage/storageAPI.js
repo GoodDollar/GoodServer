@@ -20,7 +20,6 @@ import requestRateLimiter from '../utils/requestRateLimiter'
 import { default as AdminWallet } from '../blockchain/MultiWallet'
 
 const { fishManager } = stakingModelTasks
-const { faceVerificationDebugTool } = conf
 
 const adminAuthenticate = (req, res, next) => {
   const { password } = req.body || {}
@@ -636,10 +635,6 @@ const setup = (app: Router, storage: StorageAPI) => {
       res.json({ ok: 1 })
     })
   )
-
-  if (true !== faceVerificationDebugTool) {
-    return
-  }
 
   app.post(
     '/admin/verify/face/delete',
