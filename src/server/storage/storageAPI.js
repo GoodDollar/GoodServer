@@ -646,9 +646,15 @@ const setup = (app: Router, storage: StorageAPI) => {
     adminAuthenticate,
     wrapAsync(async (req, res) => {
       const { body, log } = req
-      const { enrollmentIdentifier } = body
+      const { enrollmentIdentifier, walletAddress } = body
 
       try {
+        let removeWhitelistedResult
+        if (walletAddress) {
+          removeWhitelistedResult = await AdminWallet.removeWhitelisted(walletAddress)
+        }
+
+        log.info('admin delete faceid', { enrollmentIdentifier, walletAddress, removeWhitelistedResult })
         const processor = createEnrollmentProcessor(storage, log)
 
         await processor.dispose(toLower(enrollmentIdentifier), log)
