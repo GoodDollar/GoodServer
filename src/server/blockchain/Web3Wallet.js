@@ -178,15 +178,11 @@ export class Web3Wallet {
 
       if (web3Utils.fromWei(adminWalletContractBalance, 'gwei') < minAdminBalance * this.addresses.length) {
         log.error('AdminWallet contract low funds')
-        sendSlackAlert({
+        await sendSlackAlert({
           msg: `AdminWallet contract low funds ${this.name}`,
           adminWalletAddress,
           adminWalletContractBalance
         })
-
-        if (this.conf.env !== 'test' && this.conf.env !== 'development') {
-          process.exit(-1)
-        }
       }
 
       this.txManager.getTransactionCount = this.web3.eth.getTransactionCount
@@ -221,13 +217,9 @@ export class Web3Wallet {
       if (this.filledAddresses.length === 0) {
         log.error('no admin wallet with funds')
 
-        sendSlackAlert({
+        await sendSlackAlert({
           msg: `critical: no fuse admin wallet with funds ${this.name}`
         })
-
-        if (this.conf.env !== 'test' && this.conf.env !== 'development') {
-          process.exit(-1)
-        }
       }
 
       this.address = this.filledAddresses[0]
@@ -866,14 +858,6 @@ export class Web3Wallet {
                 nonce,
                 gas,
                 gasPrice,
-                address,
-                balance,
-                wallet: this.name,
-                network: this.networkId
-              })
-
-              sendSlackAlert({
-                msg: 'admin account funds low',
                 address,
                 balance,
                 wallet: this.name,

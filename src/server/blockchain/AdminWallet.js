@@ -9,7 +9,6 @@ import { Web3Wallet, web3Default, defaultGas, adminMinBalance } from './Web3Wall
 import conf from '../server.config'
 import { isNonceError, isFundsError } from '../utils/eth'
 import { getManager } from '../utils/tx-manager'
-import { sendSlackAlert } from '../../imports/slack'
 import { HttpProviderFactory, WebsocketProvider } from './transport'
 
 const defaultRopstenGasPrice = web3Utils.toWei('5', 'gwei')
@@ -207,7 +206,6 @@ class AdminWallet extends Web3Wallet {
                 uuid
               })
 
-              sendSlackAlert({ msg: 'admin account funds low mainnet', address, balance })
               await this.mainnetTxManager.unlock(address)
 
               try {
