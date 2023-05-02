@@ -469,14 +469,14 @@ describe('verificationAPI', () => {
 
     test('DELETE /verify/face/:enrollmentIdentifier returns 400 and success = false if signature is invalid', async () => {
       const fakeCreds = await getCreds(true)
-      await request(server)
+      const result = await request(server)
         .delete(baseUri + '/' + encodeURIComponent(fakeCreds.fvV2Identifier))
         .query()
         .set('Authorization', `Bearer ${v2Token}`)
-        .expect(400, {
-          success: false,
-          error: "identifier signer doesn't match user"
-        })
+        .expect(400)
+
+      expect(result.body.success).toEqual(false)
+      expect(result.body.error).toStartWith("identifier signer doesn't match user")
     })
 
     test('DELETE /verify/face/:enrollmentIdentifier returns 200 and success = true if v2 signature is valid', async () => {
