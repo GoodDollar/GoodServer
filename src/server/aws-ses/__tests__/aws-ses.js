@@ -31,6 +31,7 @@ describe('sendTemplateEmail', () => {
     const recipientEmail = 'some@email.com'
     await sendTemplateEmail(recipientEmail, templateData)
     expect(mSes.sendTemplatedEmail).toBeCalledWith({
+      ConfigurationSetName: 'walletEmails',
       Source: conf.awsSesSourceVerificationEmail,
       Destination: {
         ToAddresses: [punycodeDomain(recipientEmail)]
