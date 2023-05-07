@@ -3,6 +3,7 @@ import AdminWallet from './AdminWallet'
 import { CeloAdminWallet } from './CeloAdminWallet'
 import conf from '../server.config'
 import logger from '../../imports/logger'
+import { retry } from '../utils/async'
 
 const multiLogger = logger.child({ from: 'MultiWallet' })
 
@@ -62,7 +63,7 @@ class MultiWallet {
   }
 
   async whitelistUser(account, did, chainId = null, log = multiLogger) {
-    const syncResult = await this.syncWhitelist(account, log).catch(() => false)
+    const syncResult = await retry(() => this.syncWhitelist(account, log), 2, 1000)
     if (syncResult) {
       return this.wallets.map(() => true)
     }
@@ -84,36 +85,41 @@ class MultiWallet {
   }
 
   async syncWhitelist(account, log = multiLogger) {
-    const isVerified = await Promise.all(this.wallets.map(wallet => wallet.isVerified(account)))
+    try {
+      const isVerified = await Promise.all(this.wallets.map(wallet => wallet.isVerified(account)))
 
-    log.debug('syncwhitelist isVerified:', { account, isVerified })
+      log.debug('syncwhitelist isVerified:', { account, isVerified })
 
-    if (isEmpty(isVerified) || every(isVerified) || !some(isVerified)) {
-      return false
+      if (isEmpty(isVerified) || every(isVerified) || !some(isVerified)) {
+        return false
+      }
+
+      const mainWallet = this.wallets[isVerified.findIndex(_ => _)]
+
+      const [did, lastAuthenticated] = await Promise.all([
+        mainWallet.getDID(account).catch(() => account),
+        mainWallet.getLastAuthenticated(account).catch(() => 0)
+      ])
+      const chainId = mainWallet.networkId
+
+      log.debug('syncwhitelist did:', { account, did, lastAuthenticated, chainId })
+
+      await Promise.all(
+        isVerified.map(async (status, index) => {
+          log.debug('syncwhitelist whitelisting on wallet:', { status, index, account })
+          if (status) {
+            return
+          }
+
+          await this.wallets[index].whitelistUser(account, did, chainId, lastAuthenticated, log)
+        })
+      )
+
+      return true
+    } catch (e) {
+      log.error('syncwhitelist failed:', e.message, e, { account })
+      throw e
     }
-
-    const mainWallet = this.wallets[isVerified.findIndex(_ => _)]
-
-    const [did, lastAuthenticated] = await Promise.all([
-      mainWallet.getDID(account).catch(() => account),
-      mainWallet.getLastAuthenticated(account).catch(() => 0)
-    ])
-    const chainId = mainWallet.networkId
-
-    log.debug('syncwhitelist did:', { account, did, lastAuthenticated, chainId })
-
-    await Promise.all(
-      isVerified.map(async (status, index) => {
-        log.debug('syncwhitelist whitelisting on wallet:', { status, index, account })
-        if (status) {
-          return
-        }
-
-        await this.wallets[index].whitelistUser(account, did, chainId, lastAuthenticated, log)
-      })
-    )
-
-    return true
   }
 
   async getAuthenticationPeriod() {
