@@ -124,7 +124,11 @@ class ZoomProvider implements IEnrollmentProvider {
     try {
       await api[methodToInvoke](...methodArgs).then(fetchResult)
 
-      log.debug('Received enrollment:', { enrollmentIdentifier, alreadyEnrolled })
+      log.debug('liveness enrollment success:', {
+        methodToInvoke,
+        enrollmentIdentifier,
+        alreadyEnrolled
+      })
     } catch (exception) {
       const { name, message, response } = exception
 
@@ -176,7 +180,7 @@ class ZoomProvider implements IEnrollmentProvider {
 
     // next steps are performed only if face verification enabled
     // if already enrolled and already indexed then passed match-3d, no need to facesearch
-    log.debug('Preparing enrollment to index:', { enrollmentIdentifier, alreadyEnrolled, alreadyIndexed })
+    log.debug('Preparing enrollment to uniqueness index:', { enrollmentIdentifier, alreadyEnrolled, alreadyIndexed })
     if (storeRecords && !alreadyIndexed) {
       // 3. checking for duplicates
       const { results, ...faceSearchResponse } = await api.faceSearch(
