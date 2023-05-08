@@ -166,8 +166,18 @@ class ZoomProvider implements IEnrollmentProvider {
     // notifying about liveness / match passed or not
     await notifyProcessor({ isLive, isNotMatch })
 
+    // if wasn't already enrolled -  this means it wasn't also indexed
+    let alreadyIndexed = false
+
+    if (alreadyEnrolled) {
+      // if already enrolled - need to check was it already indexed or not
+      alreadyIndexed = await this.isEnrollmentIndexed(enrollmentIdentifier, customLogger)
+    }
+
     // next steps are performed only if face verification enabled
-    if (storeRecords) {
+    // if already enrolled and already indexed then passed match-3d, no need to facesearch
+    log.debug('Preparing enrollment to index:', { enrollmentIdentifier, alreadyEnrolled, alreadyIndexed })
+    if (storeRecords && !alreadyIndexed) {
       // 3. checking for duplicates
       const { results, ...faceSearchResponse } = await api.faceSearch(
         enrollmentIdentifier,
@@ -195,38 +205,26 @@ class ZoomProvider implements IEnrollmentProvider {
       }
 
       // 4. indexing uploaded & stored face scan to the 3D Database
-      // if wasn't already enrolled -  this means it wasn't also indexed
-      let alreadyIndexed = false
-
-      if (alreadyEnrolled) {
-        // if already enrolled - need to check was it already indexed or not
-        alreadyIndexed = await this.isEnrollmentIndexed(enrollmentIdentifier, customLogger)
-      }
-
       log.debug('Preparing enrollment to index:', { enrollmentIdentifier, alreadyEnrolled, alreadyIndexed })
 
-      if (alreadyIndexed) {
-        log.debug('Enrollment already indexed, skipping:', { enrollmentIdentifier })
-      } else {
-        // if not already enrolled or indexed - indexing
-        try {
-          await api.indexEnrollment(enrollmentIdentifier, defaultSearchIndexName, customLogger)
-          log.debug('Enrollment indexed:', { enrollmentIdentifier })
-        } catch (exception) {
-          const { response, message } = exception
+      // if not already enrolled or indexed - indexing
+      try {
+        await api.indexEnrollment(enrollmentIdentifier, defaultSearchIndexName, customLogger)
+        log.debug('Enrollment indexed:', { enrollmentIdentifier })
+      } catch (exception) {
+        const { response, message } = exception
 
-          // if exception has no response (e.g. no conneciton or service error)
-          // just rethrowing it and stopping enrollment
-          if (!response) {
-            throw exception
-          }
-
-          // otherwise notifying & throwing enrollment exception
-          isEnrolled = false
-
-          await notifyProcessor({ isEnrolled })
-          throwException(message, { isEnrolled }, response)
+        // if exception has no response (e.g. no conneciton or service error)
+        // just rethrowing it and stopping enrollment
+        if (!response) {
+          throw exception
         }
+
+        // otherwise notifying & throwing enrollment exception
+        isEnrolled = false
+
+        await notifyProcessor({ isEnrolled })
+        throwException(message, { isEnrolled }, response)
       }
     }
 
@@ -237,7 +235,7 @@ class ZoomProvider implements IEnrollmentProvider {
     await notifyProcessor({ isEnrolled })
 
     // returning successfull result
-    return { isVerified: true, alreadyEnrolled, resultBlob, message: enrollmentStatus }
+    return { isVerified: true, alreadyEnrolled, alreadyIndexed, resultBlob, message: enrollmentStatus }
   }
 
   // eslint-disable-next-line require-await
