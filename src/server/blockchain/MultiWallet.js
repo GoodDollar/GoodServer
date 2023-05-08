@@ -3,7 +3,6 @@ import AdminWallet from './AdminWallet'
 import { CeloAdminWallet } from './CeloAdminWallet'
 import conf from '../server.config'
 import logger from '../../imports/logger'
-import { retry } from '../utils/async'
 
 const multiLogger = logger.child({ from: 'MultiWallet' })
 
@@ -63,10 +62,6 @@ class MultiWallet {
   }
 
   async whitelistUser(account, did, chainId = null, log = multiLogger) {
-    const syncResult = await retry(() => this.syncWhitelist(account, log), 2, 1000)
-    if (syncResult) {
-      return this.wallets.map(() => true)
-    }
     return Promise.all(this.wallets.map(wallet => wallet.whitelistUser(account, did, chainId, 0, log)))
   }
 
