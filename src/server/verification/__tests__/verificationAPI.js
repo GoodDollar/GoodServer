@@ -100,9 +100,10 @@ describe('verificationAPI', () => {
         .expect(400, { success: false, error: 'Invalid input' })
 
     // eslint-disable-next-line require-await
-    const testVerificationSuccessfull = async (alreadyEnrolled = false, resultBlob = null) => {
+    const testVerificationSuccessfull = async (alreadyEnrolled = false, resultBlob = null, alreadyIndexed = false) => {
       const enrollmentResult = {
         alreadyEnrolled,
+        alreadyIndexed,
         isVerified: true,
         message: `The FaceMap was ${alreadyEnrolled ? 'already' : 'successfully'} enrolled.`
       }
@@ -137,7 +138,6 @@ describe('verificationAPI', () => {
         lcAddress,
         profilePublickey,
         defaultWhitelistChainId,
-        expect.anything(),
         expect.anything()
       )
 
@@ -436,7 +436,7 @@ describe('verificationAPI', () => {
       helper.mockSuccessUpdateEnrollment(enrollmentIdentifier)
       helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
 
-      await testVerificationSuccessfull(true)
+      await testVerificationSuccessfull(true, null, true)
       await testWhitelisted()
     })
 
