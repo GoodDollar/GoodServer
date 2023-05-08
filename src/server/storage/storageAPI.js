@@ -18,6 +18,7 @@ import { cancelDisposalTask } from '../verification/cron/taskUtil'
 import createEnrollmentProcessor from '../verification/processor/EnrollmentProcessor'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import { default as AdminWallet } from '../blockchain/MultiWallet'
+import Logger from '../../imports/logger'
 
 const { fishManager } = stakingModelTasks
 
@@ -338,6 +339,21 @@ const setup = (app: Router, storage: StorageAPI) => {
    * @apiSuccess {Number} ok
    * @ignore
    */
+  let updatesQueue = [] // we send updates to ongange in bulk
+  const qLogger = Logger.child({ from: 'OnGageQueue' })
+  const clearOnGageQueue = async () => {
+    if (updatesQueue.length === 0) return
+    const oldQueue = updatesQueue
+    updatesQueue = []
+    try {
+      const result = await OnGage.updateContacts(oldQueue, qLogger)
+      qLogger.debug('/user/claim updateContacts result:', { result, total: oldQueue.length })
+    } catch (e) {
+      qLogger.error('/user/claim updateContacts failed', e.message, e, { oldQueue })
+    }
+  }
+  if (conf.env !== 'test') setInterval(clearOnGageQueue, 60 * 1000)
+
   app.post(
     '/user/claim',
     onlyInEnv('production', 'staging'),
@@ -354,12 +370,12 @@ const setup = (app: Router, storage: StorageAPI) => {
       }
 
       // format date according to OnGage date format
-      last_claim = moment(last_claim).format('YYYY/MM/DD')
+      last_claim = moment().format('YYYY/MM/DD')
 
-      await OnGage.updateContact(null, user.crmId, { last_claim, claim_counter }, logger).catch(e => {
-        logger.error('/user/claim updateContact failed', e.message, e, { user, body: req.body })
-        throw new Error('Failed updating user claim in CRM')
-      })
+      updatesQueue.push({ id: user.crmId, last_claim, claim_counter })
+      if (updatesQueue.length > 100) {
+        clearOnGageQueue()
+      }
 
       res.json({ ok: 1 })
     })

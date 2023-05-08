@@ -69,6 +69,17 @@ class OnGage implements CrmApi {
     }
   }
 
+  async updateContacts(contacts: Array<Contact>, logger = null): any {
+    const log = logger || this.log
+
+    try {
+      return await this._upsertContacts(contacts, logger)
+    } catch (exception) {
+      log.warn('OnGage: updateContacts failed', exception.message, exception)
+      throw exception
+    }
+  }
+
   async updateContactEmail(crmId: string, newEmail: string, logger = null): any {
     const log = logger || this.log
 
@@ -200,6 +211,36 @@ class OnGage implements CrmApi {
     )
 
     return firstCreated || firstUpdated || firstSuccess
+  }
+
+  /** @private */
+  async _upsertContacts(contacts: Array<Contact>, logger = null): Promise<string> {
+    const overwrite = true
+    const { http } = this
+
+    const payloads = contacts.map(contact => {
+      const { id, email, ...fields } = contact
+      const payload = { email, overwrite, fields }
+
+      // add email to fields if set
+      if (email) {
+        assign(fields, { email })
+      }
+
+      if (id) {
+        if (!email) {
+          // in case of update and email is null - use id as primary key
+          assign(payload, { id })
+          delete payload.email
+        }
+      }
+      return payload
+    })
+
+    const result = await http.put('v2/contacts', payloads, { logger })
+
+    const success = get(result, 'payload.success', 0)
+    return Number(success) === payloads.length
   }
 
   /** @private */
