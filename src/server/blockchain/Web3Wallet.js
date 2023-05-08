@@ -325,15 +325,16 @@ export class Web3Wallet {
   ): Promise<TransactionReceipt | boolean> {
     const log = customLogger || this.log
 
-    const isVerified = await this.isVerified(address)
-
-    if (isVerified) {
-      return { status: true }
-    }
-
     let txHash
 
     try {
+      // if lastAuthenticated is 0, then we force reauthentication, otherwise assume this is just syncing whitelisting between chains
+      const isVerified = lastAuthenticated > 0 && (await this.isVerified(address))
+
+      if (isVerified) {
+        return { status: true }
+      }
+
       const lastAuth = await this.identityContract.methods
         .lastAuthenticated(address)
         .call()
@@ -341,7 +342,7 @@ export class Web3Wallet {
 
       if (lastAuth > 0) {
         // user was already whitelisted in the past, just needs re-authentication
-        return this.authenticateUser(address)
+        return this.authenticateUser(address, log)
       }
 
       const onTransactionHash = hash => {
@@ -380,8 +381,8 @@ export class Web3Wallet {
     }
   }
 
-  async authenticateUser(address: string): Promise<TransactionReceipt> {
-    const { log } = this
+  async authenticateUser(address: string, customLogger = null): Promise<TransactionReceipt> {
+    const log = customLogger || this.log
 
     try {
       let encodedCall = this.web3.eth.abi.encodeFunctionCall(

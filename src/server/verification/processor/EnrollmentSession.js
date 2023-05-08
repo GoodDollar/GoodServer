@@ -123,8 +123,8 @@ export default class EnrollmentSession {
 
       _logWrap(
         () => scheduleDisposalTask(storage, enrollmentIdentifier, DisposeAt.Reauthenticate),
-        null,
-        'adding facemap to re-auth dispose queue failed:',
+        'added facemap to dispose enrollment queue',
+        'adding facemap to dispose enrollment queue failed:',
         { enrollmentIdentifier },
         {}
       ),
