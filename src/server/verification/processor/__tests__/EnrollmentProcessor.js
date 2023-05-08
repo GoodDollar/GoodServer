@@ -185,6 +185,8 @@ describe('EnrollmentProcessor', () => {
     helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
 
     const { gdAddress, loggedInAs, profilePublickey, crmId } = user
+    user.chainId = 1234
+
     const wrappedResponse = expect(enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)).resolves
 
     await wrappedResponse.toBeDefined()
@@ -192,13 +194,7 @@ describe('EnrollmentProcessor', () => {
     await wrappedResponse.toHaveProperty('enrollmentResult.isVerified', true)
 
     expect(updateUserMock).toHaveBeenCalledWith({ identifier: loggedInAs, isVerified: true })
-    expect(whitelistUserMock).toHaveBeenCalledWith(
-      gdAddress,
-      profilePublickey,
-      undefined,
-      expect.anything(),
-      expect.anything()
-    )
+    expect(whitelistUserMock).toHaveBeenCalledWith(gdAddress, profilePublickey, 1234, expect.anything())
     expect(topWalletMock).toHaveBeenCalledWith(gdAddress, 'all', expect.anything())
     expect(whitelistContactMock.mock.calls[0][0]).toBe(crmId)
   })
@@ -218,13 +214,7 @@ describe('EnrollmentProcessor', () => {
     await wrappedResponse.toHaveProperty('enrollmentResult.isVerified', true)
 
     expect(updateUserMock).toHaveBeenCalledWith({ identifier: loggedInAs, isVerified: true })
-    expect(whitelistUserMock).toHaveBeenCalledWith(
-      gdAddress,
-      profilePublickey,
-      1234,
-      expect.anything(),
-      expect.anything()
-    )
+    expect(whitelistUserMock).toHaveBeenCalledWith(gdAddress, profilePublickey, 1234, expect.anything())
     expect(topWalletMock).toHaveBeenCalledWith(gdAddress, 'all', expect.anything())
     expect(whitelistContactMock.mock.calls[0][0]).toBe(crmId)
   })

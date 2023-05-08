@@ -43,6 +43,21 @@ const testSuccessfullEnrollment = async (alreadyEnrolled = false, resultBlob = n
   expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(3, { isEnrolled: true })
 }
 
+const testSuccessfullReEnrollment = async (alreadyEnrolled = false, resultBlob = null) => {
+  const onEnrollmentProcessing = jest.fn()
+  const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing)).resolves
+
+  await wrappedResponse.toHaveProperty('isVerified', true)
+  await wrappedResponse.toHaveProperty('alreadyEnrolled', alreadyEnrolled)
+
+  if (resultBlob) {
+    await wrappedResponse.toHaveProperty('resultBlob', resultBlob)
+  }
+
+  expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(1, { isLive: true, isNotMatch: false })
+  expect(onEnrollmentProcessing).toHaveBeenNthCalledWith(2, { isEnrolled: true })
+}
+
 const testEnrollmentError = async errorMessage => {
   const onProcessingMock = jest.fn()
   const wrappedResponse = expect(ZoomProvider.enroll(enrollmentIdentifier, payload, onProcessingMock)).rejects
@@ -132,7 +147,7 @@ describe('ZoomProvider', () => {
     helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
 
     // should return alreadyEnrolled = true
-    await testSuccessfullEnrollment(true)
+    await testSuccessfullReEnrollment(true)
 
     const { post: postHistory } = zoomServiceMock.history
     const postRequest = first(postHistory)
@@ -171,7 +186,7 @@ describe('ZoomProvider', () => {
     helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
 
     // should return alreadyEnrolled = true
-    await testSuccessfullEnrollment(true)
+    await testSuccessfullReEnrollment(true)
 
     const { post: postHistory } = zoomServiceMock.history
 
