@@ -153,7 +153,7 @@ export default class EnrollmentSession {
 
     // wait only for whitelisting to be done successfully
     await _logWrap(
-      () => adminApi.whitelistUser(gdAddress, profilePublickey || gdAddress, chainId, 0, log),
+      () => adminApi.whitelistUser(gdAddress, profilePublickey || gdAddress, chainId, log),
       'Whitelisting success:',
       'Whitelisting failed:',
       { gdAddress, loggedInAs, chainId },
