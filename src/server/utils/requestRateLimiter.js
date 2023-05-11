@@ -6,27 +6,33 @@ import logger from '../../imports/logger'
 
 const log = logger.child({ from: 'requestRateLimiter' })
 
-const { rateLimitMinutes, rateLimitRequestsCount } = config
+const { rateLimitMinutes, rateLimitRequestsCount, redisUrl } = config
 
-let redisClient,
-  store = new MemoryStore()
-try {
-  redisClient = redis.createClient({ url: process.env.REDISCLOUD_URL }, { no_ready_check: true })
-  const connectPromise = redisClient.connect()
-  // Redis store configuration
-  store = new RedisStore({
-    sendCommand: async (...args) => {
-      try {
-        await connectPromise
-        return redisClient.sendCommand(args)
-      } catch (e) {
-        log.error('redis command failed:', e.message, e, { args })
-        return {}
-      }
+const makeStore = () => {
+  try {
+    if (!redisUrl) {
+      throw new Error('No Redis URL set, fallback to MemoryStore')
     }
-  })
-} catch (e) {
-  log.error('redis init failed', e.message, e)
+
+    const client = redis.createClient({ url: redisUrl }, { no_ready_check: true })
+    const connectionState = client.connect()
+
+    // Redis store configuration
+    return new RedisStore({
+      sendCommand: async (...args) => {
+        try {
+          await connectionState
+          return client.sendCommand(args)
+        } catch (e) {
+          log.error('redis command failed:', e.message, e, { args })
+          return {}
+        }
+      }
+    })
+  } catch (e) {
+    log.error('redis init failed', e.message, e)
+    return new MemoryStore()
+  }
 }
 
 const makeOpts = (limit, minutesWindow) => ({
@@ -48,4 +54,4 @@ export const userRateLimiter = (limit, minutesWindow) =>
     message: 'per account rate limit exceeded'
   })
 
-export default (limit, minutesWindow) => rateLimit({ ...makeOpts(limit, minutesWindow), store })
+export default (limit, minutesWindow) => rateLimit({ ...makeOpts(limit, minutesWindow), store: makeStore() })

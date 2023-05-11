@@ -632,6 +632,12 @@ const conf = convict({
     format: Boolean,
     env: 'FORCE_FAUCET_CALL',
     default: false // turn on when gooddapp supports faucet txs
+  },
+  redisUrl: {
+    doc: 'Redis cloud server url',
+    format: String,
+    env: 'REDISCLOUD_URL',
+    default: ''
   }
 })
 
