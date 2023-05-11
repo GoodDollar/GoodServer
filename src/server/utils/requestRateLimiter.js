@@ -9,9 +9,13 @@ let redisClient,
   store = new MemoryStore()
 try {
   redisClient = redis.createClient(process.env.REDISCLOUD_URL, { no_ready_check: true })
+  const connectPromise = redisClient.connect()
   // Redis store configuration
   store = new RedisStore({
-    sendCommand: (...args) => redisClient.sendCommand(args)
+    sendCommand: async (...args) => {
+      await connectPromise
+      return redisClient.sendCommand(args)
+    }
   })
 } catch (e) {
   console.log('redis failed', { e })
