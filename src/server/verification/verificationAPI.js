@@ -14,7 +14,6 @@ import conf from '../server.config'
 import OnGage from '../crm/ongage'
 import { sendTemplateEmail } from '../aws-ses/aws-ses'
 import fetch from 'cross-fetch'
-
 import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 import { recoverPublickey } from '../utils/eth'
 import { shouldLogVerificaitonError } from './utils/logger'
@@ -417,10 +416,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate(['jwt', 'anonymous'], { session: false }),
     wrapAsync(async (req, res) => {
       const log = req.log
+      const { origin, host } = req.headers
       const { account, chainId } = req.body || {}
       const user: LoggedUser = req.user || { gdAddress: account }
 
-      log.debug('topwallet tx request:', { address: user.gdAddress, chainId, user: req.user })
+      log.debug('topwallet tx request:', { address: user.gdAddress, chainId, user: req.user, origin, host })
       if (!user.gdAddress) {
         throw new Error('missing wallet address to top')
       }
