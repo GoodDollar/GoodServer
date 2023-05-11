@@ -52,8 +52,8 @@ export default async (app: Router) => {
   // parse UTM cookies
   app.use(cookieParser())
   app.use(cors(corsConfig))
-  addLoginMiddlewares(app)
   app.use(addRequestLogger)
+  addLoginMiddlewares(app)
 
   addStorageMiddlewares(app, UserDBPrivate)
   addVerificationMiddlewares(app, VerificationAPI, UserDBPrivate)
