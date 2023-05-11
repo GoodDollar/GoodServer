@@ -11,20 +11,22 @@ const { rateLimitMinutes, rateLimitRequestsCount } = config
 let redisClient,
   store = new MemoryStore()
 try {
-  redisClient = redis.createClient({ url: process.env.REDISCLOUD_URL }, { no_ready_check: true })
-  const connectPromise = redisClient.connect()
-  // Redis store configuration
-  store = new RedisStore({
-    sendCommand: async (...args) => {
-      try {
-        await connectPromise
-        return redisClient.sendCommand(args)
-      } catch (e) {
-        log.error('redis command failed:', e.message, e, { args })
-        return {}
+  if (process.env.REDISCLOUD_URL) {
+    redisClient = redis.createClient({ url: process.env.REDISCLOUD_URL }, { no_ready_check: true })
+    const connectPromise = redisClient.connect()
+    // Redis store configuration
+    store = new RedisStore({
+      sendCommand: async (...args) => {
+        try {
+          await connectPromise
+          return redisClient.sendCommand(args)
+        } catch (e) {
+          log.error('redis command failed:', e.message, e, { args })
+          return {}
+        }
       }
-    }
-  })
+    })
+  }
 } catch (e) {
   log.error('redis init failed', e.message, e)
 }
