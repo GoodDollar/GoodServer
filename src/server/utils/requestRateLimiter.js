@@ -3,6 +3,7 @@ import config from '../server.config'
 import * as redis from 'redis'
 import RedisStore from 'rate-limit-redis'
 import logger from '../../imports/logger'
+import requestIp from 'request-ip'
 
 const log = logger.child({ from: 'requestRateLimiter' })
 
@@ -41,10 +42,10 @@ const makeOpts = (limit, minutesWindow) => ({
 })
 
 const makeUserKey = request => {
-  const { ip, user } = request
+  const { user } = request
   const { loggedInAs } = user || {}
 
-  return loggedInAs || ip
+  return loggedInAs || request.getClientIp(request)
 }
 
 export const userRateLimiter = (limit, minutesWindow) =>
@@ -54,4 +55,5 @@ export const userRateLimiter = (limit, minutesWindow) =>
     message: 'per account rate limit exceeded'
   })
 
-export default (limit, minutesWindow) => rateLimit({ ...makeOpts(limit, minutesWindow), store: makeStore() })
+export default (limit, minutesWindow) =>
+  rateLimit({ ...makeOpts(limit, minutesWindow), keyGenerator: requestIp.getClientIp, store: makeStore() })
