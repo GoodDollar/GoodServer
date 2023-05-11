@@ -1,7 +1,21 @@
-import rateLimit from 'express-rate-limit'
+import rateLimit, { MemoryStore } from 'express-rate-limit'
 import config from '../server.config'
+import redis from 'redis'
+import RedisStore from 'rate-limit-redis'
 
 const { rateLimitMinutes, rateLimitRequestsCount } = config
+
+let redisClient,
+  store = new MemoryStore()
+try {
+  redisClient = redis.createClient(process.env.REDISCLOUD_URL, { no_ready_check: true })
+  // Redis store configuration
+  store = new RedisStore({
+    sendCommand: (...args) => redisClient.sendCommand(args)
+  })
+} catch (e) {
+  console.log('redis failed', { e })
+}
 
 const makeOpts = (limit, minutesWindow) => ({
   windowMs: Math.round((minutesWindow || +rateLimitMinutes) * 60 * 1000), // minutes
@@ -22,4 +36,4 @@ export const userRateLimiter = (limit, minutesWindow) =>
     message: 'per account rate limit exceeded'
   })
 
-export default (limit, minutesWindow) => rateLimit(makeOpts(limit, minutesWindow))
+export default (limit, minutesWindow) => rateLimit({ ...makeOpts(limit, minutesWindow), store })
