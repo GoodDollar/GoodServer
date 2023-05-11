@@ -1,6 +1,6 @@
 import rateLimit, { MemoryStore } from 'express-rate-limit'
 import config from '../server.config'
-import redis from 'redis'
+import * as redis from 'redis'
 import RedisStore from 'rate-limit-redis'
 
 const { rateLimitMinutes, rateLimitRequestsCount } = config
