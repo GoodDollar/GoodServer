@@ -421,6 +421,15 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const user: LoggedUser = req.user || { gdAddress: account }
 
       log.debug('topwallet tx request:', { address: user.gdAddress, chainId, user: req.user, origin, host })
+      if (conf.env === 'production') {
+        if (!origin.endsWith('wallet.gooddollar.org')) {
+          const isWhitelisted = await AdminWallet.isVerified(user.gdAddress)
+          if (!isWhitelisted) {
+            log.info('topwallet denied, not whitelisted', { address: user.gdAddress, origin, chainId })
+            res.json({ ok: -1, error: 'not whitelisted' })
+          }
+        }
+      }
       if (!user.gdAddress) {
         throw new Error('missing wallet address to top')
       }
