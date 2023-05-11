@@ -8,7 +8,7 @@ const { rateLimitMinutes, rateLimitRequestsCount } = config
 let redisClient,
   store = new MemoryStore()
 try {
-  redisClient = redis.createClient(process.env.REDISCLOUD_URL, { no_ready_check: true })
+  redisClient = redis.createClient({ url: process.env.REDISCLOUD_URL }, { no_ready_check: true })
   const connectPromise = redisClient.connect()
   // Redis store configuration
   store = new RedisStore({
