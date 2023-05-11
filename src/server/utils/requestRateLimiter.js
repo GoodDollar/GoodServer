@@ -2,6 +2,9 @@ import rateLimit, { MemoryStore } from 'express-rate-limit'
 import config from '../server.config'
 import * as redis from 'redis'
 import RedisStore from 'rate-limit-redis'
+import logger from '../../imports/logger'
+
+const log = logger.child({ from: 'requestRateLimiter' })
 
 const { rateLimitMinutes, rateLimitRequestsCount } = config
 
@@ -13,12 +16,17 @@ try {
   // Redis store configuration
   store = new RedisStore({
     sendCommand: async (...args) => {
-      await connectPromise
-      return redisClient.sendCommand(args)
+      try {
+        await connectPromise
+        return redisClient.sendCommand(args)
+      } catch (e) {
+        log.error('redis command failed:', e.message, e, { args })
+        return {}
+      }
     }
   })
 } catch (e) {
-  console.log('redis failed', { e })
+  log.error('redis init failed', e.message, e)
 }
 
 const makeOpts = (limit, minutesWindow) => ({
