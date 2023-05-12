@@ -262,7 +262,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
     '/verify/sendotp',
     passport.authenticate('jwt', { session: false }),
-    requestRateLimiter(1, 1),
     userRateLimiter(1, 1), // 1 req / 1min, should be applied AFTER auth to have req.user been set
     // also no need for reqRateLimiter as user limiter falls back to the ip (e.g. works as default limiter if no user)
     wrapAsync(async (req, res) => {
@@ -413,7 +412,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    */
   app.post(
     '/verify/topwallet',
-    requestRateLimiter(1, 1),
+    requestRateLimiter(3, 1),
     passport.authenticate(['jwt', 'anonymous'], { session: false }),
     wrapAsync(async (req, res) => {
       const log = req.log
