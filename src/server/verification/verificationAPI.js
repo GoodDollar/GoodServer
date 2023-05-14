@@ -319,7 +319,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    */
   app.post(
     '/verify/mobile',
-    requestRateLimiter(),
+    requestRateLimiter(10, 1),
     passport.authenticate('jwt', { session: false }),
     onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res) => {
@@ -475,7 +475,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    */
   app.post(
     '/verify/sendemail',
-    requestRateLimiter(),
+    requestRateLimiter(2, 1),
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       let runInEnv = ['production', 'staging', 'test'].includes(conf.env)
