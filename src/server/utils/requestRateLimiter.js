@@ -36,24 +36,31 @@ const makeStore = () => {
   }
 }
 
-const makeOpts = (limit, minutesWindow) => ({
-  windowMs: Math.round((minutesWindow || +rateLimitMinutes) * 60 * 1000), // minutes
-  max: limit || +rateLimitRequestsCount // limit each IP to n requests per windowMs
-})
+const store = makeStore()
 
-const makeUserKey = request => {
+const makeUserKey = (bucketKey, byUserId) => request => {
   const { user } = request
   const { loggedInAs } = user || {}
 
-  return loggedInAs || request.getClientIp(request)
+  const bucket = bucketKey || request.route.path
+  const identifier = byUserId ? loggedInAs || requestIp.getClientIp(request) : requestIp.getClientIp(request)
+
+  return `${bucket}_${identifier}`
 }
 
-export const userRateLimiter = (limit, minutesWindow) =>
+const makeOpts = (limit, minutesWindow, bucketKey) => ({
+  windowMs: Math.round((minutesWindow || +rateLimitMinutes) * 60 * 1000), // minutes
+  max: limit || +rateLimitRequestsCount, // limit each IP to n requests per windowMs
+  store,
+  keyGenerator: makeUserKey(bucketKey, false)
+})
+
+export const userRateLimiter = (limit, minutesWindow, bucketKey) =>
   rateLimit({
-    ...makeOpts(limit, minutesWindow),
-    keyGenerator: makeUserKey,
+    ...makeOpts(limit, minutesWindow, bucketKey),
+    keyGenerator: makeUserKey(bucketKey, true),
     message: 'per account rate limit exceeded'
   })
 
-export default (limit, minutesWindow) =>
-  rateLimit({ ...makeOpts(limit, minutesWindow), keyGenerator: requestIp.getClientIp, store: makeStore() })
+export default (limit, minutesWindow, bucketKey) =>
+  rateLimit({ ...makeOpts(limit, minutesWindow, bucketKey), store: makeStore() })

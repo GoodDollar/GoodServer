@@ -656,7 +656,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   const visitorsCounter = {}
   app.post(
     '/verify/recaptcha',
-    requestRateLimiter(60, 10),
+    requestRateLimiter(10, 1),
     wrapAsync(async (req, res) => {
       const log = req.log
       const { payload: token = '', ipv6 = '', captchaType = '', fingerprint = {} } = req.body

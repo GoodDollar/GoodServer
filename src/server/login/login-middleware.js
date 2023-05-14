@@ -292,7 +292,7 @@ const setup = (app: Router) => {
 
   app.get(
     '/auth/ping',
-    requestRateLimiter(200),
+    requestRateLimiter(10),
     wrapAsync(async (req, res) => {
       res.json({ ping: new Date() })
     })
@@ -300,7 +300,7 @@ const setup = (app: Router) => {
 
   app.post(
     '/auth/settings',
-    requestRateLimiter(200),
+    requestRateLimiter(10),
     wrapAsync(async (req, res) => {
       const env = req.body.env
       const settings = clientSettings[env] || { fromServer: false }

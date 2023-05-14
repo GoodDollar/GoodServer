@@ -36,7 +36,7 @@ const setup = (app: Router, storage: StorageAPI) => {
   app.use(
     ['/user/*'],
     passport.authenticate('jwt', { session: false }),
-    requestRateLimiter(20, 1),
+    requestRateLimiter(20, 1, 'user'),
     wrapAsync(async (req, res, next) => {
       const { user, body, log } = req
       const { loggedInAs } = user
