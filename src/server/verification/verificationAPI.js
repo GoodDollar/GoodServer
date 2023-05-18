@@ -15,6 +15,7 @@ import OnGage from '../crm/ongage'
 import { sendTemplateEmail } from '../aws-ses/aws-ses'
 import fetch from 'cross-fetch'
 import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
+import { cancelDisposalTask } from './cron/taskUtil'
 import { recoverPublickey } from '../utils/eth'
 import { shouldLogVerificaitonError } from './utils/logger'
 import { syncUserEmail } from '../storage/addUserSteps'
@@ -227,13 +228,37 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
         // here we check if wallet was registered using v1 of v2 identifier
         const isV1 = !!v1Identifier && (await enrollmentProcessor.isIdentifierExists(v1Identifier))
-        const activeIdentifier = isV1 ? v1Identifier : v2Identifier
 
-        await enrollmentProcessor.validate(user, activeIdentifier, payload)
+        try {
+          // if v1, we convert to v2
+          // delete previous enrollment.
+          // once user completes FV it will create a new record under his V2 id. update his lastAuthenticated. and enqueue for disposal
+          if (isV1) {
+            log.info('v1 identifier found, converting to v2', { v1Identifier, v2Identifier, gdAddress })
+            await Promise.all([
+              enrollmentProcessor.dispose(v1Identifier, log),
+              cancelDisposalTask(storage, v1Identifier)
+            ])
+          }
+          await enrollmentProcessor.validate(user, v2Identifier, payload)
+          const enrollmentResult = await enrollmentProcessor.enroll(user, v2Identifier, payload, log)
 
-        const enrollmentResult = await enrollmentProcessor.enroll(user, activeIdentifier, payload, log)
+          res.json(enrollmentResult)
+        } catch (e) {
+          if (isV1) {
+            // if we deleted the user record but had an error in whitelisting, then we must revoke his whitelisted status
+            // since we might not have his record enrolled
+            const isIndexed = await enrollmentProcessor.isIdentifierIndexed(v2Identifier)
+            // if new identifier is indexed then dont revoke
+            if (!isIndexed) {
+              const isWhitelisted = await AdminWallet.isVerified(gdAddress)
+              if (isWhitelisted) await AdminWallet.removeWhitelisted(gdAddress)
+            }
+            log.error('failed converting v1 identifier', e.message, e, { isIndexed, gdAddress })
+          }
 
-        res.json(enrollmentResult)
+          throw e
+        }
       } catch (exception) {
         const { message } = exception
         const logArgs = ['Face verification error:', message, exception, { enrollmentIdentifier, fvSigner, gdAddress }]
