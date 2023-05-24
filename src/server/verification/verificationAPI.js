@@ -58,7 +58,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         await verifyFVIdentifier(enrollmentIdentifier, gdAddress)
 
         let v2Identifier = enrollmentIdentifier.slice(0, 42)
-        let v1Identifier = fvSigner?.replace('0x', '') // wallet will also supply the v1 identifier as fvSigner, we remove '0x' for public address
+        let v1Identifier = fvSigner && fvSigner.replace('0x', '') // wallet will also supply the v1 identifier as fvSigner, we remove '0x' for public address
 
         // here we check if wallet was registered using v1 of v2 identifier
         const [isV2, isV1] = await Promise.all([
