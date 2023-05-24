@@ -106,7 +106,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       try {
         let v2Identifier = enrollmentIdentifier.slice(0, 42)
-        let v1Identifier = fvSigner.replace('0x', '') // wallet also provide older identifier in case it was created before v2
+        let v1Identifier = fvSigner && fvSigner.replace('0x', '') // wallet also provide older identifier in case it was created before v2
 
         const processor = createEnrollmentProcessor(storage, log)
         const [isDisposingV2, isDisposingV1] = await Promise.all([
@@ -221,7 +221,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         await verifyFVIdentifier(enrollmentIdentifier, gdAddress)
 
         let v2Identifier = enrollmentIdentifier.slice(0, 42)
-        let v1Identifier = fvSigner.replace('0x', '') // wallet will also supply the v1 identifier as fvSigner, we remove '0x' for public address
+        let v1Identifier = fvSigner && fvSigner.replace('0x', '') // wallet will also supply the v1 identifier as fvSigner, we remove '0x' for public address
 
         const enrollmentProcessor = createEnrollmentProcessor(storage, log)
 
