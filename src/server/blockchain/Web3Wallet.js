@@ -176,6 +176,13 @@ export class Web3Wallet {
       const maxAdminBalance = await this.proxyContract.methods.adminToppingAmount().call()
       const minAdminBalance = parseInt(web3Utils.fromWei(maxAdminBalance, 'gwei')) / 2
 
+      const adminWalletContractBalanceInGwei = parseInt(web3Utils.fromWei(adminWalletContractBalance, 'gwei'))
+      const fifteenPercentBelowMinAdminBalance = minAdminBalance * 0.85 * this.addresses.length
+
+      if (adminWalletContractBalanceInGwei < fifteenPercentBelowMinAdminBalance) {
+        log.info('AdminWallet contract balance is within 15% before it reaches min threshold')
+      }
+
       if (web3Utils.fromWei(adminWalletContractBalance, 'gwei') < minAdminBalance * this.addresses.length) {
         log.error('AdminWallet contract low funds')
         await sendSlackAlert({
