@@ -180,7 +180,7 @@ export class Web3Wallet {
       const fifteenPercentBelowMinAdminBalance = minAdminBalance * 0.85 * this.addresses.length
 
       if (adminWalletContractBalanceInGwei < fifteenPercentBelowMinAdminBalance) {
-        log.info('AdminWallet contract balance is within 15% before it reaches min threshold')
+        log.info('AdminWallet within 15% minBalance reached')
       }
 
       if (web3Utils.fromWei(adminWalletContractBalance, 'gwei') < minAdminBalance * this.addresses.length) {
