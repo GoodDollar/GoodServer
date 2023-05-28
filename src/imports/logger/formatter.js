@@ -11,8 +11,9 @@ const colorizer = colorize()
 export const extended = () =>
   printf(({ level, timestamp, from, userId, uuid, message, ...rest }) => {
     const context = rest[SPLAT] || []
-    const logPayload = { uuid, message }
     const fromString = from ? ` (FROM: ${from} userId: ${userId || ''})` : ''
+    const logMessage = `${timestamp} - workerId:${global.workerId} - ${level}${fromString}`
+    const logPayload = { logMessage, level, timestamp, from, uuid, message }
 
     const stringifiedConext = `[${context
       .map(item => {
@@ -40,7 +41,6 @@ export const extended = () =>
       .join(',')}]`
 
     const stringifiedPayload = JSON.stringify(logPayload).replace(/\}$/, `,"context":${stringifiedConext}}`)
-    const logMessage = `${timestamp} - workerId:${global.workerId} - ${level}${fromString}: ${stringifiedPayload}`
 
-    return colorizer.colorize(level, logMessage)
+    return colorizer.colorize(level, stringifiedPayload)
   })
