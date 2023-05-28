@@ -5,8 +5,7 @@ import errorSerializer from 'pino-std-serializers/lib/err'
 import { isError, isArray, upperFirst } from 'lodash'
 import { SPLAT } from 'triple-beam'
 
-const { printf, colorize } = winston.format
-const colorizer = colorize()
+const { printf } = winston.format
 
 export const extended = () =>
   printf(({ level, timestamp, from, userId, uuid, message, ...rest }) => {
@@ -42,5 +41,5 @@ export const extended = () =>
 
     const stringifiedPayload = JSON.stringify(logPayload).replace(/\}$/, `,"context":${stringifiedConext}}`)
 
-    return colorizer.colorize(level, stringifiedPayload)
+    return stringifiedPayload
   })
