@@ -62,5 +62,4 @@ export const userRateLimiter = (limit, minutesWindow, bucketKey) =>
     message: 'per account rate limit exceeded'
   })
 
-export default (limit, minutesWindow, bucketKey) =>
-  rateLimit({ ...makeOpts(limit, minutesWindow, bucketKey), store: makeStore() })
+export default (limit, minutesWindow, bucketKey) => rateLimit({ ...makeOpts(limit, minutesWindow, bucketKey) })
