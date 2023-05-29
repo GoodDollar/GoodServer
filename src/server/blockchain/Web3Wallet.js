@@ -162,6 +162,8 @@ export class Web3Wallet {
         this.addWallet(account)
       }
 
+      this.address = this.addresses[0]
+
       log.info('Initialized by mnemonic:', { address: this.addresses })
     }
     try {
@@ -295,16 +297,17 @@ export class Web3Wallet {
       const { nonce, release, fail, address } = await this.txManager.lock(this.addresses[0])
 
       try {
+        log.debug('topAdmins:', { numAdmins, address, nonce })
         for (let i = 0; i < numAdmins; i += 50) {
           log.debug('topAdmins sending tx', { address, nonce, adminIdx: i })
-          await this.proxyContract.methods.topAdmins(i, i + 50).send({ gas: '500000', from: address, nonce })
+          await this.proxyContract.methods.topAdmins(i, i + 50).send({ from: address, nonce })
           log.debug('topAdmins success', { adminIdx: i })
         }
 
         release()
       } catch (e) {
-        fail()
         log.error('topAdmins failed', e)
+        fail()
       }
     } catch (e) {
       log.error('topAdmins failed', e)
