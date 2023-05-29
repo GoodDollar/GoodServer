@@ -29,7 +29,6 @@ const makeStore = () => {
           return client.sendCommand(args)
         } catch (e) {
           log.error('redis command failed:', e.message, e, { args })
-          client.reset
           return {}
         }
       }
