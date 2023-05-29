@@ -1,6 +1,6 @@
 {
   "name": "@gooddollar/goodserver",
-  "version": "1.56.2",
+  "version": "1.56.3",
   "description": "GoodDollar Server",
   "main": "src/server/index.js",
   "engines": {
