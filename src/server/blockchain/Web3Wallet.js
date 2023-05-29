@@ -194,7 +194,7 @@ export class Web3Wallet {
 
       if (this.conf.topAdminsOnStartup) {
         log.info('calling topAdmins...')
-        await this.topAdmins(0, this.conf.numberOfAdminWalletAccounts).catch(e => {
+        await this.topAdmins(this.conf.numberOfAdminWalletAccounts).catch(e => {
           log.warn('topAdmins failed', { e, errMessage: e.message })
         })
       }
