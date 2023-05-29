@@ -15,6 +15,7 @@ import OnGage from '../crm/ongage'
 import { sendTemplateEmail } from '../aws-ses/aws-ses'
 import fetch from 'cross-fetch'
 import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
+import { cancelDisposalTask } from './cron/taskUtil'
 import { recoverPublickey } from '../utils/eth'
 import { shouldLogVerificaitonError } from './utils/logger'
 import { syncUserEmail } from '../storage/addUserSteps'
@@ -58,7 +59,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         await verifyFVIdentifier(enrollmentIdentifier, gdAddress)
 
         let v2Identifier = enrollmentIdentifier.slice(0, 42)
-        let v1Identifier = fvSigner.replace('0x', '') // wallet will also supply the v1 identifier as fvSigner, we remove '0x' for public address
+        let v1Identifier = fvSigner && fvSigner.replace('0x', '') // wallet will also supply the v1 identifier as fvSigner, we remove '0x' for public address
 
         // here we check if wallet was registered using v1 of v2 identifier
         const [isV2, isV1] = await Promise.all([
@@ -106,7 +107,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       try {
         let v2Identifier = enrollmentIdentifier.slice(0, 42)
-        let v1Identifier = fvSigner.replace('0x', '') // wallet also provide older identifier in case it was created before v2
+        let v1Identifier = fvSigner && fvSigner.replace('0x', '') // wallet also provide older identifier in case it was created before v2
 
         const processor = createEnrollmentProcessor(storage, log)
         const [isDisposingV2, isDisposingV1] = await Promise.all([
@@ -221,19 +222,43 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         await verifyFVIdentifier(enrollmentIdentifier, gdAddress)
 
         let v2Identifier = enrollmentIdentifier.slice(0, 42)
-        let v1Identifier = fvSigner.replace('0x', '') // wallet will also supply the v1 identifier as fvSigner, we remove '0x' for public address
+        let v1Identifier = fvSigner && fvSigner.replace('0x', '') // wallet will also supply the v1 identifier as fvSigner, we remove '0x' for public address
 
         const enrollmentProcessor = createEnrollmentProcessor(storage, log)
 
         // here we check if wallet was registered using v1 of v2 identifier
         const isV1 = !!v1Identifier && (await enrollmentProcessor.isIdentifierExists(v1Identifier))
-        const activeIdentifier = isV1 ? v1Identifier : v2Identifier
 
-        await enrollmentProcessor.validate(user, activeIdentifier, payload)
+        try {
+          // if v1, we convert to v2
+          // delete previous enrollment.
+          // once user completes FV it will create a new record under his V2 id. update his lastAuthenticated. and enqueue for disposal
+          if (isV1) {
+            log.info('v1 identifier found, converting to v2', { v1Identifier, v2Identifier, gdAddress })
+            await Promise.all([
+              enrollmentProcessor.dispose(v1Identifier, log),
+              cancelDisposalTask(storage, v1Identifier)
+            ])
+          }
+          await enrollmentProcessor.validate(user, v2Identifier, payload)
+          const enrollmentResult = await enrollmentProcessor.enroll(user, v2Identifier, payload, log)
 
-        const enrollmentResult = await enrollmentProcessor.enroll(user, activeIdentifier, payload, log)
+          res.json(enrollmentResult)
+        } catch (e) {
+          if (isV1) {
+            // if we deleted the user record but had an error in whitelisting, then we must revoke his whitelisted status
+            // since we might not have his record enrolled
+            const isIndexed = await enrollmentProcessor.isIdentifierIndexed(v2Identifier)
+            // if new identifier is indexed then dont revoke
+            if (!isIndexed) {
+              const isWhitelisted = await AdminWallet.isVerified(gdAddress)
+              if (isWhitelisted) await AdminWallet.removeWhitelisted(gdAddress)
+            }
+            log.error('failed converting v1 identifier', e.message, e, { isIndexed, gdAddress })
+          }
 
-        res.json(enrollmentResult)
+          throw e
+        }
       } catch (exception) {
         const { message } = exception
         const logArgs = ['Face verification error:', message, exception, { enrollmentIdentifier, fvSigner, gdAddress }]
@@ -262,7 +287,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
     '/verify/sendotp',
     passport.authenticate('jwt', { session: false }),
-    requestRateLimiter(1, 1),
     userRateLimiter(1, 1), // 1 req / 1min, should be applied AFTER auth to have req.user been set
     // also no need for reqRateLimiter as user limiter falls back to the ip (e.g. works as default limiter if no user)
     wrapAsync(async (req, res) => {
@@ -320,7 +344,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    */
   app.post(
     '/verify/mobile',
-    requestRateLimiter(),
+    requestRateLimiter(10, 1),
     passport.authenticate('jwt', { session: false }),
     onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res) => {
@@ -413,7 +437,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    */
   app.post(
     '/verify/topwallet',
-    requestRateLimiter(1, 1),
+    requestRateLimiter(3, 1),
     passport.authenticate(['jwt', 'anonymous'], { session: false }),
     wrapAsync(async (req, res) => {
       const log = req.log
@@ -424,7 +448,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       log.debug('topwallet tx request:', { address: user.gdAddress, chainId, user: req.user, origin, host, clientIp })
       if (conf.env === 'production') {
-        if (!origin.endsWith('wallet.gooddollar.org')) {
+        if (!user.identifier) {
           const isWhitelisted = await AdminWallet.isVerified(user.gdAddress)
           if (!isWhitelisted) {
             log.info('topwallet denied, not whitelisted', { address: user.gdAddress, origin, chainId, clientIp })
@@ -476,7 +500,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    */
   app.post(
     '/verify/sendemail',
-    requestRateLimiter(),
+    requestRateLimiter(2, 1),
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       let runInEnv = ['production', 'staging', 'test'].includes(conf.env)
@@ -657,7 +681,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   const visitorsCounter = {}
   app.post(
     '/verify/recaptcha',
-    requestRateLimiter(60, 10),
+    requestRateLimiter(10, 1),
     wrapAsync(async (req, res) => {
       const log = req.log
       const { payload: token = '', ipv6 = '', captchaType = '', fingerprint = {} } = req.body
