@@ -300,7 +300,14 @@ export class Web3Wallet {
         log.debug('topAdmins:', { numAdmins, address, nonce })
         for (let i = 0; i < numAdmins; i += 50) {
           log.debug('topAdmins sending tx', { address, nonce, adminIdx: i })
-          await this.proxyContract.methods.topAdmins(i, i + 50).send({ from: address, nonce })
+          const tx = this.proxyContract.methods.topAdmins(i, i + 50)
+          const gas = await tx
+            .estimateGas()
+            .then(gas => parseInt(gas) + 200000) //buffer for proxy contract, reimburseGas?
+            .catch(() => 1000000)
+          await this.proxyContract.methods
+            .topAdmins(i, i + 50)
+            .send({ gas, gasPrice: this.gasPrice, from: address, nonce })
           log.debug('topAdmins success', { adminIdx: i })
         }
 
