@@ -1,7 +1,6 @@
 import rateLimit, { MemoryStore } from 'express-rate-limit'
 import config from '../server.config'
 import * as redis from 'redis'
-import { once } from 'lodash'
 import RedisStore from 'rate-limit-redis'
 import logger from '../../imports/logger'
 import requestIp from 'request-ip'
@@ -10,7 +9,7 @@ const log = logger.child({ from: 'requestRateLimiter' })
 
 const { rateLimitMinutes, rateLimitRequestsCount, redisUrl } = config
 
-const makeStore = once(() => {
+const makeStore = () => {
   try {
     if (!redisUrl) {
       throw new Error('No Redis URL set, fallback to MemoryStore')
@@ -35,7 +34,9 @@ const makeStore = once(() => {
     log.error('redis init failed', e.message, e)
     return new MemoryStore()
   }
-})
+}
+
+const store = makeStore()
 
 const makeUserKey = (bucketKey, byUserId) => request => {
   const { user } = request
@@ -50,8 +51,8 @@ const makeUserKey = (bucketKey, byUserId) => request => {
 const makeOpts = (limit, minutesWindow, bucketKey) => ({
   windowMs: Math.round((minutesWindow || +rateLimitMinutes) * 60 * 1000), // minutes
   max: limit || +rateLimitRequestsCount, // limit each IP to n requests per windowMs
-  keyGenerator: makeUserKey(bucketKey, false),
-  store: makeStore()
+  store,
+  keyGenerator: makeUserKey(bucketKey, false)
 })
 
 export const userRateLimiter = (limit, minutesWindow, bucketKey) =>
@@ -61,4 +62,4 @@ export const userRateLimiter = (limit, minutesWindow, bucketKey) =>
     message: 'per account rate limit exceeded'
   })
 
-export default (limit, minutesWindow, bucketKey) => rateLimit(makeOpts(limit, minutesWindow, bucketKey))
+export default (limit, minutesWindow, bucketKey) => rateLimit({ ...makeOpts(limit, minutesWindow, bucketKey) })
