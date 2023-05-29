@@ -15,7 +15,10 @@ const makeStore = () => {
       throw new Error('No Redis URL set, fallback to MemoryStore')
     }
 
-    const client = redis.createClient({ url: redisUrl }, { no_ready_check: true })
+    const client = redis.createClient(
+      { url: redisUrl },
+      { no_ready_check: true, socket_keepalive: true, retry_strategy: () => 5000 }
+    )
     const connectionState = client.connect()
 
     // Redis store configuration
@@ -26,6 +29,7 @@ const makeStore = () => {
           return client.sendCommand(args)
         } catch (e) {
           log.error('redis command failed:', e.message, e, { args })
+          client.reset
           return {}
         }
       }
