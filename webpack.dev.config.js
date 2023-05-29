@@ -21,8 +21,10 @@ module.exports = {
   mode: 'development',
   target: 'web',
   devtool: '#source-map',
-  node: {
-    fs: 'empty'
+  resolve: {
+    fallback: {
+      fs: false
+    }
   },
   optimization: {
     nodeEnv: false
