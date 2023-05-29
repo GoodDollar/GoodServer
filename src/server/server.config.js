@@ -409,7 +409,7 @@ const conf = convict({
   },
   topAdminsOnStartup: {
     doc: 'call topAdmins in adminwallet smart contract',
-    format: '*',
+    format: Boolean,
     env: 'TOP_ADMINS',
     default: false
   },
