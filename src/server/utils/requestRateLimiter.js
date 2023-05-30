@@ -1,6 +1,6 @@
 import rateLimit, { MemoryStore } from 'express-rate-limit'
 import config from '../server.config'
-import * as redis from 'redis'
+import * as Redis from 'ioredis'
 import RedisStore from 'rate-limit-redis'
 import logger from '../../imports/logger'
 import requestIp from 'request-ip'
@@ -15,18 +15,30 @@ const makeStore = () => {
       throw new Error('No Redis URL set, fallback to MemoryStore')
     }
 
-    const client = redis.createClient(
-      { url: redisUrl },
-      { no_ready_check: true, socket_keepalive: true, retry_strategy: () => 5000 }
-    )
-    const connectionState = client.connect()
+    const client = new Redis(redisUrl, {
+      keepAlive: true,
+      retryStrategy: times => {
+        if (times > 200) {
+          log.error('unable to reconnect to redis')
+          return
+        }
+        const delay = Math.min(times * 50, 2000)
+        return delay
+      },
+      reconnectOnError: e => {
+        log.error('redis reconnecting on error', e.message, e)
+        return true
+      }
+    })
+
+    // const connectionState = client.connect()
 
     // Redis store configuration
     return new RedisStore({
       sendCommand: async (...args) => {
         try {
-          await connectionState
-          return client.sendCommand(args)
+          // await connectionState
+          return client.call(...args)
         } catch (e) {
           log.error('redis command failed:', e.message, e, { args })
           return {}
