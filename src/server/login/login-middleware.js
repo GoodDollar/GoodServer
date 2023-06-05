@@ -75,10 +75,12 @@ const verifyProfilePublicKey = async (publicKeyString, signature, nonce) => {
 }
 
 export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
-  const { loggedInAs: identifier } = jwtPayload
+  const { loggedInAs: identifier, exp } = jwtPayload
   let user = false
 
-  if (identifier) {
+  const isExpired = Date.now() / 1000 > Number(exp)
+  log.trace('jwt expiration check:', { isExpired, exp, jwtPayload })
+  if (identifier && !isExpired) {
     user = await UserDBPrivate.getUser(identifier) // usually this would be a database call
 
     log.trace('payload received', { jwtPayload, user })

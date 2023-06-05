@@ -4,8 +4,8 @@
   "description": "GoodDollar Server",
   "main": "src/server/index.js",
   "engines": {
-    "node": "18.x",
-    "npm": "8.x"
+    "node": "20.x",
+    "npm": "9.x"
   },
   "scripts": {
     "build": "webpack --mode production --config webpack.server.config.js",
