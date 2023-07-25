@@ -1,12 +1,12 @@
 import FetchNodeDetails from '@toruslabs/fetch-node-details/dist/fetchNodeDetails-node.js'
 import TorusUtils from '@toruslabs/torus.js/dist/torusUtils-node.js'
 import moment from 'moment'
+import { get } from 'lodash'
 
 import Config from '../server/server.config'
 import { recoverPublickey } from '../server/utils/eth'
 import logger from '../imports/logger'
 
-const { PROXY_ADDRESS_TESTNET, PROXY_ADDRESS_MAINNET } = FetchNodeDetails
 class GoogleLegacyStrategy {
   getVerificationOptions(userRecord) {
     return {
@@ -56,11 +56,13 @@ class TorusVerifier {
 
   static factory(log = logger.child({ from: 'TorusVerifier' })) {
     const { torusNetwork } = Config
-    const torus = new TorusUtils()
+    const torus = new TorusUtils({
+      network: torusNetwork !== 'mainnet' ? 'testnet' : 'mainnet',
+      clientId: 'BLQmq83LgX8FRbjPcZ5lVX8EJUjrioOiw3YQd6qCoWs3Of8F2dZRD2nThUSLpbyKO7U3-bXe0D3j8hgjntShi40'
+    })
 
     const fetchNodeDetails = new FetchNodeDetails({
-      network: torusNetwork !== 'mainnet' ? 'testnet' : 'mainnet',
-      proxyAddress: torusNetwork !== 'mainnet' ? PROXY_ADDRESS_TESTNET : PROXY_ADDRESS_MAINNET
+      network: torusNetwork !== 'mainnet' ? 'testnet' : 'mainnet'
     })
 
     // incapsulating verifier initialization using factory pattern
@@ -96,8 +98,9 @@ class TorusVerifier {
       false
     )
 
-    logger.debug('isIdentifierOwner:', { identifier, response })
-    return publicAddress.toLowerCase() === response.toLowerCase()
+    const responseAddr = get(response, 'finalKeyData.evmAddress', '')
+    logger.debug('isIdentifierOwner:', { identifier, response, publicAddress, responseAddr })
+    return publicAddress.toLowerCase() === responseAddr.toLowerCase()
   }
 
   getVerificationOptions(torusType, userRecord) {
