@@ -55,10 +55,10 @@ class TorusVerifier {
   strategies = {}
 
   static factory(log = logger.child({ from: 'TorusVerifier' })) {
-    const { torusNetwork } = Config
+    const { torusNetwork, torusClientId } = Config
     const torus = new TorusUtils({
       network: torusNetwork !== 'mainnet' ? 'testnet' : 'mainnet',
-      clientId: 'BLQmq83LgX8FRbjPcZ5lVX8EJUjrioOiw3YQd6qCoWs3Of8F2dZRD2nThUSLpbyKO7U3-bXe0D3j8hgjntShi40'
+      clientId: torusClientId
     })
 
     const fetchNodeDetails = new FetchNodeDetails({
