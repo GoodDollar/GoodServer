@@ -31,6 +31,8 @@ const makeStore = () => {
       }
     })
 
+    client.on('error', e => log.error('redis error', e.meesage, e))
+
     // const connectionState = client.connect()
 
     // Redis store configuration
@@ -38,7 +40,8 @@ const makeStore = () => {
       sendCommand: async (...args) => {
         try {
           // await connectionState
-          return client.call(...args)
+          const res = await client.call(...args)
+          return res
         } catch (e) {
           log.error('redis command failed:', e.message, e, { args })
           return {}
