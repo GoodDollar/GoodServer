@@ -489,6 +489,44 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   )
 
   /**
+   * @api {post} /verify/swaphelper trigger a non custodial swap
+   * @apiName Swaphelper
+   * @apiGroup Verification
+   *
+   * @apiParam {account} user
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
+  app.post(
+    '/verify/swaphelper',
+    requestRateLimiter(3, 1),
+    passport.authenticate(['jwt', 'anonymous'], { session: false }),
+    wrapAsync(async (req, res) => {
+      const log = req.log
+      const { account, chainId = 42220 } = req.body || {}
+      const gdAddress = account || get(req.user, 'gdAddress')
+
+      log.info('swaphelper request:', { gdAddress, chainId })
+      if (!gdAddress) {
+        throw new Error('missing user account')
+      }
+
+      try {
+        //verify target helper address has funds
+
+        const tx = await AdminWallet.walletsMap[chainId].swaphelper(gdAddress, log)
+        log.info('swaphelper request done:', { gdAddress, chainId, tx })
+
+        res.json({ ok: 1 })
+      } catch (e) {
+        log.error('swaphelper timeout or unexpected', e.message, e, { walletaddress: gdAddress, chainId })
+        res.json({ ok: -1, error: e.message })
+      }
+    })
+  )
+
+  /**
    * @api {post} /verify/email Send verification email endpoint
    * @apiName Send Email
    * @apiGroup Verification

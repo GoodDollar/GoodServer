@@ -12,6 +12,8 @@ import UBIABI from '@gooddollar/goodprotocol/artifacts/contracts/ubi/UBIScheme.s
 import ProxyContractABI from '@gooddollar/goodprotocol/artifacts/contracts/utils/AdminWalletFuse.sol/AdminWalletFuse.json'
 import ContractsAddress from '@gooddollar/goodprotocol/releases/deployment.json'
 import FaucetABI from '@gooddollar/goodprotocol/artifacts/contracts/fuseFaucet/FuseFaucetV2.sol/FuseFaucetV2.json'
+import BuyGDFactoryABI from '@gooddollar/goodprotocol/artifacts/abis/BuyGDCloneFactory.min.json'
+import BuyGDABI from '@gooddollar/goodprotocol/artifacts/abis/BuyGDClone.min.json'
 
 import conf from '../server.config'
 import logger from '../../imports/logger'
@@ -255,6 +257,13 @@ export class Web3Wallet {
           from: this.address
         }
       )
+
+      const buygdAddress = get(ContractsAddress, `${this.network}.BuyGDFactory`)
+      if (buygdAddress) {
+        this.buygdFactoryContract = new this.web3.eth.Contract(BuyGDFactoryABI.abi, buygdAddress, {
+          from: this.address
+        })
+      }
 
       let gdbalance = await this.tokenContract.methods
         .balanceOf(this.address)
@@ -709,6 +718,76 @@ export class Web3Wallet {
 
       logger.error('fishMulti failed', message, exception, { toFish })
       throw exception
+    }
+  }
+
+  async swaphelper(address, customLogger = null) {
+    const logger = customLogger || this.log
+    const predictedAddress = await this.buygdFactoryContract.methods.predict(address).call()
+    const isHelperDeployed = await this.web3.eth.getCode(predictedAddress).then(code => code !== '0x')
+
+    try {
+      let swapResult
+      if (isHelperDeployed) {
+        const buygdContract = this.web3.eth.Contract(BuyGDABI.abi, predictedAddress)
+        //simulate tx
+        await buygdContract.methods.swap(0, this.proxyContract._address).call()
+
+        let encodedCall = this.web3.eth.abi.encodeFunctionCall(
+          {
+            name: 'swap',
+            type: 'function',
+            inputs: [
+              {
+                type: 'uint256',
+                name: 'minAmount'
+              },
+              {
+                type: 'address',
+                name: 'gasRefund'
+              }
+            ]
+          },
+          [0, this.proxyContract._address]
+        )
+
+        const transaction = this.proxyContract.methods.genericCall(predictedAddress, encodedCall, 0)
+        const onTransactionHash = hash =>
+          void logger.debug('swaphelper swap got txhash:', { hash, address, wallet: this.name })
+        swapResult = await this.sendTransaction(transaction, { onTransactionHash }, {}, true, logger)
+      } else {
+        //simulate tx
+        await this.buygdFactoryContract.methods.createAndSwap(address, 0).call()
+        let encodedCall = this.web3.eth.abi.encodeFunctionCall(
+          {
+            name: 'createAndSwap',
+            type: 'function',
+            inputs: [
+              {
+                type: 'address',
+                name: 'account'
+              },
+              {
+                type: 'uint256',
+                name: 'minAmount'
+              }
+            ]
+          },
+          [address, 0]
+        )
+
+        const transaction = this.proxyContract.methods.genericCall(this.buygdFactoryContract._address, encodedCall, 0)
+        const onTransactionHash = hash =>
+          void logger.debug('swaphelper createAndSwap got txhash:', { hash, address, wallet: this.name })
+        swapResult = await this.sendTransaction(transaction, { onTransactionHash }, {}, true, logger)
+      }
+
+      logger.debug('swaphelper tx result:', { address, swapResult, wallet: this.name })
+
+      return { ok: 1 }
+    } catch (e) {
+      logger.error('Error swaphelper', e.message, e, { address, predictedAddress, isHelperDeployed, wallet: this.name })
+      throw e
     }
   }
 
