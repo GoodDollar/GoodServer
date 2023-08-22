@@ -162,6 +162,8 @@ export class Web3Wallet {
         this.addWallet(account)
       }
 
+      this.address = this.addresses[0]
+
       log.info('Initialized by mnemonic:', { address: this.addresses })
     }
     try {
@@ -191,8 +193,9 @@ export class Web3Wallet {
       log.info('Initialized wallet queue manager')
 
       if (this.conf.topAdminsOnStartup) {
-        await this.topAdmins(0, this.conf.numberOfAdminWalletAccounts).catch(e => {
-          log.warn('Top admins failed', { e, errMessage: e.message })
+        log.info('calling topAdmins...')
+        await this.topAdmins(this.conf.numberOfAdminWalletAccounts).catch(e => {
+          log.warn('topAdmins failed', { e, errMessage: e.message })
         })
       }
 
@@ -291,19 +294,27 @@ export class Web3Wallet {
     const { log } = this
 
     try {
-      const { nonce, release, fail, address } = await this.txManager.lock(this.addresses[0])
+      const { nonce, release, fail, address } = await this.txManager.lock(this.addresses[0], 1000) // timeout of 1 sec, so all "workers" fail except for the first
 
       try {
+        log.debug('topAdmins:', { numAdmins, address, nonce })
         for (let i = 0; i < numAdmins; i += 50) {
           log.debug('topAdmins sending tx', { address, nonce, adminIdx: i })
-          await this.proxyContract.methods.topAdmins(i, i + 50).send({ gas: '500000', from: address, nonce })
+          const tx = this.proxyContract.methods.topAdmins(i, i + 50)
+          const gas = await tx
+            .estimateGas()
+            .then(gas => parseInt(gas) + 200000) //buffer for proxy contract, reimburseGas?
+            .catch(() => 1000000)
+          await this.proxyContract.methods
+            .topAdmins(i, i + 50)
+            .send({ gas, gasPrice: this.gasPrice, from: address, nonce })
           log.debug('topAdmins success', { adminIdx: i })
         }
 
         release()
       } catch (e) {
-        fail()
         log.error('topAdmins failed', e)
+        fail()
       }
     } catch (e) {
       log.error('topAdmins failed', e)
@@ -328,8 +339,9 @@ export class Web3Wallet {
     let txHash
 
     try {
+      const isWhitelisted = await this.isVerified(address)
       // if lastAuthenticated is 0, then we force reauthentication, otherwise assume this is just syncing whitelisting between chains
-      const isVerified = lastAuthenticated > 0 && (await this.isVerified(address))
+      const isVerified = lastAuthenticated > 0 && isWhitelisted
 
       if (isVerified) {
         return { status: true }
@@ -340,7 +352,7 @@ export class Web3Wallet {
         .call()
         .then(parseInt)
 
-      if (lastAuth > 0) {
+      if (lastAuth > 0 && isWhitelisted) {
         // user was already whitelisted in the past, just needs re-authentication
         return this.authenticateUser(address, log)
       }
