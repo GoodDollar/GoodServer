@@ -507,6 +507,12 @@ const conf = convict({
     default: 50,
     env: 'TORUS_VERIFICATION_RETRY_DELAY'
   },
+  torusClientId: {
+    doc: 'client id for web3auth',
+    format: String,
+    default: 'BLQmq83LgX8FRbjPcZ5lVX8EJUjrioOiw3YQd6qCoWs3Of8F2dZRD2nThUSLpbyKO7U3-bXe0D3j8hgjntShi40',
+    env: 'TORUS_CLIENT_ID'
+  },
   slackAlertsWebhook: {
     doc: 'secret url for sending alerts to some channel',
     format: String,

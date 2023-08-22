@@ -55,10 +55,10 @@ class TorusVerifier {
   strategies = {}
 
   static factory(log = logger.child({ from: 'TorusVerifier' })) {
-    const { torusNetwork } = Config
+    const { torusNetwork, torusClientId } = Config
     const torus = new TorusUtils({
       network: torusNetwork !== 'mainnet' ? 'testnet' : 'mainnet',
-      clientId: 'BLQmq83LgX8FRbjPcZ5lVX8EJUjrioOiw3YQd6qCoWs3Of8F2dZRD2nThUSLpbyKO7U3-bXe0D3j8hgjntShi40'
+      clientId: torusClientId
     })
 
     const fetchNodeDetails = new FetchNodeDetails({
@@ -85,22 +85,27 @@ class TorusVerifier {
   }
 
   async isIdentifierOwner(publicAddress, verifier, identifier) {
-    const { torus, logger, fetchNodeDetails } = this
-    const { torusNodeEndpoints, torusNodePub } = await fetchNodeDetails.getNodeDetails({
-      verifier,
-      verifierId: identifier
-    })
+    try {
+      const { torus, logger, fetchNodeDetails } = this
+      const { torusNodeEndpoints, torusNodePub } = await fetchNodeDetails.getNodeDetails({
+        verifier,
+        verifierId: identifier
+      })
 
-    const response = await torus.getPublicAddress(
-      torusNodeEndpoints,
-      torusNodePub,
-      { verifier, verifierId: identifier },
-      false
-    )
+      const response = await torus.getPublicAddress(
+        torusNodeEndpoints,
+        torusNodePub,
+        { verifier, verifierId: identifier },
+        false
+      )
 
-    const responseAddr = get(response, 'finalKeyData.evmAddress', '')
-    logger.debug('isIdentifierOwner:', { identifier, response, publicAddress, responseAddr })
-    return publicAddress.toLowerCase() === responseAddr.toLowerCase()
+      const responseAddr = get(response, 'finalKeyData.evmAddress', '')
+      logger.debug('isIdentifierOwner:', { identifier, response, publicAddress, responseAddr })
+      return publicAddress.toLowerCase() === responseAddr.toLowerCase()
+    } catch (e) {
+      logger.error('isIdentifierOwner failed:', e.message, e, { verifier, identifier, publicAddress })
+      throw e
+    }
   }
 
   getVerificationOptions(torusType, userRecord) {
@@ -127,10 +132,12 @@ class TorusVerifier {
     const signedPublicKey = recoverPublickey(signature, identifier, nonce)
     const isOwner = await this.isIdentifierOwner(signedPublicKey, verifier, identifier)
 
-    logger.info('verifyProof result:', { isOwner, signedPublicKey })
-
     if (isOwner) {
+      logger.info('verifyProof result:', { isOwner, signedPublicKey })
+
       return { emailVerified, mobileVerified }
+    } else {
+      logger.warn('verifyProof result failed:', { isOwner, signedPublicKey, verifier, identifier })
     }
 
     return { emailVerified: false, mobileVerified: false }
