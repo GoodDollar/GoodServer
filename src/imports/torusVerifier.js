@@ -1,12 +1,12 @@
 import FetchNodeDetails from '@toruslabs/fetch-node-details/dist/fetchNodeDetails-node.js'
 import TorusUtils from '@toruslabs/torus.js/dist/torusUtils-node.js'
 import moment from 'moment'
+import { get } from 'lodash'
 
 import Config from '../server/server.config'
 import { recoverPublickey } from '../server/utils/eth'
 import logger from '../imports/logger'
 
-const { PROXY_ADDRESS_TESTNET, PROXY_ADDRESS_MAINNET } = FetchNodeDetails
 class GoogleLegacyStrategy {
   getVerificationOptions(userRecord) {
     return {
@@ -55,12 +55,14 @@ class TorusVerifier {
   strategies = {}
 
   static factory(log = logger.child({ from: 'TorusVerifier' })) {
-    const { torusNetwork } = Config
-    const torus = new TorusUtils()
+    const { torusNetwork, torusClientId } = Config
+    const torus = new TorusUtils({
+      network: torusNetwork !== 'mainnet' ? 'testnet' : 'mainnet',
+      clientId: torusClientId
+    })
 
     const fetchNodeDetails = new FetchNodeDetails({
-      network: torusNetwork !== 'mainnet' ? 'testnet' : 'mainnet',
-      proxyAddress: torusNetwork !== 'mainnet' ? PROXY_ADDRESS_TESTNET : PROXY_ADDRESS_MAINNET
+      network: torusNetwork !== 'mainnet' ? 'testnet' : 'mainnet'
     })
 
     // incapsulating verifier initialization using factory pattern
@@ -83,21 +85,27 @@ class TorusVerifier {
   }
 
   async isIdentifierOwner(publicAddress, verifier, identifier) {
-    const { torus, logger, fetchNodeDetails } = this
-    const { torusNodeEndpoints, torusNodePub } = await fetchNodeDetails.getNodeDetails({
-      verifier,
-      verifierId: identifier
-    })
+    try {
+      const { torus, logger, fetchNodeDetails } = this
+      const { torusNodeEndpoints, torusNodePub } = await fetchNodeDetails.getNodeDetails({
+        verifier,
+        verifierId: identifier
+      })
 
-    const response = await torus.getPublicAddress(
-      torusNodeEndpoints,
-      torusNodePub,
-      { verifier, verifierId: identifier },
-      false
-    )
+      const response = await torus.getPublicAddress(
+        torusNodeEndpoints,
+        torusNodePub,
+        { verifier, verifierId: identifier },
+        false
+      )
 
-    logger.debug('isIdentifierOwner:', { identifier, response })
-    return publicAddress.toLowerCase() === response.toLowerCase()
+      const responseAddr = get(response, 'finalKeyData.evmAddress', '')
+      logger.debug('isIdentifierOwner:', { identifier, response, publicAddress, responseAddr })
+      return publicAddress.toLowerCase() === responseAddr.toLowerCase()
+    } catch (e) {
+      logger.error('isIdentifierOwner failed:', e.message, e, { verifier, identifier, publicAddress })
+      throw e
+    }
   }
 
   getVerificationOptions(torusType, userRecord) {
@@ -124,10 +132,12 @@ class TorusVerifier {
     const signedPublicKey = recoverPublickey(signature, identifier, nonce)
     const isOwner = await this.isIdentifierOwner(signedPublicKey, verifier, identifier)
 
-    logger.info('verifyProof result:', { isOwner, signedPublicKey })
-
     if (isOwner) {
+      logger.info('verifyProof result:', { isOwner, signedPublicKey })
+
       return { emailVerified, mobileVerified }
+    } else {
+      logger.warn('verifyProof result failed:', { isOwner, signedPublicKey, verifier, identifier })
     }
 
     return { emailVerified: false, mobileVerified: false }

@@ -586,7 +586,7 @@ const setup = (app: Router, storage: StorageAPI) => {
 
   app.get(
     '/syncWhitelist/:account',
-    requestRateLimiter(1, 1),
+    requestRateLimiter(3, 1),
     wrapAsync(async (req, res) => {
       const { params, log } = req
       const { account } = params

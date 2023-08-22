@@ -339,8 +339,9 @@ export class Web3Wallet {
     let txHash
 
     try {
+      const isWhitelisted = await this.isVerified(address)
       // if lastAuthenticated is 0, then we force reauthentication, otherwise assume this is just syncing whitelisting between chains
-      const isVerified = lastAuthenticated > 0 && (await this.isVerified(address))
+      const isVerified = lastAuthenticated > 0 && isWhitelisted
 
       if (isVerified) {
         return { status: true }
@@ -351,7 +352,7 @@ export class Web3Wallet {
         .call()
         .then(parseInt)
 
-      if (lastAuth > 0) {
+      if (lastAuth > 0 && isWhitelisted) {
         // user was already whitelisted in the past, just needs re-authentication
         return this.authenticateUser(address, log)
       }
