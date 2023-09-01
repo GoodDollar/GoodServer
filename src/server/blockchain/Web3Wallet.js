@@ -899,7 +899,7 @@ export class Web3Wallet {
 
       logger.trace('getting tx lock:', { txuuid })
 
-      const { nonce, release, fail, address } = await this.txManager.lock(this.filledAddresses)
+      const { nonce, release, address } = await this.txManager.lock(this.filledAddresses)
 
       logger.trace('got tx lock:', { txuuid, address })
 
@@ -957,7 +957,8 @@ export class Web3Wallet {
               })
             }
 
-            fail()
+            //we maually unlock in catch
+            //fail()
 
             if (onError) {
               onError(e)
@@ -973,12 +974,14 @@ export class Web3Wallet {
     } catch (e) {
       //reset nonce on every error, on celo we dont get nonce errors
       let netNonce = parseInt(await this.web3.eth.getTransactionCount(currentAddress))
-      await this.txManager.unlock(currentAddress, netNonce)
 
       //check if tx did go through after timeout or not
       if (txHash && e.message.toLowerCase().includes('timeout')) {
         const receipt = await this.web3.eth.getTransactionReceipt(txHash).catch()
         if (receipt) {
+          //once we got receipt we know nonce should be increased
+          await this.txManager.unlock(currentAddress, currentNonce + 1)
+
           logger.info('receipt found for timedout tx', {
             txuuid,
             txHash,
@@ -988,8 +991,8 @@ export class Web3Wallet {
           })
           return receipt
         }
-      } else if (retry && e.message.includes('FeeTooLowToCompete')) {
-        logger.warn('sendTransaction retrying with higher fee:', {
+      } else if (retry && (e.message.includes('FeeTooLowToCompete') || e.message.includes('underpriced'))) {
+        logger.warn('sendTransaction assuming duplicate nonce:', {
           error: e.message,
           gasPrice,
           currentAddress,
@@ -1000,14 +1003,10 @@ export class Web3Wallet {
           wallet: this.name,
           network: this.networkId
         })
+        // increase nonce, since we assume therre's a tx pending with same nonce
+        await this.txManager.unlock(currentAddress, currentNonce + 1)
 
-        return this.sendTransaction(
-          tx,
-          txCallbacks,
-          { gas, gasPrice: (Number(gasPrice) * 1.2).toFixed(0) },
-          false,
-          logger
-        )
+        return this.sendTransaction(tx, txCallbacks, { gas, gasPrice }, false, logger)
       } else if (retry && e.message.toLowerCase().includes('revert') === false) {
         logger.warn('sendTransaction retrying non reverted error:', {
           error: e.message,
@@ -1020,9 +1019,11 @@ export class Web3Wallet {
           network: this.networkId
         })
 
+        await this.txManager.unlock(currentAddress, netNonce)
         return this.sendTransaction(tx, txCallbacks, { gas, gasPrice }, false, logger)
       }
 
+      await this.txManager.unlock(currentAddress, netNonce)
       logger.error('sendTransaction error:', e.message, e, {
         from: currentAddress,
         currentNonce,
