@@ -60,12 +60,12 @@ export default class queueMongo {
         ]
       }
       const update = { isLock: true, lockedAt: +new Date() }
-      this.log.debug('getting free address', { addresses, expired, id })
+      this.log.trace('getting free address', { addresses, expired, id })
       let wallet = await this.model.findOneAndUpdate(filter, update, {
         sort: { lockedAt: 1 }, //get least recently used
         returnNewDocument: true
       })
-      this.log.debug('got free address', { addresses, expired, wallet, id })
+      this.log.trace('got free address', { addresses, expired, wallet, id })
 
       return wallet
     } catch (e) {

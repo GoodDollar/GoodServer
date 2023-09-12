@@ -18,7 +18,7 @@ import BuyGDABI from '@gooddollar/goodprotocol/artifacts/abis/BuyGDClone.min.jso
 import conf from '../server.config'
 import logger from '../../imports/logger'
 import { isNonceError, isFundsError } from '../utils/eth'
-import { withTimeout } from '../utils/async'
+import { retry as retryAsync, withTimeout } from '../utils/async'
 import { type TransactionReceipt } from './blockchain-types'
 
 import { getManager } from '../utils/tx-manager'
@@ -887,6 +887,7 @@ export class Web3Wallet {
           .then(gas => parseInt(gas) + 200000) //buffer for proxy contract, reimburseGas?
           .catch(e => {
             logger.warn('Failed to estimate gas for tx', e.message, e, { wallet: this.name, network: this.networkId })
+            if (e.message.includes('reverted')) throw e
             return defaultGas
           }))
 
@@ -977,20 +978,44 @@ export class Web3Wallet {
 
       //check if tx did go through after timeout or not
       if (txHash && e.message.toLowerCase().includes('timeout')) {
-        const receipt = await this.web3.eth.getTransactionReceipt(txHash).catch()
-        if (receipt) {
-          //once we got receipt we know nonce should be increased
-          await this.txManager.unlock(currentAddress, currentNonce + 1)
-
-          logger.info('receipt found for timedout tx', {
-            txuuid,
-            txHash,
-            receipt,
-            wallet: this.name,
-            network: this.networkId
-          })
-          return receipt
-        }
+        // keeping address locked for another 30 seconds
+        retryAsync(
+          async attempt => {
+            const receipt = await this.web3.eth.getTransactionReceipt(txHash).catch()
+            if (receipt) {
+              await this.txManager.unlock(currentAddress, currentNonce + 1)
+              logger.info('receipt found for timedout tx attempts', {
+                currentAddress,
+                currentNonce,
+                attempt,
+                txuuid,
+                txHash,
+                receipt,
+                wallet: this.name,
+                network: this.networkId
+              })
+            } else if (attempt === 4) {
+              await this.txManager.unlock(currentAddress, currentNonce)
+              logger.info('stopped retrying for timedout tx attempts', {
+                currentAddress,
+                currentNonce,
+                attempt,
+                txuuid,
+                txHash,
+                receipt,
+                wallet: this.name,
+                network: this.networkId
+              })
+            } else throw new Error('receipt not found') //trigger retry
+          },
+          3,
+          10000
+        ).catch(e => {
+          this.txManager.unlock(currentAddress, currentNonce)
+          logger.error('retryAsync for timeout tx failed', e.message, e, { txHash })
+        })
+        // return assuming tx will mine
+        return
       } else if (retry && (e.message.includes('FeeTooLowToCompete') || e.message.includes('underpriced'))) {
         logger.warn('sendTransaction assuming duplicate nonce:', {
           error: e.message,
@@ -1035,7 +1060,7 @@ export class Web3Wallet {
         wallet: this.name,
         network: this.networkId
       })
-      throw new Error(e)
+      throw e
     }
   }
 
