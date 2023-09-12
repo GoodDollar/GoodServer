@@ -973,6 +973,10 @@ export class Web3Wallet {
 
       return response
     } catch (e) {
+      // error before executing a tx
+      if (!currentAddress) {
+        throw e
+      }
       //reset nonce on every error, on celo we dont get nonce errors
       let netNonce = parseInt(await this.web3.eth.getTransactionCount(currentAddress))
 
