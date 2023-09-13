@@ -612,7 +612,7 @@ export class Web3Wallet {
       logger.debug('Topwallet will revert, skipping', { address, canTopOrError, wallet: this.name, userBalance })
 
       // seems like user has balance so its not an error
-      if (userBalance.gt(web3Utils.toBN(this.gasPrice).mul(300000))) {
+      if (userBalance.gt(web3Utils.toBN(this.gasPrice).mul(web3Utils.toBN('300000')))) {
         return false
       }
       throw new Error(`${this.name}: Topwallet will revert, probably user passed limit`)
