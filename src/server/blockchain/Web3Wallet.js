@@ -599,15 +599,22 @@ export class Web3Wallet {
 
     // if we reached here, either we used the faucet or user should call faucet on its own.
     let txHash = ''
+
     // simulate tx to detect revert
     const canTopOrError = await this.proxyContract.methods
       .topWallet(address)
       .call()
       .then(() => true)
-      .catch(e => e)
+      .catch(e => e.message)
 
     if (canTopOrError !== true) {
-      logger.debug('Topwallet will revert, skipping', { address, canTopOrError, wallet: this.name })
+      let userBalance = web3Utils.toBN(await this.web3.eth.getBalance(address))
+      logger.debug('Topwallet will revert, skipping', { address, canTopOrError, wallet: this.name, userBalance })
+
+      // seems like user has balance so its not an error
+      if (userBalance.gt(web3Utils.toBN(this.gasPrice).mul(300000))) {
+        return false
+      }
       throw new Error(`${this.name}: Topwallet will revert, probably user passed limit`)
     }
 
@@ -834,7 +841,7 @@ export class Web3Wallet {
     }
   }
 
-  async getAddressBalance(address: string): Promise<number> {
+  async getAddressBalance(address: string): Promise<string> {
     return this.web3.eth.getBalance(address)
   }
 
