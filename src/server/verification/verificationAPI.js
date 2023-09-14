@@ -469,7 +469,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       if (foundAbuse) {
         log.warn('faucet abuse found:', foundAbuse)
-        throw new Error('faucet abuse: ' + foundAbuse.hash)
+        res.json({ ok: -1, error: 'faucet abuse: ' + foundAbuse.hash })
       }
       try {
         let txPromise = AdminWallet.topWallet(user.gdAddress, chainId, log)
