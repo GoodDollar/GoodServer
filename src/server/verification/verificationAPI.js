@@ -7,6 +7,7 @@ import { sha3, toChecksumAddress } from 'web3-utils'
 import requestIp from 'request-ip'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import { default as AdminWallet } from '../blockchain/MultiWallet'
+import { findFaucetAbuse } from '../blockchain/explorer'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
 import requestRateLimiter, { userRateLimiter } from '../utils/requestRateLimiter'
 import OTP from '../../imports/otp'
@@ -442,7 +443,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     wrapAsync(async (req, res) => {
       const log = req.log
       const { origin, host } = req.headers
-      const { account, chainId } = req.body || {}
+      const { account, chainId = 42220 } = req.body || {}
       const user: LoggedUser = req.user || { gdAddress: account }
       const clientIp = requestIp.getClientIp(req)
 
@@ -460,6 +461,16 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         throw new Error('missing wallet address to top')
       }
 
+      // check for faucet abuse
+      const foundAbuse = await findFaucetAbuse(user.gdAddress, chainId).catch(e => {
+        log.error('findFaucetAbuse failed', e.message, e)
+        return
+      })
+
+      if (foundAbuse) {
+        log.warn('faucet abuse found:', foundAbuse)
+        throw new Error('faucet abuse: ' + foundAbuse.hash)
+      }
       try {
         let txPromise = AdminWallet.topWallet(user.gdAddress, chainId, log)
           .then(tx => {
