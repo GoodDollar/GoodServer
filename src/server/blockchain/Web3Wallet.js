@@ -356,12 +356,15 @@ export class Web3Wallet {
         return { status: true }
       }
 
-      const lastAuth = await this.identityContract.methods
-        .lastAuthenticated(address)
-        .call()
-        .then(parseInt)
+      const [identityRecord, lastAuth] = await Promise.all([
+        this.identityContract.methods.identities(address).call(),
+        this.identityContract.methods
+          .lastAuthenticated(address)
+          .call()
+          .then(parseInt)
+      ])
 
-      if (lastAuth > 0) {
+      if (parseInt(identityRecord.status) === 1) {
         // user was already whitelisted in the past, just needs re-authentication
         return this.authenticateUser(address, log)
       }
@@ -371,7 +374,10 @@ export class Web3Wallet {
         txHash = hash
       }
 
-      const txExtraArgs = conf.enableWhitelistAtChain && chainId !== null ? [chainId, lastAuthenticated] : []
+      // we add a check for lastAuth, since on fuse the identityRecord can be empty for OLD whitelisted accounts and we don't want
+      // to mark them as whitelisted on a chain other than fuse
+      const txExtraArgs =
+        conf.enableWhitelistAtChain && chainId !== null && lastAuth === 0 ? [chainId, lastAuthenticated] : []
 
       const txPromise = this.sendTransaction(
         this.proxyContract.methods.whitelist(address, did, ...txExtraArgs),
