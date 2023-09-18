@@ -421,7 +421,7 @@ export class Web3Wallet {
       )
 
       const transaction = await this.proxyContract.methods.genericCall(this.identityContract._address, encodedCall, 0)
-      const tx = await this.sendTransaction(transaction, {}, { gas: 500000 })
+      const tx = await this.sendTransaction(transaction, {})
 
       log.info('authenticating user success:', { address, tx, wallet: this.name })
       return tx
@@ -627,7 +627,7 @@ export class Web3Wallet {
       const res = await this.sendTransaction(
         this.proxyContract.methods.topWallet(address),
         { onTransactionHash },
-        { gas: 500000 },
+        undefined,
         true,
         logger
       )
@@ -685,7 +685,7 @@ export class Web3Wallet {
       const transaction = this.proxyContract.methods.genericCall(this.faucetContract._address, encodedCall, 0)
       const onTransactionHash = hash =>
         void logger.debug('topWalletFaucet got txhash:', { hash, address, wallet: this.name })
-      const res = await this.sendTransaction(transaction, { onTransactionHash }, { gas: 500000 }, true, logger)
+      const res = await this.sendTransaction(transaction, { onTransactionHash }, undefined, true, logger)
 
       logger.debug('topWalletFaucet result:', { address, res, wallet: this.name })
       return res
@@ -829,7 +829,7 @@ export class Web3Wallet {
       logger.info('transferWalletGooDollars sending tx', { encodedCall, to, value })
 
       const transaction = await this.proxyContract.methods.genericCall(this.tokenContract._address, encodedCall, 0)
-      const tx = await this.sendTransaction(transaction, {}, { gas: 500000 }, false, logger)
+      const tx = await this.sendTransaction(transaction, {}, undefined, false, logger)
 
       logger.info('transferWalletGooDollars success', { to, value, tx: tx.transactionHash })
       return tx
