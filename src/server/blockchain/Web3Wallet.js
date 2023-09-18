@@ -361,7 +361,7 @@ export class Web3Wallet {
         .call()
         .then(parseInt)
 
-      if (lastAuth > 0 && isWhitelisted) {
+      if (lastAuth > 0) {
         // user was already whitelisted in the past, just needs re-authentication
         return this.authenticateUser(address, log)
       }
@@ -894,7 +894,7 @@ export class Web3Wallet {
           .then(gas => parseInt(gas) + 200000) //buffer for proxy contract, reimburseGas?
           .catch(e => {
             logger.warn('Failed to estimate gas for tx', e.message, e, { wallet: this.name, network: this.networkId })
-            if (e.message.includes('reverted')) throw e
+            if (e.message.toLowerCase().includes('reverted')) throw e
             return defaultGas
           }))
 
