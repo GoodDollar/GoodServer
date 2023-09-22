@@ -79,6 +79,10 @@ class MultiWallet {
     return this.mainWallet.isVerified(account)
   }
 
+  async lastAuthenticated(account) {
+    return this.mainWallet.getLastAuthenticated(account)
+  }
+
   async syncWhitelist(account, log = multiLogger) {
     try {
       const isVerified = await Promise.all(this.wallets.map(wallet => wallet.isVerified(account)))
