@@ -609,8 +609,10 @@ const setup = (app: Router, storage: StorageAPI) => {
     wrapAsync(async (req, res) => {
       const { body } = req
       let user = {}
-      if (body.email) user = await storage.getUsersByEmail(sha3(body.email))
-      if (body.mobile) user = await storage.getUsersByMobile(sha3(body.mobile))
+      if (body.email)
+        user = await storage.getUsersByEmail(body.email.startsWith('0x') === false ? sha3(body.email) : body.email)
+      if (body.mobile)
+        user = await storage.getUsersByMobile(body.mobile.startsWith('0x') === false ? sha3(body.mobile) : body.mobile)
       if (body.identifier) user = await storage.getUser(body.identifier)
 
       res.json({ ok: 1, user })
