@@ -195,6 +195,10 @@ class UserPrivate {
     return await this.model.countDocuments({ crmId })
   }
 
+  async getTask(taskName, filters): Promise<DelayedTaskRecord> {
+    const { taskModel } = this
+    return taskModel.findOne({ taskName, ...filters })
+  }
   /**
    * Enqueue delayed task to the user's tasks queue
    *
