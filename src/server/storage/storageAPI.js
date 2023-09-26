@@ -684,7 +684,7 @@ const setup = (app: Router, storage: StorageAPI) => {
     })
   )
 
-  app.get(
+  app.post(
     '/admin/verify/face/disposal',
     adminAuthenticate,
     wrapAsync(async (req, res) => {
