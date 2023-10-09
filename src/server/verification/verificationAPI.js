@@ -242,8 +242,25 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
             ])
           }
           await enrollmentProcessor.validate(user, v2Identifier, payload)
+          const wasWhitelisted = await AdminWallet.lastAuthenticated(gdAddress)
           const enrollmentResult = await enrollmentProcessor.enroll(user, v2Identifier, payload, log)
 
+          // log warn if user was whitelisted but unable to pass FV again
+          if (wasWhitelisted > 0 && enrollmentResult.success === false) {
+            log.warn('user failed to re-authenticate', {
+              wasWhitelisted,
+              enrollmentResult,
+              gdAddress,
+              v2Identifier
+            })
+          } else if (wasWhitelisted > 0 && enrollmentResult.success) {
+            log.info('user re-authenticated', {
+              wasWhitelisted,
+              enrollmentResult,
+              gdAddress,
+              v2Identifier
+            })
+          }
           res.json(enrollmentResult)
         } catch (e) {
           if (isV1) {

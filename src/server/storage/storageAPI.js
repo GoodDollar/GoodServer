@@ -14,7 +14,7 @@ import conf from '../server.config'
 import { addUserToWhiteList, createCRMRecord } from './addUserSteps'
 import createUserVerifier from './verifier'
 import stakingModelTasks from '../blockchain/stakingModelTasks'
-import { cancelDisposalTask } from '../verification/cron/taskUtil'
+import { cancelDisposalTask, getDisposalTask } from '../verification/cron/taskUtil'
 import createEnrollmentProcessor from '../verification/processor/EnrollmentProcessor'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import { default as AdminWallet } from '../blockchain/MultiWallet'
@@ -609,8 +609,10 @@ const setup = (app: Router, storage: StorageAPI) => {
     wrapAsync(async (req, res) => {
       const { body } = req
       let user = {}
-      if (body.email) user = await storage.getUsersByEmail(sha3(body.email))
-      if (body.mobile) user = await storage.getUsersByMobile(sha3(body.mobile))
+      if (body.email)
+        user = await storage.getUsersByEmail(body.email.startsWith('0x') === false ? sha3(body.email) : body.email)
+      if (body.mobile)
+        user = await storage.getUsersByMobile(body.mobile.startsWith('0x') === false ? sha3(body.mobile) : body.mobile)
       if (body.identifier) user = await storage.getUser(body.identifier)
 
       res.json({ ok: 1, user })
@@ -679,6 +681,25 @@ const setup = (app: Router, storage: StorageAPI) => {
       }
 
       res.json({ ok: 1 })
+    })
+  )
+
+  app.post(
+    '/admin/verify/face/disposal',
+    adminAuthenticate,
+    wrapAsync(async (req, res) => {
+      const { body, log } = req
+      const { enrollmentIdentifier } = body
+
+      try {
+        const record = await getDisposalTask(storage, enrollmentIdentifier)
+        return res.json({ ok: 1, record })
+      } catch (exception) {
+        const { message } = exception
+        log.error('get face disposal task failed:', message, exception, { enrollmentIdentifier })
+        res.status(400).json({ ok: 0, error: message })
+        return
+      }
     })
   )
 }
