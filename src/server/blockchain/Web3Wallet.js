@@ -18,7 +18,7 @@ import BuyGDABI from '@gooddollar/goodprotocol/artifacts/abis/BuyGDClone.min.jso
 import conf from '../server.config'
 import logger from '../../imports/logger'
 import { isNonceError, isFundsError } from '../utils/eth'
-import { withTimeout } from '../utils/async'
+import { retry as retryAsync, withTimeout } from '../utils/async'
 import { type TransactionReceipt } from './blockchain-types'
 
 import { getManager } from '../utils/tx-manager'
@@ -356,12 +356,15 @@ export class Web3Wallet {
         return { status: true }
       }
 
-      const lastAuth = await this.identityContract.methods
-        .lastAuthenticated(address)
-        .call()
-        .then(parseInt)
+      const [identityRecord, lastAuth] = await Promise.all([
+        this.identityContract.methods.identities(address).call(),
+        this.identityContract.methods
+          .lastAuthenticated(address)
+          .call()
+          .then(parseInt)
+      ])
 
-      if (lastAuth > 0 && isWhitelisted) {
+      if (parseInt(identityRecord.status) === 1) {
         // user was already whitelisted in the past, just needs re-authentication
         return this.authenticateUser(address, log)
       }
@@ -371,7 +374,10 @@ export class Web3Wallet {
         txHash = hash
       }
 
-      const txExtraArgs = conf.enableWhitelistAtChain && chainId !== null ? [chainId, lastAuthenticated] : []
+      // we add a check for lastAuth, since on fuse the identityRecord can be empty for OLD whitelisted accounts and we don't want
+      // to mark them as whitelisted on a chain other than fuse
+      const txExtraArgs =
+        conf.enableWhitelistAtChain && chainId !== null && lastAuth === 0 ? [chainId, lastAuthenticated] : []
 
       const txPromise = this.sendTransaction(
         this.proxyContract.methods.whitelist(address, did, ...txExtraArgs),
@@ -421,7 +427,7 @@ export class Web3Wallet {
       )
 
       const transaction = await this.proxyContract.methods.genericCall(this.identityContract._address, encodedCall, 0)
-      const tx = await this.sendTransaction(transaction, {}, { gas: 500000 })
+      const tx = await this.sendTransaction(transaction, {})
 
       log.info('authenticating user success:', { address, tx, wallet: this.name })
       return tx
@@ -599,15 +605,22 @@ export class Web3Wallet {
 
     // if we reached here, either we used the faucet or user should call faucet on its own.
     let txHash = ''
+
     // simulate tx to detect revert
     const canTopOrError = await this.proxyContract.methods
       .topWallet(address)
       .call()
       .then(() => true)
-      .catch(e => e)
+      .catch(e => e.message)
 
     if (canTopOrError !== true) {
-      logger.debug('Topwallet will revert, skipping', { address, canTopOrError, wallet: this.name })
+      let userBalance = web3Utils.toBN(await this.web3.eth.getBalance(address))
+      logger.debug('Topwallet will revert, skipping', { address, canTopOrError, wallet: this.name, userBalance })
+
+      // seems like user has balance so its not an error
+      if (userBalance.gt(web3Utils.toBN(this.gasPrice).mul(web3Utils.toBN('300000')))) {
+        return false
+      }
       throw new Error(`${this.name}: Topwallet will revert, probably user passed limit`)
     }
 
@@ -620,7 +633,7 @@ export class Web3Wallet {
       const res = await this.sendTransaction(
         this.proxyContract.methods.topWallet(address),
         { onTransactionHash },
-        { gas: 500000 },
+        undefined,
         true,
         logger
       )
@@ -678,7 +691,7 @@ export class Web3Wallet {
       const transaction = this.proxyContract.methods.genericCall(this.faucetContract._address, encodedCall, 0)
       const onTransactionHash = hash =>
         void logger.debug('topWalletFaucet got txhash:', { hash, address, wallet: this.name })
-      const res = await this.sendTransaction(transaction, { onTransactionHash }, { gas: 500000 }, true, logger)
+      const res = await this.sendTransaction(transaction, { onTransactionHash }, undefined, true, logger)
 
       logger.debug('topWalletFaucet result:', { address, res, wallet: this.name })
       return res
@@ -822,7 +835,7 @@ export class Web3Wallet {
       logger.info('transferWalletGooDollars sending tx', { encodedCall, to, value })
 
       const transaction = await this.proxyContract.methods.genericCall(this.tokenContract._address, encodedCall, 0)
-      const tx = await this.sendTransaction(transaction, {}, { gas: 500000 }, false, logger)
+      const tx = await this.sendTransaction(transaction, {}, undefined, false, logger)
 
       logger.info('transferWalletGooDollars success', { to, value, tx: tx.transactionHash })
       return tx
@@ -834,7 +847,7 @@ export class Web3Wallet {
     }
   }
 
-  async getAddressBalance(address: string): Promise<number> {
+  async getAddressBalance(address: string): Promise<string> {
     return this.web3.eth.getBalance(address)
   }
 
@@ -887,6 +900,7 @@ export class Web3Wallet {
           .then(gas => parseInt(gas) + 200000) //buffer for proxy contract, reimburseGas?
           .catch(e => {
             logger.warn('Failed to estimate gas for tx', e.message, e, { wallet: this.name, network: this.networkId })
+            if (e.message.toLowerCase().includes('reverted')) throw e
             return defaultGas
           }))
 
@@ -899,7 +913,7 @@ export class Web3Wallet {
 
       logger.trace('getting tx lock:', { txuuid })
 
-      const { nonce, release, fail, address } = await this.txManager.lock(this.filledAddresses)
+      const { nonce, release, address } = await this.txManager.lock(this.filledAddresses)
 
       logger.trace('got tx lock:', { txuuid, address })
 
@@ -957,7 +971,8 @@ export class Web3Wallet {
               })
             }
 
-            fail()
+            //we maually unlock in catch
+            //fail()
 
             if (onError) {
               onError(e)
@@ -971,25 +986,55 @@ export class Web3Wallet {
 
       return response
     } catch (e) {
+      // error before executing a tx
+      if (!currentAddress) {
+        throw e
+      }
       //reset nonce on every error, on celo we dont get nonce errors
       let netNonce = parseInt(await this.web3.eth.getTransactionCount(currentAddress))
-      await this.txManager.unlock(currentAddress, netNonce)
 
       //check if tx did go through after timeout or not
       if (txHash && e.message.toLowerCase().includes('timeout')) {
-        const receipt = await this.web3.eth.getTransactionReceipt(txHash).catch()
-        if (receipt) {
-          logger.info('receipt found for timedout tx', {
-            txuuid,
-            txHash,
-            receipt,
-            wallet: this.name,
-            network: this.networkId
-          })
-          return receipt
-        }
-      } else if (retry && e.message.includes('FeeTooLowToCompete')) {
-        logger.warn('sendTransaction retrying with higher fee:', {
+        // keeping address locked for another 30 seconds
+        retryAsync(
+          async attempt => {
+            const receipt = await this.web3.eth.getTransactionReceipt(txHash).catch()
+            if (receipt) {
+              await this.txManager.unlock(currentAddress, currentNonce + 1)
+              logger.info('receipt found for timedout tx attempts', {
+                currentAddress,
+                currentNonce,
+                attempt,
+                txuuid,
+                txHash,
+                receipt,
+                wallet: this.name,
+                network: this.networkId
+              })
+            } else if (attempt === 4) {
+              await this.txManager.unlock(currentAddress, currentNonce)
+              logger.info('stopped retrying for timedout tx attempts', {
+                currentAddress,
+                currentNonce,
+                attempt,
+                txuuid,
+                txHash,
+                receipt,
+                wallet: this.name,
+                network: this.networkId
+              })
+            } else throw new Error('receipt not found') //trigger retry
+          },
+          3,
+          10000
+        ).catch(e => {
+          this.txManager.unlock(currentAddress, currentNonce)
+          logger.error('retryAsync for timeout tx failed', e.message, e, { txHash })
+        })
+        // return assuming tx will mine
+        return
+      } else if (retry && (e.message.includes('FeeTooLowToCompete') || e.message.includes('underpriced'))) {
+        logger.warn('sendTransaction assuming duplicate nonce:', {
           error: e.message,
           gasPrice,
           currentAddress,
@@ -1000,14 +1045,10 @@ export class Web3Wallet {
           wallet: this.name,
           network: this.networkId
         })
+        // increase nonce, since we assume therre's a tx pending with same nonce
+        await this.txManager.unlock(currentAddress, currentNonce + 1)
 
-        return this.sendTransaction(
-          tx,
-          txCallbacks,
-          { gas, gasPrice: (Number(gasPrice) * 1.2).toFixed(0) },
-          false,
-          logger
-        )
+        return this.sendTransaction(tx, txCallbacks, { gas, gasPrice }, false, logger)
       } else if (retry && e.message.toLowerCase().includes('revert') === false) {
         logger.warn('sendTransaction retrying non reverted error:', {
           error: e.message,
@@ -1020,9 +1061,11 @@ export class Web3Wallet {
           network: this.networkId
         })
 
+        await this.txManager.unlock(currentAddress, netNonce)
         return this.sendTransaction(tx, txCallbacks, { gas, gasPrice }, false, logger)
       }
 
+      await this.txManager.unlock(currentAddress, netNonce)
       logger.error('sendTransaction error:', e.message, e, {
         from: currentAddress,
         currentNonce,
@@ -1034,7 +1077,7 @@ export class Web3Wallet {
         wallet: this.name,
         network: this.networkId
       })
-      throw new Error(e)
+      throw e
     }
   }
 

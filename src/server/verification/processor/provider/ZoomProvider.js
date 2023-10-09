@@ -214,7 +214,7 @@ class ZoomProvider implements IEnrollmentProvider {
       // if not already enrolled or indexed - indexing
       try {
         await api.indexEnrollment(enrollmentIdentifier, defaultSearchIndexName, customLogger)
-        log.debug('Enrollment indexed:', { enrollmentIdentifier })
+        log.debug((alreadyIndexed ? 'Updated' : 'New') + ' enrollment indexed:', { enrollmentIdentifier })
       } catch (exception) {
         const { response, message } = exception
 

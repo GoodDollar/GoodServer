@@ -7,6 +7,7 @@ import { sha3, toChecksumAddress } from 'web3-utils'
 import requestIp from 'request-ip'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import { default as AdminWallet } from '../blockchain/MultiWallet'
+import { findFaucetAbuse } from '../blockchain/explorer'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
 import requestRateLimiter, { userRateLimiter } from '../utils/requestRateLimiter'
 import OTP from '../../imports/otp'
@@ -241,8 +242,25 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
             ])
           }
           await enrollmentProcessor.validate(user, v2Identifier, payload)
+          const wasWhitelisted = await AdminWallet.lastAuthenticated(gdAddress)
           const enrollmentResult = await enrollmentProcessor.enroll(user, v2Identifier, payload, log)
 
+          // log warn if user was whitelisted but unable to pass FV again
+          if (wasWhitelisted > 0 && enrollmentResult.success === false) {
+            log.warn('user failed to re-authenticate', {
+              wasWhitelisted,
+              enrollmentResult,
+              gdAddress,
+              v2Identifier
+            })
+          } else if (wasWhitelisted > 0 && enrollmentResult.success) {
+            log.info('user re-authenticated', {
+              wasWhitelisted,
+              enrollmentResult,
+              gdAddress,
+              v2Identifier
+            })
+          }
           res.json(enrollmentResult)
         } catch (e) {
           if (isV1) {
@@ -442,7 +460,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     wrapAsync(async (req, res) => {
       const log = req.log
       const { origin, host } = req.headers
-      const { account, chainId } = req.body || {}
+      const { account, chainId = 42220 } = req.body || {}
       const user: LoggedUser = req.user || { gdAddress: account }
       const clientIp = requestIp.getClientIp(req)
 
@@ -460,6 +478,16 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         throw new Error('missing wallet address to top')
       }
 
+      // check for faucet abuse
+      const foundAbuse = await findFaucetAbuse(user.gdAddress, chainId).catch(e => {
+        log.error('findFaucetAbuse failed', e.message, e)
+        return
+      })
+
+      if (foundAbuse) {
+        log.warn('faucet abuse found:', foundAbuse)
+        return res.json({ ok: -1, error: 'faucet abuse: ' + foundAbuse.hash })
+      }
       try {
         let txPromise = AdminWallet.topWallet(user.gdAddress, chainId, log)
           .then(tx => {
