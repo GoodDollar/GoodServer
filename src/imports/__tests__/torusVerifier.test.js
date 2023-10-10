@@ -9,8 +9,8 @@ import TorusVerifier from '../torusVerifier'
 import createUserVerifier from '../../server/storage/verifier'
 
 describe('Test torus email/mobile to address', () => {
-  //const strategies = ['google', 'google-old', 'auth0-pwdless-sms', 'auth0-pwdless-email']
-  const strategies = ['auth0-pwdless-email']
+  const strategies = ['google', 'auth0-pwdless-email']
+  // const strategies = ['auth0-pwdless-email']
 
   it('should get torus nodes', async () => {
     const torusVerifier = TorusVerifier.factory()
@@ -20,7 +20,6 @@ describe('Test torus email/mobile to address', () => {
     })
 
     expect(nodes).toMatchObject({
-      nodeListAddress: '0xd084604e5FA387FbC2Da8bAab07fDD6aDED4614A',
       torusNodeEndpoints: expect.any(Array)
     })
   })
@@ -56,12 +55,13 @@ describe('Test torus email/mobile to address', () => {
           { verifier: opts.verifier, verifierId: opts.identifier },
           false
         )
-
+        const responseAddr = response.finalKeyData.evmAddress
         expect([
           '0xD97b62EC3266EbA1F8F90Ba264174c138b5d4C38',
           '0x2916342DA5cF53ac9CfcBCdc7c6AB0405Ea5F439',
-          '0xB5AD204135Ad58856a49CdA7351026c7e4906181'
-        ]).toContain(response)
+          '0xB5AD204135Ad58856a49CdA7351026c7e4906181',
+          '0x1446AD44457Fcf859F6CC6dF6BA5CD2ECAF754B1'
+        ]).toContain(responseAddr)
       })
     )
   })
@@ -131,7 +131,6 @@ describe('Test torus email/mobile to address', () => {
       })
 
       expect(nodes).toMatchObject({
-        nodeListAddress: '0xf20336e16B5182637f09821c27BDe29b0AFcfe80',
         torusNodeEndpoints: expect.any(Array)
       })
     })
@@ -147,8 +146,9 @@ describe('Test torus email/mobile to address', () => {
         { verifier: 'gooddollar-google-auth0', verifierId: 'test@google.com' },
         false
       )
+      const responseAddr = response.finalKeyData.evmAddress
 
-      expect(response).toBe('0xBCcC3D20ed3d6fCeF945383C4e9A2e98A18Aef40')
+      expect(responseAddr).toBe('0xBCcC3D20ed3d6fCeF945383C4e9A2e98A18Aef40')
     })
   })
 })
