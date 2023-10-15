@@ -3,9 +3,9 @@ import axios from 'axios'
 export const getExplorerTxs = async (address, chainId, query, from = null, allPages = true) => {
   const txs = []
   const url = '/api'
-  const networkExplorerUrl = Number(chainId) === 122 ? 'https://explorer.fuse.io' : 'https://api.celoscan.io'
+  const networkExplorerUrl = Number(chainId) === 122 ? 'https://explorer.fuse.io/api' : 'https://api.celoscan.io'
 
-  const params = { module: 'account', address, sort: 'asc', page: 1, offset: 10000, ...query }
+  const params = { module: 'account', address, sort: 'desc', page: 1, offset: 10000, ...query }
   const options = { baseURL: networkExplorerUrl, params }
 
   if (from) {
