@@ -45,14 +45,14 @@ export default once(() => {
     122: {
       network_id: 122,
       web3Transport: 'HttpProvider',
-      httpWeb3Provider: `${fuseRpc ? `${fuseRpc},` : ''}https://rpc.fuse.io/,https://fuse-mainnet.chainstacklabs.com`,
+      httpWeb3Provider: fuseRpc ? fuseRpc : 'https://rpc.fuse.io/',
       websocketWeb3Provider: 'wss://rpc.fuse.io/ws'
     },
     42220: {
       network_id: 42220,
       web3Transport: 'HttpProvider',
       // eslint-disable-next-line prettier/prettier
-      httpWeb3Provider: `${celoRpc ? `${celoRpc},` : ''}https://forno.celo.org/,https://rpc.ankr.com/celo,https://1rpc.io/celo`,
+      httpWeb3Provider: celoRpc ? celoRpc : 'https://forno.celo.org/,https://rpc.ankr.com/celo,https://1rpc.io/celo',
       websocketWeb3Provider: ''
     }
   }
