@@ -44,7 +44,7 @@ export const findFaucetAbuse = async (address, chainId) => {
     _ =>
       _.from.toLowerCase() === address.toLowerCase() &&
       Number(_.value) / 1e18 <= maxFaucetValue &&
-      Date.now() / 1000 - Number(_.timeStamp) <= 1000 * 60 * 60 * 24 * daysAgo
+      Date.now() / 1000 - Number(_.timeStamp) <= 60 * 60 * 24 * daysAgo
   )
 
   return foundAbuse
