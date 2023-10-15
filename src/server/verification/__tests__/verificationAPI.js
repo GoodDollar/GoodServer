@@ -64,6 +64,7 @@ describe('verificationAPI', () => {
     const removeWhitelistedMock = jest.fn()
     const topWalletMock = jest.fn()
     const isVerifiedMock = jest.fn()
+    const lastAuthenticatedMock = jest.fn()
 
     const licenseKey = 'fake-license'
     const licenseType = ZoomLicenseType.Browser
@@ -165,6 +166,7 @@ describe('verificationAPI', () => {
       AdminWallet.topWallet = topWalletMock
       AdminWallet.isVerified = isVerifiedMock
       AdminWallet.removeWhitelisted = removeWhitelistedMock
+      AdminWallet.lastAuthenticated = lastAuthenticatedMock
 
       await storage.deleteUser({ identifier: userIdentifier })
       await storage.addUser({ identifier: userIdentifier })
@@ -186,6 +188,7 @@ describe('verificationAPI', () => {
       whitelistUserMock.mockImplementation(noopAsync)
       topWalletMock.mockImplementation(noopAsync)
       removeWhitelistedMock.mockImplementation(noopAsync)
+      lastAuthenticatedMock.mockResolvedValue(0)
     })
 
     afterEach(() => {
