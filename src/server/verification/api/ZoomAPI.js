@@ -194,8 +194,7 @@ export class ZoomAPI {
       minMatchLevel: this.defaultMinimalMatchLevel
     }
 
-    const response = await this.http.post(`/match-3d-2d-idscan`, payloadData, { customLogger })
-    return omit(response, 'scanResultBlob')
+    return this.http.post(`/match-3d-2d-idscan`, payloadData, { customLogger })
   }
 
   _configureClient(Config, logger) {
