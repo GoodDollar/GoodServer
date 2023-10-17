@@ -16,6 +16,8 @@ import OnGage from '../crm/ongage'
 import { sendTemplateEmail } from '../aws-ses/aws-ses'
 import fetch from 'cross-fetch'
 import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
+import createIdScanProcessor from './processor/IdScanProcessor'
+
 import { cancelDisposalTask } from './cron/taskUtil'
 import { recoverPublickey } from '../utils/eth'
 import { shouldLogVerificaitonError } from './utils/logger'
@@ -280,6 +282,60 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       } catch (exception) {
         const { message } = exception
         const logArgs = ['Face verification error:', message, exception, { enrollmentIdentifier, fvSigner, gdAddress }]
+
+        if (shouldLogVerificaitonError(exception)) {
+          log.error(...logArgs)
+        } else {
+          log.warn(...logArgs)
+        }
+
+        res.status(400).json({ success: false, error: message })
+      }
+    })
+  )
+
+  /**
+   * @api {put} /verify/idscan:enrollmentIdentifier Verify id matches face and does OCR
+   * @apiName IDScan
+   * @apiGroup IDScanq
+   *
+   * @apiParam {String} enrollmentIdentifier
+   * @apiParam {String} sessionId
+   *
+   * @ignore
+   */
+  app.put(
+    '/verify/idscan/:enrollmentIdentifier',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res) => {
+      const { user, log, params, body } = req
+      const { enrollmentIdentifier } = params
+      const { ...payload } = body || {} // payload is the facetec data
+      const { gdAddress } = user
+
+      log.debug('idscan request:', { user, payloadFields: Object.keys(payload) })
+
+      // checking if request aborted to handle cases when connection is slow
+      // and facemap / images were uploaded more that 30sec causing timeout
+      if (req.aborted) {
+        return
+      }
+
+      try {
+        // for v2 identifier - verify that identifier is for the address we are going to whitelist
+        // for v1 this will do nothing
+        await verifyFVIdentifier(enrollmentIdentifier, gdAddress)
+
+        let v2Identifier = enrollmentIdentifier.slice(0, 42)
+
+        const idscanProcessor = createIdScanProcessor(storage, log)
+
+        const { isMatch, ...scanResults } = await idscanProcessor.verify(user, v2Identifier, payload)
+        log.debug('idscan results:', { isMatch, scanResults })
+        res.json({ success: true, isMatch })
+      } catch (exception) {
+        const { message } = exception
+        const logArgs = ['idscan error:', message, exception, { enrollmentIdentifier, gdAddress }]
 
         if (shouldLogVerificaitonError(exception)) {
           log.error(...logArgs)

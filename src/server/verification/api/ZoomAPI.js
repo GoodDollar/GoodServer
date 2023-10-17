@@ -6,6 +6,7 @@ import { assign, get, pick, omit, isPlainObject, isArray, mapValues, once, lower
 
 import Config from '../../server.config'
 import logger from '../../../imports/logger'
+import { IdScanResult, IdScanRequest } from '../processor/typings'
 
 import {
   ZoomAPIError,
@@ -18,7 +19,7 @@ import {
 
 import { enrollmentIdFields, faceSnapshotFields, redactFieldsDuringLogging } from '../utils/logger'
 
-class ZoomAPI {
+export class ZoomAPI {
   http = null
   defaultMinimalMatchLevel = null
   defaultSearchIndexName = null
@@ -181,6 +182,20 @@ class ZoomAPI {
     }
 
     return response
+  }
+
+  async idscan(enrollmentIdentifier, payload: IdScanRequest, customLogger = null): Promise<IdScanResult> {
+    const { idScan, idScanFrontImage, idScanBackImage } = payload
+    const payloadData = {
+      externalDatabaseRefID: enrollmentIdentifier,
+      idScan,
+      idScanFrontImage,
+      idScanBackImage,
+      minMatchLevel: this.defaultMinimalMatchLevel
+    }
+
+    const response = await this.http.post(`/match-3d-2d-idscan`, payloadData, { customLogger })
+    return omit(response, 'scanResultBlob')
   }
 
   _configureClient(Config, logger) {
