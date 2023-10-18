@@ -13,13 +13,14 @@ import OTP from '../../imports/otp'
 import conf from '../server.config'
 import OnGage from '../crm/ongage'
 import { sendTemplateEmail } from '../aws-ses/aws-ses'
+import { detectFaces } from '../aws-rekognition/aws-rekognition'
 import fetch from 'cross-fetch'
-
 import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 import { recoverPublickey } from '../utils/eth'
 import { shouldLogVerificaitonError } from './utils/logger'
 import { syncUserEmail } from '../storage/addUserSteps'
 import { FV_IDENTIFIER_MSG2 } from '../login/login-middleware'
+import getZoomProvider from './processor/provider/ZoomProvider'
 
 const verifyFVIdentifier = async (identifier, gdAddress) => {
   //check v2, v2 identifier is expected to be the whole signature
@@ -730,6 +731,43 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         })
         res.status(400).json({ success: false, error: message })
       }
+    })
+  )
+
+  app.post(
+    '/verify/agegender',
+    passport.authenticate('jwt', { session: false }),
+    requestRateLimiter(1, 1),
+    wrapAsync(async (req, res) => {
+      const { user, log } = req
+      let { v1Identifier, v2Identifier } = req.body
+      const { gdAddress } = user
+
+      const zoomProvider = getZoomProvider()
+
+      // for v2 identifier - verify that identifier is for the address we are going to whitelist
+      await verifyFVIdentifier(v2Identifier, gdAddress)
+
+      v2Identifier = v2Identifier.slice(0, 42)
+      v1Identifier = v1Identifier.replace('0x', '') // wallet will also supply the v1 identifier as fvSigner, we remove '0x' for public address
+
+      // here we check if wallet was registered using v1 of v2 identifier
+      const [recordV2, recordV1] = await Promise.all([
+        zoomProvider.getEnrollment(v2Identifier, log),
+        v1Identifier && zoomProvider.getEnrollment(v1Identifier, log)
+      ])
+
+      const record = recordV2 || recordV1
+      if (!record) throw new Error('face record not found')
+      const { auditTrailBase64 } = record
+      const { FaceDetails } = await detectFaces(auditTrailBase64)
+      log.info({ FaceDetails })
+      await Promise.all([
+        // semaphore.enrollAge(FaceDetails[0].AgeRange),
+        // semaphore.enrollGender(FaceDetails[0].Gender.Value)
+      ])
+
+      res.json({ ok: 1 })
     })
   )
 }
