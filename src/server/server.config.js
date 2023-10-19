@@ -644,6 +644,18 @@ const conf = convict({
     format: String,
     env: 'REDISCLOUD_URL',
     default: ''
+  },
+  defenderApiKey: {
+    doc: 'defender relayer api key',
+    format: String,
+    env: 'DEFENDER_APIKEY',
+    default: ''
+  },
+  defenderApiSecret: {
+    doc: 'defender relayer api secret',
+    format: String,
+    env: 'DEFENDER_APISECRET',
+    default: ''
   }
 })
 

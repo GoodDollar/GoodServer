@@ -332,7 +332,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
         const { isMatch, ...scanResults } = await idscanProcessor.verify(user, v2Identifier, payload)
         log.debug('idscan results:', { isMatch, scanResults })
-        res.json({ success: true, isMatch, ...scanResults })
+        const toSign = { success: true, isMatch, gdAddress, ...scanResults, timestamp: Date.now() }
+        const signature = await AdminWallet.signMessage(toSign)
+        res.json({ ...toSign, signature })
       } catch (exception) {
         const { message } = exception
         const logArgs = ['idscan error:', message, exception, { enrollmentIdentifier, gdAddress }]
