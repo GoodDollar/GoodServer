@@ -7,7 +7,9 @@ export class DefenderRelayer {
   relayer: Relayer
 
   constructor(apiKey: string, apiSecret: stirng) {
-    this.relayer = new Relayer({ apiKey, apiSecret })
+    if (apiKey && apiSecret) {
+      this.relayer = new Relayer({ apiKey, apiSecret })
+    }
   }
 
   static getInstance() {
