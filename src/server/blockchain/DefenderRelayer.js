@@ -1,6 +1,7 @@
 // @flow
-import Config from '../server.config'
 import { Relayer } from '@openzeppelin/defender-relay-client'
+import { keccak256 } from 'web3-utils'
+import Config from '../server.config'
 
 let instance: Relayer = null
 export class DefenderRelayer {
@@ -21,6 +22,6 @@ export class DefenderRelayer {
   }
 
   async signMessage(message: string) {
-    return this.relayer.sign({ message })
+    return this.relayer.sign({ message: keccak256(message) })
   }
 }

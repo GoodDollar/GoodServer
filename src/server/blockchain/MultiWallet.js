@@ -44,7 +44,7 @@ class MultiWallet {
     assign(this, { walletsMap, mainWallet, defaultChainId })
   }
 
-  signMessage(message) {
+  signMessage(message: string) {
     return this.signer.signMessage(message)
   }
 
