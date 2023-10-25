@@ -2,7 +2,7 @@
 
 import { Router } from 'express'
 import passport from 'passport'
-import { get, defaults } from 'lodash'
+import { get, defaults, omit } from 'lodash'
 import { sha3, toChecksumAddress } from 'web3-utils'
 import requestIp from 'request-ip'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
@@ -330,10 +330,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
         const idscanProcessor = createIdScanProcessor(storage, log)
 
-        const { isMatch, ...scanResults } = await idscanProcessor.verify(user, v2Identifier, payload)
-        log.debug('idscan results:', { isMatch, scanResults })
-        const toSign = { success: true, isMatch, gdAddress, ...scanResults, timestamp: Date.now() }
-        const signature = await AdminWallet.signMessage(JSON.stringify(toSign))
+        let { isMatch, ...scanResult } = await idscanProcessor.verify(user, v2Identifier, payload)
+        scanResult = omit(scanResult, ['externalDatabaseRefID', 'ocrResults', 'serverInfo', 'callData']) //remove unrequired fields
+        log.debug('idscan results:', { isMatch, scanResult })
+        const toSign = { success: true, isMatch, gdAddress, scanResult, timestamp: Date.now() }
+        const { sig: signature } = await AdminWallet.signMessage(JSON.stringify(toSign))
         res.json({ ...toSign, signature })
       } catch (exception) {
         const { message } = exception
