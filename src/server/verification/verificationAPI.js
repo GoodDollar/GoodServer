@@ -3,7 +3,7 @@
 import { Router } from 'express'
 import passport from 'passport'
 import { get, defaults, omit } from 'lodash'
-import { sha3, toChecksumAddress } from 'web3-utils'
+import { sha3, toChecksumAddress, keccak256 } from 'web3-utils'
 import requestIp from 'request-ip'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import { default as AdminWallet } from '../blockchain/MultiWallet'
@@ -364,7 +364,16 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       log.debug('idscan submit:', { payloadFields: Object.keys(scanResult) })
 
       try {
-        await AdminWallet.signer.triggerTask('25b50af7-debb-438f-8b96-a2ae56d52ca8', scanResult)
+        const { signed, signature } = scanResult
+        const mHash = keccak256(JSON.stringify(signed))
+        const publicKey = recoverPublickey(mHash, undefined, signature)
+        const relayer = await AdminWallet.signer.relayer.getRelayer()
+        log.debug('idscan submit:', { relayer, mHash, publicKey })
+
+        if (publicKey !== relayer.address.toLowerCase()) {
+          throw new Error('invalid signer: ' + publicKey)
+        }
+
         res.json({ ok: 1 })
       } catch (exception) {
         const { message } = exception
