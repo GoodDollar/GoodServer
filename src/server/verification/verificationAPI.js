@@ -366,7 +366,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       try {
         const { signature, ...signed } = scanResult
         const mHash = keccak256(JSON.stringify(signed))
-        const publicKey = recoverPublickey(mHash, undefined, signature)
+        const publicKey = recoverPublickey(mHash, '', signature)
         const relayer = await AdminWallet.signer.relayer.getRelayer()
         log.debug('idscan submit:', { relayer, mHash, publicKey })
 
