@@ -330,12 +330,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
         const idscanProcessor = createIdScanProcessor(storage, log)
 
-        let { isMatch, ...scanResult } = await idscanProcessor.verify(user, v2Identifier, payload)
+        let { isMatch, scanResultBlob, ...scanResult } = await idscanProcessor.verify(user, v2Identifier, payload)
         scanResult = omit(scanResult, ['externalDatabaseRefID', 'ocrResults', 'serverInfo', 'callData']) //remove unrequired fields
         log.debug('idscan results:', { isMatch, scanResult })
         const toSign = { success: true, isMatch, gdAddress, scanResult, timestamp: Date.now() }
         const { sig: signature } = await AdminWallet.signMessage(JSON.stringify(toSign))
-        res.json({ ...toSign, signature })
+        res.json({ scanResult: { ...toSign, signature }, scanResultBlob })
       } catch (exception) {
         const { message } = exception
         const logArgs = ['idscan error:', message, exception, { enrollmentIdentifier, gdAddress }]
