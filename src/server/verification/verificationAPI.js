@@ -352,6 +352,30 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   )
 
   /**
+   * demo for verifying that idscan was created by us
+   * trigger defender autotask
+   */
+  app.post(
+    '/verify/idscan',
+    wrapAsync(async (req, res) => {
+      const { log, body } = req
+      const { scanResult } = body || {} // payload is the facetec data
+
+      log.debug('idscan submit:', { payloadFields: Object.keys(scanResult) })
+
+      try {
+        await AdminWallet.signer.triggerTask('25b50af7-debb-438f-8b96-a2ae56d52ca8', scanResult)
+        res.json({ ok: 1 })
+      } catch (exception) {
+        const { message } = exception
+
+        log.error('idscan submit failed:', message, exception)
+
+        res.status(400).json({ ok: 0, error: message })
+      }
+    })
+  )
+  /**
    * @api {post} /verify/sendotp Sends OTP
    * @apiName Send OTP
    * @apiGroup Verification
