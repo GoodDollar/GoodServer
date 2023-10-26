@@ -366,10 +366,10 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       try {
         const { signature, ...signed } = scanResult
         const mHash = keccak256(JSON.stringify(signed))
+        log.debug('idscan submit verifying...:', { mHash, signature })
         const publicKey = recoverPublickey(mHash, '', signature)
         const relayer = await AdminWallet.signer.relayer.getRelayer()
-        log.debug('idscan submit:', { relayer, mHash, publicKey })
-
+        log.debug('idscan submit verified...:', { publicKey, relayer })
         if (publicKey !== relayer.address.toLowerCase()) {
           throw new Error('invalid signer: ' + publicKey)
         }
