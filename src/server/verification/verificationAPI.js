@@ -4,7 +4,7 @@ import { Router } from 'express'
 import passport from 'passport'
 import { get, defaults, omit } from 'lodash'
 import { sha3, toChecksumAddress, keccak256 } from 'web3-utils'
-import { encodeFunctionCall } from 'web3-eth-abi'
+import web3Abi from 'web3-eth-abi'
 import requestIp from 'request-ip'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import { default as AdminWallet } from '../blockchain/MultiWallet'
@@ -370,7 +370,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         const mHash = keccak256(JSON.stringify(signed))
         log.debug('idscan submit verifying...:', { mHash, signature })
         const publicKey = recoverPublickey(signature, mHash, '')
-        const data = encodeFunctionCall(
+        const data = web3Abi.encodeFunctionCall(
           {
             name: 'addMember',
             type: 'function',
