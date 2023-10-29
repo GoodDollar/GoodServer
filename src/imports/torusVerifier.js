@@ -1,4 +1,4 @@
-import FetchNodeDetails from '@toruslabs/fetch-node-details/dist/fetchNodeDetails-node.js'
+import FetchNodeDetails from '@toruslabs/fetch-node-details'
 import TorusUtils from '@toruslabs/torus.js/dist/torusUtils-node.js'
 import moment from 'moment'
 import { get } from 'lodash'
