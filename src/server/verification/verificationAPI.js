@@ -4,6 +4,7 @@ import { Router } from 'express'
 import passport from 'passport'
 import { get, defaults, omit } from 'lodash'
 import { sha3, toChecksumAddress, keccak256 } from 'web3-utils'
+import { encodeFunctionCall } from 'web3-eth-abi'
 import requestIp from 'request-ip'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import { default as AdminWallet } from '../blockchain/MultiWallet'
@@ -365,16 +366,39 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       try {
         const { signature, ...signed } = scanResult
+        const { gdAddress } = signed
         const mHash = keccak256(JSON.stringify(signed))
         log.debug('idscan submit verifying...:', { mHash, signature })
         const publicKey = recoverPublickey(signature, mHash, '')
+        const data = encodeFunctionCall(
+          {
+            name: 'addMember',
+            type: 'function',
+            inputs: [
+              {
+                type: 'address',
+                name: 'member'
+              }
+            ]
+          },
+          [gdAddress]
+        )
         const relayer = await AdminWallet.signer.relayer.getRelayer()
+
         log.debug('idscan submit verified...:', { publicKey, relayer })
         if (publicKey !== relayer.address.toLowerCase()) {
           throw new Error('invalid signer: ' + publicKey)
         }
 
-        res.json({ ok: 1 })
+        const addTx = await AdminWallet.signer.sendTx({
+          to: '0x163a99a51fE32eEaC7407687522B5355354a1a37',
+          data,
+          gasLimit: '300000'
+        })
+
+        log.debug('idscan adding member:', addTx)
+
+        res.json({ ok: 1, txHash: addTx.hash })
       } catch (exception) {
         const { message } = exception
 

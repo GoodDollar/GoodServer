@@ -1,5 +1,5 @@
 // @flow
-import { Relayer } from '@openzeppelin/defender-relay-client'
+import { Relayer, RelayerTransactionPayload } from '@openzeppelin/defender-relay-client'
 import { AutotaskClient } from '@openzeppelin/defender-autotask-client'
 import { keccak256 } from 'web3-utils'
 import Config from '../server.config'
@@ -26,6 +26,10 @@ export class DefenderRelayer {
 
   async signMessage(message: string) {
     return this.relayer.sign({ message: keccak256(message) })
+  }
+
+  async sendTx(payload: RelayerTransactionPayload) {
+    return this.relayer.sendTransaction(payload)
   }
 
   async triggerTask(taskId: string, data) {
