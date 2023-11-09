@@ -387,7 +387,7 @@ export class ZoomAPI {
     try {
       response = await this.http[operation]('/enrollment-3d/:enrollmentIdentifier', {
         customLogger,
-        params: { enrollmentIdentifier }
+        params: { enrollmentIdentifier: enrollmentIdentifier.toLowerCase() }
       })
     } catch (exception) {
       const { message } = exception
