@@ -258,7 +258,11 @@ export class Web3Wallet {
         }
       )
 
-      const buygdAddress = get(ContractsAddress, `${this.network}.BuyGDFactory`)
+      const buygdAddress = get(
+        ContractsAddress,
+        `${this.network}.BuyGDFactoryV2`,
+        get(ContractsAddress, `${this.network}.BuyGDFactory`)
+      )
       if (buygdAddress) {
         this.buygdFactoryContract = new this.web3.eth.Contract(BuyGDFactoryABI.abi, buygdAddress, {
           from: this.address
