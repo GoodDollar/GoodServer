@@ -746,7 +746,7 @@ export class Web3Wallet {
     try {
       let swapResult
       if (isHelperDeployed) {
-        const buygdContract = this.web3.eth.Contract(BuyGDABI.abi, predictedAddress)
+        const buygdContract = new this.web3.eth.Contract(BuyGDABI.abi, predictedAddress)
         //simulate tx
         await buygdContract.methods.swap(0, this.proxyContract._address).call()
 
