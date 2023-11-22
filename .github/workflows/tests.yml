@@ -64,6 +64,7 @@ jobs:
 
     runs-on: ubuntu-latest
     steps:
+      - run: corepack enable
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
