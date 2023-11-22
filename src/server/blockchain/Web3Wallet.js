@@ -748,7 +748,10 @@ export class Web3Wallet {
       if (isHelperDeployed) {
         const buygdContract = new this.web3.eth.Contract(BuyGDABI.abi, predictedAddress)
         //simulate tx
-        await buygdContract.methods.swap(0, this.proxyContract._address).call()
+        const gas = await buygdContract.methods
+          .swap(0, this.proxyContract._address)
+          .estimateGas()
+          .then(_ => parseInt(_) + 200000)
 
         let encodedCall = this.web3.eth.abi.encodeFunctionCall(
           {
@@ -771,10 +774,13 @@ export class Web3Wallet {
         const transaction = this.proxyContract.methods.genericCall(predictedAddress, encodedCall, 0)
         const onTransactionHash = hash =>
           void logger.debug('swaphelper swap got txhash:', { hash, address, wallet: this.name })
-        swapResult = await this.sendTransaction(transaction, { onTransactionHash }, {}, true, logger)
+        swapResult = await this.sendTransaction(transaction, { gas, onTransactionHash }, {}, true, logger)
       } else {
         //simulate tx
-        await this.buygdFactoryContract.methods.createAndSwap(address, 0).call()
+        const gas = await this.buygdFactoryContract.methods
+          .createAndSwap(address, 0)
+          .estimateGas()
+          .then(_ => parseInt(_) + 200000)
         let encodedCall = this.web3.eth.abi.encodeFunctionCall(
           {
             name: 'createAndSwap',
@@ -796,7 +802,7 @@ export class Web3Wallet {
         const transaction = this.proxyContract.methods.genericCall(this.buygdFactoryContract._address, encodedCall, 0)
         const onTransactionHash = hash =>
           void logger.debug('swaphelper createAndSwap got txhash:', { hash, address, wallet: this.name })
-        swapResult = await this.sendTransaction(transaction, { onTransactionHash }, {}, true, logger)
+        swapResult = await this.sendTransaction(transaction, { gas, onTransactionHash }, {}, true, logger)
       }
 
       logger.debug('swaphelper tx result:', { address, swapResult, wallet: this.name })
