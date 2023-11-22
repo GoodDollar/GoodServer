@@ -748,7 +748,7 @@ export class Web3Wallet {
       if (isHelperDeployed) {
         const buygdContract = new this.web3.eth.Contract(BuyGDABI.abi, predictedAddress)
         //simulate tx
-        const gas = await buygdContract.methods
+        const estimatedGas = await buygdContract.methods
           .swap(0, this.proxyContract._address)
           .estimateGas()
           .then(_ => parseInt(_) + 200000)
@@ -773,11 +773,11 @@ export class Web3Wallet {
 
         const transaction = this.proxyContract.methods.genericCall(predictedAddress, encodedCall, 0)
         const onTransactionHash = hash =>
-          void logger.debug('swaphelper swap got txhash:', { hash, address, wallet: this.name })
-        swapResult = await this.sendTransaction(transaction, { gas, onTransactionHash }, {}, true, logger)
+          void logger.debug('swaphelper swap got txhash:', { estimatedGas, hash, address, wallet: this.name })
+        swapResult = await this.sendTransaction(transaction, { gas: '2000000', onTransactionHash }, {}, true, logger)
       } else {
         //simulate tx
-        const gas = await this.buygdFactoryContract.methods
+        const estimatedGas = await this.buygdFactoryContract.methods
           .createAndSwap(address, 0)
           .estimateGas()
           .then(_ => parseInt(_) + 200000)
@@ -801,13 +801,13 @@ export class Web3Wallet {
 
         const transaction = this.proxyContract.methods.genericCall(this.buygdFactoryContract._address, encodedCall, 0)
         const onTransactionHash = hash =>
-          void logger.debug('swaphelper createAndSwap got txhash:', { hash, address, wallet: this.name })
-        swapResult = await this.sendTransaction(transaction, { gas, onTransactionHash }, {}, true, logger)
+          void logger.debug('swaphelper createAndSwap got txhash:', { estimatedGas, hash, address, wallet: this.name })
+        swapResult = await this.sendTransaction(transaction, { gas: '2500000', onTransactionHash }, {}, true, logger)
       }
 
       logger.debug('swaphelper tx result:', { address, swapResult, wallet: this.name })
 
-      return { ok: 1 }
+      return { ok: 1, hash: swapResult.transactionHash }
     } catch (e) {
       logger.error('Error swaphelper', e.message, e, { address, predictedAddress, isHelperDeployed, wallet: this.name })
       throw e
