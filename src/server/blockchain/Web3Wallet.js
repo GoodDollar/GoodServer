@@ -774,7 +774,7 @@ export class Web3Wallet {
         const transaction = this.proxyContract.methods.genericCall(predictedAddress, encodedCall, 0)
         const onTransactionHash = hash =>
           void logger.debug('swaphelper swap got txhash:', { estimatedGas, hash, address, wallet: this.name })
-        swapResult = await this.sendTransaction(transaction, { onTransactionHash }, { gas: '2000000' }, true, logger)
+        swapResult = await this.sendTransaction(transaction, { onTransactionHash }, { gas: estimatedGas }, true, logger)
       } else {
         //simulate tx
         const estimatedGas = await this.buygdFactoryContract.methods
@@ -802,12 +802,12 @@ export class Web3Wallet {
         const transaction = this.proxyContract.methods.genericCall(this.buygdFactoryContract._address, encodedCall, 0)
         const onTransactionHash = hash =>
           void logger.debug('swaphelper createAndSwap got txhash:', { estimatedGas, hash, address, wallet: this.name })
-        swapResult = await this.sendTransaction(transaction, { onTransactionHash }, { gas: '2500000' }, true, logger)
+        swapResult = await this.sendTransaction(transaction, { onTransactionHash }, { gas: estimatedGas }, true, logger)
       }
 
       logger.debug('swaphelper tx result:', { address, swapResult, wallet: this.name })
 
-      return { ok: 1, hash: swapResult.transactionHash }
+      return swapResult
     } catch (e) {
       logger.error('Error swaphelper', e.message, e, { address, predictedAddress, isHelperDeployed, wallet: this.name })
       throw e
