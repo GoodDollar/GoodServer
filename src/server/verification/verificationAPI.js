@@ -666,7 +666,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         const tx = await AdminWallet.walletsMap[chainId].swaphelper(gdAddress, log)
         log.info('swaphelper request done:', { gdAddress, chainId, tx })
 
-        res.json({ ok: 1 })
+        res.json({ ok: 1, hash: tx.transactionHash })
       } catch (e) {
         log.error('swaphelper timeout or unexpected', e.message, e, { walletaddress: gdAddress, chainId })
         res.json({ ok: -1, error: e.message })
