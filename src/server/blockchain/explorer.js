@@ -6,7 +6,6 @@ export const getExplorerTxs = async (address, chainId, query, from = null, allPa
   const networkExplorerUrl = Number(chainId) === 122 ? 'https://explorer.fuse.io' : 'https://api.celoscan.io'
 
   const params = { module: 'account', address, sort: 'asc', page: 1, offset: 10000, ...query }
-  const options = { baseURL: networkExplorerUrl, params }
 
   if (from) {
     params.start_block = from
@@ -14,9 +13,16 @@ export const getExplorerTxs = async (address, chainId, query, from = null, allPa
   }
 
   for (;;) {
+    const options = { baseURL: networkExplorerUrl, params }
     const {
       data: { result }
-    } = await axios.get(url, options)
+    } = await axios.get(url, options).catch(e => {
+      if (Number(chainId) === 122) {
+        throw e
+      }
+      //retry with other explorer
+      return axios.get(url, { ...options, networkExplorerUrl: 'https://explorer.celo.org/mainnet' })
+    })
     const chunk = result.filter(({ value }) => value !== '0')
     params.page += 1
     txs.push(...chunk)
