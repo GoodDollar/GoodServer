@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { retry as retryAttempt } from '../utils/async'
 
 export const getExplorerTxs = async (address, chainId, query, from = null, allPages = true) => {
   const txs = []
@@ -16,13 +17,18 @@ export const getExplorerTxs = async (address, chainId, query, from = null, allPa
     const options = { baseURL: networkExplorerUrl, params }
     const {
       data: { result }
-    } = await axios.get(url, options).catch(e => {
-      if (Number(chainId) === 122) {
-        throw e
-      }
-      //retry with other explorer
-      return axios.get(url, { ...options, networkExplorerUrl: 'https://explorer.celo.org/mainnet' })
-    })
+    } = await retryAttempt(
+      () =>
+        axios.get(url, options).catch(e => {
+          if (Number(chainId) === 122) {
+            throw e
+          }
+          //retry with other explorer
+          return axios.get(url, { ...options, networkExplorerUrl: 'https://explorer.celo.org/mainnet' })
+        }),
+      2,
+      500
+    )
     const chunk = result.filter(({ value }) => value !== '0')
     params.page += 1
     txs.push(...chunk)
