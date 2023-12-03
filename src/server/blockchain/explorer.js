@@ -16,7 +16,7 @@ export const getExplorerTxs = async (address, chainId, query, from = null, allPa
   for (;;) {
     const options = { baseURL: networkExplorerUrl, params }
     const {
-      data: { result }
+      data: { result = [] }
     } = await retryAttempt(
       () =>
         axios.get(url, options).catch(e => {
@@ -60,4 +60,18 @@ export const findFaucetAbuse = async (address, chainId) => {
   )
 
   return foundAbuse
+}
+
+export const findGDTx = async (address, chainId, gdAddress) => {
+  const lastTxs = await getExplorerTxs(
+    address,
+    chainId,
+    { action: 'tokentx', sort: 'desc', offset: 10, contractaddress: gdAddress },
+    undefined,
+    false
+  )
+  const daysAgo = 3
+  const foundTx = lastTxs.find(_ => Date.now() / 1000 - Number(_.timeStamp) <= 60 * 60 * 24 * daysAgo)
+
+  return foundTx
 }
