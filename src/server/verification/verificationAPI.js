@@ -586,12 +586,14 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       log.debug('topwallet tx request:', { address: user.gdAddress, chainId, user: req.user, origin, host, clientIp })
       if (conf.env === 'production') {
-        if (!user.identifier) {
-          const isWhitelisted = await AdminWallet.isVerified(user.gdAddress)
-          if (!isWhitelisted) {
-            log.info('topwallet denied, not whitelisted', { address: user.gdAddress, origin, chainId, clientIp })
-            return res.json({ ok: -1, error: 'not whitelisted' })
-          }
+        if (!user.isEmailConfirmed && !user.smsValidated && !(await AdminWallet.isVerified(user.gdAddress))) {
+          log.warn('topwallet denied, not registered user nor whitelisted', {
+            address: user.gdAddress,
+            origin,
+            chainId,
+            clientIp
+          })
+          return res.json({ ok: -1, error: 'not whitelisted' })
         }
       }
       if (!user.gdAddress) {

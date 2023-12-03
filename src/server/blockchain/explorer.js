@@ -51,11 +51,11 @@ export const findFaucetAbuse = async (address, chainId) => {
     false
   )
   const daysAgo = 3
-  const maxFaucetValue = 0.0075
+  // const maxFaucetValue = 0.0075
   const foundAbuse = lastTxs.find(
     _ =>
       _.from.toLowerCase() === address.toLowerCase() &&
-      Number(_.value) / 1e18 <= maxFaucetValue &&
+      Number(_.value) / 1e18 > 0 &&
       Date.now() / 1000 - Number(_.timeStamp) <= 60 * 60 * 24 * daysAgo
   )
 
