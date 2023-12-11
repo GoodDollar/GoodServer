@@ -8,7 +8,7 @@ import web3Abi from 'web3-eth-abi'
 import requestIp from 'request-ip'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import { default as AdminWallet } from '../blockchain/MultiWallet'
-import { findFaucetAbuse } from '../blockchain/explorer'
+import { findFaucetAbuse, findGDTx } from '../blockchain/explorer'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
 import requestRateLimiter, { userRateLimiter } from '../utils/requestRateLimiter'
 import OTP from '../../imports/otp'
@@ -584,14 +584,30 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const user: LoggedUser = req.user || { gdAddress: account }
       const clientIp = requestIp.getClientIp(req)
 
-      log.debug('topwallet tx request:', { address: user.gdAddress, chainId, user: req.user, origin, host, clientIp })
+      const gdContract = AdminWallet.walletsMap[chainId].tokenContract._address
+      log.debug('topwallet tx request:', {
+        address: user.gdAddress,
+        chainId,
+        gdContract,
+        user: req.user,
+        origin,
+        host,
+        clientIp
+      })
       if (conf.env === 'production') {
-        if (!user.identifier) {
-          const isWhitelisted = await AdminWallet.isVerified(user.gdAddress)
-          if (!isWhitelisted) {
-            log.info('topwallet denied, not whitelisted', { address: user.gdAddress, origin, chainId, clientIp })
-            return res.json({ ok: -1, error: 'not whitelisted' })
-          }
+        if (
+          !user.isEmailConfirmed &&
+          !user.smsValidated &&
+          !(await AdminWallet.isVerified(user.gdAddress)) &&
+          !(await findGDTx(user.gdAddress, chainId, gdContract))
+        ) {
+          log.warn('topwallet denied, not registered user nor whitelisted nor did gd tx lately', {
+            address: user.gdAddress,
+            origin,
+            chainId,
+            clientIp
+          })
+          return res.json({ ok: -1, error: 'not whitelisted' })
         }
       }
       if (!user.gdAddress) {
