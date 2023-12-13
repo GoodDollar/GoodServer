@@ -37,7 +37,8 @@ const stakingModelTasks = [
 export default async (app: Router) => {
   const corsConfig = {
     credentials: true,
-    origin: env === 'production' ? /(\.?goodd(ollar|app)\.org$)|localhost|localhost:3000/ : true
+    origin:
+      env === 'production' ? /(\.?goodd(ollar|app)\.org$)|localhost|localhost:3000|good-wallet-v2\.vercel\.app/ : true
   }
 
   if (env === 'production') {
