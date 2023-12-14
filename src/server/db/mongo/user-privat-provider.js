@@ -24,16 +24,27 @@ class UserPrivate {
    * @returns {Promise<*>}
    */
   async isDupUserData(user: UserRecord): boolean {
-    const { model } = this
     const { email, mobile } = user
-    const dateFilter = { createdDate: { $exists: true } }
+    let result = null
 
     if (email) {
-      return model.exists({ email, ...dateFilter })
+      result = await this.model
+        .findOne({ email, createdDate: { $exists: true } })
+        .select('_id')
+        .lean()
+      if (result) {
+        return true
+      }
     }
 
     if (mobile) {
-      return model.exists({ mobile, ...dateFilter })
+      result = await this.model
+        .findOne({ mobile, createdDate: { $exists: true } })
+        .select('_id')
+        .lean()
+      if (result) {
+        return true
+      }
     }
 
     return false
