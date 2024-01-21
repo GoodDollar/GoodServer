@@ -27,16 +27,21 @@ class UserPrivate {
     const { model } = this
     const { email, mobile } = user
     const dateFilter = { createdDate: { $exists: true } }
+    const $or = []
 
     if (email) {
-      return model.exists({ email, ...dateFilter })
+      $or.push({ email, ...dateFilter })
     }
 
     if (mobile) {
-      return model.exists({ mobile, ...dateFilter })
+      $or.push({ mobile, ...dateFilter })
     }
 
-    return false
+    if (!$or.length) {
+      return false
+    }
+
+    return model.exists({ $or })
   }
 
   /**
