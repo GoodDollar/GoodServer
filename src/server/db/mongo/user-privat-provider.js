@@ -26,22 +26,21 @@ class UserPrivate {
   async isDupUserData(user: UserRecord): boolean {
     const { model } = this
     const { email, mobile } = user
-    const dateFilter = { createdDate: { $exists: true } }
     const $or = []
 
     if (email) {
-      $or.push({ email, ...dateFilter })
+      $or.push({ email })
     }
 
     if (mobile) {
-      $or.push({ mobile, ...dateFilter })
+      $or.push({ mobile })
     }
 
     if (!$or.length) {
       return false
     }
 
-    return model.exists({ $or })
+    return model.exists({ createdDate: { $exists: true }, $or })
   }
 
   /**
