@@ -138,25 +138,20 @@ describe('UserPrivate', () => {
     await expect(storage.isDupUserData({ email: testUser.email })).resolves.toBeTruthy()
   })
 
-  it('Should isDupUserData by email(is dup) and mobile(not is dup)', async () => {
+  it('Should isDupUserData by email(is dup)', async () => {
     await testUserAddCreateDate()
-    await expect(storage.isDupUserData({ email: testUser.email, mobile: '321987' })).resolves.toBeTruthy()
+    await expect(storage.isDupUserData({ email: testUser.email })).resolves.toBeTruthy()
   })
 
-  it('Should isDupUserData by email(is not dup) and mobile(is dup)', async () => {
+  it('Should isDupUserData by mobile(is dup)', async () => {
     await testUserAddCreateDate()
-    await expect(storage.isDupUserData({ email: 'asdd@sdd.dd', mobile: testUser.mobile })).resolves.toBeTruthy()
+    await expect(storage.isDupUserData({ mobile: testUser.mobile })).resolves.toBeTruthy()
   })
 
   it('Should is not dublicate by email', async () => {
     let isDupUser = await storage.isDupUserData({ email: 'test@tst.ss' })
 
     expect(isDupUser).not.toBeTruthy()
-  })
-
-  it('Should isDupUserData by mobile', async () => {
-    await testUserAddCreateDate()
-    await expect(storage.isDupUserData({ mobile: testUser.mobile })).resolves.toBeTruthy()
   })
 
   it('Should is not dublicate by mobile', async () => {

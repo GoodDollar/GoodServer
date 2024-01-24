@@ -24,16 +24,22 @@ class UserPrivate {
    * @returns {Promise<*>}
    */
   async isDupUserData(user: UserRecord): boolean {
-    const { model } = this
     const { email, mobile } = user
-    const dateFilter = { createdDate: { $exists: true } }
+
+    const hasDuplicates = filter =>
+      this.model.exists({
+        ...filter,
+        createdDate: {
+          $exists: true
+        }
+      })
 
     if (email) {
-      return model.exists({ email, ...dateFilter })
+      return hasDuplicates({ email })
     }
 
     if (mobile) {
-      return model.exists({ mobile, ...dateFilter })
+      return hasDuplicates({ mobile })
     }
 
     return false

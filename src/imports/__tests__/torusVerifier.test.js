@@ -19,9 +19,9 @@ describe('Test torus email/mobile to address', () => {
       verifierId: 'test@google.com'
     })
 
-    expect(nodes).toMatchObject({
-      torusNodeEndpoints: expect.any(Array)
-    })
+    expect(nodes).toHaveProperty('torusNodeEndpoints')
+    expect(nodes.torusNodeEndpoints).toBeArray()
+    expect(nodes.torusNodeEndpoints).not.toHaveLength(0)
   })
 
   it('should get strategy options', async () => {
@@ -130,9 +130,9 @@ describe('Test torus email/mobile to address', () => {
         verifierId: 'test@google.com'
       })
 
-      expect(nodes).toMatchObject({
-        torusNodeEndpoints: expect.any(Array)
-      })
+      expect(nodes).toHaveProperty('torusNodeEndpoints')
+      expect(nodes.torusNodeEndpoints).toBeArray()
+      expect(nodes.torusNodeEndpoints).not.toHaveLength(0)
     })
 
     it('should return public key for mainnet email/mobile', async () => {
