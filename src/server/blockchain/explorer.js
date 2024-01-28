@@ -26,8 +26,8 @@ export const getExplorerTxs = async (address, chainId, query, from = null, allPa
           //retry with other explorer
           return axios.get(url, { ...options, networkExplorerUrl: 'https://explorer.celo.org/mainnet' })
         }),
-      2,
-      500
+      3,
+      1500
     )
     const chunk = result.filter(({ value }) => value !== '0')
     params.page += 1
