@@ -2,7 +2,7 @@
 
 import { Router } from 'express'
 import passport from 'passport'
-import { get, defaults, omit } from 'lodash'
+import { get, defaults, memoize, omit } from 'lodash'
 import { sha3, toChecksumAddress, keccak256 } from 'web3-utils'
 import web3Abi from 'web3-eth-abi'
 import requestIp from 'request-ip'
@@ -35,6 +35,15 @@ const verifyFVIdentifier = async (identifier, gdAddress) => {
     }
   }
 }
+
+// try to cache responses from faucet abuse to prevent 500 errors from server
+// if same user keep requesting.
+const cachedFindFaucetAbuse = memoize(findFaucetAbuse)
+const clearMemoizedFaucetAbuse = async () => {
+  cachedFindFaucetAbuse.values.clear()
+}
+if (conf.env !== 'test') setInterval(clearMemoizedFaucetAbuse, 60 * 60 * 1000) // clear every 1 hour
+
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   /**
    * @api {delete} /verify/face/:enrollmentIdentifier Enqueue user's face snapshot for disposal since 24h
@@ -615,7 +624,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       // check for faucet abuse
-      const foundAbuse = await findFaucetAbuse(user.gdAddress, chainId).catch(e => {
+      const foundAbuse = await cachedFindFaucetAbuse(user.gdAddress, chainId).catch(e => {
         log.error('findFaucetAbuse failed', e.message, e)
         return
       })
