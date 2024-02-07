@@ -18,6 +18,7 @@ import {
 } from '../utils/constants'
 
 import { enrollmentIdFields, faceSnapshotFields, redactFieldsDuringLogging } from '../utils/logger'
+import { substituteParams } from '../../utils/axios'
 
 export class ZoomAPI {
   http = null
@@ -237,7 +238,9 @@ export class ZoomAPI {
 
     request.use(request => {
       const { data } = request
-      let rawRequest = this._configureParams(request)
+      let rawRequest = substituteParams(request, (parameter, value) =>
+        enrollmentIdFields.includes(parameter) ? toLower(value) : value
+      )
 
       this._logRequest(request)
 
@@ -247,28 +250,6 @@ export class ZoomAPI {
 
       return rawRequest
     })
-  }
-
-  _configureParams(request) {
-    const { url, params } = request
-    let searchParams = params instanceof URLSearchParams ? params : new URLSearchParams(params || {})
-
-    const substituteParameter = (_, parameter) => {
-      let parameterValue = searchParams.get(parameter) || ''
-
-      if (enrollmentIdFields.includes(parameter)) {
-        parameterValue = toLower(parameterValue)
-      }
-
-      searchParams.delete(parameter)
-      return encodeURIComponent(parameterValue)
-    }
-
-    return {
-      ...request,
-      params: searchParams,
-      url: (url || '').replace(/:(\w[\w\d]+)/g, substituteParameter)
-    }
   }
 
   _configurePayload(request) {

@@ -10,6 +10,7 @@ import UserDBPrivate from './db/mongo/user-privat-provider'
 import getTasksRunner from './cron/TaskRunner'
 import addStorageMiddlewares from './storage/storageAPI'
 import addVerificationMiddlewares from './verification/verificationAPI'
+import addGoodIDMiddleware from './goodid/goodid-middleware'
 import logger, { addRequestLogger } from '../imports/logger'
 import VerificationAPI from './verification/verification'
 import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
@@ -18,6 +19,7 @@ import StakingModelTasks from './blockchain/stakingModelTasks'
 import { MessageStrings } from './db/mongo/models/props'
 import Config from './server.config'
 import { wrapAsync } from './utils/helpers'
+import GoodIDUtils from './goodid/utils'
 
 const { FishInactiveTask, CollectFundsTask } = StakingModelTasks
 const rootLogger = logger.child({ from: 'Server' })
@@ -58,6 +60,7 @@ export default async (app: Router) => {
 
   addStorageMiddlewares(app, UserDBPrivate)
   addVerificationMiddlewares(app, VerificationAPI, UserDBPrivate)
+  addGoodIDMiddleware(app, UserDBPrivate, GoodIDUtils)
 
   app.get(
     '/strings',
