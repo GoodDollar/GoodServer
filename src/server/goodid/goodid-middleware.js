@@ -40,7 +40,6 @@ export default function addGoodIDMiddleware(app: Router, utils) {
       const { mobile } = get(body, 'user', {})
       const { mobile: mobileHash, smsValidated } = user
       const { longitude, latitude } = get(body, 'geoposition.coords', {})
-      const clientIp = requestIp.getClientIp(req)
 
       const issueCertificate = async countryCode => {
         const ceriticate = await utils.issueCertificate(countryCode)
@@ -63,6 +62,7 @@ export default function addGoodIDMiddleware(app: Router, utils) {
           throw new Error('Failed to verify location: missing geolocation data')
         }
 
+        const clientIp = requestIp.getClientIp(req)
         const countryCodeFromIP = await utils.getCountryCodeFromIPAddress(clientIp)
         const countryCodeFromLocation = await utils.getCountryCodeFromGeoLocation(latitude, longitude)
         const isCountryFromIPMatchesLocation = countryCodeFromIP === countryCodeFromLocation
@@ -75,7 +75,7 @@ export default function addGoodIDMiddleware(app: Router, utils) {
       } catch (exception) {
         const { message } = exception
 
-        log.error('Failed to issue location ceritifate:', message, exception, { mobile, longitude, latitude, clientIp })
+        log.error('Failed to issue location ceritifate:', message, exception, { mobile, longitude, latitude })
         res.status(400).json({ ok: 0, error: message })
       }
     })
