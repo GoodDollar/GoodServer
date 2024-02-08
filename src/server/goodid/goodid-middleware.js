@@ -45,7 +45,7 @@ export default function addGoodIDMiddleware(app: Router, storage: StorageAPI, ut
       const issueCertificate = async countryCode => {
         const ceriticate = await utils.issueCertificate(countryCode)
 
-        res.json({ success: true, ceritifate: ceriticate })
+        res.json({ success: true, ceriticate })
       }
 
       try {

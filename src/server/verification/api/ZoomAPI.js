@@ -237,18 +237,13 @@ export class ZoomAPI {
     const { request } = this.http.interceptors
 
     request.use(request => {
-      const { data } = request
-      let rawRequest = substituteParams(request, (parameter, value) =>
-        enrollmentIdFields.includes(parameter) ? toLower(value) : value
+      const rawRequest = substituteParams(
+        request,
+        (parameter, value) => (enrollmentIdFields.includes(parameter) ? toLower(value) : value) || ''
       )
 
       this._logRequest(request)
-
-      if (isPlainObject(data)) {
-        rawRequest = this._configurePayload(rawRequest)
-      }
-
-      return rawRequest
+      return isPlainObject(request.data) ? this._configurePayload(rawRequest) : rawRequest
     })
   }
 

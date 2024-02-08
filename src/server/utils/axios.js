@@ -5,7 +5,7 @@ export const substituteParams = (request, transformValue = defaultTransformValue
   const searchParams = params instanceof URLSearchParams ? params : new URLSearchParams(params || {})
 
   const substituteParameter = (_, parameter) => {
-    const parameterValue = transformValue(searchParams.get(parameter) || '')
+    const parameterValue = transformValue(parameter, searchParams.get(parameter))
 
     searchParams.delete(parameter)
     return encodeURIComponent(parameterValue)

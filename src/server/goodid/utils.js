@@ -2,7 +2,7 @@ import axios from 'axios'
 import { all as allCountries } from 'country-codes-list'
 
 import { substituteParams } from '../utils/axios'
-import { get, repeat, toUpper, trim } from 'lodash'
+import { get, repeat, toUpper } from 'lodash'
 
 export class GoodIDUtils {
   constructor(httpApi) {
@@ -46,7 +46,7 @@ export class GoodIDUtils {
   }
 
   getCountryCodeFromMobile(phoneNumber) {
-    const trimmedNumber = trim(phoneNumber, '+ ')
+    const trimmedNumber = phoneNumber.replace(/[^\d]/g, '')
     const { countryCode } =
       allCountries().find(({ countryCallingCode }) => trimmedNumber.startsWith(countryCallingCode)) || {}
 
