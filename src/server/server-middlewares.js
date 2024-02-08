@@ -60,7 +60,7 @@ export default async (app: Router) => {
 
   addStorageMiddlewares(app, UserDBPrivate)
   addVerificationMiddlewares(app, VerificationAPI, UserDBPrivate)
-  addGoodIDMiddleware(app, UserDBPrivate, GoodIDUtils)
+  addGoodIDMiddleware(app, GoodIDUtils)
 
   app.get(
     '/strings',

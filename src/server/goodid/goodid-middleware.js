@@ -1,16 +1,15 @@
 // @flow
 
-import type { StorageAPI } from '../../imports/types'
-
 import { Router } from 'express'
 import passport from 'passport'
 import requestIp from 'request-ip'
+import { sha3 } from 'web3-utils'
 
 import { wrapAsync } from '../utils/helpers'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import { get } from 'lodash'
 
-export default function addGoodIDMiddleware(app: Router, storage: StorageAPI, utils) {
+export default function addGoodIDMiddleware(app: Router, utils) {
   /**
    * POST /goodid/certificate/location
    * Content-Type: application/json
@@ -37,8 +36,9 @@ export default function addGoodIDMiddleware(app: Router, storage: StorageAPI, ut
     requestRateLimiter(10, 1),
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
-      const { body, log } = req
+      const { user, body, log } = req
       const { mobile } = get(body, 'user', {})
+      const { mobile: mobileHash, smsValidated } = user
       const { longitude, latitude } = get(body, 'geoposition.coords', {})
       const clientIp = requestIp.getClientIp(req)
 
@@ -59,7 +59,7 @@ export default function addGoodIDMiddleware(app: Router, storage: StorageAPI, ut
 
         if (mobile) {
           const countryCodeFromMobile = utils.getCountryCodeFromMobile(mobile)
-          const isPhoneMatchesAndVerified = false // TODO: check it
+          const isPhoneMatchesAndVerified = smsValidated && mobileHash === sha3(mobile)
 
           if (isPhoneMatchesAndVerified) {
             await issueCertificate(countryCodeFromMobile)
