@@ -49,10 +49,6 @@ export default function addGoodIDMiddleware(app: Router, utils) {
       }
 
       try {
-        if (!longitude && !latitude) {
-          throw new Error('Failed to verify location: missing geolocation data')
-        }
-
         if (mobile) {
           const countryCodeFromMobile = utils.getCountryCodeFromMobile(mobile)
           const isPhoneMatchesAndVerified = smsValidated && mobileHash === sha3(mobile)
@@ -61,6 +57,10 @@ export default function addGoodIDMiddleware(app: Router, utils) {
             await issueCertificate(countryCodeFromMobile)
             return
           }
+        }
+
+        if (!longitude && !latitude) {
+          throw new Error('Failed to verify location: missing geolocation data')
         }
 
         const countryCodeFromIP = await utils.getCountryCodeFromIPAddress(clientIp)
