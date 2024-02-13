@@ -1,17 +1,19 @@
 import axios from 'axios'
-import { all as allCountries } from 'country-codes-list'
+import { PhoneNumberUtil } from 'google-libphonenumber'
 
 import { substituteParams } from '../utils/axios'
 import { get, repeat, toUpper } from 'lodash'
 
 export class GoodIDUtils {
-  constructor(httpApi) {
+  constructor(httpApi, phoneNumberApi) {
     const http = httpApi()
     const { request, response } = http.interceptors
 
     request.use(req => substituteParams(req))
     response.use(({ data }) => data)
+
     this.http = http
+    this.phoneUtil = phoneNumberApi.getInstance()
   }
 
   async getCountryCodeFromIPAddress(ip) {
@@ -46,15 +48,14 @@ export class GoodIDUtils {
   }
 
   getCountryCodeFromMobile(phoneNumber) {
-    const trimmedNumber = phoneNumber.replace(/[^\d]/g, '')
-    const { countryCode } =
-      allCountries().find(({ countryCallingCode }) => trimmedNumber.startsWith(countryCallingCode)) || {}
+    const { phoneUtil } = this
+    const number = phoneUtil.parseAndKeepRawInput(phoneNumber, 'US')
 
-    if (!countryCode) {
-      throw new Error(`Failed to get country code from mobile '${phoneNumber}': unable to match country`)
+    if (!phoneUtil.isValidNumber(number)) {
+      throw new Error(`Failed to get country code from mobile '${phoneNumber}': Invalid phone number`)
     }
 
-    return countryCode
+    return phoneUtil.getRegionCodeForNumber(number)
   }
 
   async issueCertificate(countryCode) {
@@ -63,4 +64,4 @@ export class GoodIDUtils {
   }
 }
 
-export default new GoodIDUtils(axios)
+export default new GoodIDUtils(axios, PhoneNumberUtil)
