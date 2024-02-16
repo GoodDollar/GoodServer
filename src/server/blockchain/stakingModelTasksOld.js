@@ -56,24 +56,14 @@ export class StakingModelManager {
   canCollectFunds = async () => this.managerContract.methods.canRun().call()
 
   blocksUntilNextCollection = async () => {
-    const interval = await this.managerContract.methods
-      .blockInterval()
-      .call()
-      .then(parseInt)
-    const lastTransferred = await this.managerContract.methods
-      .lastTransferred()
-      .call()
-      .then(parseInt)
+    const interval = await this.managerContract.methods.blockInterval().call().then(parseInt)
+    const lastTransferred = await this.managerContract.methods.lastTransferred().call().then(parseInt)
     const currentBlock = await AdminWallet.mainnetWeb3.eth.getBlockNumber()
     const res = interval - ((currentBlock - lastTransferred * interval) % interval)
     return res
   }
 
-  getAvailableInterest = async () =>
-    this.stakingContract.methods
-      .currentUBIInterest()
-      .call()
-      .then(parseInt)
+  getAvailableInterest = async () => this.stakingContract.methods.currentUBIInterest().call().then(parseInt)
   transferInterest = async () => {
     let txHash
     try {
@@ -325,22 +315,14 @@ class FishingManager {
    */
   getUBICalculatedDays = async forceDaysAgo => {
     const dayFuseBlocks = (60 * 60 * 24) / 5
-    const maxInactiveDays =
-      forceDaysAgo ||
-      (await this.ubiContract.methods
-        .maxInactiveDays()
-        .call()
-        .then(parseInt))
+    const maxInactiveDays = forceDaysAgo || (await this.ubiContract.methods.maxInactiveDays().call().then(parseInt))
 
     const daysagoBlocks = dayFuseBlocks * (maxInactiveDays + 1)
     const blocksAgo = Math.max((await AdminWallet.web3.eth.getBlockNumber()) - daysagoBlocks, 0)
     await AdminWallet.sendTransaction(this.ubiContract.methods.setDay(), {}).catch(() =>
       this.log.warn('fishManager set day failed')
     )
-    const currentUBIDay = await this.ubiContract.methods
-      .currentDay()
-      .call()
-      .then(parseInt)
+    const currentUBIDay = await this.ubiContract.methods.currentDay().call().then(parseInt)
     this.log.info('getInactiveAccounts', { daysagoBlocks, blocksAgo, currentUBIDay, maxInactiveDays })
     //get claims that were done before inactive period days ago, these accounts has the potential to be inactive
     //first we get the starting block

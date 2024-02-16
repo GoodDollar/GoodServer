@@ -85,10 +85,7 @@ class UserPrivate {
    * @returns {object || null}
    */
   async getUserField(identifier: string, field: string): string {
-    const result = await this.model
-      .findOne({ identifier })
-      .select(field)
-      .lean()
+    const result = await this.model.findOne({ identifier }).select(field).lean()
 
     return result ? result[field] : ''
   }

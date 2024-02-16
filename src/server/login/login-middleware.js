@@ -37,7 +37,8 @@ const FV_IDENTIFIER_MSG = `Sign this message to create your own unique identifie
 You can use this identifier in the future to delete this anonymized record.
 WARNING: do not sign this message unless you trust the website/application requesting this signature.`
 
-export const FV_IDENTIFIER_MSG2 = mustache(`Sign this message to request verifying your account {account} and to create your own secret unique identifier for your anonymized record.
+export const FV_IDENTIFIER_MSG2 =
+  mustache(`Sign this message to request verifying your account {account} and to create your own secret unique identifier for your anonymized record.
 You can use this identifier in the future to delete this anonymized record.
 WARNING: do not sign this message unless you trust the website/application requesting this signature.`)
 

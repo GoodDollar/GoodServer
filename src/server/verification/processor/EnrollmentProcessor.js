@@ -191,9 +191,7 @@ class EnrollmentProcessor {
 
     if (keepEnrollments > 0) {
       deletedAccountFilters.createdAt = {
-        $lte: moment()
-          .subtract(keepEnrollments, 'hours')
-          .toDate()
+        $lte: moment().subtract(keepEnrollments, 'hours').toDate()
       }
     }
 
