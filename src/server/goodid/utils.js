@@ -2,10 +2,11 @@ import axios from 'axios'
 import { PhoneNumberUtil } from 'google-libphonenumber'
 
 import { substituteParams } from '../utils/axios'
-import { get, repeat, toUpper } from 'lodash'
+import { get, toUpper } from 'lodash'
+import { getAgent, getSubjectId } from './veramo'
 
 export class GoodIDUtils {
-  constructor(httpApi, phoneNumberApi) {
+  constructor(httpApi, phoneNumberApi, getVeramoAgent) {
     const http = httpApi()
     const { request, response } = http.interceptors
 
@@ -14,6 +15,7 @@ export class GoodIDUtils {
 
     this.http = http
     this.phoneUtil = phoneNumberApi.getInstance()
+    this.getVeramoAgent = getVeramoAgent
   }
 
   async getCountryCodeFromIPAddress(ip) {
@@ -58,10 +60,21 @@ export class GoodIDUtils {
     return phoneUtil.getRegionCodeForNumber(number)
   }
 
-  async issueCertificate(countryCode) {
-    // TODO: replace dummy method to veramo API call
-    return Buffer.from(repeat(countryCode, 64)).toString('base64')
+  async issueLocationCertificate(walletAddress, countryCode) {
+    const agent = await this.getVeramoAgent()
+    const identifier = await agent.didManagerGetByAlias({ alias: 'default' })
+
+    return agent.createVerifiableCredential({
+      credential: {
+        issuer: { id: identifier.did },
+        credentialSubject: {
+          id: getSubjectId(walletAddress),
+          countryCode
+        }
+      },
+      proofFormat: 'jwt'
+    })
   }
 }
 
-export default new GoodIDUtils(axios, PhoneNumberUtil)
+export default new GoodIDUtils(axios, PhoneNumberUtil, getAgent)

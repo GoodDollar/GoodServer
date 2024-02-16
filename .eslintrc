@@ -7,10 +7,15 @@
     "plugin:prettier/recommended",
     "prettier",
     "prettier/babel",
-    "prettier/flowtype"
+    "prettier/flowtype",
   ],
   "parserOptions": {
-    "ecmaVersion": 2020
+    "ecmaVersion": 2020,
+    "babelOptions": {
+      "plugins": [
+        "@babel/plugin-syntax-import-assertions"
+      ]
+    }
   },
   "plugins": ["dependencies", "flowtype", "import", "prettier", "jest"],
   "settings": {},

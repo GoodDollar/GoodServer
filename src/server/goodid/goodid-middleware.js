@@ -38,11 +38,11 @@ export default function addGoodIDMiddleware(app: Router, utils) {
     wrapAsync(async (req, res) => {
       const { user, body, log } = req
       const { mobile } = get(body, 'user', {})
-      const { mobile: mobileHash, smsValidated } = user
+      const { mobile: mobileHash, smsValidated, gdAddress } = user
       const { longitude, latitude } = get(body, 'geoposition.coords', {})
 
       const issueCertificate = async countryCode => {
-        const ceriticate = await utils.issueCertificate(countryCode)
+        const ceriticate = await utils.issueLocationCertificate(gdAddress, countryCode)
 
         res.json({ success: true, ceriticate })
       }
