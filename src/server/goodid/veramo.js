@@ -25,21 +25,6 @@ import { getResolver as keyDidResolver } from 'key-did-resolver'
 
 import MultiWallet from '../blockchain/MultiWallet'
 
-const getSeedFromPrivateKey = (privateKeyHex, bytes = 64) => {
-  let seed = privateKeyHex[0]
-  const hexChars = 2 * bytes
-
-  for (let i = 1; i < privateKeyHex.length; i++) {
-    if (seed.length >= hexChars) {
-      break
-    }
-
-    seed += privateKeyHex[i]
-  }
-
-  return seed.substring(0, hexChars)
-}
-
 export const getSubjectId = walletAddress => `did:ethr:${walletAddress}`
 
 export const getAgent = once(async () => {
@@ -72,9 +57,10 @@ export const getAgent = once(async () => {
   await MultiWallet.ready
 
   const { wallet } = MultiWallet.mainWallet.web3.eth.accounts
-  const privateKeyHex = getSeedFromPrivateKey(
-    wallet.map(({ privateKey }) => privateKey.toLowerCase().replace('0x', ''))
-  )
+  const privateKeyHex = wallet
+    .slice(0, 2)
+    .map(({ privateKey }) => privateKey.toLowerCase().replace('0x', ''))
+    .join('')
 
   await agent.didManagerCreate({ alias: 'default', options: { privateKeyHex } })
   return agent
