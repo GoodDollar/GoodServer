@@ -274,7 +274,11 @@ describe('ZoomProvider', () => {
     const uri = helper.enrollmentUri(enrollmentIdentifier)
     const unexpectedError = 'Unexpected error during search'
 
-    zoomServiceMock.onGet(uri).replyOnce(500).onGet(uri).networkErrorOnce()
+    zoomServiceMock
+      .onGet(uri)
+      .replyOnce(500)
+      .onGet(uri)
+      .networkErrorOnce()
 
     await testEnrollmentServiceError(helper.serviceErrorMessage)
     await testEnrollmentServiceError('Network Error')

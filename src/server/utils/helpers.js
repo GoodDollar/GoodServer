@@ -10,7 +10,7 @@ import conf from '../server.config'
  * @returns {Function}
  */
 function wrapAsync(fn: Function) {
-  return function (req: $Request & { log: any }, res: $Response, next: NextFunction) {
+  return function(req: $Request & { log: any }, res: $Response, next: NextFunction) {
     fn(req, res, next).catch(error => {
       next(error)
     })
@@ -23,7 +23,7 @@ function wrapAsync(fn: Function) {
  * @returns {Function}
  */
 function lightLogs(fn: Function) {
-  return function (req: $Request, res: $Response, next: NextFunction) {
+  return function(req: $Request, res: $Response, next: NextFunction) {
     fn(req, res, next)
   }
 }
@@ -35,7 +35,7 @@ function lightLogs(fn: Function) {
  * @param next
  */
 const onlyInEnv = (...environments: Array<string>) => {
-  return function (req: $Request, res: $Response, next: NextFunction) {
+  return function(req: $Request, res: $Response, next: NextFunction) {
     if (environments.includes(conf.env)) {
       next()
       return

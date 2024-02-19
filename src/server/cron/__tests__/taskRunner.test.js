@@ -11,8 +11,15 @@ const TaskRunner = getTaskRunner()
 describe('TaskRunner', () => {
   const testTask = {
     name: 'testTask',
-    schedule: moment().add(3, 'seconds').toDate(),
-    execute: async ({ setTime }) => setTime(moment().add(3, 'seconds').toDate())
+    schedule: moment()
+      .add(3, 'seconds')
+      .toDate(),
+    execute: async ({ setTime }) =>
+      setTime(
+        moment()
+          .add(3, 'seconds')
+          .toDate()
+      )
   }
 
   const testCronTask = {

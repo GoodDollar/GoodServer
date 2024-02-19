@@ -1,22 +1,23 @@
 {
-  "parser": "@babel/eslint-parser",
   "extends": [
     "eslint:recommended",
     "plugin:node/recommended",
     "plugin:flowtype/recommended",
     "plugin:import/recommended",
     "plugin:prettier/recommended",
-    "prettier"
+    "prettier",
+    "prettier/babel",
+    "prettier/flowtype",
   ],
   "parserOptions": {
     "ecmaVersion": 2020,
     "babelOptions": {
       "plugins": [
-        ["@babel/plugin-syntax-import-attributes", { "deprecatedAssertSyntax": true }]
+        "@babel/plugin-syntax-import-assertions"
       ]
     }
   },
-  "plugins": ["flowtype", "import", "prettier", "jest"],
+  "plugins": ["dependencies", "flowtype", "import", "prettier", "jest"],
   "settings": {},
   "env": {
     "jest/globals": true
@@ -29,12 +30,13 @@
     "no-process-exit": "off",
     "node/no-unsupported-features/es-syntax": "off",
     "prettier/prettier": "error",
-    "import/no-cycle": "error",
-    "import/no-unresolved": [
+    "dependencies/no-cycles": "error",
+    "dependencies/no-unresolved": [
       "warn",
       {
         "ignore": ["web3"]
       }
-    ]
+    ],
+    "import/no-unresolved": "warn"
   }
 }

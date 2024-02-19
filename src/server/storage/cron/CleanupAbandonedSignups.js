@@ -34,7 +34,10 @@ class CleanupAbandonedSignups {
     const missingFields = mandatoryFields.map(nonExists)
 
     try {
-      await model.find({ $or: missingFields }).remove().exec()
+      await model
+        .find({ $or: missingFields })
+        .remove()
+        .exec()
     } catch (e) {
       logger.error('Error cleaning abandoned signups up', e.message, e)
     }

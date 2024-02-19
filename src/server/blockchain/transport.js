@@ -68,7 +68,9 @@ export class MultipleHttpProvider extends HttpProvider {
 
     log.trace('send: exec over peers', { peers, strategy, calls })
 
-    fallback(calls, onFallback).then(onSuccess).catch(onFailed)
+    fallback(calls, onFallback)
+      .then(onSuccess)
+      .catch(onFailed)
   }
 
   /**

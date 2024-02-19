@@ -54,13 +54,8 @@ export class Web3Wallet {
   }
 
   constructor(name, conf, options = null) {
-    const {
-      ethereum = null,
-      network = null,
-      initialGasPrice = null,
-      fetchGasPrice = false,
-      faucetTxCost = 150000
-    } = options || {}
+    const { ethereum = null, network = null, initialGasPrice = null, fetchGasPrice = false, faucetTxCost = 150000 } =
+      options || {}
     const ethOpts = ethereum || conf.ethereum
     const { network_id: networkId } = ethOpts
 
@@ -274,7 +269,10 @@ export class Web3Wallet {
         })
       }
 
-      let gdbalance = await this.tokenContract.methods.balanceOf(this.address).call().then(parseInt)
+      let gdbalance = await this.tokenContract.methods
+        .balanceOf(this.address)
+        .call()
+        .then(parseInt)
 
       let nativebalance = await this.web3.eth.getBalance(this.address)
       this.nonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
@@ -364,7 +362,10 @@ export class Web3Wallet {
 
       const [identityRecord, lastAuth] = await Promise.all([
         this.identityContract.methods.identities(address).call(),
-        this.identityContract.methods.lastAuthenticated(address).call().then(parseInt)
+        this.identityContract.methods
+          .lastAuthenticated(address)
+          .call()
+          .then(parseInt)
       ])
 
       if (parseInt(identityRecord.status) === 1) {
@@ -446,7 +447,10 @@ export class Web3Wallet {
     const { log } = this
 
     try {
-      const result = await this.identityContract.methods.authenticationPeriod().call().then(parseInt)
+      const result = await this.identityContract.methods
+        .authenticationPeriod()
+        .call()
+        .then(parseInt)
 
       return result
     } catch (exception) {
@@ -461,7 +465,10 @@ export class Web3Wallet {
     const { log } = this
 
     try {
-      const result = await this.identityContract.methods.getWhitelistedOnChainId(account).call().then(parseInt)
+      const result = await this.identityContract.methods
+        .getWhitelistedOnChainId(account)
+        .call()
+        .then(parseInt)
 
       return result
     } catch (exception) {

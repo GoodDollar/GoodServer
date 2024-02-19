@@ -4,5 +4,6 @@ assets
 config
 flow-typed
 scripts
+node_modules
 /*.js
 /src/serviceWorker.js

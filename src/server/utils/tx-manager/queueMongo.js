@@ -45,7 +45,9 @@ export default class queueMongo {
    */
   async getWalletNonce(addresses, id) {
     try {
-      const expired = moment().subtract(this.lockExpireSeconds, 'seconds').toDate()
+      const expired = moment()
+        .subtract(this.lockExpireSeconds, 'seconds')
+        .toDate()
       const filter = {
         address: { $in: addresses },
         networkId: this.networkId,
