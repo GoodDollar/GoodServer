@@ -66,6 +66,7 @@ export class GoodIDUtils {
 
     return agent.createVerifiableCredential({
       credential: {
+        type: ['VerifiableLocationCredential'],
         issuer: { id: identifier.did },
         credentialSubject: {
           id: getSubjectId(walletAddress),
