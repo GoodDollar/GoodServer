@@ -7,7 +7,7 @@ import { getAgent, getSubjectId } from './veramo'
 
 export class GoodIDUtils {
   constructor(httpApi, phoneNumberApi, getVeramoAgent) {
-    const http = httpApi()
+    const http = httpApi.create({})
     const { request, response } = http.interceptors
 
     request.use(req => substituteParams(req))
