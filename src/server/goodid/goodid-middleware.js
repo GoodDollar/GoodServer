@@ -63,11 +63,12 @@ export default function addGoodIDMiddleware(app: Router, utils) {
         }
 
         const clientIp = requestIp.getClientIp(req)
-        const countryCodeFromIP = await utils.getCountryCodeFromIPAddress(clientIp)
-        const countryCodeFromLocation = await utils.getCountryCodeFromGeoLocation(latitude, longitude)
-        const isCountryFromIPMatchesLocation = countryCodeFromIP === countryCodeFromLocation
+        const [countryCodeFromIP, countryCodeFromLocation] = await Promise.all([
+          utils.getCountryCodeFromIPAddress(clientIp),
+          utils.getCountryCodeFromGeoLocation(latitude, longitude)
+        ])
 
-        if (!isCountryFromIPMatchesLocation) {
+        if (countryCodeFromIP !== countryCodeFromLocation) {
           throw new Error('Country of Your IP address does not match geolocation data')
         }
 
