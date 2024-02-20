@@ -319,6 +319,7 @@ class OnGage implements CrmApi {
 
         // due to the retries we could process response twice
         // here is a simple check to handle this
+        // eslint-disable-next-line no-prototype-builtins
         if (!retryStatus.hasOwnProperty('retryCount')) {
           // if no retry metadata - response was already processed
           // so we should just return it 'as is'
