@@ -25,6 +25,13 @@ import { getResolver as keyDidResolver } from 'key-did-resolver'
 
 import MultiWallet from '../blockchain/MultiWallet'
 
+export const Credential = Object.freeze({
+  Location: 'VerifiableLocationCredential',
+  Identity: 'VerifiableIdentityCredential',
+  Gender: 'VerifiableGenderCredential',
+  Age: 'VerifiableAgeCredential'
+})
+
 export const getSubjectId = walletAddress => `did:ethr:${walletAddress}`
 
 export const getAgent = once(async () => {

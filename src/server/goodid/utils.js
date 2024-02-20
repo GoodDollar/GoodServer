@@ -2,7 +2,7 @@ import axios from 'axios'
 import { PhoneNumberUtil } from 'google-libphonenumber'
 
 import { substituteParams } from '../utils/axios'
-import { get, toUpper } from 'lodash'
+import { flatten, get, toUpper } from 'lodash'
 import { getAgent, getSubjectId } from './veramo'
 
 export class GoodIDUtils {
@@ -60,17 +60,17 @@ export class GoodIDUtils {
     return phoneUtil.getRegionCodeForNumber(number)
   }
 
-  async issueLocationCertificate(walletAddress, countryCode) {
+  async issueCertificate(gdAddress, credentials, payload = {}) {
     const agent = await this.getVeramoAgent()
     const identifier = await agent.didManagerGetByAlias({ alias: 'default' })
 
     return agent.createVerifiableCredential({
       credential: {
-        type: ['VerifiableLocationCredential'],
+        type: flatten([credentials]), // instead of the ternary flow isArray ? x : [x]
         issuer: { id: identifier.did },
         credentialSubject: {
-          id: getSubjectId(walletAddress),
-          countryCode
+          id: getSubjectId(gdAddress),
+          ...payload
         }
       },
       proofFormat: 'jwt'

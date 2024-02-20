@@ -8,6 +8,7 @@ import { sha3 } from 'web3-utils'
 import { wrapAsync } from '../utils/helpers'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import { get } from 'lodash'
+import { Credential } from './veramo'
 
 export default function addGoodIDMiddleware(app: Router, utils) {
   /**
@@ -42,7 +43,7 @@ export default function addGoodIDMiddleware(app: Router, utils) {
       const { longitude, latitude } = get(body, 'geoposition.coords', {})
 
       const issueCertificate = async countryCode => {
-        const ceriticate = await utils.issueLocationCertificate(gdAddress, countryCode)
+        const ceriticate = await utils.issueCertificate(gdAddress, Credential.Location, { countryCode })
 
         res.json({ success: true, ceriticate })
       }
