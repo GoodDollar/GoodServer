@@ -15,10 +15,10 @@ export default function addGoodIDMiddleware(app: Router, utils) {
    * POST /goodid/certificate/location
    * Content-Type: application/json
    * {
-   *   "user": {
+   *   "user": { // optional
    *      "mobile": "+380639549357"
    *    },
-   *   "geoposition": {
+   *   "geoposition": { // a GeolocationPosition returned from navigator.geolocation.getCurrentPosition()
    *     "timestamp": 1707313563,
    *     "coords": {
    *       "longitude": 30.394171,
@@ -29,6 +29,30 @@ export default function addGoodIDMiddleware(app: Router, utils) {
    *       "heading": null,
    *       "speed": null,
    *     }
+   *   }
+   * }
+   *
+   * HTTP/1.1 200 OK
+   * Content-Type: application/json
+   * {
+   *   "success": true,
+   *   "certificate": {
+   *     "credential": {
+   *       "credentialSubject": {
+   *         "id": 'did:ethr:<g$ wallet address>',
+   *         "countryCode": "<2-chars upercased>"
+   *       },
+   *       "issuer": {
+   *         "id": 'did:key:<GoodServer's DID>',
+   *       },
+   *       "type": ['VerifiableLocationCredential'],
+   *       "@context": ["https://www.w3.org/2018/credentials/v1"],
+   *       "issuanceDate": "2022-10-28T11:54:22.000Z",
+   *       "proof": {
+   *         "type": "JwtProof2020",
+   *         "jwt": 'eyJhbGciOiJFUzI1NksiLCJ0eXAiOiJKV1QifQ.eyJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIl0sImNyZWRlbnRpYWxTdWJqZWN0Ijp7InlvdSI6IlJvY2sifX0sInN1YiI6ImRpZDp3ZWI6ZXhhbXBsZS5jb20iLCJuYmYiOjE2NjY5NTgwNjIsImlzcyI6ImRpZDpldGhyOmdvZXJsaToweDAzNTBlZWVlYTE0MTBjNWIxNTJmMWE4OGUwZmZlOGJiOGEwYmMzZGY4NjhiNzQwZWIyMzUyYjFkYmY5M2I1OWMxNiJ9.EPeuQBpkK13V9wu66SLg7u8ebY2OS8b2Biah2Vw-RI-Atui2rtujQkVc2t9m1Eqm4XQFECfysgQBdWwnSDvIjw',
+   *       },
+   *     },
    *   }
    * }
    */
@@ -78,7 +102,7 @@ export default function addGoodIDMiddleware(app: Router, utils) {
         const { message } = exception
 
         log.error('Failed to issue location ceritifate:', message, exception, { mobile, longitude, latitude })
-        res.status(400).json({ ok: 0, error: message })
+        res.status(400).json({ success: false, error: message })
       }
     })
   )

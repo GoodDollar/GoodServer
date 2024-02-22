@@ -1,28 +1,5 @@
 import { once } from 'lodash'
 
-// Core interfaces
-import { createAgent } from '@veramo/core'
-
-// Core identity manager plugin
-import { DIDManager, MemoryDIDStore } from '@veramo/did-manager'
-
-// Ethr did identity provider
-import { KeyDIDProvider } from '@veramo/did-provider-key'
-
-// Core key manager plugin
-import { KeyManager, MemoryKeyStore, MemoryPrivateKeyStore } from '@veramo/key-manager'
-
-// Custom key management system for RN
-import { KeyManagementSystem } from '@veramo/kms-local'
-
-// W3C Verifiable Credential plugin
-import { CredentialPlugin } from '@veramo/credential-w3c'
-
-// Custom resolvers
-import { DIDResolverPlugin } from '@veramo/did-resolver'
-import { Resolver } from 'did-resolver'
-import { getResolver as keyDidResolver } from 'key-did-resolver'
-
 import MultiWallet from '../blockchain/MultiWallet'
 
 export const Credential = Object.freeze({
@@ -35,6 +12,28 @@ export const Credential = Object.freeze({
 export const getSubjectId = walletAddress => `did:ethr:${walletAddress}`
 
 export const getAgent = once(async () => {
+  const [
+    { createAgent },
+    { DIDManager, MemoryDIDStore },
+    { KeyDIDProvider },
+    { KeyManager, MemoryKeyStore, MemoryPrivateKeyStore },
+    { KeyManagementSystem },
+    { CredentialPlugin },
+    { DIDResolverPlugin },
+    { Resolver },
+    { getResolver: keyDidResolver }
+  ] = await Promise.all([
+    import('@veramo/core'),
+    import('@veramo/did-manager'),
+    import('@veramo/did-provider-key'),
+    import('@veramo/key-manager'),
+    import('@veramo/kms-local'),
+    import('@veramo/credential-w3c'),
+    import('@veramo/did-resolver'),
+    import('did-resolver'),
+    import('key-did-resolver')
+  ])
+
   const agent = createAgent({
     plugins: [
       new KeyManager({
