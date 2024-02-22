@@ -2,7 +2,7 @@ import throng from 'throng'
 
 const start = async workerId => {
   const serverStart =
-    process.env.NODE_ENV === 'production' || process.env.IS_DEPLOYED === 'true'
+    process.env.ENV === 'production' || process.env.IS_DEPLOYED === 'true'
       ? require('./server-prod').default
       : require('./server-dev').default
   return serverStart(workerId)

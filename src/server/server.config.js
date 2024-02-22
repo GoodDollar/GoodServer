@@ -12,6 +12,7 @@ export const appName = description.replace(/\s*server\s*/i, '')
 
 let dotenvPath = '.env'
 
+//for jest make sure we load .env.test
 if (process.env.NODE_ENV === 'test') {
   dotenvPath += '.test'
 
@@ -30,7 +31,7 @@ const conf = convict({
     format: ['production', 'development', 'staging', 'test'],
     default: 'development',
     arg: 'nodeEnv',
-    env: 'NODE_ENV'
+    env: 'ENV'
   },
   version: {
     doc: 'The application version from package.json.',
