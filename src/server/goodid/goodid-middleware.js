@@ -106,4 +106,59 @@ export default function addGoodIDMiddleware(app: Router, utils) {
       }
     })
   )
+
+  /**
+   * POST /goodid/certificate/verify
+   * Content-Type: application/json
+   * {
+   *   "certificate": {
+   *     "credential": {
+   *       "credentialSubject": {
+   *         "id": 'did:ethr:<g$ wallet address>',
+   *         "countryCode": "<2-chars upercased>"
+   *       },
+   *       "issuer": {
+   *         "id": 'did:key:<GoodServer's DID>',
+   *       },
+   *       "type": [<set of VerifiableLocationCredential | VerifiableIdentityCredential | VerifiableGenderCredential | VerifiableAgeCredential items>],
+   *       "@context": ["https://www.w3.org/2018/credentials/v1"],
+   *       "issuanceDate": "2022-10-28T11:54:22.000Z",
+   *       "proof": {
+   *         "type": "JwtProof2020",
+   *         "jwt": 'eyJhbGciOiJFUzI1NksiLCJ0eXAiOiJKV1QifQ.eyJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIl0sImNyZWRlbnRpYWxTdWJqZWN0Ijp7InlvdSI6IlJvY2sifX0sInN1YiI6ImRpZDp3ZWI6ZXhhbXBsZS5jb20iLCJuYmYiOjE2NjY5NTgwNjIsImlzcyI6ImRpZDpldGhyOmdvZXJsaToweDAzNTBlZWVlYTE0MTBjNWIxNTJmMWE4OGUwZmZlOGJiOGEwYmMzZGY4NjhiNzQwZWIyMzUyYjFkYmY5M2I1OWMxNiJ9.EPeuQBpkK13V9wu66SLg7u8ebY2OS8b2Biah2Vw-RI-Atui2rtujQkVc2t9m1Eqm4XQFECfysgQBdWwnSDvIjw',
+   *       },
+   *     },
+   *   }
+   * }
+   *
+   * HTTP/1.1 200 OK
+   * Content-Type: application/json
+   * {
+   *   "success": true
+   * }
+   */
+  app.post(
+    '/goodid/certificate/verify',
+    requestRateLimiter(10, 1),
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res) => {
+      const { body, log } = req
+      const { ceriticate } = body ?? {}
+
+      if (!ceriticate) {
+        throw new Error('Failed to verify credential: missing certificate data')
+      }
+
+      try {
+        const success = await utils.verifyCertificate(ceriticate)
+
+        res.status(200).json({ success })
+      } catch (exception) {
+        const { message } = exception
+
+        log.error('Failed to verify ceritifate:', message, exception, { ceriticate })
+        res.status(400).json({ success: false, error: message })
+      }
+    })
+  )
 }

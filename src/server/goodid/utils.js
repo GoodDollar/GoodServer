@@ -76,6 +76,13 @@ export class GoodIDUtils {
       proofFormat: 'jwt'
     })
   }
+
+  async verifyCertificate(certificate) {
+    const agent = await this.getVeramoAgent()
+    const { verified } = await agent.verfyCredential(certificate)
+
+    return verified
+  }
 }
 
 export default new GoodIDUtils(axios, PhoneNumberUtil, getAgent)
