@@ -66,7 +66,7 @@ export class GoodIDUtils {
 
     return agent.createVerifiableCredential({
       credential: {
-        type: flatten([credentials]), // instead of the ternary flow isArray ? x : [x]
+        type: flatten(['VerifiableCredential', credentials]), // instead of the ternary flow isArray ? x : [x]
         issuer: { id: identifier.did },
         credentialSubject: {
           id: getSubjectId(gdAddress),
