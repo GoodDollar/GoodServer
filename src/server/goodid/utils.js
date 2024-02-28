@@ -20,8 +20,8 @@ export class GoodIDUtils {
 
   async getCountryCodeFromIPAddress(ip) {
     const countryCode = await this.http
-      .get('https://get.geojs.io/v1/ip/country/:ip.json', { ip })
-      .then(response => get(response, 'country_3'))
+      .get('https://get.geojs.io/v1/ip/country/:ip.json', { params: { ip } })
+      .then(response => get(response, 'country'))
 
     if (!countryCode) {
       throw new Error(`Failed to get country code from IP address '${ip}': response is empty or invalid`)
@@ -33,9 +33,11 @@ export class GoodIDUtils {
   async getCountryCodeFromGeoLocation(latitude, longitude) {
     const countryCode = await this.http
       .get('https://nominatim.openstreetmap.org/reverse', {
-        format: 'jsonv2',
-        lat: latitude,
-        lon: longitude
+        params: {
+          format: 'jsonv2',
+          lat: latitude,
+          lon: longitude
+        }
       })
       .then(response => get(response, 'address.country_code'))
       .then(toUpper)
@@ -79,7 +81,7 @@ export class GoodIDUtils {
 
   async verifyCertificate(certificate) {
     const agent = await this.getVeramoAgent()
-    const { verified } = await agent.verfyCredential(certificate)
+    const { verified } = await agent.verifyCredential(certificate)
 
     return verified
   }

@@ -88,6 +88,9 @@ export default function addGoodIDMiddleware(app: Router, utils) {
         }
 
         const clientIp = requestIp.getClientIp(req)
+
+        log.debug('Getting country data', { clientIp, longitude, latitude })
+
         const [countryCodeFromIP, countryCodeFromLocation] = await Promise.all([
           utils.getCountryCodeFromIPAddress(clientIp),
           utils.getCountryCodeFromGeoLocation(latitude, longitude)
@@ -143,20 +146,20 @@ export default function addGoodIDMiddleware(app: Router, utils) {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { body, log } = req
-      const { ceriticate } = body ?? {}
-
-      if (!ceriticate) {
-        throw new Error('Failed to verify credential: missing certificate data')
-      }
+      const { certificate } = body ?? {}
 
       try {
-        const success = await utils.verifyCertificate(ceriticate)
+        if (!certificate) {
+          throw new Error('Failed to verify credential: missing certificate data')
+        }
+
+        const success = await utils.verifyCertificate(certificate)
 
         res.status(200).json({ success })
       } catch (exception) {
         const { message } = exception
 
-        log.error('Failed to verify ceritifate:', message, exception, { ceriticate })
+        log.error('Failed to verify ceritifate:', message, exception, { certificate })
         res.status(400).json({ success: false, error: message })
       }
     })

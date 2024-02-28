@@ -63,8 +63,10 @@ export const getAgent = once(async () => {
   await MultiWallet.ready
 
   const { wallet } = MultiWallet.mainWallet.web3.eth.accounts
-  const privateKeyHex = wallet
-    .slice(0, 2)
+
+  const privateKeyHex = Array(2)
+    .fill(null)
+    .map((_, index) => wallet[index])
     .map(({ privateKey }) => privateKey.toLowerCase().replace('0x', ''))
     .join('')
 
