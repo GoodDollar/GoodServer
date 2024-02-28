@@ -66,7 +66,7 @@ export class GoodIDUtils {
 
     return agent.createVerifiableCredential({
       credential: {
-        type: flatten([credentials]), // instead of the ternary flow isArray ? x : [x]
+        type: flatten(['VerifiableCredential', credentials]), // instead of the ternary flow isArray ? x : [x]
         issuer: { id: identifier.did },
         credentialSubject: {
           id: getSubjectId(gdAddress),
@@ -75,6 +75,13 @@ export class GoodIDUtils {
       },
       proofFormat: 'jwt'
     })
+  }
+
+  async verifyCertificate(certificate) {
+    const agent = await this.getVeramoAgent()
+    const { verified } = await agent.verfyCredential(certificate)
+
+    return verified
   }
 }
 
