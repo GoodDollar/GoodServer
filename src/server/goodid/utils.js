@@ -81,7 +81,7 @@ export class GoodIDUtils {
 
   async verifyCertificate(certificate) {
     const agent = await this.getVeramoAgent()
-    const { verified } = await agent.verifyCredential(certificate)
+    const { verified } = await agent.verifyCredential({ credential: certificate })
 
     return verified
   }
