@@ -21,7 +21,8 @@ export const getAgent = once(async () => {
     { CredentialPlugin },
     { DIDResolverPlugin },
     { Resolver },
-    { getResolver: keyDidResolver }
+    { getResolver: keyDidResolver },
+    { CredentialIssuerLD, LdDefaultContexts, VeramoEcdsaSecp256k1RecoverySignature2020, VeramoEd25519Signature2018 }
   ] = await Promise.all([
     import('@veramo/core'),
     import('@veramo/did-manager'),
@@ -31,7 +32,8 @@ export const getAgent = once(async () => {
     import('@veramo/credential-w3c'),
     import('@veramo/did-resolver'),
     import('did-resolver'),
-    import('key-did-resolver')
+    import('key-did-resolver'),
+    import('@veramo/credential-ld')
   ])
 
   const agent = createAgent({
@@ -56,15 +58,21 @@ export const getAgent = once(async () => {
           ...keyDidResolver()
         })
       }),
-      new CredentialPlugin()
+      new CredentialPlugin(),
+      new CredentialIssuerLD({
+        contextMaps: [LdDefaultContexts],
+        suites: [new VeramoEd25519Signature2018(), new VeramoEcdsaSecp256k1RecoverySignature2020()]
+      })
     ]
   })
 
   await MultiWallet.ready
 
   const { wallet } = MultiWallet.mainWallet.web3.eth.accounts
-  const privateKeyHex = wallet
-    .slice(0, 2)
+
+  const privateKeyHex = Array(2)
+    .fill(null)
+    .map((_, index) => wallet[index])
     .map(({ privateKey }) => privateKey.toLowerCase().replace('0x', ''))
     .join('')
 
