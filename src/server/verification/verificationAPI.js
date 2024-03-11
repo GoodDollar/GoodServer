@@ -2,11 +2,13 @@
 
 import { Router } from 'express'
 import passport from 'passport'
-import { get, defaults } from 'lodash'
-import { sha3, toChecksumAddress } from 'web3-utils'
+import { get, defaults, memoize, omit } from 'lodash'
+import { sha3, toChecksumAddress, keccak256 } from 'web3-utils'
+import web3Abi from 'web3-eth-abi'
 import requestIp from 'request-ip'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import { default as AdminWallet } from '../blockchain/MultiWallet'
+import { findFaucetAbuse, findGDTx } from '../blockchain/explorer'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
 import requestRateLimiter, { userRateLimiter } from '../utils/requestRateLimiter'
 import OTP from '../../imports/otp'
@@ -16,6 +18,9 @@ import { sendTemplateEmail } from '../aws-ses/aws-ses'
 import { detectFaces } from '../aws-rekognition/aws-rekognition'
 import fetch from 'cross-fetch'
 import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
+import createIdScanProcessor from './processor/IdScanProcessor'
+
+import { cancelDisposalTask } from './cron/taskUtil'
 import { recoverPublickey } from '../utils/eth'
 import { shouldLogVerificaitonError } from './utils/logger'
 import { syncUserEmail } from '../storage/addUserSteps'
@@ -32,6 +37,15 @@ const verifyFVIdentifier = async (identifier, gdAddress) => {
     }
   }
 }
+
+// try to cache responses from faucet abuse to prevent 500 errors from server
+// if same user keep requesting.
+const cachedFindFaucetAbuse = memoize(findFaucetAbuse)
+const clearMemoizedFaucetAbuse = async () => {
+  cachedFindFaucetAbuse.values.clear()
+}
+if (conf.env !== 'test') setInterval(clearMemoizedFaucetAbuse, 60 * 60 * 1000) // clear every 1 hour
+
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   /**
    * @api {delete} /verify/face/:enrollmentIdentifier Enqueue user's face snapshot for disposal since 24h
@@ -60,7 +74,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         await verifyFVIdentifier(enrollmentIdentifier, gdAddress)
 
         let v2Identifier = enrollmentIdentifier.slice(0, 42)
-        let v1Identifier = fvSigner.replace('0x', '') // wallet will also supply the v1 identifier as fvSigner, we remove '0x' for public address
+        let v1Identifier = fvSigner && fvSigner.replace('0x', '') // wallet will also supply the v1 identifier as fvSigner, we remove '0x' for public address
 
         // here we check if wallet was registered using v1 of v2 identifier
         const [isV2, isV1] = await Promise.all([
@@ -108,7 +122,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       try {
         let v2Identifier = enrollmentIdentifier.slice(0, 42)
-        let v1Identifier = fvSigner.replace('0x', '') // wallet also provide older identifier in case it was created before v2
+        let v1Identifier = fvSigner && fvSigner.replace('0x', '') // wallet also provide older identifier in case it was created before v2
 
         const processor = createEnrollmentProcessor(storage, log)
         const [isDisposingV2, isDisposingV1] = await Promise.all([
@@ -223,19 +237,64 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         await verifyFVIdentifier(enrollmentIdentifier, gdAddress)
 
         let v2Identifier = enrollmentIdentifier.slice(0, 42)
-        let v1Identifier = fvSigner.replace('0x', '') // wallet will also supply the v1 identifier as fvSigner, we remove '0x' for public address
+        let v1Identifier = fvSigner && fvSigner.replace('0x', '') // wallet will also supply the v1 identifier as fvSigner, we remove '0x' for public address
 
         const enrollmentProcessor = createEnrollmentProcessor(storage, log)
 
         // here we check if wallet was registered using v1 of v2 identifier
         const isV1 = !!v1Identifier && (await enrollmentProcessor.isIdentifierExists(v1Identifier))
-        const activeIdentifier = isV1 ? v1Identifier : v2Identifier
 
-        await enrollmentProcessor.validate(user, activeIdentifier, payload)
+        try {
+          // if v1, we convert to v2
+          // delete previous enrollment.
+          // once user completes FV it will create a new record under his V2 id. update his lastAuthenticated. and enqueue for disposal
+          if (isV1) {
+            log.info('v1 identifier found, converting to v2', { v1Identifier, v2Identifier, gdAddress })
+            await Promise.all([
+              enrollmentProcessor.dispose(v1Identifier, log),
+              cancelDisposalTask(storage, v1Identifier)
+            ])
+          }
+          await enrollmentProcessor.validate(user, v2Identifier, payload)
+          const wasWhitelisted = await AdminWallet.lastAuthenticated(gdAddress)
+          const enrollmentResult = await enrollmentProcessor.enroll(user, v2Identifier, payload, log)
 
-        const enrollmentResult = await enrollmentProcessor.enroll(user, activeIdentifier, payload, log)
+          // log warn if user was whitelisted but unable to pass FV again
+          if (wasWhitelisted > 0 && enrollmentResult.success === false) {
+            log.warn('user failed to re-authenticate', {
+              wasWhitelisted,
+              enrollmentResult,
+              gdAddress,
+              v2Identifier
+            })
+            if (isV1) {
+              //throw error so we de-whitelist user
+              throw new Error('User failed to re-authenticate with V1 identifier')
+            }
+          } else if (wasWhitelisted > 0 && enrollmentResult.success) {
+            log.info('user re-authenticated', {
+              wasWhitelisted,
+              enrollmentResult,
+              gdAddress,
+              v2Identifier
+            })
+          }
+          res.json(enrollmentResult)
+        } catch (e) {
+          if (isV1) {
+            // if we deleted the user record but had an error in whitelisting, then we must revoke his whitelisted status
+            // since we might not have his record enrolled
+            const isIndexed = await enrollmentProcessor.isIdentifierIndexed(v2Identifier)
+            // if new identifier is indexed then dont revoke
+            if (!isIndexed) {
+              const isWhitelisted = await AdminWallet.isVerified(gdAddress)
+              if (isWhitelisted) await AdminWallet.removeWhitelisted(gdAddress)
+            }
+            log.error('failed converting v1 identifier', e.message, e, { isIndexed, gdAddress })
+          }
 
-        res.json(enrollmentResult)
+          throw e
+        }
       } catch (exception) {
         const { message } = exception
         const logArgs = ['Face verification error:', message, exception, { enrollmentIdentifier, fvSigner, gdAddress }]
@@ -252,6 +311,119 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   )
 
   /**
+   * @api {put} /verify/idscan:enrollmentIdentifier Verify id matches face and does OCR
+   * @apiName IDScan
+   * @apiGroup IDScanq
+   *
+   * @apiParam {String} enrollmentIdentifier
+   * @apiParam {String} sessionId
+   *
+   * @ignore
+   */
+  app.put(
+    '/verify/idscan/:enrollmentIdentifier',
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res) => {
+      const { user, log, params, body } = req
+      const { enrollmentIdentifier } = params
+      const { ...payload } = body || {} // payload is the facetec data
+      const { gdAddress } = user
+
+      log.debug('idscan request:', { user, payloadFields: Object.keys(payload) })
+
+      // checking if request aborted to handle cases when connection is slow
+      // and facemap / images were uploaded more that 30sec causing timeout
+      if (req.aborted) {
+        return
+      }
+
+      try {
+        // for v2 identifier - verify that identifier is for the address we are going to whitelist
+        // for v1 this will do nothing
+        await verifyFVIdentifier(enrollmentIdentifier, gdAddress)
+
+        let v2Identifier = enrollmentIdentifier.slice(0, 42)
+
+        const idscanProcessor = createIdScanProcessor(storage, log)
+
+        let { isMatch, scanResultBlob, ...scanResult } = await idscanProcessor.verify(user, v2Identifier, payload)
+        scanResult = omit(scanResult, ['externalDatabaseRefID', 'ocrResults', 'serverInfo', 'callData']) //remove unrequired fields
+        log.debug('idscan results:', { isMatch, scanResult })
+        const toSign = { success: true, isMatch, gdAddress, scanResult, timestamp: Date.now() }
+        const { sig: signature } = await AdminWallet.signMessage(JSON.stringify(toSign))
+        res.json({ scanResult: { ...toSign, signature }, scanResultBlob })
+      } catch (exception) {
+        const { message } = exception
+        const logArgs = ['idscan error:', message, exception, { enrollmentIdentifier, gdAddress }]
+
+        if (shouldLogVerificaitonError(exception)) {
+          log.error(...logArgs)
+        } else {
+          log.warn(...logArgs)
+        }
+
+        res.status(400).json({ success: false, error: message })
+      }
+    })
+  )
+
+  /**
+   * demo for verifying that idscan was created by us
+   * trigger defender autotask
+   */
+  app.post(
+    '/verify/idscan',
+    wrapAsync(async (req, res) => {
+      const { log, body } = req
+      const { scanResult } = body || {} // payload is the facetec data
+
+      log.debug('idscan submit:', { payloadFields: Object.keys(scanResult) })
+
+      try {
+        const { signature, ...signed } = scanResult
+        const { gdAddress } = signed
+        const mHash = keccak256(JSON.stringify(signed))
+        log.debug('idscan submit verifying...:', { mHash, signature })
+        const publicKey = recoverPublickey(signature, mHash, '')
+        const data = web3Abi.encodeFunctionCall(
+          {
+            name: 'addMember',
+            type: 'function',
+            inputs: [
+              {
+                type: 'address',
+                name: 'member'
+              }
+            ]
+          },
+          [gdAddress]
+        )
+        const relayer = await AdminWallet.signer.relayer.getRelayer()
+
+        log.debug('idscan submit verified...:', { publicKey, relayer })
+        if (publicKey !== relayer.address.toLowerCase()) {
+          throw new Error('invalid signer: ' + publicKey)
+        }
+
+        const addTx = await AdminWallet.signer.sendTx({
+          to: '0x163a99a51fE32eEaC7407687522B5355354a1a37',
+          data,
+          gasLimit: '300000'
+        })
+
+        log.debug('idscan adding member:', addTx)
+
+        res.json({ ok: 1, txHash: addTx.hash })
+      } catch (exception) {
+        const { message } = exception
+
+        log.error('idscan submit failed:', message, exception)
+
+        res.status(400).json({ ok: 0, error: message })
+      }
+    })
+  )
+  /**
    * @api {post} /verify/sendotp Sends OTP
    * @apiName Send OTP
    * @apiGroup Verification
@@ -264,7 +436,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   app.post(
     '/verify/sendotp',
     passport.authenticate('jwt', { session: false }),
-    userRateLimiter(1, 1), // 1 req / 1min, should be applied AFTER auth to have req.user been set
+    userRateLimiter(2, 1), // 1 req / 1min, should be applied AFTER auth to have req.user been set
     // also no need for reqRateLimiter as user limiter falls back to the ip (e.g. works as default limiter if no user)
     wrapAsync(async (req, res) => {
       const { user, body } = req
@@ -321,7 +493,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    */
   app.post(
     '/verify/mobile',
-    requestRateLimiter(),
+    requestRateLimiter(10, 1),
     passport.authenticate('jwt', { session: false }),
     onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res) => {
@@ -414,18 +586,55 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    */
   app.post(
     '/verify/topwallet',
-    requestRateLimiter(1, 1),
+    requestRateLimiter(3, 1),
     passport.authenticate(['jwt', 'anonymous'], { session: false }),
     wrapAsync(async (req, res) => {
       const log = req.log
-      const { account, chainId } = req.body || {}
+      const { origin, host } = req.headers
+      const { account, chainId = 42220 } = req.body || {}
       const user: LoggedUser = req.user || { gdAddress: account }
+      const clientIp = requestIp.getClientIp(req)
 
-      log.debug('topwallet tx request:', { address: user.gdAddress, chainId, user: req.user })
+      const gdContract = AdminWallet.walletsMap[chainId].tokenContract._address
+      log.debug('topwallet tx request:', {
+        address: user.gdAddress,
+        chainId,
+        gdContract,
+        user: req.user,
+        origin,
+        host,
+        clientIp
+      })
+      if (conf.env === 'production') {
+        if (
+          !user.isEmailConfirmed &&
+          !user.smsValidated &&
+          !(await AdminWallet.isVerified(user.gdAddress)) &&
+          !(await findGDTx(user.gdAddress, chainId, gdContract))
+        ) {
+          log.warn('topwallet denied, not registered user nor whitelisted nor did gd tx lately', {
+            address: user.gdAddress,
+            origin,
+            chainId,
+            clientIp
+          })
+          return res.json({ ok: -1, error: 'not whitelisted' })
+        }
+      }
       if (!user.gdAddress) {
         throw new Error('missing wallet address to top')
       }
 
+      // check for faucet abuse
+      const foundAbuse = await cachedFindFaucetAbuse(user.gdAddress, chainId).catch(e => {
+        log.error('findFaucetAbuse failed', e.message, e)
+        return
+      })
+
+      if (foundAbuse) {
+        log.warn('faucet abuse found:', foundAbuse)
+        return res.json({ ok: -1, error: 'faucet abuse: ' + foundAbuse.hash })
+      }
       try {
         let txPromise = AdminWallet.topWallet(user.gdAddress, chainId, log)
           .then(tx => {
@@ -455,6 +664,44 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   )
 
   /**
+   * @api {post} /verify/swaphelper trigger a non custodial swap
+   * @apiName Swaphelper
+   * @apiGroup Verification
+   *
+   * @apiParam {account} user
+   *
+   * @apiSuccess {Number} ok
+   * @ignore
+   */
+  app.post(
+    '/verify/swaphelper',
+    requestRateLimiter(3, 1),
+    passport.authenticate(['jwt', 'anonymous'], { session: false }),
+    wrapAsync(async (req, res) => {
+      const log = req.log
+      const { account, chainId = 42220 } = req.body || {}
+      const gdAddress = account || get(req.user, 'gdAddress')
+
+      log.info('swaphelper request:', { gdAddress, chainId })
+      if (!gdAddress) {
+        throw new Error('missing user account')
+      }
+
+      try {
+        //verify target helper address has funds
+
+        const tx = await AdminWallet.walletsMap[chainId].swaphelper(gdAddress, log)
+        log.info('swaphelper request done:', { gdAddress, chainId, tx })
+
+        res.json({ ok: 1, hash: tx.transactionHash })
+      } catch (e) {
+        log.error('swaphelper timeout or unexpected', e.message, e, { walletaddress: gdAddress, chainId })
+        res.json({ ok: -1, error: e.message })
+      }
+    })
+  )
+
+  /**
    * @api {post} /verify/email Send verification email endpoint
    * @apiName Send Email
    * @apiGroup Verification
@@ -466,7 +713,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    */
   app.post(
     '/verify/sendemail',
-    requestRateLimiter(),
+    requestRateLimiter(2, 1),
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       let runInEnv = ['production', 'staging', 'test'].includes(conf.env)
@@ -647,7 +894,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   const visitorsCounter = {}
   app.post(
     '/verify/recaptcha',
-    requestRateLimiter(60, 10),
+    requestRateLimiter(10, 1),
     wrapAsync(async (req, res) => {
       const log = req.log
       const { payload: token = '', ipv6 = '', captchaType = '', fingerprint = {} } = req.body

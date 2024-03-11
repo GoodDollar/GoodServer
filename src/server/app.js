@@ -36,6 +36,7 @@ const startApp = async () => {
   const app = express()
 
   await startWallet()
+  log.info('Wallet started, initializing middlewares')
   app.use(express.static('public'))
   middlewares(app)
 

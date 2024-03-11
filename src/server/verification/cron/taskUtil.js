@@ -28,3 +28,7 @@ export const scheduleDisposalTask = async (storage, enrollmentIdentifier, execut
 
   return storage.enqueueTask(DISPOSE_ENROLLMENTS_TASK, createTaskSubject(enrollmentIdentifier, executeAt))
 }
+
+export const getDisposalTask = async (storage, enrollmentIdentifier): Promise<void> => {
+  await storage.getTask(DISPOSE_ENROLLMENTS_TASK, forEnrollment(enrollmentIdentifier))
+}

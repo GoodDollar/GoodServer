@@ -9,6 +9,8 @@ import * as Crypto from '@textile/crypto'
 import { TextEncoder } from 'util'
 import isBase64 from 'is-base64'
 import { sha3 } from 'web3-utils'
+import { AxelarQueryAPI } from '@axelar-network/axelarjs-sdk'
+import * as ethers from 'ethers'
 
 import logger from '../../imports/logger'
 import { wrapAsync } from '../utils/helpers'
@@ -75,10 +77,12 @@ const verifyProfilePublicKey = async (publicKeyString, signature, nonce) => {
 }
 
 export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
-  const { loggedInAs: identifier } = jwtPayload
+  const { loggedInAs: identifier, exp } = jwtPayload
   let user = false
 
-  if (identifier) {
+  const isExpired = Date.now() / 1000 > Number(exp)
+  log.trace('jwt expiration check:', { isExpired, exp, jwtPayload })
+  if (identifier && !isExpired) {
     user = await UserDBPrivate.getUser(identifier) // usually this would be a database call
 
     log.trace('payload received', { jwtPayload, user })
@@ -292,7 +296,7 @@ const setup = (app: Router) => {
 
   app.get(
     '/auth/ping',
-    requestRateLimiter(200),
+    requestRateLimiter(10),
     wrapAsync(async (req, res) => {
       res.json({ ping: new Date() })
     })
@@ -300,7 +304,7 @@ const setup = (app: Router) => {
 
   app.post(
     '/auth/settings',
-    requestRateLimiter(200),
+    requestRateLimiter(10),
     wrapAsync(async (req, res) => {
       const env = req.body.env
       const settings = clientSettings[env] || { fromServer: false }
@@ -317,6 +321,56 @@ const setup = (app: Router) => {
       log.debug('/auth/test', req.user)
 
       res.end()
+    })
+  )
+
+  app.get(
+    '/bridge/estimatefees',
+    requestRateLimiter(10),
+    wrapAsync(async (req, res) => {
+      const axlApi = new AxelarQueryAPI({ environment: 'mainnet' })
+      const [axlCeloEth, axlEthCelo] = await Promise.all([
+        axlApi.estimateGasFee('Celo', 'Ethereum', 'Celo', '300000', 1.1).then(_ => _ / 1e18),
+        axlApi.estimateGasFee('Ethereum', 'Celo', 'ETH', '300000', 1.1).then(_ => _ / 1e18)
+      ])
+      const bridge = new ethers.Contract('0xa3247276DbCC76Dd7705273f766eB3E8a5ecF4a5', [
+        'function estimateSendFee(uint16,address,address,uint256,bool,bytes) view returns (uint256,uint256)'
+      ])
+      const bridgeEth = bridge.connect(new ethers.providers.CloudflareProvider())
+      const bridgeFuse = bridge.connect(new ethers.providers.JsonRpcProvider('https://rpc.fuse.io'))
+      const bridgeCelo = bridge.connect(new ethers.providers.JsonRpcProvider('https://forno.celo.org'))
+      const params = ethers.utils.solidityPack(['uint16', 'uint256'], [1, 400000])
+      const [lzEthCelo, lzEthFuse, lzCeloEth, lzCeloFuse, lzFuseEth, lzFuseCelo] = await Promise.all([
+        bridgeEth
+          .estimateSendFee(125, ethers.constants.AddressZero, ethers.constants.AddressZero, 0, false, params)
+          .then(_ => _[0].toString() / 1e18),
+        bridgeEth
+          .estimateSendFee(138, ethers.constants.AddressZero, ethers.constants.AddressZero, 0, false, params)
+          .then(_ => _[0].toString() / 1e18),
+        bridgeCelo
+          .estimateSendFee(101, ethers.constants.AddressZero, ethers.constants.AddressZero, 0, false, params)
+          .then(_ => _[0].toString() / 1e18),
+        bridgeCelo
+          .estimateSendFee(138, ethers.constants.AddressZero, ethers.constants.AddressZero, 0, false, params)
+          .then(_ => _[0].toString() / 1e18),
+        bridgeFuse
+          .estimateSendFee(101, ethers.constants.AddressZero, ethers.constants.AddressZero, 0, false, params)
+          .then(_ => _[0].toString() / 1e18),
+        bridgeFuse
+          .estimateSendFee(125, ethers.constants.AddressZero, ethers.constants.AddressZero, 0, false, params)
+          .then(_ => _[0].toString() / 1e18)
+      ])
+      res.json({
+        AXELAR: { AXL_CELO_TO_ETH: axlCeloEth + ' Celo', AXL_ETH_TO_CELO: axlEthCelo + ' ETH' },
+        LAYERZERO: {
+          LZ_ETH_TO_CELO: lzEthCelo + ' ETH',
+          LZ_ETH_TO_FUSE: lzEthFuse + ' ETH',
+          LZ_CELO_TO_ETH: lzCeloEth + ' Celo',
+          LZ_CELO_TO_FUSE: lzCeloFuse + ' CELO',
+          LZ_FUSE_TO_ETH: lzFuseEth + ' Fuse',
+          LZ_FUSE_TO_CELO: lzFuseCelo + ' Fuse'
+        }
+      })
     })
   )
 

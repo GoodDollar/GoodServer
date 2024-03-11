@@ -23,7 +23,7 @@ export const createLoggerMiddleware = logger => (req, res, next) => {
     let { method, body: logBody, query, headers } = req
     let { statusCode, statusMessage } = res
 
-    if (url.startsWith('/verify/face/') && isPlainObject(logBody)) {
+    if (url.startsWith('/verify/') && isPlainObject(logBody)) {
       logBody = omit(logBody, fvRedact)
     }
 

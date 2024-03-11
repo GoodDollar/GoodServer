@@ -144,6 +144,10 @@ class EnrollmentProcessor {
     return this.provider.isEnrollmentExists(enrollmentIdentifier)
   }
 
+  async isIdentifierIndexed(enrollmentIdentifier: string) {
+    return this.provider.isEnrollmentIndexed(enrollmentIdentifier)
+  }
+
   async dispose(enrollmentIdentifier: string, customLogger = null) {
     const { provider, logger } = this
     const log = customLogger || logger

@@ -14,7 +14,7 @@ import conf from '../server.config'
 import { addUserToWhiteList, createCRMRecord } from './addUserSteps'
 import createUserVerifier from './verifier'
 import stakingModelTasks from '../blockchain/stakingModelTasks'
-import { cancelDisposalTask } from '../verification/cron/taskUtil'
+import { cancelDisposalTask, getDisposalTask } from '../verification/cron/taskUtil'
 import createEnrollmentProcessor from '../verification/processor/EnrollmentProcessor'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import { default as AdminWallet } from '../blockchain/MultiWallet'
@@ -36,7 +36,7 @@ const setup = (app: Router, storage: StorageAPI) => {
   app.use(
     ['/user/*'],
     passport.authenticate('jwt', { session: false }),
-    requestRateLimiter(20, 1),
+    requestRateLimiter(20, 1, 'user'),
     wrapAsync(async (req, res, next) => {
       const { user, body, log } = req
       const { loggedInAs } = user
@@ -65,7 +65,7 @@ const setup = (app: Router, storage: StorageAPI) => {
     '/user/add',
     wrapAsync(async (req, res) => {
       const { env, skipEmailVerification, disableFaceVerification, optionalMobile } = conf
-      const isNonDevelopMode = process.env.NODE_ENV !== 'development'
+      const isNonDevelopMode = env !== 'development'
       const { cookies, body, log: logger, user: userRecord } = req
       const { user: userPayload = {} } = body
       const { __utmzz: utmString = '' } = cookies
@@ -411,10 +411,10 @@ const setup = (app: Router, storage: StorageAPI) => {
         crmCount > 1
           ? Promise.resolve({ crm: 'okMultiNotDeleted' })
           : crmCount === 0
-          ? Promise.resolve({ crm: 'missingId' })
-          : OnGage.deleteContact(user.crmId, log)
-              .then(() => ({ crm: 'ok' }))
-              .catch(() => ({ crm: 'failed' })),
+            ? Promise.resolve({ crm: 'missingId' })
+            : OnGage.deleteContact(user.crmId, log)
+                .then(() => ({ crm: 'ok' }))
+                .catch(() => ({ crm: 'failed' })),
         fetch(`https://api.fullstory.com/users/v1/individual/${user.identifier}`, {
           headers: { Authorization: `Basic ${conf.fullStoryKey}` },
           method: 'DELETE'
@@ -586,7 +586,7 @@ const setup = (app: Router, storage: StorageAPI) => {
 
   app.get(
     '/syncWhitelist/:account',
-    requestRateLimiter(1, 1),
+    requestRateLimiter(3, 1),
     wrapAsync(async (req, res) => {
       const { params, log } = req
       const { account } = params
@@ -609,8 +609,10 @@ const setup = (app: Router, storage: StorageAPI) => {
     wrapAsync(async (req, res) => {
       const { body } = req
       let user = {}
-      if (body.email) user = await storage.getUsersByEmail(sha3(body.email))
-      if (body.mobile) user = await storage.getUsersByMobile(sha3(body.mobile))
+      if (body.email)
+        user = await storage.getUsersByEmail(body.email.startsWith('0x') === false ? sha3(body.email) : body.email)
+      if (body.mobile)
+        user = await storage.getUsersByMobile(body.mobile.startsWith('0x') === false ? sha3(body.mobile) : body.mobile)
       if (body.identifier) user = await storage.getUser(body.identifier)
 
       res.json({ ok: 1, user })
@@ -679,6 +681,25 @@ const setup = (app: Router, storage: StorageAPI) => {
       }
 
       res.json({ ok: 1 })
+    })
+  )
+
+  app.post(
+    '/admin/verify/face/disposal',
+    adminAuthenticate,
+    wrapAsync(async (req, res) => {
+      const { body, log } = req
+      const { enrollmentIdentifier } = body
+
+      try {
+        const record = await getDisposalTask(storage, enrollmentIdentifier)
+        return res.json({ ok: 1, record })
+      } catch (exception) {
+        const { message } = exception
+        log.error('get face disposal task failed:', message, exception, { enrollmentIdentifier })
+        res.status(400).json({ ok: 0, error: message })
+        return
+      }
     })
   )
 }

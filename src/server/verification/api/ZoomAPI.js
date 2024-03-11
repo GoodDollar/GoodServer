@@ -6,6 +6,7 @@ import { assign, get, pick, omit, isPlainObject, isArray, mapValues, once, lower
 
 import Config from '../../server.config'
 import logger from '../../../imports/logger'
+import { IdScanResult, IdScanRequest } from '../processor/typings'
 
 import {
   ZoomAPIError,
@@ -17,8 +18,9 @@ import {
 } from '../utils/constants'
 
 import { enrollmentIdFields, faceSnapshotFields, redactFieldsDuringLogging } from '../utils/logger'
+import { substituteParams } from '../../utils/axios'
 
-class ZoomAPI {
+export class ZoomAPI {
   http = null
   defaultMinimalMatchLevel = null
   defaultSearchIndexName = null
@@ -183,6 +185,19 @@ class ZoomAPI {
     return response
   }
 
+  async idscan(enrollmentIdentifier, payload: IdScanRequest, customLogger = null): Promise<IdScanResult> {
+    const { idScan, idScanFrontImage, idScanBackImage } = payload
+    const payloadData = {
+      externalDatabaseRefID: enrollmentIdentifier,
+      idScan,
+      idScanFrontImage,
+      idScanBackImage,
+      minMatchLevel: this.defaultMinimalMatchLevel
+    }
+
+    return this.http.post(`/match-3d-2d-idscan`, payloadData, { customLogger })
+  }
+
   _configureClient(Config, logger) {
     const { zoomLicenseKey, zoomServerBaseUrl } = Config
     const serverURL = new URL(zoomServerBaseUrl)
@@ -222,39 +237,14 @@ class ZoomAPI {
     const { request } = this.http.interceptors
 
     request.use(request => {
-      const { data } = request
-      let rawRequest = this._configureParams(request)
+      const rawRequest = substituteParams(
+        request,
+        (parameter, value) => (enrollmentIdFields.includes(parameter) ? toLower(value) : value) || ''
+      )
 
       this._logRequest(request)
-
-      if (isPlainObject(data)) {
-        rawRequest = this._configurePayload(rawRequest)
-      }
-
-      return rawRequest
+      return isPlainObject(request.data) ? this._configurePayload(rawRequest) : rawRequest
     })
-  }
-
-  _configureParams(request) {
-    const { url, params } = request
-    let searchParams = params instanceof URLSearchParams ? params : new URLSearchParams(params || {})
-
-    const substituteParameter = (_, parameter) => {
-      let parameterValue = searchParams.get(parameter) || ''
-
-      if (enrollmentIdFields.includes(parameter)) {
-        parameterValue = toLower(parameterValue)
-      }
-
-      searchParams.delete(parameter)
-      return encodeURIComponent(parameterValue)
-    }
-
-    return {
-      ...request,
-      params: searchParams,
-      url: (url || '').replace(/:(\w[\w\d]+)/g, substituteParameter)
-    }
   }
 
   _configurePayload(request) {
@@ -373,7 +363,7 @@ class ZoomAPI {
     try {
       response = await this.http[operation]('/enrollment-3d/:enrollmentIdentifier', {
         customLogger,
-        params: { enrollmentIdentifier }
+        params: { enrollmentIdentifier: enrollmentIdentifier.toLowerCase() }
       })
     } catch (exception) {
       const { message } = exception

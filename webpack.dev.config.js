@@ -1,7 +1,6 @@
 /* eslint-disable import/no-extraneous-dependencies */
 const path = require('path')
 const webpack = require('webpack')
-const HtmlWebPackPlugin = require('html-webpack-plugin')
 
 module.exports = {
   entry: {
@@ -21,9 +20,11 @@ module.exports = {
   },
   mode: 'development',
   target: 'web',
-  devtool: '#source-map',
-  node: {
-    fs: 'empty'
+  devtool: 'source-map',
+  resolve: {
+    fallback: {
+      fs: false
+    }
   },
   optimization: {
     nodeEnv: false
@@ -45,35 +46,10 @@ module.exports = {
         test: /\.js$/,
         exclude: /node_modules/,
         loader: 'babel-loader'
-      },
-      {
-        // Loads the javacript into html template provided.
-        // Entry point is set below in HtmlWebPackPlugin in Plugins
-        test: /\.html$/,
-        use: [
-          {
-            loader: 'html-loader'
-            // options: { minimize: true }
-          }
-        ]
-      },
-      {
-        test: /\.css$/,
-        use: ['style-loader', 'css-loader']
-      },
-      {
-        test: /\.(png|svg|jpg|gif)$/,
-        use: ['file-loader']
       }
     ]
   },
   plugins: [
-    new HtmlWebPackPlugin({
-      template: './public/index.html',
-      favicon: './public/favicon.ico',
-      filename: './index.html',
-      excludeChunks: ['server']
-    }),
     new webpack.DefinePlugin({
       PRODUCTION: JSON.stringify(false),
       NETWORK: JSON.stringify('kovan'),

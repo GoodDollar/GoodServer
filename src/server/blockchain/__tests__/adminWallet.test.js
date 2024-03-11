@@ -104,6 +104,8 @@ describe('adminwallet', () => {
 
   test('adminWallet bad transaction in queue', async () => {
     const unverifiedAddress = generateWalletAddress()
+    const unverifiedAddress2 = generateWalletAddress()
+
     const from = AdminWallet.address
     const testValue = 10
     const badGas = 10
@@ -125,7 +127,7 @@ describe('adminwallet', () => {
     ).rejects.toThrow()
 
     //good tx
-    tx = await AdminWallet.topWallet(unverifiedAddress)
+    tx = await AdminWallet.topWallet(unverifiedAddress2)
     expect(tx).toBeTruthy()
   })
 

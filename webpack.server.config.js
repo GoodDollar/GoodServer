@@ -15,12 +15,15 @@ const { version } = require('./package.json')
 
 module.exports = (_, argv) => {
   const isProductionMode = argv.mode === 'production'
-  // const SERVER_PATH = `./src/server/${isProductionMode ? 'index-prod' : 'server-dev'}.js`
-  const SERVER_PATH = `./src/server/index-prod.js`
+  const SERVER_PATH = `./src/server/${isProductionMode ? 'index-prod' : 'index-dev'}.js`
   const { VERSION, NODE_ENV, TRAVIS } = process.env
-
-  const plugins = [new webpack.DefinePlugin({}), new NodemonPlugin()]
-
+  const externals = []
+  const plugins = [new webpack.DefinePlugin({})]
+  if(isProductionMode === false)
+  {
+    externals.push(nodeExternals())
+    plugins.push(new NodemonPlugin())
+  }
   if (isProductionMode && TRAVIS !== 'true') {
     plugins.push(
       new SentryCliPlugin({
@@ -56,7 +59,7 @@ module.exports = (_, argv) => {
     optimization: {
       nodeEnv: false
     },
-    externals: [nodeExternals()], // Need this to avoid error when working with Express
+    externals, // Need this for dev mode
     plugins,
     module: {
       rules: [

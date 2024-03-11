@@ -12,6 +12,7 @@ export const appName = description.replace(/\s*server\s*/i, '')
 
 let dotenvPath = '.env'
 
+//for jest make sure we load .env.test
 if (process.env.NODE_ENV === 'test') {
   dotenvPath += '.test'
 
@@ -30,7 +31,7 @@ const conf = convict({
     format: ['production', 'development', 'staging', 'test'],
     default: 'development',
     arg: 'nodeEnv',
-    env: 'NODE_ENV'
+    env: 'ENV'
   },
   version: {
     doc: 'The application version from package.json.',
@@ -409,7 +410,7 @@ const conf = convict({
   },
   topAdminsOnStartup: {
     doc: 'call topAdmins in adminwallet smart contract',
-    format: '*',
+    format: Boolean,
     env: 'TOP_ADMINS',
     default: false
   },
@@ -506,6 +507,12 @@ const conf = convict({
     format: Number,
     default: 50,
     env: 'TORUS_VERIFICATION_RETRY_DELAY'
+  },
+  torusClientId: {
+    doc: 'client id for web3auth',
+    format: String,
+    default: 'BLQmq83LgX8FRbjPcZ5lVX8EJUjrioOiw3YQd6qCoWs3Of8F2dZRD2nThUSLpbyKO7U3-bXe0D3j8hgjntShi40',
+    env: 'TORUS_CLIENT_ID'
   },
   slackAlertsWebhook: {
     doc: 'secret url for sending alerts to some channel',
@@ -632,6 +639,24 @@ const conf = convict({
     format: Boolean,
     env: 'FORCE_FAUCET_CALL',
     default: false // turn on when gooddapp supports faucet txs
+  },
+  redisUrl: {
+    doc: 'Redis cloud server url',
+    format: String,
+    env: 'REDISCLOUD_URL',
+    default: ''
+  },
+  defenderApiKey: {
+    doc: 'defender relayer api key',
+    format: String,
+    env: 'DEFENDER_APIKEY',
+    default: ''
+  },
+  defenderApiSecret: {
+    doc: 'defender relayer api secret',
+    format: String,
+    env: 'DEFENDER_APISECRET',
+    default: ''
   }
 })
 
