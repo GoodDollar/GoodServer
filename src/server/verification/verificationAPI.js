@@ -3,7 +3,7 @@
 import { Router } from 'express'
 import passport from 'passport'
 import { get, defaults, memoize, omit } from 'lodash'
-import { sha3, toChecksumAddress, keccak256 } from 'web3-utils'
+import { sha3, keccak256 } from 'web3-utils'
 import web3Abi from 'web3-eth-abi'
 import requestIp from 'request-ip'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
@@ -15,28 +15,14 @@ import OTP from '../../imports/otp'
 import conf from '../server.config'
 import OnGage from '../crm/ongage'
 import { sendTemplateEmail } from '../aws-ses/aws-ses'
-import { detectFaces } from '../aws-rekognition/aws-rekognition'
 import fetch from 'cross-fetch'
 import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 import createIdScanProcessor from './processor/IdScanProcessor'
 
 import { cancelDisposalTask } from './cron/taskUtil'
-import { recoverPublickey } from '../utils/eth'
 import { shouldLogVerificaitonError } from './utils/logger'
 import { syncUserEmail } from '../storage/addUserSteps'
-import { FV_IDENTIFIER_MSG2 } from '../login/login-middleware'
-import getZoomProvider from './processor/provider/ZoomProvider'
-
-const verifyFVIdentifier = async (identifier, gdAddress) => {
-  //check v2, v2 identifier is expected to be the whole signature
-  if (identifier.length >= 42) {
-    const signer = recoverPublickey(identifier, FV_IDENTIFIER_MSG2({ account: toChecksumAddress(gdAddress) }), '')
-
-    if (signer.toLowerCase() !== gdAddress.toLowerCase()) {
-      throw new Error(`identifier signer doesn't match user ${signer} != ${gdAddress}`)
-    }
-  }
-}
+import { recoverPublickey } from '../utils/eth'
 
 // try to cache responses from faucet abuse to prevent 500 errors from server
 // if same user keep requesting.
@@ -71,20 +57,19 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         const processor = createEnrollmentProcessor(storage, log)
 
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
-        await verifyFVIdentifier(enrollmentIdentifier, gdAddress)
+        await processor.verifyIdentifier(enrollmentIdentifier, gdAddress)
 
-        let v2Identifier = enrollmentIdentifier.slice(0, 42)
-        let v1Identifier = fvSigner && fvSigner.replace('0x', '') // wallet will also supply the v1 identifier as fvSigner, we remove '0x' for public address
+        const { identifier, v1Identifier } = processor.normalizeIdentifiers(enrollmentIdentifier, fvSigner)
 
         // here we check if wallet was registered using v1 of v2 identifier
         const [isV2, isV1] = await Promise.all([
-          processor.isIdentifierExists(v2Identifier),
+          processor.isIdentifierExists(identifier),
           v1Identifier && processor.isIdentifierExists(v1Identifier)
         ])
 
         if (isV2) {
           //in v2 we expect the enrollmentidentifier to be the whole signature, so we cut it down to 42
-          await processor.enqueueDisposal(user, v2Identifier, log)
+          await processor.enqueueDisposal(user, identifier, log)
         }
 
         if (isV1) {
@@ -121,12 +106,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       log.debug('check face status request:', { fvSigner, enrollmentIdentifier, user })
 
       try {
-        let v2Identifier = enrollmentIdentifier.slice(0, 42)
-        let v1Identifier = fvSigner && fvSigner.replace('0x', '') // wallet also provide older identifier in case it was created before v2
-
         const processor = createEnrollmentProcessor(storage, log)
+        const { identifier, v1Identifier } = processor.normalizeIdentifiers(enrollmentIdentifier, fvSigner)
+
         const [isDisposingV2, isDisposingV1] = await Promise.all([
-          processor.isEnqueuedForDisposal(v2Identifier, log),
+          processor.isEnqueuedForDisposal(identifier, log),
           v1Identifier && processor.isEnqueuedForDisposal(v1Identifier, log)
         ])
 
@@ -234,12 +218,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       try {
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
         // for v1 this will do nothing
-        await verifyFVIdentifier(enrollmentIdentifier, gdAddress)
-
-        let v2Identifier = enrollmentIdentifier.slice(0, 42)
-        let v1Identifier = fvSigner && fvSigner.replace('0x', '') // wallet will also supply the v1 identifier as fvSigner, we remove '0x' for public address
 
         const enrollmentProcessor = createEnrollmentProcessor(storage, log)
+        const { identifier, v1Identifier } = enrollmentProcessor.normalizeIdentifiers(enrollmentIdentifier, fvSigner)
+
+        await enrollmentProcessor.verifyIdentifier(enrollmentIdentifier, gdAddress)
 
         // here we check if wallet was registered using v1 of v2 identifier
         const isV1 = !!v1Identifier && (await enrollmentProcessor.isIdentifierExists(v1Identifier))
@@ -249,15 +232,15 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           // delete previous enrollment.
           // once user completes FV it will create a new record under his V2 id. update his lastAuthenticated. and enqueue for disposal
           if (isV1) {
-            log.info('v1 identifier found, converting to v2', { v1Identifier, v2Identifier, gdAddress })
+            log.info('v1 identifier found, converting to v2', { v1Identifier, v2Identifier: identifier, gdAddress })
             await Promise.all([
               enrollmentProcessor.dispose(v1Identifier, log),
               cancelDisposalTask(storage, v1Identifier)
             ])
           }
-          await enrollmentProcessor.validate(user, v2Identifier, payload)
+          await enrollmentProcessor.validate(user, identifier, payload)
           const wasWhitelisted = await AdminWallet.lastAuthenticated(gdAddress)
-          const enrollmentResult = await enrollmentProcessor.enroll(user, v2Identifier, payload, log)
+          const enrollmentResult = await enrollmentProcessor.enroll(user, identifier, payload, log)
 
           // log warn if user was whitelisted but unable to pass FV again
           if (wasWhitelisted > 0 && enrollmentResult.success === false) {
@@ -265,7 +248,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
               wasWhitelisted,
               enrollmentResult,
               gdAddress,
-              v2Identifier
+              v2Identifier: identifier
             })
             if (isV1) {
               //throw error so we de-whitelist user
@@ -276,7 +259,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
               wasWhitelisted,
               enrollmentResult,
               gdAddress,
-              v2Identifier
+              v2Identifier: identifier
             })
           }
           res.json(enrollmentResult)
@@ -284,7 +267,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           if (isV1) {
             // if we deleted the user record but had an error in whitelisting, then we must revoke his whitelisted status
             // since we might not have his record enrolled
-            const isIndexed = await enrollmentProcessor.isIdentifierIndexed(v2Identifier)
+            const isIndexed = await enrollmentProcessor.isIdentifierIndexed(identifier)
+
             // if new identifier is indexed then dont revoke
             if (!isIndexed) {
               const isWhitelisted = await AdminWallet.isVerified(gdAddress)
@@ -338,19 +322,21 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       try {
-        // for v2 identifier - verify that identifier is for the address we are going to whitelist
-        // for v1 this will do nothing
-        await verifyFVIdentifier(enrollmentIdentifier, gdAddress)
-
-        let v2Identifier = enrollmentIdentifier.slice(0, 42)
-
+        const enrollmentProcessor = createEnrollmentProcessor(storage, log)
         const idscanProcessor = createIdScanProcessor(storage, log)
 
-        let { isMatch, scanResultBlob, ...scanResult } = await idscanProcessor.verify(user, v2Identifier, payload)
+        const { identifier } = enrollmentProcessor.normalizeIdentifiers(enrollmentIdentifier)
+
+        await enrollmentProcessor.verifyIdentifier(enrollmentIdentifier, gdAddress)
+
+        let { isMatch, scanResultBlob, ...scanResult } = await idscanProcessor.verify(user, identifier, payload)
+
         scanResult = omit(scanResult, ['externalDatabaseRefID', 'ocrResults', 'serverInfo', 'callData']) //remove unrequired fields
         log.debug('idscan results:', { isMatch, scanResult })
+
         const toSign = { success: true, isMatch, gdAddress, scanResult, timestamp: Date.now() }
         const { sig: signature } = await AdminWallet.signMessage(JSON.stringify(toSign))
+
         res.json({ scanResult: { ...toSign, signature }, scanResultBlob })
       } catch (exception) {
         const { message } = exception
@@ -978,43 +964,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         })
         res.status(400).json({ success: false, error: message })
       }
-    })
-  )
-
-  app.post(
-    '/verify/agegender',
-    passport.authenticate('jwt', { session: false }),
-    requestRateLimiter(1, 1),
-    wrapAsync(async (req, res) => {
-      const { user, log } = req
-      let { v1Identifier, v2Identifier } = req.body
-      const { gdAddress } = user
-
-      const zoomProvider = getZoomProvider()
-
-      // for v2 identifier - verify that identifier is for the address we are going to whitelist
-      await verifyFVIdentifier(v2Identifier, gdAddress)
-
-      v2Identifier = v2Identifier.slice(0, 42)
-      v1Identifier = v1Identifier.replace('0x', '') // wallet will also supply the v1 identifier as fvSigner, we remove '0x' for public address
-
-      // here we check if wallet was registered using v1 of v2 identifier
-      const [recordV2, recordV1] = await Promise.all([
-        zoomProvider.getEnrollment(v2Identifier, log),
-        v1Identifier && zoomProvider.getEnrollment(v1Identifier, log)
-      ])
-
-      const record = recordV2 || recordV1
-      if (!record) throw new Error('face record not found')
-      const { auditTrailBase64 } = record
-      const { FaceDetails } = await detectFaces(auditTrailBase64)
-      log.info({ FaceDetails })
-      await Promise.all([
-        // semaphore.enrollAge(FaceDetails[0].AgeRange),
-        // semaphore.enrollGender(FaceDetails[0].Gender.Value)
-      ])
-
-      res.json({ ok: 1 })
     })
   )
 }
