@@ -145,6 +145,15 @@ class EnrollmentProcessor {
     }
   }
 
+  async checkExistence(enrollmentIdentifier, v1EnrollmentIdentifier) {
+    const [exists, v1Exists] = await Promise.all([
+      this.isIdentifierExists(enrollmentIdentifier),
+      v1EnrollmentIdentifier && this.isIdentifierExists(v1EnrollmentIdentifier)
+    ])
+
+    return { exists, v1Exists }
+  }
+
   normalizeIdentifiers(enrollmentIdentifier, v1EnrollmentIdentifier = null) {
     return {
       identifier: enrollmentIdentifier.slice(0, 42),

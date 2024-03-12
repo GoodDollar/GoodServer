@@ -62,17 +62,14 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         const { identifier, v1Identifier } = processor.normalizeIdentifiers(enrollmentIdentifier, fvSigner)
 
         // here we check if wallet was registered using v1 of v2 identifier
-        const [isV2, isV1] = await Promise.all([
-          processor.isIdentifierExists(identifier),
-          v1Identifier && processor.isIdentifierExists(v1Identifier)
-        ])
+        const { exists, v1Exists } = await processor.checkExistence(identifier, v1Identifier)
 
-        if (isV2) {
+        if (exists) {
           //in v2 we expect the enrollmentidentifier to be the whole signature, so we cut it down to 42
           await processor.enqueueDisposal(user, identifier, log)
         }
 
-        if (isV1) {
+        if (v1Exists) {
           await processor.enqueueDisposal(user, v1Identifier, log)
         }
       } catch (exception) {
@@ -225,13 +222,13 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         await enrollmentProcessor.verifyIdentifier(enrollmentIdentifier, gdAddress)
 
         // here we check if wallet was registered using v1 of v2 identifier
-        const isV1 = !!v1Identifier && (await enrollmentProcessor.isIdentifierExists(v1Identifier))
+        const { v1Exists } = await enrollmentProcessor.checkExistence(identifier, v1Identifier)
 
         try {
           // if v1, we convert to v2
           // delete previous enrollment.
           // once user completes FV it will create a new record under his V2 id. update his lastAuthenticated. and enqueue for disposal
-          if (isV1) {
+          if (v1Exists) {
             log.info('v1 identifier found, converting to v2', { v1Identifier, v2Identifier: identifier, gdAddress })
             await Promise.all([
               enrollmentProcessor.dispose(v1Identifier, log),
@@ -250,7 +247,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
               gdAddress,
               v2Identifier: identifier
             })
-            if (isV1) {
+            if (v1Exists) {
               //throw error so we de-whitelist user
               throw new Error('User failed to re-authenticate with V1 identifier')
             }
@@ -264,7 +261,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           }
           res.json(enrollmentResult)
         } catch (e) {
-          if (isV1) {
+          if (v1Exists) {
             // if we deleted the user record but had an error in whitelisting, then we must revoke his whitelisted status
             // since we might not have his record enrolled
             const isIndexed = await enrollmentProcessor.isIdentifierIndexed(identifier)

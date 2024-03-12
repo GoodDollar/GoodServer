@@ -10,7 +10,7 @@ import requestRateLimiter from '../utils/requestRateLimiter'
 import { get } from 'lodash'
 import { Credential } from './veramo'
 
-export default function addGoodIDMiddleware(app: Router, utils) {
+export default function addGoodIDMiddleware(app: Router, utils, storage) { // eslint-disable-line
   /**
    * POST /goodid/certificate/location
    * Content-Type: application/json
