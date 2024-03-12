@@ -13,6 +13,17 @@ export const ZoomLicenseType = {
   Mobile: 'native'
 }
 
+export const AgeV2GroupEnum = [, // eslint-disable-line
+  { to: 7 },
+  { from: 8, to: 12 },
+  { from: 13, to: 15 },
+  { from: 16, to: 17 },
+  { from: 18, to: 20 },
+  { from: 21, to: 24 },
+  { from: 25, to: 29 },
+  { from: 30 }
+]
+
 export const failedEnrollmentMessage = 'FaceMap could not be enrolled'
 export const failedLivenessMessage = 'Liveness could not be determined'
 export const failedMatchMessage = 'FaceMap could not be 3D-matched and updated'

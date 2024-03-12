@@ -223,6 +223,13 @@ class EnrollmentProcessor {
     await provider.dispose(enrollmentIdentifier, customLogger)
   }
 
+  async estimateAge(enrollmentIdentifier, strict = false, customLogger = null) {
+    const { provider, logger } = this
+    const log = customLogger || logger
+
+    return provider.estimateAge(enrollmentIdentifier, strict, log)
+  }
+
   async disposeEnqueuedEnrollments(
     onProcessed: (identifier: string, exception?: Error) => void = noop,
     customLogger = null

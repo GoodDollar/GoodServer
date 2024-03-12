@@ -12,6 +12,8 @@ import { Credential } from './veramo'
 import createEnrollmentProcessor from '../verification/processor/EnrollmentProcessor'
 import { enrollmentNotFoundMessage } from '../verification/utils/constants'
 
+const { Location, Gender, Age, Identity } = Credential
+
 export default function addGoodIDMiddleware(app: Router, utils, storage) {
   /**
    * POST /goodid/certificate/location
@@ -69,7 +71,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
       const { longitude, latitude } = get(body, 'geoposition.coords', {})
 
       const issueCertificate = async countryCode => {
-        const ceriticate = await utils.issueCertificate(gdAddress, Credential.Location, { countryCode })
+        const ceriticate = await utils.issueCertificate(gdAddress, Location, { countryCode })
 
         res.json({ success: true, ceriticate })
       }
@@ -118,7 +120,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
    * {
    *   "enrollmentIdentifier": "<v2 identifier string>",
    *   "fvSigner": "<v1 identifier string>", // optional
-   *   "fvAgeCheck": true|false // optional
+   *   "fvAgeCheck": "<none | strict | approximate>", // optional
    * }
    */
   app.post(
@@ -127,7 +129,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { user, body, log } = req
-      const { enrollmentIdentifier, fvSigner = '', fvAgeCheck = false } = body
+      const { enrollmentIdentifier, fvSigner, fvAgeCheck } = body
       const { gdAddress } = user
 
       const enrollmentProcessor = createEnrollmentProcessor(storage, log)
@@ -145,22 +147,17 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
         }
 
         const { auditTrailBase64 } = await enrollmentProcessor.getEnrollment(faceIdentifier, log)
-        const ageGenderEstimate = await utils.ageGenderCheck(auditTrailBase64)
-        let ageEstimateFacetec = {}
+        const estimation = await utils.ageGenderCheck(auditTrailBase64)
 
-        if (fvAgeCheck) {
-          // TODO: age check FaceTec, override aws value
+        if ((fvAgeCheck || 'none') !== 'none') {
+          // strict or approximate
+          estimation.age = await enrollmentProcessor.estimateAge(faceIdentifier, fvAgeCheck === 'strict', log)
         }
 
-        const subject = {
+        const ceriticate = await utils.issueCertificate(gdAddress, [Identity, Gender, Age], {
           unique: true,
-          ...ageGenderEstimate,
-          ...ageEstimateFacetec
-        }
-
-        const credentials = [Credential.Identity, Credential.Gender, Credential.Age]
-
-        const ceriticate = await utils.issueCertificate(gdAddress, credentials, subject)
+          ...estimation
+        })
 
         res.json({ success: true, ceriticate })
       } catch (exception) {
@@ -171,6 +168,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
           fvSigner,
           fvAgeCheck
         })
+
         res.status(400).json({ success: false, error: message })
       }
     })
