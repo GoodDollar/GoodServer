@@ -28,7 +28,12 @@ import { recoverPublickey } from '../utils/eth'
 // if same user keep requesting.
 const cachedFindFaucetAbuse = memoize(findFaucetAbuse)
 const clearMemoizedFaucetAbuse = async () => {
-  cachedFindFaucetAbuse.values.clear()
+  if (cachedFindFaucetAbuse.values) {
+    cachedFindFaucetAbuse.values.clear()
+    console.log('clearMemoizedFaucetAbuse done')
+    return
+  }
+  console.log('clearMemoizedFaucetAbuse failed')
 }
 if (conf.env !== 'test') setInterval(clearMemoizedFaucetAbuse, 60 * 60 * 1000) // clear every 1 hour
 
