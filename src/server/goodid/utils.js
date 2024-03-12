@@ -4,6 +4,7 @@ import { PhoneNumberUtil } from 'google-libphonenumber'
 import { substituteParams } from '../utils/axios'
 import { flatten, get, toUpper } from 'lodash'
 import { getAgent, getSubjectId } from './veramo'
+import { detectFaces } from './aws'
 
 export class GoodIDUtils {
   constructor(httpApi, phoneNumberApi, getVeramoAgent) {
@@ -60,6 +61,15 @@ export class GoodIDUtils {
     }
 
     return phoneUtil.getRegionCodeForNumber(number)
+  }
+
+  async ageGenderCheck(imageBase64) {
+    const { FaceDetails } = await detectFaces(imageBase64)
+    const [{ AgeRange, Gender }] = FaceDetails
+    const { Value: gender } = Gender
+    const { Low: from, High: to } = AgeRange
+
+    return { gender, age: { from, to } }
   }
 
   async issueCertificate(gdAddress, credentials, payload = {}) {

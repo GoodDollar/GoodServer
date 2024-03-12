@@ -9,8 +9,10 @@ import { wrapAsync } from '../utils/helpers'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import { get } from 'lodash'
 import { Credential } from './veramo'
+import createEnrollmentProcessor from '../verification/processor/EnrollmentProcessor'
+import { enrollmentNotFoundMessage } from '../verification/utils/constants'
 
-export default function addGoodIDMiddleware(app: Router, utils, storage) { // eslint-disable-line
+export default function addGoodIDMiddleware(app: Router, utils, storage) {
   /**
    * POST /goodid/certificate/location
    * Content-Type: application/json
@@ -105,6 +107,70 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) { // es
         const { message } = exception
 
         log.error('Failed to issue location ceritifate:', message, exception, { mobile, longitude, latitude })
+        res.status(400).json({ success: false, error: message })
+      }
+    })
+  )
+
+  /**
+   * POST /goodid/certificate/identity
+   * Content-Type: application/json
+   * {
+   *   "enrollmentIdentifier": "<v2 identifier string>",
+   *   "fvSigner": "<v1 identifier string>", // optional
+   *   "fvAgeCheck": true|false // optional
+   * }
+   */
+  app.post(
+    '/goodid/certificate/identity',
+    requestRateLimiter(10, 1),
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res) => {
+      const { user, body, log } = req
+      const { enrollmentIdentifier, fvSigner = '', fvAgeCheck = false } = body
+      const { gdAddress } = user
+
+      const enrollmentProcessor = createEnrollmentProcessor(storage, log)
+
+      try {
+        await enrollmentProcessor.verifyIdentifier(enrollmentIdentifier, gdAddress)
+
+        const { identifier, v1Identifier } = enrollmentProcessor.normalizeIdentifiers(enrollmentIdentifier, fvSigner)
+        const { exists, v1Exists } = await enrollmentProcessor.checkExistence(identifier, v1Identifier)
+
+        const faceIdentifier = exists ? identifier : v1Exists ? v1Identifier : null
+
+        if (!faceIdentifier) {
+          throw new Error(enrollmentNotFoundMessage)
+        }
+
+        const { auditTrailBase64 } = await enrollmentProcessor.getEnrollment(faceIdentifier, log)
+        const ageGenderEstimate = await utils.ageGenderCheck(auditTrailBase64)
+        let ageEstimateFacetec = {}
+
+        if (fvAgeCheck) {
+          // TODO: age check FaceTec, override aws value
+        }
+
+        const subject = {
+          unique: true,
+          ...ageGenderEstimate,
+          ...ageEstimateFacetec
+        }
+
+        const credentials = [Credential.Identity, Credential.Gender, Credential.Age]
+
+        const ceriticate = await utils.issueCertificate(gdAddress, credentials, subject)
+
+        res.json({ success: true, ceriticate })
+      } catch (exception) {
+        const { message } = exception
+
+        log.error('Failed to issue identity ceritifate:', message, exception, {
+          enrollmentIdentifier,
+          fvSigner,
+          fvAgeCheck
+        })
         res.status(400).json({ success: false, error: message })
       }
     })
