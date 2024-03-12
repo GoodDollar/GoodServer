@@ -122,6 +122,34 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
    *   "fvSigner": "<v1 identifier string>", // optional
    *   "fvAgeCheck": "<none | strict | approximate>", // optional
    * }
+   *
+   * HTTP/1.1 200 OK
+   * Content-Type: application/json
+   * {
+   *   "success": true,
+   *   "certificate": {
+   *     "credential": {
+   *       "credentialSubject": {
+   *         "id": 'did:ethr:<g$ wallet address>',
+   *         "gender": "<Male | Female>" // yep, AWS doesn't supports LGBT,
+   *         "age": {
+   *           "from": <years>, // "open" ranges also allowed, e.g. { to: 7 } or { from: 30 }
+   *           "to": <years>,   // this value includes to the range, "from 30" means 30 and older, if < 30 you will get "from 25 to 29"
+   *         }
+   *       },
+   *       "issuer": {
+   *         "id": 'did:key:<GoodServer's DID>',
+   *       },
+   *       "type": ["VerifiableCredential", "VerifiableIdentityCredential", "VerifiableAgeCredential", "VerifiableGenderCredential"],
+   *       "@context": ["https://www.w3.org/2018/credentials/v1"],
+   *       "issuanceDate": "2022-10-28T11:54:22.000Z",
+   *       "proof": {
+   *         "type": "JwtProof2020",
+   *         "jwt": 'eyJhbGciOiJFUzI1NksiLCJ0eXAiOiJKV1QifQ.eyJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIl0sImNyZWRlbnRpYWxTdWJqZWN0Ijp7InlvdSI6IlJvY2sifX0sInN1YiI6ImRpZDp3ZWI6ZXhhbXBsZS5jb20iLCJuYmYiOjE2NjY5NTgwNjIsImlzcyI6ImRpZDpldGhyOmdvZXJsaToweDAzNTBlZWVlYTE0MTBjNWIxNTJmMWE4OGUwZmZlOGJiOGEwYmMzZGY4NjhiNzQwZWIyMzUyYjFkYmY5M2I1OWMxNiJ9.EPeuQBpkK13V9wu66SLg7u8ebY2OS8b2Biah2Vw-RI-Atui2rtujQkVc2t9m1Eqm4XQFECfysgQBdWwnSDvIjw',
+   *       },
+   *     },
+   *   }
+   * }
    */
   app.post(
     '/goodid/certificate/identity',
