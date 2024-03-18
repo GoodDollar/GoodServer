@@ -13,7 +13,9 @@ import createFvMockHelper from '../../verification/api/__tests__/__util__'
 import { enrollmentNotFoundMessage } from '../../verification/utils/constants'
 import { normalizeIdentifiers } from '../../verification/utils/utils'
 
-//import testFaceMock from './face.json'
+import facePhotoMock from './face.json'
+import { getSubjectId } from '../veramo'
+import { getRecognitionClient } from '../aws'
 
 describe('goodidAPI', () => {
   let server
@@ -24,6 +26,10 @@ describe('goodidAPI', () => {
   let fvMockHelper
   const enrollmentProcessor = createEnrollmentProcessor(storage)
 
+  let detectFaces
+  let detectFacesMock = jest.fn()
+  const awsClient = getRecognitionClient()
+
   const issueLocationCertificateUri = '/goodid/certificate/location'
   const issueIdentityCertificateUri = '/goodid/certificate/identity'
   const verifyCertificateUri = '/goodid/certificate/verify'
@@ -31,7 +37,7 @@ describe('goodidAPI', () => {
   const assertCountryCode =
     code =>
     ({ body }) => {
-      const { countryCode } = get(body, 'ceriticate.credentialSubject', {})
+      const { countryCode } = get(body, 'certificate.credentialSubject', {})
 
       if (countryCode !== code) {
         throw new Error(`expected ${code}, got ${countryCode}`)
@@ -84,12 +90,11 @@ describe('goodidAPI', () => {
     }
   }
 
-  //const testEnrollmentIdentifier = '0x5efe0a7c45d3a07ca7faf5c09c62eee8bb944e1087594b2b951e00fb29f8318912bd8b8b0d72ddf34d99ed0eeb3574237c7ba02e8b74ae6ed107b5337e8df79e1c'
-
-  //https://goodid.gooddollar.org/?account=0xc218C7bB7F87a544EB7dCC9D776131A75E362d9C&chain=122&fvsig=0x5efe0a7c45d3a07ca7faf5c09c62eee8bb944e1087594b2b951e00fb29f8318912bd8b8b0d72ddf34d99ed0eeb3574237c7ba02e8b74ae6ed107b5337e8df79e1c&firstname=Oleksii+Serdiukov&rdu=http%3A%2F%2Flocalhost%3A3000%2Fhome%2Fgooddollar
-
   beforeAll(async () => {
     jest.setTimeout(50000)
+
+    detectFaces = awsClient.detectFaces
+    awsClient.detectFaces = detectFacesMock
 
     creds = await getCreds(true)
     await storage.addUser({ identifier: creds.address })
@@ -105,15 +110,20 @@ describe('goodidAPI', () => {
   })
 
   beforeEach(async () => {
-    fvMock.reset()
-
     await setUserData({
       mobile: null,
       smsValidated: false
     })
   })
 
+  afterEach(() => {
+    fvMock.reset()
+    detectFacesMock.mockReset()
+  })
+
   afterAll(async () => {
+    awsClient.detectFaces = detectFaces
+
     await storage.deleteUser({ identifier: creds.address })
 
     await new Promise(res =>
@@ -274,6 +284,50 @@ describe('goodidAPI', () => {
         success: false,
         error: enrollmentNotFoundMessage
       })
+  })
+
+  test('Identity certificate: should issue certificate from face image', async () => {
+    const enrollmentIdentifier = creds.fvV2Identifier
+    const { v2Identifier } = normalizeIdentifiers(enrollmentIdentifier)
+
+    fvMockHelper.mockEnrollmentFound(v2Identifier, facePhotoMock)
+
+    detectFacesMock.mockReturnValue({
+      promise: async () => ({
+        FaceDetails: [
+          {
+            Gender: {
+              Value: 'Male'
+            },
+            AgeRange: {
+              Low: 30
+            }
+          }
+        ]
+      })
+    })
+
+    const { status, body } = await request(server)
+      .post(issueIdentityCertificateUri)
+      .send({ enrollmentIdentifier })
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(status).toBe(200)
+    expect(body).toHaveProperty('success', true)
+
+    expect(body).toHaveProperty('certificate.type', [
+      'VerifiableCredential',
+      'VerifiableIdentityCredential',
+      'VerifiableGenderCredential',
+      'VerifiableAgeCredential'
+    ])
+
+    expect(body).toHaveProperty('certificate.credentialSubject', {
+      id: getSubjectId(creds.address),
+      unique: true,
+      gender: 'Male',
+      age: { min: 30 }
+    })
   })
 
   test('Verify certificate: should fail on empty data', async () => {

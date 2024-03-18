@@ -72,9 +72,9 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
       const { longitude, latitude } = get(body, 'geoposition.coords', {})
 
       const issueCertificate = async countryCode => {
-        const ceriticate = await utils.issueCertificate(gdAddress, Location, { countryCode })
+        const certificate = await utils.issueCertificate(gdAddress, Location, { countryCode })
 
-        res.json({ success: true, ceriticate })
+        res.json({ success: true, certificate })
       }
 
       try {
@@ -186,12 +186,12 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
         const { auditTrailBase64 } = await processor.getEnrollment(faceIdentifier, log)
         const estimation = await utils.ageGenderCheck(auditTrailBase64)
 
-        const ceriticate = await utils.issueCertificate(gdAddress, [Identity, Gender, Age], {
+        const certificate = await utils.issueCertificate(gdAddress, [Identity, Gender, Age], {
           unique: true,
           ...estimation
         })
 
-        res.json({ success: true, ceriticate })
+        res.json({ success: true, certificate })
       } catch (exception) {
         const { message } = exception
 
