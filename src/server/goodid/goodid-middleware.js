@@ -11,6 +11,7 @@ import { get } from 'lodash'
 import { Credential } from './veramo'
 import createEnrollmentProcessor from '../verification/processor/EnrollmentProcessor'
 import { enrollmentNotFoundMessage } from '../verification/utils/constants'
+import { normalizeIdentifiers, verifyIdentifier } from '../verification/utils/utils'
 
 const { Location, Gender, Age, Identity } = Credential
 
@@ -120,7 +121,6 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
    * {
    *   "enrollmentIdentifier": "<v2 identifier string>",
    *   "fvSigner": "<v1 identifier string>", // optional
-   *   "fvAgeCheck": "<none | strict | approximate>", // optional
    * }
    *
    * HTTP/1.1 200 OK
@@ -133,8 +133,8 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
    *         "id": 'did:ethr:<g$ wallet address>',
    *         "gender": "<Male | Female>" // yep, AWS doesn't supports LGBT,
    *         "age": {
-   *           "from": <years>, // "open" ranges also allowed, e.g. { to: 7 } or { from: 30 }
-   *           "to": <years>,   // this value includes to the range, "from 30" means 30 and older, if < 30 you will get "from 25 to 29"
+   *           "min": <years>, // "open" ranges also allowed, e.g. { to: 7 } or { from: 30 }
+   *           "max": <years>,   // this value includes to the range, "from 30" means 30 and older, if < 30 you will get "from 25 to 29"
    *         }
    *       },
    *       "issuer": {
@@ -157,30 +157,30 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { user, body, log } = req
-      const { enrollmentIdentifier, fvSigner, fvAgeCheck } = body
+      const { enrollmentIdentifier, fvSigner } = body
       const { gdAddress } = user
 
-      const enrollmentProcessor = createEnrollmentProcessor(storage, log)
+      const processor = createEnrollmentProcessor(storage, log)
 
       try {
-        await enrollmentProcessor.verifyIdentifier(enrollmentIdentifier, gdAddress)
+        verifyIdentifier(enrollmentIdentifier, gdAddress)
 
-        const { identifier, v1Identifier } = enrollmentProcessor.normalizeIdentifiers(enrollmentIdentifier, fvSigner)
-        const { exists, v1Exists } = await enrollmentProcessor.checkExistence(identifier, v1Identifier)
+        const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
 
-        const faceIdentifier = exists ? identifier : v1Exists ? v1Identifier : null
+        // here we check if wallet was registered using v1 of v2 identifier
+        const [isV2, isV1] = await Promise.all([
+          processor.isIdentifierExists(v2Identifier),
+          v1Identifier && processor.isIdentifierExists(v1Identifier)
+        ])
+
+        const faceIdentifier = isV2 ? v2Identifier : isV1 ? v1Identifier : null
 
         if (!faceIdentifier) {
           throw new Error(enrollmentNotFoundMessage)
         }
 
-        const { auditTrailBase64 } = await enrollmentProcessor.getEnrollment(faceIdentifier, log)
+        const { auditTrailBase64 } = await processor.getEnrollment(faceIdentifier, log)
         const estimation = await utils.ageGenderCheck(auditTrailBase64)
-
-        if ((fvAgeCheck || 'none') !== 'none') {
-          // strict or approximate
-          estimation.age = await enrollmentProcessor.estimateAge(faceIdentifier, fvAgeCheck === 'strict', log)
-        }
 
         const ceriticate = await utils.issueCertificate(gdAddress, [Identity, Gender, Age], {
           unique: true,
@@ -193,8 +193,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
 
         log.error('Failed to issue identity ceritifate:', message, exception, {
           enrollmentIdentifier,
-          fvSigner,
-          fvAgeCheck
+          fvSigner
         })
 
         res.status(400).json({ success: false, error: message })

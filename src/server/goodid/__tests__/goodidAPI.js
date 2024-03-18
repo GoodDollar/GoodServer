@@ -7,6 +7,8 @@ import UserDBPrivate from '../../db/mongo/user-privat-provider'
 import makeServer from '../../server-test'
 import { getCreds, getToken } from '../../__util__'
 
+//import testFaceMock from './face.json'
+
 describe('goodidAPI', () => {
   let server
   let token
@@ -69,6 +71,10 @@ describe('goodidAPI', () => {
       jwt: 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiVmVyaWZpYWJsZUxvY2F0aW9uQ3JlZGVudGlhbCJdLCJjcmVkZW50aWFsU3ViamVjdCI6eyJjb3VudHJ5Q29kZSI6IlVBIn19LCJzdWIiOiJkaWQ6ZXRocjoweDdhYzA4MGY2NjA3NDA1NzA1YWVkNzk2NzU3ODk3MDFhNDhjNzZmNTUiLCJuYmYiOjE3MDkxNTk3MTEsImlzcyI6ImRpZDprZXk6ejZNa3RHcFpudzhOdEFqbXZRZHN5aU1BSHdDSll6cTVrQkFTMnlXeW9YMURWb0ZlIn0.VWQKMqFoZvpGzXheDV3H9N7XaVEe4E0jmQgRQ3isKfyJwHPQm5I0W77nRimYyd4Km9iz4UUTWhVrkXHVffj4Cw'
     }
   }
+
+  //const testEnrollmentIdentifier = '0x5efe0a7c45d3a07ca7faf5c09c62eee8bb944e1087594b2b951e00fb29f8318912bd8b8b0d72ddf34d99ed0eeb3574237c7ba02e8b74ae6ed107b5337e8df79e1c'
+
+  //https://goodid.gooddollar.org/?account=0xc218C7bB7F87a544EB7dCC9D776131A75E362d9C&chain=122&fvsig=0x5efe0a7c45d3a07ca7faf5c09c62eee8bb944e1087594b2b951e00fb29f8318912bd8b8b0d72ddf34d99ed0eeb3574237c7ba02e8b74ae6ed107b5337e8df79e1c&firstname=Oleksii+Serdiukov&rdu=http%3A%2F%2Flocalhost%3A3000%2Fhome%2Fgooddollar
 
   beforeAll(async () => {
     jest.setTimeout(50000)

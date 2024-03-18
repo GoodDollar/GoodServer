@@ -1,7 +1,6 @@
 // @flow
 import { chunk, noop } from 'lodash'
 import moment from 'moment'
-import { toChecksumAddress } from 'web3-utils'
 
 import Config from '../../server.config'
 import { default as AdminWallet } from '../../blockchain/MultiWallet'
@@ -14,10 +13,6 @@ import EnrollmentSession from './EnrollmentSession'
 
 import getZoomProvider from './provider/ZoomProvider'
 import { DisposeAt, scheduleDisposalTask, DISPOSE_ENROLLMENTS_TASK, forEnrollment } from '../cron/taskUtil'
-
-import { recoverPublickey } from '../../utils/eth'
-import { FV_IDENTIFIER_MSG2 } from '../../login/login-middleware'
-import { strcasecmp } from '../../utils/string'
 
 // count of chunks pending tasks should (approximately) be split to
 const DISPOSE_BATCH_AMOUNT = 10
@@ -145,39 +140,6 @@ class EnrollmentProcessor {
     }
   }
 
-  async checkExistence(enrollmentIdentifier, v1EnrollmentIdentifier) {
-    const [exists, v1Exists] = await Promise.all([
-      this.isIdentifierExists(enrollmentIdentifier),
-      v1EnrollmentIdentifier && this.isIdentifierExists(v1EnrollmentIdentifier)
-    ])
-
-    return { exists, v1Exists }
-  }
-
-  normalizeIdentifiers(enrollmentIdentifier, v1EnrollmentIdentifier = null) {
-    return {
-      identifier: enrollmentIdentifier.slice(0, 42),
-      v1Identifier: v1EnrollmentIdentifier ? v1EnrollmentIdentifier.replace('0x', '') : null
-    }
-  }
-
-  async verifyIdentifier(enrollmentIdentifier, gdAddress) {
-    // check v2, v2 identifier is expected to be the whole signature
-    if (enrollmentIdentifier.length < 42) {
-      return
-    }
-
-    const signer = recoverPublickey(
-      enrollmentIdentifier,
-      FV_IDENTIFIER_MSG2({ account: toChecksumAddress(gdAddress) }),
-      ''
-    )
-
-    if (!strcasecmp(signer, gdAddress)) {
-      throw new Error(`identifier signer doesn't match user ${signer} != ${gdAddress}`)
-    }
-  }
-
   async getEnrollment(enrollmentIdentifier: string, customLogger = null): Promise<any> {
     const { provider, logger } = this
     const log = customLogger || logger
@@ -221,13 +183,6 @@ class EnrollmentProcessor {
     // .dispose() removes both search index & enrollment and catches "not found" errors gracefully
     // so if at least the enrollment itself exists, we need to call .dispose()
     await provider.dispose(enrollmentIdentifier, customLogger)
-  }
-
-  async estimateAge(enrollmentIdentifier, strict = false, customLogger = null) {
-    const { provider, logger } = this
-    const log = customLogger || logger
-
-    return provider.estimateAge(enrollmentIdentifier, strict, log)
   }
 
   async disposeEnqueuedEnrollments(

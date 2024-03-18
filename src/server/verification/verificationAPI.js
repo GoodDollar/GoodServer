@@ -20,9 +20,10 @@ import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 import createIdScanProcessor from './processor/IdScanProcessor'
 
 import { cancelDisposalTask } from './cron/taskUtil'
+import { recoverPublickey } from '../utils/eth'
 import { shouldLogVerificaitonError } from './utils/logger'
 import { syncUserEmail } from '../storage/addUserSteps'
-import { recoverPublickey } from '../utils/eth'
+import { normalizeIdentifiers, verifyIdentifier } from './utils/utils.js'
 
 // try to cache responses from faucet abuse to prevent 500 errors from server
 // if same user keep requesting.
@@ -62,19 +63,22 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         const processor = createEnrollmentProcessor(storage, log)
 
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
-        await processor.verifyIdentifier(enrollmentIdentifier, gdAddress)
+        verifyIdentifier(enrollmentIdentifier, gdAddress)
 
-        const { identifier, v1Identifier } = processor.normalizeIdentifiers(enrollmentIdentifier, fvSigner)
+        const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
 
         // here we check if wallet was registered using v1 of v2 identifier
-        const { exists, v1Exists } = await processor.checkExistence(identifier, v1Identifier)
+        const [isV2, isV1] = await Promise.all([
+          processor.isIdentifierExists(v2Identifier),
+          v1Identifier && processor.isIdentifierExists(v1Identifier)
+        ])
 
-        if (exists) {
+        if (isV2) {
           //in v2 we expect the enrollmentidentifier to be the whole signature, so we cut it down to 42
-          await processor.enqueueDisposal(user, identifier, log)
+          await processor.enqueueDisposal(user, v2Identifier, log)
         }
 
-        if (v1Exists) {
+        if (isV1) {
           await processor.enqueueDisposal(user, v1Identifier, log)
         }
       } catch (exception) {
@@ -108,11 +112,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       log.debug('check face status request:', { fvSigner, enrollmentIdentifier, user })
 
       try {
-        const processor = createEnrollmentProcessor(storage, log)
-        const { identifier, v1Identifier } = processor.normalizeIdentifiers(enrollmentIdentifier, fvSigner)
+        const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
 
+        const processor = createEnrollmentProcessor(storage, log)
         const [isDisposingV2, isDisposingV1] = await Promise.all([
-          processor.isEnqueuedForDisposal(identifier, log),
+          processor.isEnqueuedForDisposal(v2Identifier, log),
           v1Identifier && processor.isEnqueuedForDisposal(v1Identifier, log)
         ])
 
@@ -220,29 +224,28 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       try {
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
         // for v1 this will do nothing
+        verifyIdentifier(enrollmentIdentifier, gdAddress)
 
+        const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
         const enrollmentProcessor = createEnrollmentProcessor(storage, log)
-        const { identifier, v1Identifier } = enrollmentProcessor.normalizeIdentifiers(enrollmentIdentifier, fvSigner)
-
-        await enrollmentProcessor.verifyIdentifier(enrollmentIdentifier, gdAddress)
 
         // here we check if wallet was registered using v1 of v2 identifier
-        const { v1Exists } = await enrollmentProcessor.checkExistence(identifier, v1Identifier)
+        const isV1 = !!v1Identifier && (await enrollmentProcessor.isIdentifierExists(v1Identifier))
 
         try {
           // if v1, we convert to v2
           // delete previous enrollment.
           // once user completes FV it will create a new record under his V2 id. update his lastAuthenticated. and enqueue for disposal
-          if (v1Exists) {
-            log.info('v1 identifier found, converting to v2', { v1Identifier, v2Identifier: identifier, gdAddress })
+          if (isV1) {
+            log.info('v1 identifier found, converting to v2', { v1Identifier, v2Identifier, gdAddress })
             await Promise.all([
               enrollmentProcessor.dispose(v1Identifier, log),
               cancelDisposalTask(storage, v1Identifier)
             ])
           }
-          await enrollmentProcessor.validate(user, identifier, payload)
+          await enrollmentProcessor.validate(user, v2Identifier, payload)
           const wasWhitelisted = await AdminWallet.lastAuthenticated(gdAddress)
-          const enrollmentResult = await enrollmentProcessor.enroll(user, identifier, payload, log)
+          const enrollmentResult = await enrollmentProcessor.enroll(user, v2Identifier, payload, log)
 
           // log warn if user was whitelisted but unable to pass FV again
           if (wasWhitelisted > 0 && enrollmentResult.success === false) {
@@ -250,9 +253,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
               wasWhitelisted,
               enrollmentResult,
               gdAddress,
-              v2Identifier: identifier
+              v2Identifier
             })
-            if (v1Exists) {
+            if (isV1) {
               //throw error so we de-whitelist user
               throw new Error('User failed to re-authenticate with V1 identifier')
             }
@@ -261,16 +264,15 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
               wasWhitelisted,
               enrollmentResult,
               gdAddress,
-              v2Identifier: identifier
+              v2Identifier
             })
           }
           res.json(enrollmentResult)
         } catch (e) {
-          if (v1Exists) {
+          if (isV1) {
             // if we deleted the user record but had an error in whitelisting, then we must revoke his whitelisted status
             // since we might not have his record enrolled
-            const isIndexed = await enrollmentProcessor.isIdentifierIndexed(identifier)
-
+            const isIndexed = await enrollmentProcessor.isIdentifierIndexed(v2Identifier)
             // if new identifier is indexed then dont revoke
             if (!isIndexed) {
               const isWhitelisted = await AdminWallet.isVerified(gdAddress)
@@ -324,21 +326,19 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       try {
-        const enrollmentProcessor = createEnrollmentProcessor(storage, log)
+        // for v2 identifier - verify that identifier is for the address we are going to whitelist
+        // for v1 this will do nothing
+        verifyIdentifier(enrollmentIdentifier, gdAddress)
+
+        const { v2Identifier } = normalizeIdentifiers(enrollmentIdentifier)
+
         const idscanProcessor = createIdScanProcessor(storage, log)
 
-        const { identifier } = enrollmentProcessor.normalizeIdentifiers(enrollmentIdentifier)
-
-        await enrollmentProcessor.verifyIdentifier(enrollmentIdentifier, gdAddress)
-
-        let { isMatch, scanResultBlob, ...scanResult } = await idscanProcessor.verify(user, identifier, payload)
-
+        let { isMatch, scanResultBlob, ...scanResult } = await idscanProcessor.verify(user, v2Identifier, payload)
         scanResult = omit(scanResult, ['externalDatabaseRefID', 'ocrResults', 'serverInfo', 'callData']) //remove unrequired fields
         log.debug('idscan results:', { isMatch, scanResult })
-
         const toSign = { success: true, isMatch, gdAddress, scanResult, timestamp: Date.now() }
         const { sig: signature } = await AdminWallet.signMessage(JSON.stringify(toSign))
-
         res.json({ scanResult: { ...toSign, signature }, scanResultBlob })
       } catch (exception) {
         const { message } = exception

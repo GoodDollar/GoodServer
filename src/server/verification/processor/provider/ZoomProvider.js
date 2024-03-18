@@ -8,8 +8,7 @@ import {
   duplicateFoundMessage,
   successfullyEnrolledMessage,
   alreadyEnrolledMessage,
-  ZoomLicenseType,
-  AgeV2GroupEnum
+  ZoomLicenseType
 } from '../../utils/constants'
 
 import { faceSnapshotFields } from '../../utils/logger'
@@ -292,26 +291,6 @@ class ZoomProvider implements IEnrollmentProvider {
         log.warn("ZoOm server doesn't supports removing enrollments", { enrollmentIdentifier })
       }
     }
-  }
-
-  async estimateAge(enrollmentIdentifier, strict = false, customLogger = null) {
-    const { api, logger } = this
-    const log = customLogger || logger
-    const { success, ageV2GroupEnumInt } = await api.estimateAge(enrollmentIdentifier, log)
-
-    if (!ageV2GroupEnumInt) {
-      throw new Error('Age estimation fails to run')
-    }
-
-    if (!success) {
-      if (strict) {
-        throw new Error('Age check confidence too low')
-      }
-
-      log.warn('Confidence <99.5%', { ageV2GroupEnumInt })
-    }
-
-    return AgeV2GroupEnum[ageV2GroupEnumInt]
   }
 
   async _enrollmentOperation(logLabel, enrollmentIdentifier, customLogger = null, operation): Promise<boolean> {

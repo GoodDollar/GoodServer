@@ -67,9 +67,9 @@ export class GoodIDUtils {
     const { FaceDetails } = await detectFaces(imageBase64)
     const [{ AgeRange, Gender }] = FaceDetails
     const { Value: gender } = Gender
-    const { Low: from, High: to } = AgeRange
+    const { Low: min, High: max } = AgeRange
 
-    return { gender, age: { from, to } }
+    return { gender, age: { min, max } }
   }
 
   async issueCertificate(gdAddress, credentials, payload = {}) {

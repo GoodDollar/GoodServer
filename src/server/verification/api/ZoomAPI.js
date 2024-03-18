@@ -233,19 +233,6 @@ export class ZoomAPI {
     return httpClientOptions
   }
 
-  async estimateAge(enrollmentIdentifier, customLogger = null) {
-    const payload = {
-      externalDatabaseRefID: enrollmentIdentifier
-    }
-
-    try {
-      return await this.http.post(`/estimate-age-3d-v2`, payload, { customLogger })
-    } catch (exception) {
-      this._proceedEnrollmentNotFoundError(exception)
-      throw exception
-    }
-  }
-
   _configureRequests() {
     const { request } = this.http.interceptors
 
@@ -465,7 +452,15 @@ export class ZoomAPI {
     try {
       response = await this.http.post(`/3d-db/${operation}`, payload, { customLogger })
     } catch (exception) {
-      this._proceedEnrollmentNotFoundError(exception)
+      const { message } = exception
+
+      if (/enrollment\s+does\s+not\s+exist/i.test(message)) {
+        assign(exception, {
+          message: enrollmentNotFoundMessage,
+          name: ZoomAPIError.FacemapNotFound
+        })
+      }
+
       throw exception
     }
 
@@ -491,17 +486,6 @@ export class ZoomAPI {
     }
 
     return response
-  }
-
-  _proceedEnrollmentNotFoundError(exception) {
-    const { message } = exception
-
-    if (/enrollment\s+does\s+not\s+exist/i.test(message)) {
-      assign(exception, {
-        message: enrollmentNotFoundMessage,
-        name: ZoomAPIError.FacemapNotFound
-      })
-    }
   }
 
   _createLoggingSafeCopy(payload) {
