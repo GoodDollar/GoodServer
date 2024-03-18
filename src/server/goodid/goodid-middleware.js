@@ -160,12 +160,16 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
       const { enrollmentIdentifier, fvSigner } = body
       const { gdAddress } = user
 
-      const processor = createEnrollmentProcessor(storage, log)
-
       try {
-        verifyIdentifier(enrollmentIdentifier, gdAddress)
+        const processor = createEnrollmentProcessor(storage, log)
+
+        if (!enrollmentIdentifier) {
+          throw new Error('Failed to verify identify: missing face verification ID')
+        }
 
         const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
+
+        verifyIdentifier(enrollmentIdentifier, gdAddress)
 
         // here we check if wallet was registered using v1 of v2 identifier
         const [isV2, isV1] = await Promise.all([

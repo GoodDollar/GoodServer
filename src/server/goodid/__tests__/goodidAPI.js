@@ -1,11 +1,17 @@
 import { get } from 'lodash'
-import request from 'supertest'
 import { sha3 } from 'web3-utils'
 
-import UserDBPrivate from '../../db/mongo/user-privat-provider'
+import request from 'supertest'
+import MockAdapter from 'axios-mock-adapter'
+
+import storage from '../../db/mongo/user-privat-provider'
+import createEnrollmentProcessor from '../../verification/processor/EnrollmentProcessor'
 
 import makeServer from '../../server-test'
 import { getCreds, getToken } from '../../__util__'
+import createFvMockHelper from '../../verification/api/__tests__/__util__'
+import { enrollmentNotFoundMessage } from '../../verification/utils/constants'
+import { normalizeIdentifiers } from '../../verification/utils/utils'
 
 //import testFaceMock from './face.json'
 
@@ -13,7 +19,13 @@ describe('goodidAPI', () => {
   let server
   let token
   let creds
+
+  let fvMock
+  let fvMockHelper
+  const enrollmentProcessor = createEnrollmentProcessor(storage)
+
   const issueLocationCertificateUri = '/goodid/certificate/location'
+  const issueIdentityCertificateUri = '/goodid/certificate/identity'
   const verifyCertificateUri = '/goodid/certificate/verify'
 
   const assertCountryCode =
@@ -27,7 +39,7 @@ describe('goodidAPI', () => {
     }
 
   const setUserData = ({ mobile, ...data }) =>
-    UserDBPrivate.updateUser({
+    storage.updateUser({
       identifier: creds.address,
       mobile: mobile ? sha3(mobile) : null,
       ...data
@@ -78,15 +90,23 @@ describe('goodidAPI', () => {
 
   beforeAll(async () => {
     jest.setTimeout(50000)
+
+    creds = await getCreds(true)
+    await storage.addUser({ identifier: creds.address })
+
     server = await makeServer()
-    creds = await getCreds()
     token = await getToken(server, creds)
+
+    fvMock = new MockAdapter(enrollmentProcessor.provider.api.http)
+    fvMockHelper = createFvMockHelper(fvMock)
 
     console.log('goodidAPI: server ready')
     console.log({ server })
   })
 
   beforeEach(async () => {
+    fvMock.reset()
+
     await setUserData({
       mobile: null,
       smsValidated: false
@@ -94,6 +114,8 @@ describe('goodidAPI', () => {
   })
 
   afterAll(async () => {
+    await storage.deleteUser({ identifier: creds.address })
+
     await new Promise(res =>
       server.close(err => {
         console.log('verificationAPI: closing server', { err })
@@ -104,7 +126,9 @@ describe('goodidAPI', () => {
 
   test('GoodID endpoints returns 401 without credentials', async () => {
     await Promise.all(
-      [issueLocationCertificateUri, verifyCertificateUri].map(uri => request(server).post(uri).send({}).expect(401))
+      [issueLocationCertificateUri, issueIdentityCertificateUri, verifyCertificateUri].map(uri =>
+        request(server).post(uri).send({}).expect(401)
+      )
     )
   })
 
@@ -208,6 +232,48 @@ describe('goodidAPI', () => {
       .set('X-Forwarded-For', testIPBR)
       .expect(200)
       .expect(assertCountryCode('UA'))
+  })
+
+  test('Identity certificate: should fail on empty data', async () => {
+    await request(server)
+      .post(issueIdentityCertificateUri)
+      .send({})
+      .set('Authorization', `Bearer ${token}`)
+      .expect(400, {
+        success: false,
+        error: 'Failed to verify identify: missing face verification ID'
+      })
+  })
+
+  test('Identity certificate: should fail if face id does not matches g$ account', async () => {
+    const { status, body } = await request(server)
+      .post(issueIdentityCertificateUri)
+      .send({
+        enrollmentIdentifier:
+          '0x5efe0a7c45d3a07ca7faf5c09c62eee8bb944e1087594b2b951e00fb29f8318912bd8b8b0d72ddf34d99ed0eeb3574237c7ba02e8b74ae6ed107b5337e8df79e1c'
+      })
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(status).toBe(400)
+    expect(body).toHaveProperty('success', false)
+    expect(body).toHaveProperty('error')
+    expect(body.error).toStartWith("Identifier signer doesn't match user")
+  })
+
+  test('Identity certificate: should fail if face record does not exist', async () => {
+    const enrollmentIdentifier = creds.fvV2Identifier
+    const { v2Identifier } = normalizeIdentifiers(enrollmentIdentifier)
+
+    fvMockHelper.mockEnrollmentNotFound(v2Identifier)
+
+    await request(server)
+      .post(issueIdentityCertificateUri)
+      .send({ enrollmentIdentifier })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(400, {
+        success: false,
+        error: enrollmentNotFoundMessage
+      })
   })
 
   test('Verify certificate: should fail on empty data', async () => {

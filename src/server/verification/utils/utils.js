@@ -23,6 +23,6 @@ export const verifyIdentifier = (enrollmentIdentifier, gdAddress) => {
 
   if (strcasecmp(signer, gdAddress)) {
     // returns 0 if equals
-    throw new Error(`identifier signer doesn't match user ${signer} != ${gdAddress}`)
+    throw new Error(`Identifier signer doesn't match user ${signer} != ${gdAddress}`)
   }
 }
