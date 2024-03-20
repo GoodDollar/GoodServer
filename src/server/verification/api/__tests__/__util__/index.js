@@ -100,11 +100,12 @@ export default zoomServiceMock => {
   const mockFailedSessionToken = (withMessage = null) =>
     zoomServiceMock.onGet('/session-token').reply(403, mockErrorResponse(withMessage))
 
-  const mockEnrollmentFound = enrollmentIdentifier =>
+  const mockEnrollmentFound = (enrollmentIdentifier, customEnrollmentData = {}) =>
     zoomServiceMock.onGet(enrollmentUri(enrollmentIdentifier)).reply(200, {
-      externalDatabaseRefID: enrollmentIdentifier,
       faceMapBase64: Buffer.alloc(32).toString(),
       auditTrailBase64: 'data:image/png:FaKEimagE==',
+      ...customEnrollmentData,
+      externalDatabaseRefID: enrollmentIdentifier,
       ...successResponse
     })
 

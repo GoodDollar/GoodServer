@@ -9,8 +9,13 @@ import { wrapAsync } from '../utils/helpers'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import { get } from 'lodash'
 import { Credential } from './veramo'
+import createEnrollmentProcessor from '../verification/processor/EnrollmentProcessor'
+import { enrollmentNotFoundMessage } from '../verification/utils/constants'
+import { normalizeIdentifiers, verifyIdentifier } from '../verification/utils/utils'
 
-export default function addGoodIDMiddleware(app: Router, utils) {
+const { Location, Gender, Age, Identity } = Credential
+
+export default function addGoodIDMiddleware(app: Router, utils, storage) {
   /**
    * POST /goodid/certificate/location
    * Content-Type: application/json
@@ -67,9 +72,9 @@ export default function addGoodIDMiddleware(app: Router, utils) {
       const { longitude, latitude } = get(body, 'geoposition.coords', {})
 
       const issueCertificate = async countryCode => {
-        const ceriticate = await utils.issueCertificate(gdAddress, Credential.Location, { countryCode })
+        const certificate = await utils.issueCertificate(gdAddress, Location, { countryCode })
 
-        res.json({ success: true, ceriticate })
+        res.json({ success: true, certificate })
       }
 
       try {
@@ -105,6 +110,96 @@ export default function addGoodIDMiddleware(app: Router, utils) {
         const { message } = exception
 
         log.error('Failed to issue location ceritifate:', message, exception, { mobile, longitude, latitude })
+        res.status(400).json({ success: false, error: message })
+      }
+    })
+  )
+
+  /**
+   * POST /goodid/certificate/identity
+   * Content-Type: application/json
+   * {
+   *   "enrollmentIdentifier": "<v2 identifier string>",
+   *   "fvSigner": "<v1 identifier string>", // optional
+   * }
+   *
+   * HTTP/1.1 200 OK
+   * Content-Type: application/json
+   * {
+   *   "success": true,
+   *   "certificate": {
+   *     "credential": {
+   *       "credentialSubject": {
+   *         "id": 'did:ethr:<g$ wallet address>',
+   *         "gender": "<Male | Female>" // yep, AWS doesn't supports LGBT,
+   *         "age": {
+   *           "min": <years>, // "open" ranges also allowed, e.g. { to: 7 } or { from: 30 }
+   *           "max": <years>,   // this value includes to the range, "from 30" means 30 and older, if < 30 you will get "from 25 to 29"
+   *         }
+   *       },
+   *       "issuer": {
+   *         "id": 'did:key:<GoodServer's DID>',
+   *       },
+   *       "type": ["VerifiableCredential", "VerifiableIdentityCredential", "VerifiableAgeCredential", "VerifiableGenderCredential"],
+   *       "@context": ["https://www.w3.org/2018/credentials/v1"],
+   *       "issuanceDate": "2022-10-28T11:54:22.000Z",
+   *       "proof": {
+   *         "type": "JwtProof2020",
+   *         "jwt": 'eyJhbGciOiJFUzI1NksiLCJ0eXAiOiJKV1QifQ.eyJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIl0sImNyZWRlbnRpYWxTdWJqZWN0Ijp7InlvdSI6IlJvY2sifX0sInN1YiI6ImRpZDp3ZWI6ZXhhbXBsZS5jb20iLCJuYmYiOjE2NjY5NTgwNjIsImlzcyI6ImRpZDpldGhyOmdvZXJsaToweDAzNTBlZWVlYTE0MTBjNWIxNTJmMWE4OGUwZmZlOGJiOGEwYmMzZGY4NjhiNzQwZWIyMzUyYjFkYmY5M2I1OWMxNiJ9.EPeuQBpkK13V9wu66SLg7u8ebY2OS8b2Biah2Vw-RI-Atui2rtujQkVc2t9m1Eqm4XQFECfysgQBdWwnSDvIjw',
+   *       },
+   *     },
+   *   }
+   * }
+   */
+  app.post(
+    '/goodid/certificate/identity',
+    requestRateLimiter(10, 1),
+    passport.authenticate('jwt', { session: false }),
+    wrapAsync(async (req, res) => {
+      const { user, body, log } = req
+      const { enrollmentIdentifier, fvSigner } = body
+      const { gdAddress } = user
+
+      try {
+        const processor = createEnrollmentProcessor(storage, log)
+
+        if (!enrollmentIdentifier) {
+          throw new Error('Failed to verify identify: missing face verification ID')
+        }
+
+        const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
+
+        verifyIdentifier(enrollmentIdentifier, gdAddress)
+
+        // here we check if wallet was registered using v1 of v2 identifier
+        const [isV2, isV1] = await Promise.all([
+          processor.isIdentifierExists(v2Identifier),
+          v1Identifier && processor.isIdentifierExists(v1Identifier)
+        ])
+
+        const faceIdentifier = isV2 ? v2Identifier : isV1 ? v1Identifier : null
+
+        if (!faceIdentifier) {
+          throw new Error(enrollmentNotFoundMessage)
+        }
+
+        const { auditTrailBase64 } = await processor.getEnrollment(faceIdentifier, log)
+        const estimation = await utils.ageGenderCheck(auditTrailBase64)
+
+        const certificate = await utils.issueCertificate(gdAddress, [Identity, Gender, Age], {
+          unique: true,
+          ...estimation
+        })
+
+        res.json({ success: true, certificate })
+      } catch (exception) {
+        const { message } = exception
+
+        log.error('Failed to issue identity ceritifate:', message, exception, {
+          enrollmentIdentifier,
+          fvSigner
+        })
+
         res.status(400).json({ success: false, error: message })
       }
     })

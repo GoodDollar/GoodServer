@@ -3,7 +3,7 @@
 import { Router } from 'express'
 import passport from 'passport'
 import { get, defaults, memoize, omit } from 'lodash'
-import { sha3, toChecksumAddress, keccak256 } from 'web3-utils'
+import { sha3, keccak256 } from 'web3-utils'
 import web3Abi from 'web3-eth-abi'
 import requestIp from 'request-ip'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
@@ -23,18 +23,7 @@ import { cancelDisposalTask } from './cron/taskUtil'
 import { recoverPublickey } from '../utils/eth'
 import { shouldLogVerificaitonError } from './utils/logger'
 import { syncUserEmail } from '../storage/addUserSteps'
-import { FV_IDENTIFIER_MSG2 } from '../login/login-middleware'
-
-const verifyFVIdentifier = async (identifier, gdAddress) => {
-  //check v2, v2 identifier is expected to be the whole signature
-  if (identifier.length >= 42) {
-    const signer = recoverPublickey(identifier, FV_IDENTIFIER_MSG2({ account: toChecksumAddress(gdAddress) }), '')
-
-    if (signer.toLowerCase() !== gdAddress.toLowerCase()) {
-      throw new Error(`identifier signer doesn't match user ${signer} != ${gdAddress}`)
-    }
-  }
-}
+import { normalizeIdentifiers, verifyIdentifier } from './utils/utils.js'
 
 // try to cache responses from faucet abuse to prevent 500 errors from server
 // if same user keep requesting.
@@ -74,10 +63,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         const processor = createEnrollmentProcessor(storage, log)
 
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
-        await verifyFVIdentifier(enrollmentIdentifier, gdAddress)
+        verifyIdentifier(enrollmentIdentifier, gdAddress)
 
-        let v2Identifier = enrollmentIdentifier.slice(0, 42)
-        let v1Identifier = fvSigner && fvSigner.replace('0x', '') // wallet will also supply the v1 identifier as fvSigner, we remove '0x' for public address
+        const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
 
         // here we check if wallet was registered using v1 of v2 identifier
         const [isV2, isV1] = await Promise.all([
@@ -124,8 +112,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       log.debug('check face status request:', { fvSigner, enrollmentIdentifier, user })
 
       try {
-        let v2Identifier = enrollmentIdentifier.slice(0, 42)
-        let v1Identifier = fvSigner && fvSigner.replace('0x', '') // wallet also provide older identifier in case it was created before v2
+        const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
 
         const processor = createEnrollmentProcessor(storage, log)
         const [isDisposingV2, isDisposingV1] = await Promise.all([
@@ -237,11 +224,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       try {
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
         // for v1 this will do nothing
-        await verifyFVIdentifier(enrollmentIdentifier, gdAddress)
+        verifyIdentifier(enrollmentIdentifier, gdAddress)
 
-        let v2Identifier = enrollmentIdentifier.slice(0, 42)
-        let v1Identifier = fvSigner && fvSigner.replace('0x', '') // wallet will also supply the v1 identifier as fvSigner, we remove '0x' for public address
-
+        const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
         const enrollmentProcessor = createEnrollmentProcessor(storage, log)
 
         // here we check if wallet was registered using v1 of v2 identifier
@@ -343,9 +328,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       try {
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
         // for v1 this will do nothing
-        await verifyFVIdentifier(enrollmentIdentifier, gdAddress)
+        verifyIdentifier(enrollmentIdentifier, gdAddress)
 
-        let v2Identifier = enrollmentIdentifier.slice(0, 42)
+        const { v2Identifier } = normalizeIdentifiers(enrollmentIdentifier)
 
         const idscanProcessor = createIdScanProcessor(storage, log)
 

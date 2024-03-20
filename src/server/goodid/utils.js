@@ -2,8 +2,9 @@ import axios from 'axios'
 import { PhoneNumberUtil } from 'google-libphonenumber'
 
 import { substituteParams } from '../utils/axios'
-import { flatten, get, toUpper } from 'lodash'
+import { flatten, get, isUndefined, negate, pickBy, toUpper } from 'lodash'
 import { getAgent, getSubjectId } from './veramo'
+import { detectFaces } from './aws'
 
 export class GoodIDUtils {
   constructor(httpApi, phoneNumberApi, getVeramoAgent) {
@@ -60,6 +61,18 @@ export class GoodIDUtils {
     }
 
     return phoneUtil.getRegionCodeForNumber(number)
+  }
+
+  async ageGenderCheck(imageBase64) {
+    const { FaceDetails } = await detectFaces(imageBase64)
+    const [{ AgeRange, Gender }] = FaceDetails
+
+    const { Value: gender } = Gender
+    const { Low: min, High: max } = AgeRange
+
+    const age = pickBy({ min, max }, negate(isUndefined)) // filter up undefined
+
+    return { gender, age }
   }
 
   async issueCertificate(gdAddress, credentials, payload = {}) {

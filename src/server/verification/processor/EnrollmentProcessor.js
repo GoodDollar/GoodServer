@@ -140,6 +140,13 @@ class EnrollmentProcessor {
     }
   }
 
+  async getEnrollment(enrollmentIdentifier: string, customLogger = null): Promise<any> {
+    const { provider, logger } = this
+    const log = customLogger || logger
+
+    return provider.getEnrollment(enrollmentIdentifier, log)
+  }
+
   async isIdentifierExists(enrollmentIdentifier: string) {
     return this.provider.isEnrollmentExists(enrollmentIdentifier)
   }
@@ -191,9 +198,7 @@ class EnrollmentProcessor {
 
     if (keepEnrollments > 0) {
       deletedAccountFilters.createdAt = {
-        $lte: moment()
-          .subtract(keepEnrollments, 'hours')
-          .toDate()
+        $lte: moment().subtract(keepEnrollments, 'hours').toDate()
       }
     }
 
@@ -292,8 +297,8 @@ const enrollmentProcessors = new WeakMap()
 
 export default (storage, log) => {
   if (!enrollmentProcessors.has(storage)) {
-    log = log || logger.child({ from: 'EnrollmentProcessor' })
-    const enrollmentProcessor = new EnrollmentProcessor(Config, storage, AdminWallet, log)
+    const processorLogger = log || logger.child({ from: 'EnrollmentProcessor' })
+    const enrollmentProcessor = new EnrollmentProcessor(Config, storage, AdminWallet, processorLogger)
 
     enrollmentProcessor.registerProvier(getZoomProvider())
     enrollmentProcessors.set(storage, enrollmentProcessor)
