@@ -675,7 +675,7 @@ switch (network) {
   case 'staging':
     networkId = 122
     celoNetworkId = 42220
-    mainNetworkId = 5
+    mainNetworkId = 11155111
     break
   case 'production':
     networkId = 122
