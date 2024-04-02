@@ -4,6 +4,7 @@ export default once(() => {
   const alchemyKey = process.env.ALCHEMY_API
   const fuseRpc = process.env.FUSE_RPC
   const celoRpc = process.env.CELO_RPC
+  const mainnetRpc = process.env.MAINNET_RPC
 
   return {
     1: {
@@ -27,8 +28,8 @@ export default once(() => {
     11155111: {
       network_id: 11155111,
       web3Transport: 'HttpProvider',
-      httpWeb3Provider: `https://eth-sepolia.alchemyapi.io/v2/${alchemyKey}`,
-      websocketWeb3Provider: 'wss://goerli.infura.io/ws'
+      httpWeb3Provider: mainnetRpc ? mainnetRpc : `https://sepolia.gateway.tenderly.co`,
+      websocketWeb3Provider: ''
     },
     5: {
       network_id: 5,
