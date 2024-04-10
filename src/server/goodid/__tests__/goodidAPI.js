@@ -33,6 +33,7 @@ describe('goodidAPI', () => {
   const issueLocationCertificateUri = '/goodid/certificate/location'
   const issueIdentityCertificateUri = '/goodid/certificate/identity'
   const verifyCertificateUri = '/goodid/certificate/verify'
+  const registerRedtentUri = '/goodid/redtent'
 
   const assertCountryCode =
     code =>
@@ -90,6 +91,8 @@ describe('goodidAPI', () => {
     }
   }
 
+  const testVideoFilename = '0x7ac080f6607405705aed79675789701a48c76f55.webm'
+
   beforeAll(async () => {
     jest.setTimeout(50000)
 
@@ -136,7 +139,7 @@ describe('goodidAPI', () => {
 
   test('GoodID endpoints returns 401 without credentials', async () => {
     await Promise.all(
-      [issueLocationCertificateUri, issueIdentityCertificateUri, verifyCertificateUri].map(uri =>
+      [issueLocationCertificateUri, issueIdentityCertificateUri].map(uri =>
         request(server).post(uri).send({}).expect(401)
       )
     )
@@ -331,7 +334,7 @@ describe('goodidAPI', () => {
   })
 
   test('Verify certificate: should fail on empty data', async () => {
-    await request(server).post(verifyCertificateUri).send({}).set('Authorization', `Bearer ${token}`).expect(400, {
+    await request(server).post(verifyCertificateUri).send({}).expect(400, {
       success: false,
       error: 'Failed to verify credential: missing certificate data'
     })
@@ -343,9 +346,53 @@ describe('goodidAPI', () => {
       .send({
         certificate: testCertificate
       })
-      .set('Authorization', `Bearer ${token}`)
       .expect(200, {
         success: true
+      })
+  })
+
+  test('Redtent register: should fail on empty data', async () => {
+    await request(server).post(registerRedtentUri).send({}).expect(400, {
+      success: false,
+      error: 'Failed to verify: missing certificate data'
+    })
+
+    await request(server)
+      .post(registerRedtentUri)
+      .send({ certificates: [testCertificate] })
+      .expect(400, {
+        success: false,
+        error: 'Failed to verify: missing file name of the video uploaded to the bucket'
+      })
+  })
+
+  test('Redtent register: should fail with certificates issued for different accounts', async () => {
+    const { credentialSubject } = testCertificate
+
+    const mutatedClone = {
+      ...testCertificate,
+      credentialSubject: {
+        ...credentialSubject,
+        id: credentialSubject.id.replace(/6f55$/, '7066')
+      }
+    }
+
+    await request(server)
+      .post(registerRedtentUri)
+      .send({ certificates: [testCertificate, mutatedClone], videoFilename: testVideoFilename })
+      .expect(400, {
+        success: false,
+        error: 'Certificates issued for the different accounts'
+      })
+  })
+
+  test('Redtent register: should fail without identity certificate', async () => {
+    await request(server)
+      .post(registerRedtentUri)
+      .send({ certificates: [testCertificate], videoFilename: testVideoFilename })
+      .expect(400, {
+        success: false,
+        error: 'Failed to verify: certificates are missing uniqueness credential'
       })
   })
 })

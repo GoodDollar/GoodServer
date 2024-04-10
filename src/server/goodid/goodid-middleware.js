@@ -7,7 +7,7 @@ import { sha3 } from 'web3-utils'
 
 import { wrapAsync } from '../utils/helpers'
 import requestRateLimiter from '../utils/requestRateLimiter'
-import { get } from 'lodash'
+import { get, isEmpty } from 'lodash'
 import { Credential } from './veramo'
 import createEnrollmentProcessor from '../verification/processor/EnrollmentProcessor'
 import { enrollmentNotFoundMessage } from '../verification/utils/constants'
@@ -236,7 +236,6 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
   app.post(
     '/goodid/certificate/verify',
     requestRateLimiter(10, 1),
-    passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { body, log } = req
       const { certificate } = body ?? {}
@@ -252,7 +251,46 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
       } catch (exception) {
         const { message } = exception
 
-        log.error('Failed to verify ceritifate:', message, exception, { certificate })
+        log.error('Failed to verify ceriticate:', message, exception, { certificate })
+        res.status(400).json({ success: false, error: message })
+      }
+    })
+  )
+
+  /** TODO: schema */
+  app.post(
+    '/goodid/redtent',
+    requestRateLimiter(10, 1),
+    wrapAsync(async (req, res) => {
+      const { body, log } = req
+      const { certificates, videoFilename } = body ?? {}
+
+      try {
+        if (isEmpty(certificates)) {
+          throw new Error('Failed to verify: missing certificate data')
+        }
+
+        if (!videoFilename) {
+          throw new Error('Failed to verify: missing file name of the video uploaded to the bucket')
+        }
+
+        const { unique /*, gender, countryCode, account*/ } = await utils.aggregateCredentials(certificates)
+
+        if (!unique) {
+          throw new Error('Failed to verify: certificates are missing uniqueness credential')
+        }
+
+        // TODO: verify user location + gender from credentials are valid for redtent
+
+        // TODO: verify videoFilename equal {account}.{ext} and exists on our redtent bucket
+
+        // TODO: if all valid call multiwallet registerRedtent(account)
+
+        res.status(200).json({ success: true })
+      } catch (exception) {
+        const { message } = exception
+
+        log.error('Failed to registed at RedTent:', message, exception, { certificates, videoFilename })
         res.status(400).json({ success: false, error: message })
       }
     })

@@ -2,8 +2,8 @@ import axios from 'axios'
 import { PhoneNumberUtil } from 'google-libphonenumber'
 
 import { substituteParams } from '../utils/axios'
-import { flatten, get, isUndefined, negate, pickBy, toUpper } from 'lodash'
-import { getAgent, getSubjectId } from './veramo'
+import { assign, every, flatten, get, isUndefined, negate, pickBy, toUpper, map, uniq } from 'lodash'
+import { getAgent, getSubjectAccount, getSubjectId } from './veramo'
 import { detectFaces } from './aws'
 
 export class GoodIDUtils {
@@ -97,6 +97,32 @@ export class GoodIDUtils {
     const { verified } = await agent.verifyCredential({ credential: certificate })
 
     return verified
+  }
+
+  // verifies all certificates
+  // checks they issued for the same account
+  // fetches account as wallet address from subject id
+  // and returns all merged subjects with account data
+  async aggregateCredentials(certificates) {
+    const subjects = map(certificates, 'credentialSubject')
+    const subjectIds = subjects.map(({ id }) => id.toLowerCase())
+
+    // check all beling the same account
+    if (uniq(subjectIds).length > 1) {
+      throw new Error('Certificates issued for the different accounts')
+    }
+
+    const verifiedStatuses = await Promise.all(certificates.map(item => this.verifyCertificate(item)))
+
+    // check were all verified or not
+    if (!every(verifiedStatuses)) {
+      throw new Error('Some of the certificates have different issuer, is invalid or was failed to verify')
+    }
+
+    const [id] = subjectIds
+    const account = getSubjectAccount(id)
+
+    return assign({ id, account }, ...subjects)
   }
 }
 
