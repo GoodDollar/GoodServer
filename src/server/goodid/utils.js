@@ -1,10 +1,11 @@
 import axios from 'axios'
 import { PhoneNumberUtil } from 'google-libphonenumber'
+import { basename, extname } from 'path'
 
 import { substituteParams } from '../utils/axios'
 import { assign, every, flatten, get, isUndefined, negate, pickBy, toUpper, map, uniq } from 'lodash'
 import { getAgent, getSubjectAccount, getSubjectId } from './veramo'
-import { detectFaces } from './aws'
+import { REDTENT_BUCKET, detectFaces, getS3Metadata } from './aws'
 
 export class GoodIDUtils {
   constructor(httpApi, phoneNumberApi, getVeramoAgent) {
@@ -123,6 +124,22 @@ export class GoodIDUtils {
     const account = getSubjectAccount(id)
 
     return assign({ id, account }, ...subjects)
+  }
+
+  async checkS3AccountVideo(videoFilename, account) {
+    const filename = basename(extname(videoFilename)).toLowerCase()
+
+    if (filename !== account) {
+      throw new Error('Uploaded file name does not match account')
+    }
+
+    const { ContentType: contentType } = await getS3Metadata(filename, REDTENT_BUCKET).catch(() => {
+      throw new Error('Uploaded file does not exist at S3 bucket')
+    })
+
+    if (!contentType.match(/^video\//i)) {
+      throw new Error('Non-video file was uploaded or file contents broken')
+    }
   }
 }
 

@@ -4,14 +4,19 @@ import { Router } from 'express'
 import passport from 'passport'
 import requestIp from 'request-ip'
 import { sha3 } from 'web3-utils'
-
-import { wrapAsync } from '../utils/helpers'
-import requestRateLimiter from '../utils/requestRateLimiter'
 import { get, isEmpty } from 'lodash'
+
 import { Credential } from './veramo'
+
 import createEnrollmentProcessor from '../verification/processor/EnrollmentProcessor'
 import { enrollmentNotFoundMessage } from '../verification/utils/constants'
 import { normalizeIdentifiers, verifyIdentifier } from '../verification/utils/utils'
+
+// TODO: uncomment once implemented at wallet side
+// import MultiWallet from '../blockchain/MultiWallet'
+
+import { wrapAsync } from '../utils/helpers'
+import requestRateLimiter from '../utils/requestRateLimiter'
 
 const { Location, Gender, Age, Identity } = Credential
 
@@ -274,17 +279,21 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
           throw new Error('Failed to verify: missing file name of the video uploaded to the bucket')
         }
 
-        const { unique /*, gender, countryCode, account*/ } = await utils.aggregateCredentials(certificates)
+        const { unique, /*gender, */ countryCode, account } = await utils.aggregateCredentials(certificates)
 
         if (!unique) {
           throw new Error('Failed to verify: certificates are missing uniqueness credential')
         }
 
-        // TODO: verify user location + gender from credentials are valid for redtent
+        if (countryCode !== 'NG') {
+          throw new Error('Failed to verify: allowed for accounts from Nigeria only')
+          // TODO: verify user gender - howto ? @sirpy
+        }
 
-        // TODO: verify videoFilename equal {account}.{ext} and exists on our redtent bucket
+        await utils.checkS3AccountVideo(videoFilename, account)
 
-        // TODO: if all valid call multiwallet registerRedtent(account)
+        // TODO: uncomment once implemented at wallet side
+        // MultiWallet.registerRedtent(account)
 
         res.status(200).json({ success: true })
       } catch (exception) {

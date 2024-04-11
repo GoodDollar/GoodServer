@@ -1,9 +1,20 @@
 // @flow
 
 import REK from 'aws-sdk/clients/rekognition'
+import { S3Client, HeadObjectCommand } from '@aws-sdk/client-s3'
 import { once } from 'lodash'
 
 import conf from '../server.config'
+
+export const REDTENT_BUCKET = 'redtent'
+
+export const getS3Client = once(
+  () =>
+    new S3Client({
+      region: 'us-east-1',
+      signer: { sign: async request => request }
+    })
+)
 
 export const getRecognitionClient = once(() => {
   const { awsSesAccessKey, awsSesSecretAccessKey, awsSesRegion } = conf
@@ -20,6 +31,8 @@ export const getRecognitionClient = once(() => {
 })
 
 export const detectFaces = async imageBase64 => {
+  const rekognition = getRecognitionClient()
+
   const payload = {
     Attributes: ['AGE_RANGE', 'GENDER'],
     Image: {
@@ -27,5 +40,16 @@ export const detectFaces = async imageBase64 => {
     }
   }
 
-  return getRecognitionClient().detectFaces(payload).promise()
+  return rekognition.detectFaces(payload).promise()
+}
+
+export const getS3Metadata = async (filename, bucket) => {
+  const s3 = getS3Client()
+
+  const payload = {
+    Bucket: bucket,
+    Key: filename
+  }
+
+  return s3.send(new HeadObjectCommand(payload))
 }
