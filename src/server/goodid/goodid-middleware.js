@@ -291,7 +291,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
    *     "issuer": {
    *       "id": 'did:key:<GoodServer's DID>',
    *     },
-   *     "type": ["VerifiableCredential", <set of VerifiableLocationCredential | VerifiableIdentityCredential | VerifiableGenderCredential | VerifiableAgeCredential items>],
+   *     "type": ["VerifiableCredential", "VerifiableLocationCredential"],
    *     "@context": ["https://www.w3.org/2018/credentials/v1"],
    *     "issuanceDate": "2022-10-28T11:54:22.000Z",
    *     "proof": {

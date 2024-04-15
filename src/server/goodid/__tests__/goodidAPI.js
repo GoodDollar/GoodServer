@@ -1,4 +1,4 @@
-import { get, noop } from 'lodash'
+import { get } from 'lodash'
 import { sha3 } from 'web3-utils'
 import { readFile } from 'fs'
 import { promisify } from 'util'
@@ -19,7 +19,7 @@ import { normalizeIdentifiers } from '../../verification/utils/utils'
 import facePhotoMock from './face.json'
 import { getSubjectId } from '../veramo'
 import { REDTENT_BUCKET, getRecognitionClient, getS3Client } from '../aws'
-import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
+import { PutObjectCommand } from '@aws-sdk/client-s3'
 
 describe('goodidAPI', () => {
   let server
@@ -98,30 +98,28 @@ describe('goodidAPI', () => {
     }
   }
 
-  // TODO: re-generate
   const testIdentityCertificate = {
     credentialSubject: {
       unique: true,
-      gender: 'Male',
       age: { min: 30 },
+      gender: 'Female',
       id: 'did:ethr:0x7ac080f6607405705aed79675789701a48c76f55'
     },
     issuer: { id: 'did:key:z6MktGpZnw8NtAjmvQdsyiMAHwCJYzq5kBAS2yWyoX1DVoFe' },
     type: [
       'VerifiableCredential',
       'VerifiableIdentityCredential',
-      'VerifiableAgeCredential',
-      'VerifiableGenderCredential'
+      'VerifiableGenderCredential',
+      'VerifiableAgeCredential'
     ],
     '@context': ['https://www.w3.org/2018/credentials/v1'],
-    issuanceDate: '2024-02-28T22:35:11.000Z',
+    issuanceDate: '2024-04-15T14:07:43.000Z',
     proof: {
       type: 'JwtProof2020',
-      jwt: 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiVmVyaWZpYWJsZUxvY2F0aW9uQ3JlZGVudGlhbCJdLCJjcmVkZW50aWFsU3ViamVjdCI6eyJjb3VudHJ5Q29kZSI6IlVBIn19LCJzdWIiOiJkaWQ6ZXRocjoweDdhYzA4MGY2NjA3NDA1NzA1YWVkNzk2NzU3ODk3MDFhNDhjNzZmNTUiLCJuYmYiOjE3MDkxNTk3MTEsImlzcyI6ImRpZDprZXk6ejZNa3RHcFpudzhOdEFqbXZRZHN5aU1BSHdDSll6cTVrQkFTMnlXeW9YMURWb0ZlIn0.VWQKMqFoZvpGzXheDV3H9N7XaVEe4E0jmQgRQ3isKfyJwHPQm5I0W77nRimYyd4Km9iz4UUTWhVrkXHVffj4Cw'
+      jwt: 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiVmVyaWZpYWJsZUlkZW50aXR5Q3JlZGVudGlhbCIsIlZlcmlmaWFibGVHZW5kZXJDcmVkZW50aWFsIiwiVmVyaWZpYWJsZUFnZUNyZWRlbnRpYWwiXSwiY3JlZGVudGlhbFN1YmplY3QiOnsidW5pcXVlIjp0cnVlLCJhZ2UiOnsibWluIjozMH0sImdlbmRlciI6IkZlbWFsZSJ9fSwic3ViIjoiZGlkOmV0aHI6MHg3YWMwODBmNjYwNzQwNTcwNWFlZDc5Njc1Nzg5NzAxYTQ4Yzc2ZjU1IiwibmJmIjoxNzEzMTkwMDYzLCJpc3MiOiJkaWQ6a2V5Ono2TWt0R3Babnc4TnRBam12UWRzeWlNQUh3Q0pZenE1a0JBUzJ5V3lvWDFEVm9GZSJ9.X5bvv4aKjsEj4HAwi4lbgYkjTijJeHTJbJeHZ1tyRRa7_EZ6Kb1WfoiyUCKCbi1HnAl6WMK9Ty1hL4MzlDslAQ'
     }
   }
 
-  // TODO: re-generate
   const testLocationCertificateNG = {
     credentialSubject: {
       countryCode: 'NG',
@@ -130,17 +128,52 @@ describe('goodidAPI', () => {
     issuer: { id: 'did:key:z6MktGpZnw8NtAjmvQdsyiMAHwCJYzq5kBAS2yWyoX1DVoFe' },
     type: ['VerifiableCredential', 'VerifiableLocationCredential'],
     '@context': ['https://www.w3.org/2018/credentials/v1'],
-    issuanceDate: '2024-02-28T22:35:11.000Z',
+    issuanceDate: '2024-04-15T14:07:43.000Z',
     proof: {
       type: 'JwtProof2020',
-      jwt: 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiVmVyaWZpYWJsZUxvY2F0aW9uQ3JlZGVudGlhbCJdLCJjcmVkZW50aWFsU3ViamVjdCI6eyJjb3VudHJ5Q29kZSI6IlVBIn19LCJzdWIiOiJkaWQ6ZXRocjoweDdhYzA4MGY2NjA3NDA1NzA1YWVkNzk2NzU3ODk3MDFhNDhjNzZmNTUiLCJuYmYiOjE3MDkxNTk3MTEsImlzcyI6ImRpZDprZXk6ejZNa3RHcFpudzhOdEFqbXZRZHN5aU1BSHdDSll6cTVrQkFTMnlXeW9YMURWb0ZlIn0.VWQKMqFoZvpGzXheDV3H9N7XaVEe4E0jmQgRQ3isKfyJwHPQm5I0W77nRimYyd4Km9iz4UUTWhVrkXHVffj4Cw'
+      jwt: 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiVmVyaWZpYWJsZUxvY2F0aW9uQ3JlZGVudGlhbCJdLCJjcmVkZW50aWFsU3ViamVjdCI6eyJjb3VudHJ5Q29kZSI6Ik5HIn19LCJzdWIiOiJkaWQ6ZXRocjoweDdhYzA4MGY2NjA3NDA1NzA1YWVkNzk2NzU3ODk3MDFhNDhjNzZmNTUiLCJuYmYiOjE3MTMxOTAwNjMsImlzcyI6ImRpZDprZXk6ejZNa3RHcFpudzhOdEFqbXZRZHN5aU1BSHdDSll6cTVrQkFTMnlXeW9YMURWb0ZlIn0.ByYgCor62J7DhCiO8-DbDGm77c-0Qtf1LtSHrorm0ff8qhx2fg3gbQoJJk19nF7YaPSniqnc0qsmMCRf1EYICg'
+    }
+  }
+
+  const testLocationCertificateNotExists = {
+    credentialSubject: {
+      countryCode: 'NG',
+      id: 'did:ethr:0xa3584908866fa4c8d67b7818b898ffd129c5c97d'
+    },
+    issuer: { id: 'did:key:z6MktGpZnw8NtAjmvQdsyiMAHwCJYzq5kBAS2yWyoX1DVoFe' },
+    type: ['VerifiableCredential', 'VerifiableLocationCredential'],
+    '@context': ['https://www.w3.org/2018/credentials/v1'],
+    issuanceDate: '2024-04-15T14:45:02.000Z',
+    proof: {
+      type: 'JwtProof2020',
+      jwt: 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiVmVyaWZpYWJsZUxvY2F0aW9uQ3JlZGVudGlhbCJdLCJjcmVkZW50aWFsU3ViamVjdCI6eyJjb3VudHJ5Q29kZSI6Ik5HIn19LCJzdWIiOiJkaWQ6ZXRocjoweGEzNTg0OTA4ODY2ZmE0YzhkNjdiNzgxOGI4OThmZmQxMjljNWM5N2QiLCJuYmYiOjE3MTMxOTIzMDIsImlzcyI6ImRpZDprZXk6ejZNa3RHcFpudzhOdEFqbXZRZHN5aU1BSHdDSll6cTVrQkFTMnlXeW9YMURWb0ZlIn0.nn7D0Y0q4v5rLo9vccwtFYlMXidNeKtCHUFWkOmpn1c4zI3SBeu5HlmJwPLxNSz0y7SL33tFEntq4QcONwJABQ'
+    }
+  }
+
+  const testIdentityCertificateNotExists = {
+    credentialSubject: {
+      unique: true,
+      age: { min: 30 },
+      gender: 'Female',
+      id: 'did:ethr:0xa3584908866fa4c8d67b7818b898ffd129c5c97d'
+    },
+    issuer: { id: 'did:key:z6MktGpZnw8NtAjmvQdsyiMAHwCJYzq5kBAS2yWyoX1DVoFe' },
+    type: [
+      'VerifiableCredential',
+      'VerifiableIdentityCredential',
+      'VerifiableGenderCredential',
+      'VerifiableAgeCredential'
+    ],
+    '@context': ['https://www.w3.org/2018/credentials/v1'],
+    issuanceDate: '2024-04-15T14:45:02.000Z',
+    proof: {
+      type: 'JwtProof2020',
+      jwt: 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiVmVyaWZpYWJsZUlkZW50aXR5Q3JlZGVudGlhbCIsIlZlcmlmaWFibGVHZW5kZXJDcmVkZW50aWFsIiwiVmVyaWZpYWJsZUFnZUNyZWRlbnRpYWwiXSwiY3JlZGVudGlhbFN1YmplY3QiOnsidW5pcXVlIjp0cnVlLCJhZ2UiOnsibWluIjozMH0sImdlbmRlciI6IkZlbWFsZSJ9fSwic3ViIjoiZGlkOmV0aHI6MHhhMzU4NDkwODg2NmZhNGM4ZDY3Yjc4MThiODk4ZmZkMTI5YzVjOTdkIiwibmJmIjoxNzEzMTkyMzAyLCJpc3MiOiJkaWQ6a2V5Ono2TWt0R3Babnc4TnRBam12UWRzeWlNQUh3Q0pZenE1a0JBUzJ5V3lvWDFEVm9GZSJ9.Dwd5PvHoQazpusQfI9WATnnNmG7fOCkFjBZbwyHT9KmvM655CXAAR9U6rP7iQeLnVbwb-Ai6gRiHe6gIZYsABA'
     }
   }
 
   const testVideoFilename = '0x7ac080f6607405705aed79675789701a48c76f55.webm'
-
-  const deleteTestFile = () =>
-    s3.send(new DeleteObjectCommand({ Key: testVideoFilename, Bucket: REDTENT_BUCKET })).catch(noop)
+  const testVideoFilenameNotExists = '0xa3584908866fa4c8d67b7818b898ffd129c5c97d.webm'
 
   beforeAll(async () => {
     jest.setTimeout(50000)
@@ -159,8 +192,7 @@ describe('goodidAPI', () => {
 
     const buffer = await getFileContents(join(__dirname, 'redtent.webm'))
 
-    await deleteTestFile()
-    await s3.send(new PutObjectCommand({ Key: testVideoFilename, Bucket: REDTENT_BUCKET, Body: buffer })).catch(noop)
+    await s3.send(new PutObjectCommand({ Key: testVideoFilename, Bucket: REDTENT_BUCKET, Body: buffer }))
 
     console.log('goodidAPI: server ready')
     console.log({ server })
@@ -182,7 +214,6 @@ describe('goodidAPI', () => {
     awsClient.detectFaces = detectFaces
 
     await storage.deleteUser({ identifier: creds.address })
-    await deleteTestFile()
 
     await new Promise(res =>
       server.close(err => {
@@ -475,11 +506,12 @@ describe('goodidAPI', () => {
   })
 
   test('Redtent register: should fail if file does not exists', async () => {
-    await deleteTestFile()
-
     await request(server)
       .post(registerRedtentUri)
-      .send({ certificates: [testIdentityCertificate, testLocationCertificateNG], videoFilename: testVideoFilename })
+      .send({
+        certificates: [testIdentityCertificateNotExists, testLocationCertificateNotExists],
+        videoFilename: testVideoFilenameNotExists
+      })
       .expect(400, {
         success: false,
         error: 'Uploaded file does not exist at S3 bucket'
