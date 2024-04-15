@@ -12,8 +12,7 @@ import createEnrollmentProcessor from '../verification/processor/EnrollmentProce
 import { enrollmentNotFoundMessage } from '../verification/utils/constants'
 import { normalizeIdentifiers, verifyIdentifier } from '../verification/utils/utils'
 
-// TODO: uncomment once implemented at wallet side
-// import MultiWallet from '../blockchain/MultiWallet'
+import MultiWallet from '../blockchain/MultiWallet'
 
 import { wrapAsync } from '../utils/helpers'
 import requestRateLimiter from '../utils/requestRateLimiter'
@@ -324,21 +323,18 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
           throw new Error('Failed to verify: missing file name of the video uploaded to the bucket')
         }
 
-        const { unique, /*gender, */ countryCode, account } = await utils.aggregateCredentials(certificates)
+        const { unique, gender, countryCode, account } = await utils.aggregateCredentials(certificates)
 
         if (!unique) {
           throw new Error('Failed to verify: certificates are missing uniqueness credential')
         }
 
-        if (countryCode !== 'NG') {
-          throw new Error('Failed to verify: allowed for accounts from Nigeria only')
-          // TODO: verify user gender - howto ? @sirpy
+        if (countryCode !== 'NG' || gender !== 'Female') {
+          throw new Error('Failed to verify: allowed for the Nigerian accounts owned by women only')
         }
 
         await utils.checkS3AccountVideo(videoFilename, account)
-
-        // TODO: uncomment once implemented at wallet side
-        // MultiWallet.registerRedtent(account)
+        await MultiWallet.registerRedtent(account, log)
 
         res.status(200).json({ success: true })
       } catch (exception) {

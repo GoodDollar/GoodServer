@@ -457,7 +457,7 @@ describe('goodidAPI', () => {
       .send({ certificates: [testIdentityCertificate, testLocationCertificate], videoFilename: testVideoFilename })
       .expect(400, {
         success: false,
-        error: 'Failed to verify: allowed for accounts from Nigeria only'
+        error: 'Failed to verify: allowed for the Nigerian accounts owned by women only'
       })
   })
 
