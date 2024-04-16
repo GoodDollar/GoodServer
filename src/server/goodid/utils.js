@@ -133,13 +133,9 @@ export class GoodIDUtils {
       throw new Error('Uploaded file name does not match account')
     }
 
-    const { ContentType: contentType } = await getS3Metadata(videoFilename, REDTENT_BUCKET).catch(() => {
+    await getS3Metadata(videoFilename, REDTENT_BUCKET).catch(() => {
       throw new Error('Uploaded file does not exist at S3 bucket')
     })
-
-    if (!contentType.match(/^video\//i)) {
-      throw new Error('Non-video file was uploaded or file contents broken')
-    }
   }
 }
 

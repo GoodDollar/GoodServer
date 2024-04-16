@@ -6,29 +6,42 @@ import { once } from 'lodash'
 
 import conf from '../server.config'
 
-export const REDTENT_BUCKET = 'redtent'
+const getConfig = (service: 'ses' | 's3' | 'rek') => {
+  const { awsSesAccessKey, awsSesSecretAccessKey, awsSesRegion, awsS3Region } = conf
+  let region
 
-export const getS3Client = once(
-  () =>
-    new S3Client({
-      region: 'us-east-1',
-      signer: { sign: async request => request }
-    })
-)
+  switch (service) {
+    case 'ses':
+    case 'rek':
+      region = awsSesRegion
+      break
+    case 's3':
+      region = awsS3Region
+      break
+    default:
+      throw new Error(`AWS service ${service} not supported`)
+  }
 
-export const getRecognitionClient = once(() => {
-  const { awsSesAccessKey, awsSesSecretAccessKey, awsSesRegion } = conf
-
-  if (!awsSesAccessKey || !awsSesRegion || !awsSesSecretAccessKey) {
+  if (!awsSesAccessKey || !awsSesSecretAccessKey || !region) {
     throw new Error('Missing AWS configuration')
   }
 
-  return new REK({
-    region: awsSesRegion,
+  return {
     accessKeyId: awsSesAccessKey,
-    secretAccessKey: awsSesSecretAccessKey
-  })
+    secretAccessKey: awsSesSecretAccessKey,
+    region
+  }
+}
+
+export const REDTENT_BUCKET = 'redtent'
+
+export const getS3Client = once(() => {
+  const { region, ...credentials } = getConfig('s3')
+
+  return new S3Client({ region, credentials })
 })
+
+export const getRecognitionClient = once(() => new REK(getConfig('rek')))
 
 export const detectFaces = async imageBase64 => {
   const rekognition = getRecognitionClient()
