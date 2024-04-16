@@ -1,9 +1,5 @@
 import { get } from 'lodash'
 import { sha3 } from 'web3-utils'
-import { readFile } from 'fs'
-import { promisify } from 'util'
-import { join } from 'path'
-
 import request from 'supertest'
 import MockAdapter from 'axios-mock-adapter'
 
@@ -18,8 +14,7 @@ import { normalizeIdentifiers } from '../../verification/utils/utils'
 
 import facePhotoMock from './face.json'
 import { getSubjectId } from '../veramo'
-import { REDTENT_BUCKET, getRecognitionClient, getS3Client } from '../aws'
-import { PutObjectCommand } from '@aws-sdk/client-s3'
+import { getRecognitionClient, getS3Client } from '../aws'
 
 describe('goodidAPI', () => {
   let server
@@ -33,14 +28,15 @@ describe('goodidAPI', () => {
   let detectFaces
   let detectFacesMock = jest.fn()
   const awsClient = getRecognitionClient()
-  const s3 = getS3Client()
+
+  let sendCommand
+  let sendCommandMock = jest.fn()
+  const s3Client = getS3Client()
 
   const issueLocationCertificateUri = '/goodid/certificate/location'
   const issueIdentityCertificateUri = '/goodid/certificate/identity'
   const verifyCertificateUri = '/goodid/certificate/verify'
   const registerRedtentUri = '/goodid/redtent'
-
-  const getFileContents = promisify(readFile)
 
   const assertCountryCode =
     code =>
@@ -135,51 +131,16 @@ describe('goodidAPI', () => {
     }
   }
 
-  const testLocationCertificateNotExists = {
-    credentialSubject: {
-      countryCode: 'NG',
-      id: 'did:ethr:0xa3584908866fa4c8d67b7818b898ffd129c5c97d'
-    },
-    issuer: { id: 'did:key:z6MktGpZnw8NtAjmvQdsyiMAHwCJYzq5kBAS2yWyoX1DVoFe' },
-    type: ['VerifiableCredential', 'VerifiableLocationCredential'],
-    '@context': ['https://www.w3.org/2018/credentials/v1'],
-    issuanceDate: '2024-04-15T14:45:02.000Z',
-    proof: {
-      type: 'JwtProof2020',
-      jwt: 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiVmVyaWZpYWJsZUxvY2F0aW9uQ3JlZGVudGlhbCJdLCJjcmVkZW50aWFsU3ViamVjdCI6eyJjb3VudHJ5Q29kZSI6Ik5HIn19LCJzdWIiOiJkaWQ6ZXRocjoweGEzNTg0OTA4ODY2ZmE0YzhkNjdiNzgxOGI4OThmZmQxMjljNWM5N2QiLCJuYmYiOjE3MTMxOTIzMDIsImlzcyI6ImRpZDprZXk6ejZNa3RHcFpudzhOdEFqbXZRZHN5aU1BSHdDSll6cTVrQkFTMnlXeW9YMURWb0ZlIn0.nn7D0Y0q4v5rLo9vccwtFYlMXidNeKtCHUFWkOmpn1c4zI3SBeu5HlmJwPLxNSz0y7SL33tFEntq4QcONwJABQ'
-    }
-  }
-
-  const testIdentityCertificateNotExists = {
-    credentialSubject: {
-      unique: true,
-      age: { min: 30 },
-      gender: 'Female',
-      id: 'did:ethr:0xa3584908866fa4c8d67b7818b898ffd129c5c97d'
-    },
-    issuer: { id: 'did:key:z6MktGpZnw8NtAjmvQdsyiMAHwCJYzq5kBAS2yWyoX1DVoFe' },
-    type: [
-      'VerifiableCredential',
-      'VerifiableIdentityCredential',
-      'VerifiableGenderCredential',
-      'VerifiableAgeCredential'
-    ],
-    '@context': ['https://www.w3.org/2018/credentials/v1'],
-    issuanceDate: '2024-04-15T14:45:02.000Z',
-    proof: {
-      type: 'JwtProof2020',
-      jwt: 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiVmVyaWZpYWJsZUlkZW50aXR5Q3JlZGVudGlhbCIsIlZlcmlmaWFibGVHZW5kZXJDcmVkZW50aWFsIiwiVmVyaWZpYWJsZUFnZUNyZWRlbnRpYWwiXSwiY3JlZGVudGlhbFN1YmplY3QiOnsidW5pcXVlIjp0cnVlLCJhZ2UiOnsibWluIjozMH0sImdlbmRlciI6IkZlbWFsZSJ9fSwic3ViIjoiZGlkOmV0aHI6MHhhMzU4NDkwODg2NmZhNGM4ZDY3Yjc4MThiODk4ZmZkMTI5YzVjOTdkIiwibmJmIjoxNzEzMTkyMzAyLCJpc3MiOiJkaWQ6a2V5Ono2TWt0R3Babnc4TnRBam12UWRzeWlNQUh3Q0pZenE1a0JBUzJ5V3lvWDFEVm9GZSJ9.Dwd5PvHoQazpusQfI9WATnnNmG7fOCkFjBZbwyHT9KmvM655CXAAR9U6rP7iQeLnVbwb-Ai6gRiHe6gIZYsABA'
-    }
-  }
-
   const testVideoFilename = '0x7ac080f6607405705aed79675789701a48c76f55.webm'
-  const testVideoFilenameNotExists = '0xa3584908866fa4c8d67b7818b898ffd129c5c97d.webm'
 
   beforeAll(async () => {
     jest.setTimeout(50000)
 
     detectFaces = awsClient.detectFaces
     awsClient.detectFaces = detectFacesMock
+
+    sendCommand = s3Client.send
+    s3Client.send = sendCommandMock
 
     creds = await getCreds(true)
     await storage.addUser({ identifier: creds.address })
@@ -189,10 +150,6 @@ describe('goodidAPI', () => {
 
     fvMock = new MockAdapter(enrollmentProcessor.provider.api.http)
     fvMockHelper = createFvMockHelper(fvMock)
-
-    const buffer = await getFileContents(join(__dirname, 'redtent.webm'))
-
-    await s3.send(new PutObjectCommand({ Key: testVideoFilename, Bucket: REDTENT_BUCKET, Body: buffer }))
 
     console.log('goodidAPI: server ready')
     console.log({ server })
@@ -208,10 +165,12 @@ describe('goodidAPI', () => {
   afterEach(() => {
     fvMock.reset()
     detectFacesMock.mockReset()
+    sendCommandMock.mockReset()
   })
 
   afterAll(async () => {
     awsClient.detectFaces = detectFaces
+    s3Client.send = sendCommand
 
     await storage.deleteUser({ identifier: creds.address })
 
@@ -506,12 +465,11 @@ describe('goodidAPI', () => {
   })
 
   test('Redtent register: should fail if file does not exists', async () => {
+    sendCommandMock.mockRejectedValue()
+
     await request(server)
       .post(registerRedtentUri)
-      .send({
-        certificates: [testIdentityCertificateNotExists, testLocationCertificateNotExists],
-        videoFilename: testVideoFilenameNotExists
-      })
+      .send({ certificates: [testIdentityCertificate, testLocationCertificateNG], videoFilename: testVideoFilename })
       .expect(400, {
         success: false,
         error: 'Uploaded file does not exist at S3 bucket'
@@ -519,6 +477,8 @@ describe('goodidAPI', () => {
   })
 
   test('Redtent register: should register if all certificates and filename matches account, creds are valid, file exists and gender/location are allowed by the pool', async () => {
+    sendCommandMock.mockResolvedValue()
+
     await request(server)
       .post(registerRedtentUri)
       .send({ certificates: [testIdentityCertificate, testLocationCertificateNG], videoFilename: testVideoFilename })
