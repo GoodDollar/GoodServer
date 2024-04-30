@@ -1,6 +1,5 @@
 import { get } from 'lodash'
 import { sha3 } from 'web3-utils'
-
 import request from 'supertest'
 import MockAdapter from 'axios-mock-adapter'
 
@@ -15,7 +14,7 @@ import { normalizeIdentifiers } from '../../verification/utils/utils'
 
 import facePhotoMock from './face.json'
 import { getSubjectId } from '../veramo'
-import { getRecognitionClient } from '../aws'
+import { getRecognitionClient, getS3Client } from '../aws'
 
 describe('goodidAPI', () => {
   let server
@@ -30,9 +29,14 @@ describe('goodidAPI', () => {
   let detectFacesMock = jest.fn()
   const awsClient = getRecognitionClient()
 
+  let sendCommand
+  let sendCommandMock = jest.fn()
+  const s3Client = getS3Client()
+
   const issueLocationCertificateUri = '/goodid/certificate/location'
   const issueIdentityCertificateUri = '/goodid/certificate/identity'
   const verifyCertificateUri = '/goodid/certificate/verify'
+  const registerRedtentUri = '/goodid/redtent'
 
   const assertCountryCode =
     code =>
@@ -75,7 +79,7 @@ describe('goodidAPI', () => {
     mobile: '+5531971416384'
   }
 
-  const testCertificate = {
+  const testLocationCertificate = {
     credentialSubject: {
       countryCode: 'UA',
       id: 'did:ethr:0x7ac080f6607405705aed79675789701a48c76f55'
@@ -90,11 +94,53 @@ describe('goodidAPI', () => {
     }
   }
 
+  const testIdentityCertificate = {
+    credentialSubject: {
+      unique: true,
+      age: { min: 30 },
+      gender: 'Female',
+      id: 'did:ethr:0x7ac080f6607405705aed79675789701a48c76f55'
+    },
+    issuer: { id: 'did:key:z6MktGpZnw8NtAjmvQdsyiMAHwCJYzq5kBAS2yWyoX1DVoFe' },
+    type: [
+      'VerifiableCredential',
+      'VerifiableIdentityCredential',
+      'VerifiableGenderCredential',
+      'VerifiableAgeCredential'
+    ],
+    '@context': ['https://www.w3.org/2018/credentials/v1'],
+    issuanceDate: '2024-04-15T14:07:43.000Z',
+    proof: {
+      type: 'JwtProof2020',
+      jwt: 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiVmVyaWZpYWJsZUlkZW50aXR5Q3JlZGVudGlhbCIsIlZlcmlmaWFibGVHZW5kZXJDcmVkZW50aWFsIiwiVmVyaWZpYWJsZUFnZUNyZWRlbnRpYWwiXSwiY3JlZGVudGlhbFN1YmplY3QiOnsidW5pcXVlIjp0cnVlLCJhZ2UiOnsibWluIjozMH0sImdlbmRlciI6IkZlbWFsZSJ9fSwic3ViIjoiZGlkOmV0aHI6MHg3YWMwODBmNjYwNzQwNTcwNWFlZDc5Njc1Nzg5NzAxYTQ4Yzc2ZjU1IiwibmJmIjoxNzEzMTkwMDYzLCJpc3MiOiJkaWQ6a2V5Ono2TWt0R3Babnc4TnRBam12UWRzeWlNQUh3Q0pZenE1a0JBUzJ5V3lvWDFEVm9GZSJ9.X5bvv4aKjsEj4HAwi4lbgYkjTijJeHTJbJeHZ1tyRRa7_EZ6Kb1WfoiyUCKCbi1HnAl6WMK9Ty1hL4MzlDslAQ'
+    }
+  }
+
+  const testLocationCertificateNG = {
+    credentialSubject: {
+      countryCode: 'NG',
+      id: 'did:ethr:0x7ac080f6607405705aed79675789701a48c76f55'
+    },
+    issuer: { id: 'did:key:z6MktGpZnw8NtAjmvQdsyiMAHwCJYzq5kBAS2yWyoX1DVoFe' },
+    type: ['VerifiableCredential', 'VerifiableLocationCredential'],
+    '@context': ['https://www.w3.org/2018/credentials/v1'],
+    issuanceDate: '2024-04-15T14:07:43.000Z',
+    proof: {
+      type: 'JwtProof2020',
+      jwt: 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiVmVyaWZpYWJsZUxvY2F0aW9uQ3JlZGVudGlhbCJdLCJjcmVkZW50aWFsU3ViamVjdCI6eyJjb3VudHJ5Q29kZSI6Ik5HIn19LCJzdWIiOiJkaWQ6ZXRocjoweDdhYzA4MGY2NjA3NDA1NzA1YWVkNzk2NzU3ODk3MDFhNDhjNzZmNTUiLCJuYmYiOjE3MTMxOTAwNjMsImlzcyI6ImRpZDprZXk6ejZNa3RHcFpudzhOdEFqbXZRZHN5aU1BSHdDSll6cTVrQkFTMnlXeW9YMURWb0ZlIn0.ByYgCor62J7DhCiO8-DbDGm77c-0Qtf1LtSHrorm0ff8qhx2fg3gbQoJJk19nF7YaPSniqnc0qsmMCRf1EYICg'
+    }
+  }
+
+  const testVideoFilename = '0x7ac080f6607405705aed79675789701a48c76f55.webm'
+
   beforeAll(async () => {
     jest.setTimeout(50000)
 
     detectFaces = awsClient.detectFaces
     awsClient.detectFaces = detectFacesMock
+
+    sendCommand = s3Client.send
+    s3Client.send = sendCommandMock
 
     creds = await getCreds(true)
     await storage.addUser({ identifier: creds.address })
@@ -119,10 +165,12 @@ describe('goodidAPI', () => {
   afterEach(() => {
     fvMock.reset()
     detectFacesMock.mockReset()
+    sendCommandMock.mockReset()
   })
 
   afterAll(async () => {
     awsClient.detectFaces = detectFaces
+    s3Client.send = sendCommand
 
     await storage.deleteUser({ identifier: creds.address })
 
@@ -136,7 +184,7 @@ describe('goodidAPI', () => {
 
   test('GoodID endpoints returns 401 without credentials', async () => {
     await Promise.all(
-      [issueLocationCertificateUri, issueIdentityCertificateUri, verifyCertificateUri].map(uri =>
+      [issueLocationCertificateUri, issueIdentityCertificateUri].map(uri =>
         request(server).post(uri).send({}).expect(401)
       )
     )
@@ -331,7 +379,7 @@ describe('goodidAPI', () => {
   })
 
   test('Verify certificate: should fail on empty data', async () => {
-    await request(server).post(verifyCertificateUri).send({}).set('Authorization', `Bearer ${token}`).expect(400, {
+    await request(server).post(verifyCertificateUri).send({}).expect(400, {
       success: false,
       error: 'Failed to verify credential: missing certificate data'
     })
@@ -341,11 +389,99 @@ describe('goodidAPI', () => {
     await request(server)
       .post(verifyCertificateUri)
       .send({
-        certificate: testCertificate
+        certificate: testLocationCertificate
       })
-      .set('Authorization', `Bearer ${token}`)
       .expect(200, {
         success: true
       })
+  })
+
+  test('Redtent register: should fail on empty data', async () => {
+    await request(server).post(registerRedtentUri).send({}).expect(400, {
+      success: false,
+      error: 'Failed to verify: missing certificate data'
+    })
+
+    await request(server)
+      .post(registerRedtentUri)
+      .send({ certificates: [testLocationCertificate] })
+      .expect(400, {
+        success: false,
+        error: 'Failed to verify: missing file name of the video uploaded to the bucket'
+      })
+  })
+
+  test('Redtent register: should fail with certificates issued for different accounts', async () => {
+    const { credentialSubject } = testLocationCertificate
+
+    const mutatedClone = {
+      ...testLocationCertificate,
+      credentialSubject: {
+        ...credentialSubject,
+        id: credentialSubject.id.replace(/6f55$/, '7066')
+      }
+    }
+
+    await request(server)
+      .post(registerRedtentUri)
+      .send({ certificates: [testLocationCertificate, mutatedClone], videoFilename: testVideoFilename })
+      .expect(400, {
+        success: false,
+        error: 'Certificates issued for the different accounts'
+      })
+  })
+
+  test('Redtent register: should fail without identity certificate', async () => {
+    await request(server)
+      .post(registerRedtentUri)
+      .send({ certificates: [testLocationCertificate], videoFilename: testVideoFilename })
+      .expect(400, {
+        success: false,
+        error: 'Failed to verify: certificates are missing uniqueness credential'
+      })
+  })
+
+  test('Redtent register: should fail with if location/gender not allowed by the pool', async () => {
+    await request(server)
+      .post(registerRedtentUri)
+      .send({ certificates: [testIdentityCertificate, testLocationCertificate], videoFilename: testVideoFilename })
+      .expect(400, {
+        success: false,
+        error: 'Failed to verify: allowed for the Nigerian accounts owned by women only'
+      })
+  })
+
+  test('Redtent register: should fail if filename does not match account', async () => {
+    await request(server)
+      .post(registerRedtentUri)
+      .send({
+        certificates: [testIdentityCertificate, testLocationCertificateNG],
+        videoFilename: testVideoFilename.replace(/6f55/i, '7066')
+      })
+      .expect(400, {
+        success: false,
+        error: 'Uploaded file name does not match account'
+      })
+  })
+
+  test('Redtent register: should fail if file does not exists', async () => {
+    sendCommandMock.mockRejectedValue()
+
+    await request(server)
+      .post(registerRedtentUri)
+      .send({ certificates: [testIdentityCertificate, testLocationCertificateNG], videoFilename: testVideoFilename })
+      .expect(400, {
+        success: false,
+        error: 'Uploaded file does not exist at S3 bucket'
+      })
+  })
+
+  test('Redtent register: should register if all certificates and filename matches account, creds are valid, file exists and gender/location are allowed by the pool', async () => {
+    sendCommandMock.mockResolvedValue()
+
+    await request(server)
+      .post(registerRedtentUri)
+      .send({ certificates: [testIdentityCertificate, testLocationCertificateNG], videoFilename: testVideoFilename })
+      .expect(200, { success: true })
   })
 })

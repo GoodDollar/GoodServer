@@ -28,7 +28,9 @@ export default once(() => {
     11155111: {
       network_id: 11155111,
       web3Transport: 'HttpProvider',
-      httpWeb3Provider: mainnetRpc ? mainnetRpc : `https://sepolia.gateway.tenderly.co`,
+      httpWeb3Provider: mainnetRpc
+        ? mainnetRpc
+        : `https://ethereum-sepolia-rpc.publicnode.com,https://rpc2.sepolia.org,https://eth-sepolia.public.blastapi.io,https://sepolia.drpc.org,https://sepolia.gateway.tenderly.co`,
       websocketWeb3Provider: ''
     },
     5: {

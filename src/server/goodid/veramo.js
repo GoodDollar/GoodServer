@@ -11,6 +11,8 @@ export const Credential = Object.freeze({
 
 export const getSubjectId = walletAddress => `did:ethr:${walletAddress}`
 
+export const getSubjectAccount = subjectId => subjectId.replace(/^did:ethr:/, '')
+
 export const getAgent = once(async () => {
   const [
     { createAgent },

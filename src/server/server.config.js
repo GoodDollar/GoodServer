@@ -592,6 +592,12 @@ const conf = convict({
     default: 'VerificationEmail',
     env: 'AWS_SES_TEMPLATE_NAME'
   },
+  awsS3Region: {
+    doc: 'aws region for S3 file uploads',
+    format: String,
+    default: 'us-east-1',
+    env: 'AWS_S3_REGION'
+  },
   cfWorkerVerifyJwtSecret: {
     doc: 'Cloudflare verify worker JWT secret',
     format: String,
