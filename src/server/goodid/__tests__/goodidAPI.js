@@ -12,6 +12,8 @@ import createFvMockHelper from '../../verification/api/__tests__/__util__'
 import { enrollmentNotFoundMessage } from '../../verification/utils/constants'
 import { normalizeIdentifiers } from '../../verification/utils/utils'
 
+import GoodIDUtils from '../utils'
+
 import facePhotoMock from './face.json'
 import { getSubjectId } from '../veramo'
 import { getRecognitionClient, getS3Client } from '../aws'
@@ -25,6 +27,8 @@ describe('goodidAPI', () => {
   let fvMockHelper
   const enrollmentProcessor = createEnrollmentProcessor(storage)
 
+  let utilsHttpMock
+
   let detectFaces
   let detectFacesMock = jest.fn()
   const awsClient = getRecognitionClient()
@@ -37,6 +41,12 @@ describe('goodidAPI', () => {
   const issueIdentityCertificateUri = '/goodid/certificate/identity'
   const verifyCertificateUri = '/goodid/certificate/verify'
   const registerRedtentUri = '/goodid/redtent'
+
+  const mockReverseGeoCoding = response =>
+    utilsHttpMock.onGet('https://nominatim.openstreetmap.org/reverse').reply(200, response)
+
+  const mockGeoIP = response =>
+    utilsHttpMock.onGet(/^https:\/\/get\.geojs\.io\/v1\/ip\/country\//i).reply(200, response)
 
   const assertCountryCode =
     code =>
@@ -58,6 +68,20 @@ describe('goodidAPI', () => {
   const testIPUA = '178.158.235.10'
   const testIPBR = '130.185.238.1'
 
+  const testIPResponseUA = {
+    ip: '178.158.235.10',
+    name: 'Ukraine',
+    country: 'UA',
+    country_3: 'UKR'
+  }
+
+  const testIPResponseBR = {
+    ip: '130.185.238.1',
+    name: 'Brazil',
+    country: 'BR',
+    country_3: 'BRA'
+  }
+
   const testLocationPayloadUA = {
     timestamp: 1707313563,
     coords: {
@@ -69,6 +93,34 @@ describe('goodidAPI', () => {
       heading: null,
       speed: null
     }
+  }
+
+  const testLocationResponseUA = {
+    place_id: 203448753,
+    licence: 'Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright',
+    osm_type: 'way',
+    osm_id: 200457494,
+    lat: '50.32483516659043',
+    lon: '34.43836126361775',
+    category: 'highway',
+    type: 'secondary',
+    place_rank: 26,
+    importance: 0.10000999999999993,
+    addresstype: 'road',
+    name: 'Т-17-05',
+    display_name: 'Т-17-05, Husarshchyna, Комишанська сільська громада, Okhtyrka Raion, Sumy Oblast, 42720, Ukraine',
+    address: {
+      road: 'Т-17-05',
+      village: 'Husarshchyna',
+      municipality: 'Комишанська сільська громада',
+      district: 'Okhtyrka Raion',
+      state: 'Sumy Oblast',
+      'ISO3166-2-lvl4': 'UA-59',
+      postcode: '42720',
+      country: 'Ukraine',
+      country_code: 'ua'
+    },
+    boundingbox: ['50.3073554', '50.3462975', '34.4033829', '34.4677591']
   }
 
   const testUserPayloadUA = {
@@ -151,6 +203,8 @@ describe('goodidAPI', () => {
     fvMock = new MockAdapter(enrollmentProcessor.provider.api.http)
     fvMockHelper = createFvMockHelper(fvMock)
 
+    utilsHttpMock = new MockAdapter(GoodIDUtils.http)
+
     console.log('goodidAPI: server ready')
     console.log({ server })
   })
@@ -164,6 +218,7 @@ describe('goodidAPI', () => {
 
   afterEach(() => {
     fvMock.reset()
+    utilsHttpMock.reset()
     detectFacesMock.mockReset()
     sendCommandMock.mockReset()
   })
@@ -202,6 +257,9 @@ describe('goodidAPI', () => {
   })
 
   test('Location certificate: should fail if geo data does not match IP', async () => {
+    mockReverseGeoCoding(testLocationResponseUA)
+    mockGeoIP(testIPResponseBR)
+
     await request(server)
       .post(issueLocationCertificateUri)
       .send({
@@ -216,6 +274,9 @@ describe('goodidAPI', () => {
   })
 
   test('Location certificate: should issue from geo data', async () => {
+    mockReverseGeoCoding(testLocationResponseUA)
+    mockGeoIP(testIPResponseUA)
+
     await request(server)
       .post(issueLocationCertificateUri)
       .send({
@@ -228,6 +289,9 @@ describe('goodidAPI', () => {
   })
 
   test('Location certificate: should ignore mobile if not match', async () => {
+    mockReverseGeoCoding(testLocationResponseUA)
+    mockGeoIP(testIPResponseUA)
+
     await request(server)
       .post(issueLocationCertificateUri)
       .send({
@@ -241,6 +305,9 @@ describe('goodidAPI', () => {
   })
 
   test('Location certificate: should ignore mobile if not verified', async () => {
+    mockReverseGeoCoding(testLocationResponseUA)
+    mockGeoIP(testIPResponseUA)
+
     await setUserData({
       mobile: testUserPayloadBR.mobile,
       smsValidated: false
@@ -259,6 +326,9 @@ describe('goodidAPI', () => {
   })
 
   test('Location certificate: should issue from mobile ignoring geo data if it matches and verified', async () => {
+    mockReverseGeoCoding(testLocationResponseUA)
+    mockGeoIP(testIPResponseUA)
+
     await setUserData({
       mobile: testUserPayloadBR.mobile,
       smsValidated: true
@@ -276,6 +346,10 @@ describe('goodidAPI', () => {
       .expect(assertCountryCode('BR'))
 
     // should not throw because of IP => GEO mismatch
+    utilsHttpMock.reset()
+    mockReverseGeoCoding(testLocationResponseUA)
+    mockGeoIP(testIPResponseBR)
+
     await setUserData({
       mobile: testUserPayloadUA.mobile
     })
