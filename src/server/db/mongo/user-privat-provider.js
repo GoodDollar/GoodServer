@@ -195,7 +195,7 @@ class UserPrivate {
   async getTask(taskName, filters): Promise<DelayedTaskRecord> {
     const { taskModel } = this
     this.logger.debug('Getting task', { taskName, filters })
-    return taskModel.findOne({ taskName, ...filters })
+    return taskModel.findOne({ taskName, ...filters }).lean()
   }
   /**
    * Enqueue delayed task to the user's tasks queue
