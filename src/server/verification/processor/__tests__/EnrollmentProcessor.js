@@ -19,6 +19,7 @@ const updateUserMock = jest.fn()
 const enqueueTaskMock = jest.fn()
 const hasTasksQueuedMock = jest.fn()
 const failDelayedTasksMock = jest.fn()
+const completeDelayedTasksMock = jest.fn()
 const cancelTasksQueuedMock = jest.fn()
 const removeDelayedTasksMock = jest.fn()
 const fetchTasksForProcessingMock = jest.fn()
@@ -40,6 +41,7 @@ const storageMock = {
   removeDelayedTasks: removeDelayedTasksMock,
   unlockDelayedTasks: unlockDelayedTasksMock,
   failDelayedTasks: failDelayedTasksMock,
+  completeDelayedTasks: completeDelayedTasksMock,
   cancelTasksQueued: cancelTasksQueuedMock
 }
 
@@ -94,11 +96,10 @@ describe('EnrollmentProcessor', () => {
     invokeMap(
       [
         updateUserMock,
-
         fetchTasksForProcessingMock,
         failDelayedTasksMock,
+        completeDelayedTasksMock,
         removeDelayedTasksMock,
-
         topWalletMock,
         removeWhitelistedMock
       ],
