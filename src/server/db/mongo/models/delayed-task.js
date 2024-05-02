@@ -48,6 +48,11 @@ export const DelayedTaskSchema = new Schema({
     // lock id to implement immediately locking using two queries as findAndModify could process only one record
     type: String,
     index: true
+  },
+  updatedAt: {
+    // date of creation (value to determine are we're ready to remove enrollment or not)
+    type: Date,
+    default: Date.now
   }
 })
 

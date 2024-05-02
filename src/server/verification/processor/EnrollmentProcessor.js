@@ -232,7 +232,8 @@ class EnrollmentProcessor {
       log.info('Enqueued disposal tasks fetched and ready to processing', {
         enqueuedTasksCount,
         disposeBatchSize,
-        authenticationPeriod
+        authenticationPeriod,
+        enqueuedAtFilters
       })
 
       await chunkedDisposalTasks.reduce(
@@ -284,7 +285,7 @@ class EnrollmentProcessor {
     )
 
     if (tasksSucceeded.length) {
-      await storage.removeDelayedTasks(tasksSucceeded)
+      await storage.completeDelayedTasks(tasksSucceeded)
     }
 
     if (tasksFailed.length) {
