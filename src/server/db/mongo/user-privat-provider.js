@@ -90,10 +90,7 @@ class UserPrivate {
    * @returns {object || null}
    */
   async getUserField(identifier: string, field: string): string {
-    const result = await this.model
-      .findOne({ identifier })
-      .select(field)
-      .lean()
+    const result = await this.model.findOne({ identifier }).select(field).lean()
 
     return result ? result[field] : ''
   }
@@ -197,6 +194,7 @@ class UserPrivate {
 
   async getTask(taskName, filters): Promise<DelayedTaskRecord> {
     const { taskModel } = this
+    this.logger.debug('Getting task', { taskName, filters })
     return taskModel.findOne({ taskName, ...filters })
   }
   /**
@@ -362,7 +360,10 @@ class UserPrivate {
     const { Locked } = DelayedTaskStatus
 
     try {
-      await taskModel.updateMany({ ...filters, status: Locked }, { status: newStatus, lockId: null })
+      await taskModel.updateMany(
+        { ...filters, status: Locked },
+        { status: newStatus, lockId: null, updatedAt: new Date() }
+      )
     } catch (exception) {
       const { message: errMessage } = exception
 
