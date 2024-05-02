@@ -693,6 +693,7 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       try {
         const record = await getDisposalTask(storage, enrollmentIdentifier)
+        log.debug('get face disposal task result:', { enrollmentIdentifier, record })
         return res.json({ ok: 1, record })
       } catch (exception) {
         const { message } = exception
