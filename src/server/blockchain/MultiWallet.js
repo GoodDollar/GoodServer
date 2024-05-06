@@ -131,6 +131,10 @@ class MultiWallet {
   async getAuthenticationPeriod() {
     return this.mainWallet.getAuthenticationPeriod()
   }
+
+  async registerRedtent(account: string, log = multiLogger) {
+    log.error('registerRedtent: not implemented', { account })
+  }
 }
 
 const celoWallet =

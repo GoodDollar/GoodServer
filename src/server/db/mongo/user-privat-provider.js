@@ -25,26 +25,21 @@ class UserPrivate {
    */
   async isDupUserData(user: UserRecord): boolean {
     const { email, mobile } = user
-    let result = null
+
+    const hasDuplicates = filter =>
+      this.model.exists({
+        ...filter,
+        createdDate: {
+          $exists: true
+        }
+      })
 
     if (email) {
-      result = await this.model
-        .findOne({ email, createdDate: { $exists: true } })
-        .select('_id')
-        .lean()
-      if (result) {
-        return true
-      }
+      return hasDuplicates({ email })
     }
 
     if (mobile) {
-      result = await this.model
-        .findOne({ mobile, createdDate: { $exists: true } })
-        .select('_id')
-        .lean()
-      if (result) {
-        return true
-      }
+      return hasDuplicates({ mobile })
     }
 
     return false
@@ -90,10 +85,7 @@ class UserPrivate {
    * @returns {object || null}
    */
   async getUserField(identifier: string, field: string): string {
-    const result = await this.model
-      .findOne({ identifier })
-      .select(field)
-      .lean()
+    const result = await this.model.findOne({ identifier }).select(field).lean()
 
     return result ? result[field] : ''
   }
@@ -197,7 +189,8 @@ class UserPrivate {
 
   async getTask(taskName, filters): Promise<DelayedTaskRecord> {
     const { taskModel } = this
-    return taskModel.findOne({ taskName, ...filters })
+    this.logger.debug('Getting task', { taskName, filters })
+    return taskModel.findOne({ taskName, ...filters }).lean()
   }
   /**
    * Enqueue delayed task to the user's tasks queue
@@ -362,7 +355,10 @@ class UserPrivate {
     const { Locked } = DelayedTaskStatus
 
     try {
-      await taskModel.updateMany({ ...filters, status: Locked }, { status: newStatus, lockId: null })
+      await taskModel.updateMany(
+        { ...filters, status: Locked },
+        { status: newStatus, lockId: null, updatedAt: new Date() }
+      )
     } catch (exception) {
       const { message: errMessage } = exception
 

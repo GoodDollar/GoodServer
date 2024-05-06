@@ -12,6 +12,7 @@ export const appName = description.replace(/\s*server\s*/i, '')
 
 let dotenvPath = '.env'
 
+//for jest make sure we load .env.test
 if (process.env.NODE_ENV === 'test') {
   dotenvPath += '.test'
 
@@ -30,7 +31,7 @@ const conf = convict({
     format: ['production', 'development', 'staging', 'test'],
     default: 'development',
     arg: 'nodeEnv',
-    env: 'NODE_ENV'
+    env: 'ENV'
   },
   version: {
     doc: 'The application version from package.json.',
@@ -591,6 +592,12 @@ const conf = convict({
     default: 'VerificationEmail',
     env: 'AWS_SES_TEMPLATE_NAME'
   },
+  awsS3Region: {
+    doc: 'aws region for S3 file uploads',
+    format: String,
+    default: 'us-east-1',
+    env: 'AWS_S3_REGION'
+  },
   cfWorkerVerifyJwtSecret: {
     doc: 'Cloudflare verify worker JWT secret',
     format: String,
@@ -674,7 +681,7 @@ switch (network) {
   case 'staging':
     networkId = 122
     celoNetworkId = 42220
-    mainNetworkId = 5
+    mainNetworkId = 11155111
     break
   case 'production':
     networkId = 122

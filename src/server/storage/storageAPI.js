@@ -65,7 +65,7 @@ const setup = (app: Router, storage: StorageAPI) => {
     '/user/add',
     wrapAsync(async (req, res) => {
       const { env, skipEmailVerification, disableFaceVerification, optionalMobile } = conf
-      const isNonDevelopMode = process.env.NODE_ENV !== 'development'
+      const isNonDevelopMode = env !== 'development'
       const { cookies, body, log: logger, user: userRecord } = req
       const { user: userPayload = {} } = body
       const { __utmzz: utmString = '' } = cookies
@@ -411,10 +411,10 @@ const setup = (app: Router, storage: StorageAPI) => {
         crmCount > 1
           ? Promise.resolve({ crm: 'okMultiNotDeleted' })
           : crmCount === 0
-          ? Promise.resolve({ crm: 'missingId' })
-          : OnGage.deleteContact(user.crmId, log)
-              .then(() => ({ crm: 'ok' }))
-              .catch(() => ({ crm: 'failed' })),
+            ? Promise.resolve({ crm: 'missingId' })
+            : OnGage.deleteContact(user.crmId, log)
+                .then(() => ({ crm: 'ok' }))
+                .catch(() => ({ crm: 'failed' })),
         fetch(`https://api.fullstory.com/users/v1/individual/${user.identifier}`, {
           headers: { Authorization: `Basic ${conf.fullStoryKey}` },
           method: 'DELETE'
@@ -693,6 +693,7 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       try {
         const record = await getDisposalTask(storage, enrollmentIdentifier)
+        log.debug('get face disposal task result:', { enrollmentIdentifier, record })
         return res.json({ ok: 1, record })
       } catch (exception) {
         const { message } = exception

@@ -113,14 +113,10 @@ describe('verificationAPI', () => {
         assign(enrollmentResult, { resultBlob })
       }
 
-      return request(server)
-        .put(enrollmentUri)
-        .send(payload)
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200, {
-          success: true,
-          enrollmentResult
-        })
+      return request(server).put(enrollmentUri).send(payload).set('Authorization', `Bearer ${token}`).expect(200, {
+        success: true,
+        enrollmentResult
+      })
     }
 
     const testDisposalState = async isDisposing => {
@@ -210,42 +206,25 @@ describe('verificationAPI', () => {
     })
 
     test('Face verification endpoints returns 401 without credentials', async () => {
-      await request(server)
-        .post(licenseUri())
-        .send({})
-        .expect(401)
+      await request(server).post(licenseUri()).send({}).expect(401)
 
-      await request(server)
-        .post(sessionUri)
-        .send({})
-        .expect(401)
+      await request(server).post(sessionUri).send({}).expect(401)
 
-      await request(server)
-        .put(enrollmentUri)
-        .send(payload)
-        .expect(401)
+      await request(server).put(enrollmentUri).send(payload).expect(401)
 
-      await request(server)
-        .get(enrollmentUri)
-        .expect(401)
+      await request(server).get(enrollmentUri).expect(401)
 
-      await request(server)
-        .delete(enrollmentUri)
-        .expect(401)
+      await request(server).delete(enrollmentUri).expect(401)
     })
 
     test('POST /verify/face/license/:licenseType returns 200, success: true and license', async () => {
       Config.zoomProductionMode = true
       helper.mockSuccessLicenseKey(licenseType, licenseKey)
 
-      await request(server)
-        .post(licenseUri())
-        .send({})
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200, {
-          success: true,
-          license: licenseKey
-        })
+      await request(server).post(licenseUri()).send({}).set('Authorization', `Bearer ${token}`).expect(200, {
+        success: true,
+        license: licenseKey
+      })
     })
 
     test('POST /verify/face/license/:licenseType returns 400, success: false if Zoom API fails', async () => {
@@ -254,51 +233,35 @@ describe('verificationAPI', () => {
       Config.zoomProductionMode = true
       helper.mockFailedLicenseKey(licenseType, message)
 
-      await request(server)
-        .post(licenseUri())
-        .send({})
-        .set('Authorization', `Bearer ${token}`)
-        .expect(400, {
-          success: false,
-          error: message
-        })
+      await request(server).post(licenseUri()).send({}).set('Authorization', `Bearer ${token}`).expect(400, {
+        success: false,
+        error: message
+      })
     })
 
     test("POST /verify/face/license/:licenseType returns 400, success: false when license type isn't valid", async () => {
       Config.zoomProductionMode = true
 
-      await request(server)
-        .post(licenseUri('unknown'))
-        .send({})
-        .set('Authorization', `Bearer ${token}`)
-        .expect(400, {
-          success: false,
-          error: 'Invalid input'
-        })
+      await request(server).post(licenseUri('unknown')).send({}).set('Authorization', `Bearer ${token}`).expect(400, {
+        success: false,
+        error: 'Invalid input'
+      })
     })
 
     test('POST /verify/face/license/:licenseType executes in production mode only', async () => {
-      await request(server)
-        .post(licenseUri())
-        .send({})
-        .set('Authorization', `Bearer ${token}`)
-        .expect(400, {
-          success: false,
-          error: 'Cannot obtain production license running non-production mode.'
-        })
+      await request(server).post(licenseUri()).send({}).set('Authorization', `Bearer ${token}`).expect(400, {
+        success: false,
+        error: 'Cannot obtain production license running non-production mode.'
+      })
     })
 
     test('POST /verify/face/session returns 200, success: true and sessionToken', async () => {
       helper.mockSuccessSessionToken(sessionToken)
 
-      await request(server)
-        .post(sessionUri)
-        .send({})
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200, {
-          success: true,
-          sessionToken
-        })
+      await request(server).post(sessionUri).send({}).set('Authorization', `Bearer ${token}`).expect(200, {
+        success: true,
+        sessionToken
+      })
     })
 
     test('POST /verify/face/session returns 400, success: false if Zoom API fails', async () => {
@@ -306,14 +269,10 @@ describe('verificationAPI', () => {
 
       helper.mockFailedSessionToken(message)
 
-      await request(server)
-        .post(sessionUri)
-        .send({})
-        .set('Authorization', `Bearer ${token}`)
-        .expect(400, {
-          success: false,
-          error: message
-        })
+      await request(server).post(sessionUri).send({}).set('Authorization', `Bearer ${token}`).expect(400, {
+        success: false,
+        error: message
+      })
     })
 
     test('PUT /verify/face/:enrollmentIdentifier returns 400 when payload is invalid', async () => {
@@ -479,7 +438,7 @@ describe('verificationAPI', () => {
         .expect(400)
 
       expect(result.body.success).toEqual(false)
-      expect(result.body.error).toStartWith("identifier signer doesn't match user")
+      expect(result.body.error).toStartWith("Identifier signer doesn't match user")
     })
 
     test('DELETE /verify/face/:enrollmentIdentifier returns 200 and success = true if v2 signature is valid', async () => {
@@ -503,10 +462,7 @@ describe('verificationAPI', () => {
       helper.mockEnrollmentFound(enrollmentIdentifier)
       mockWhitelisted()
 
-      await request(server)
-        .delete(enrollmentUri)
-        .query({ signature })
-        .set('Authorization', `Bearer ${token}`)
+      await request(server).delete(enrollmentUri).query({ signature }).set('Authorization', `Bearer ${token}`)
 
       await testDisposalState(true)
     })
