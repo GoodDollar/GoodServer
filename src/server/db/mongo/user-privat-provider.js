@@ -228,7 +228,7 @@ class UserPrivate {
   async hasTasksQueued(taskName: string, filters: object = {}): Promise<boolean> {
     const { taskModel } = this
 
-    return taskModel.exists({ ...filters, taskName }).then(Boolean)
+    return taskModel.exists({ ...filters, taskName, status: DelayedTaskStatus.Pending }).then(Boolean)
   }
 
   /**
