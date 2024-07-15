@@ -329,18 +329,18 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
           throw new Error('Failed to verify: certificates are missing uniqueness credential')
         }
 
-        if (countryCode !== 'NG' || gender !== 'Female') {
-          throw new Error('Failed to verify: allowed for the Nigerian accounts owned by women only')
+        if ((countryCode !== 'NG' && countryCode !== 'CO') || gender !== 'Female') {
+          throw new Error('Failed to verify: allowed for the Nigerian/Colombian accounts owned by women only')
         }
 
         await utils.checkS3AccountVideo(videoFilename, account)
-        await MultiWallet.registerRedtent(account, log)
+        await MultiWallet.registerRedtent(account, countryCode, log)
 
         res.status(200).json({ success: true })
       } catch (exception) {
         const { message } = exception
 
-        log.error('Failed to registed at RedTent:', message, exception, { certificates, videoFilename })
+        log.error('Failed to register at RedTent:', message, exception, { certificates, videoFilename })
         res.status(400).json({ success: false, error: message })
       }
     })

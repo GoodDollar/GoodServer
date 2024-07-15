@@ -663,6 +663,12 @@ const conf = convict({
     format: String,
     env: 'DEFENDER_APISECRET',
     default: ''
+  },
+  redtentPools: {
+    doc: 'ubi pool by country',
+    format: Object,
+    env: 'REDTENT_POOLS',
+    default: {}
   }
 })
 
