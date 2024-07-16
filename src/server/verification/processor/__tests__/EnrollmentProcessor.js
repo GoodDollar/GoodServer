@@ -117,6 +117,7 @@ describe('EnrollmentProcessor', () => {
         fetchTasksForProcessingMock,
         failDelayedTasksMock,
         removeDelayedTasksMock,
+        completeDelayedTasksMock,
         cancelTasksQueuedMock,
         whitelistUserMock,
         whitelistContactMock,
@@ -352,7 +353,7 @@ describe('EnrollmentProcessor', () => {
       expect.objectContaining({ message: helper.serviceErrorMessage })
     )
 
-    expect(removeDelayedTasksMock).toHaveBeenCalledWith(
+    expect(completeDelayedTasksMock).toHaveBeenCalledWith(
       [unexistingEnrollmentIdentifier, enrollmentIdentifier, nonIndexedEnrollmentIdentifier].map(taskId)
     )
   })
