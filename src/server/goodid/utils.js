@@ -23,6 +23,9 @@ export class GoodIDUtils {
   async getCountryCodeFromIPAddress(ip) {
     const countryCode = await this.http
       .get('https://get.geojs.io/v1/ip/country/:ip.json', { params: { ip } })
+      .catch(error => {
+        throw new Error(`Failed to get country code from IP address '${ip}': ${error.message}`)
+      })
       .then(response => get(response, 'country'))
 
     if (!countryCode) {
@@ -40,6 +43,9 @@ export class GoodIDUtils {
           lat: latitude,
           lon: longitude
         }
+      })
+      .catch(error => {
+        throw new Error(`Failed to get country code from coordinates '${latitude}:${longitude}': ${error.message}`)
       })
       .then(response => get(response, 'address.country_code'))
       .then(toUpper)
