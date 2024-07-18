@@ -3,14 +3,13 @@ import { PhoneNumberUtil } from 'google-libphonenumber'
 import { basename, extname } from 'path'
 
 import { substituteParams } from '../utils/axios'
-import logger from '../../imports/logger'
 import { assign, every, flatten, get, isUndefined, negate, pickBy, toUpper, map, uniq } from 'lodash'
 import { getAgent, getSubjectAccount, getSubjectId } from './veramo'
 import { REDTENT_BUCKET, detectFaces, getS3Metadata } from './aws'
 
 export class GoodIDUtils {
   constructor(httpApi, phoneNumberApi, getVeramoAgent) {
-    const http = httpApi.create({})
+    const http = httpApi.create({ headers: { referer: 'https://gooddollar.org' } }) //required for nominatim
     const { request, response } = http.interceptors
 
     request.use(req => substituteParams(req))
@@ -25,7 +24,7 @@ export class GoodIDUtils {
     const countryCode = await this.http
       .get('https://get.geojs.io/v1/ip/country/:ip.json', { params: { ip } })
       .catch(error => {
-        throw new Error(`Failed to get country code from IP address '${ip}': ${error.message}`)
+        throw new Error(`HTTP request Failed to get country code from IP address: ${error.message}`)
       })
       .then(response => get(response, 'country'))
 
@@ -37,34 +36,24 @@ export class GoodIDUtils {
   }
 
   async getCountryCodeFromGeoLocation(latitude, longitude) {
-    const countryCode = await fetch(
-      'https://nominatim.openstreetmap.org/reverse?' +
-        new URLSearchParams({
+    const countryCode = await this.http
+      .get('https://nominatim.openstreetmap.org/reverse', {
+        params: {
           format: 'jsonv2',
           lat: latitude,
           lon: longitude
-        }).toString(),
-      { headers: { referer: 'https://wallet.gooddollar.org' } }
-    )
-      .catch(error => {
-        throw new Error(`Failed to get country code from coordinates': ${error.message}`)
-      })
-      .then(async response => {
-        if (response.status != 200) {
-          logger.warn('Failed reverse geolocation http request', {
-            latitude,
-            longitude,
-            response: await response.text()
-          })
-          throw new Error(`'Failed reverse geolocation http request: ${response.status} ${response.statusText}`)
         }
-        return response.json()
+      })
+      .catch(error => {
+        throw new Error(`HTTP request Failed to get country code from geolocation: ${error.message}`)
       })
       .then(response => get(response, 'address.country_code'))
       .then(toUpper)
 
     if (!countryCode) {
-      throw new Error(`Failed to get country code from coordinates: response is empty or invalid`)
+      throw new Error(
+        `Failed to get country code from coordinates '${latitude}:${longitude}': response is empty or invalid`
+      )
     }
 
     return countryCode

@@ -70,11 +70,12 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
     requestRateLimiter(10, 1),
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
-      const { user, body, log } = req
+      const { user = {}, body, log } = req
       const { mobile } = get(body, 'user', {})
       const { mobile: mobileHash, smsValidated, gdAddress } = user
       const { longitude, latitude } = get(body, 'geoposition.coords', {})
 
+      log.debug('Location certificate request', { longitude, latitude })
       const issueCertificate = async countryCode => {
         const certificate = await utils.issueCertificate(gdAddress, Location, { countryCode })
 
@@ -85,7 +86,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
         if (mobile) {
           const countryCodeFromMobile = utils.getCountryCodeFromMobile(mobile)
           const isPhoneMatchesAndVerified = smsValidated && mobileHash === sha3(mobile)
-
+          log.debug('Got country code from mobile:', { countryCodeFromMobile, isPhoneMatchesAndVerified })
           if (isPhoneMatchesAndVerified) {
             await issueCertificate(countryCodeFromMobile)
             return
@@ -105,6 +106,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
           utils.getCountryCodeFromGeoLocation(latitude, longitude)
         ])
 
+        log.debug('Got country data', { countryCodeFromIP, countryCodeFromLocation })
         if (countryCodeFromIP !== countryCodeFromLocation) {
           throw new Error('Country of Your IP address does not match geolocation data')
         }
