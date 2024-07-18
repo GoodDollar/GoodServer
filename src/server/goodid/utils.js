@@ -36,17 +36,18 @@ export class GoodIDUtils {
   }
 
   async getCountryCodeFromGeoLocation(latitude, longitude) {
-    const countryCode = await this.http
-      .get('https://nominatim.openstreetmap.org/reverse', {
-        params: {
+    const countryCode = await fetch(
+      'https://nominatim.openstreetmap.org/reverse?' +
+        new URLSearchParams({
           format: 'jsonv2',
           lat: latitude,
           lon: longitude
-        }
-      })
+        }).toString()
+    )
       .catch(error => {
         throw new Error(`Failed to get country code from coordinates '${latitude}:${longitude}': ${error.message}`)
       })
+      .then(response => response.json())
       .then(response => get(response, 'address.country_code'))
       .then(toUpper)
 
