@@ -43,10 +43,11 @@ export class GoodIDUtils {
           format: 'jsonv2',
           lat: latitude,
           lon: longitude
-        }).toString()
+        }).toString(),
+      { headers: { referer: 'https://wallet.gooddollar.org' } }
     )
       .catch(error => {
-        throw new Error(`Failed to get country code from coordinates '${latitude}:${longitude}': ${error.message}`)
+        throw new Error(`Failed to get country code from coordinates': ${error.message}`)
       })
       .then(async response => {
         if (response.status != 200) {
@@ -55,19 +56,15 @@ export class GoodIDUtils {
             longitude,
             response: await response.text()
           })
-          throw new Error(
-            `Failed to get country code from coordinates '${latitude}:${longitude}': ${response.statusText}`
-          )
+          throw new Error(`'Failed reverse geolocation http request: ${response.status} ${response.statusText}`)
         }
-        response.json()
+        return response.json()
       })
       .then(response => get(response, 'address.country_code'))
       .then(toUpper)
 
     if (!countryCode) {
-      throw new Error(
-        `Failed to get country code from coordinates '${latitude}:${longitude}': response is empty or invalid`
-      )
+      throw new Error(`Failed to get country code from coordinates: response is empty or invalid`)
     }
 
     return countryCode
