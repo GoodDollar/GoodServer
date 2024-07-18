@@ -3,6 +3,7 @@ import { PhoneNumberUtil } from 'google-libphonenumber'
 import { basename, extname } from 'path'
 
 import { substituteParams } from '../utils/axios'
+import logger from '../../imports/logger'
 import { assign, every, flatten, get, isUndefined, negate, pickBy, toUpper, map, uniq } from 'lodash'
 import { getAgent, getSubjectAccount, getSubjectId } from './veramo'
 import { REDTENT_BUCKET, detectFaces, getS3Metadata } from './aws'
@@ -47,7 +48,19 @@ export class GoodIDUtils {
       .catch(error => {
         throw new Error(`Failed to get country code from coordinates '${latitude}:${longitude}': ${error.message}`)
       })
-      .then(response => response.json())
+      .then(async response => {
+        if (response.status != 200) {
+          logger.warn('Failed reverse geolocation http request', {
+            latitude,
+            longitude,
+            response: await response.text()
+          })
+          throw new Error(
+            `Failed to get country code from coordinates '${latitude}:${longitude}': ${response.statusText}`
+          )
+        }
+        response.json()
+      })
       .then(response => get(response, 'address.country_code'))
       .then(toUpper)
 
