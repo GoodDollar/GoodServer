@@ -1,10 +1,11 @@
 import axios from 'axios'
+import { isArray } from 'lodash'
 import { retry as retryAttempt } from '../utils/async'
 
 export const getExplorerTxs = async (address, chainId, query, from = null, allPages = true) => {
   const txs = []
   const url = '/api'
-  const networkExplorerUrl = Number(chainId) === 122 ? 'https://explorer.fuse.io' : 'https://api.celoscan.io'
+  const networkExplorerUrl = Number(chainId) === 122 ? 'https://explorer.fuse.io' : 'https://explorer.celo.org/mainnet'
 
   const params = { module: 'account', address, sort: 'asc', page: 1, offset: 10000, ...query }
 
@@ -19,13 +20,21 @@ export const getExplorerTxs = async (address, chainId, query, from = null, allPa
       data: { result = [] }
     } = await retryAttempt(
       () =>
-        axios.get(url, options).catch(e => {
-          if (Number(chainId) === 122) {
-            throw e
-          }
-          //retry with other explorer
-          return axios.get(url, { ...options, networkExplorerUrl: 'https://explorer.celo.org/mainnet' })
-        }),
+        axios
+          .get(url, options)
+          .then(result => {
+            if (isArray(result.data.result)) {
+              return result
+            }
+            throw new Error(`NOTOK ${result.data.result}`)
+          })
+          .catch(e => {
+            if (Number(chainId) === 122) {
+              throw e
+            }
+            //retry with other explorer
+            return axios.get(url, { ...options, networkExplorerUrl: 'https://api.celoscan.io' })
+          }),
       3,
       1500
     )
