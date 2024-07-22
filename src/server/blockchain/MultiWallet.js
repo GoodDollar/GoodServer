@@ -133,7 +133,7 @@ class MultiWallet {
   }
 
   async registerRedtent(account: string, countryCode: string, log = multiLogger) {
-    return celoWallet[42220].registerRedtent(account, countryCode, log)
+    return Promise.all(this.wallets.map(wallet => wallet.registerRedtent(account, countryCode, log)))
   }
 }
 

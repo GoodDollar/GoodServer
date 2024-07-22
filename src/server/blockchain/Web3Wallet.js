@@ -871,6 +871,11 @@ export class Web3Wallet {
 
   async registerRedtent(account: string, countryCode: string, customLogger = null): Promise<TransactionReceipt> {
     const logger = customLogger || this.log
+
+    if (this.networkId != 42220) {
+      logger.info(`skipping registerRedtent for non Celo: ${this.networkId}`)
+      return
+    }
     const poolAddress = conf.redtentPools[countryCode]
 
     try {

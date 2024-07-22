@@ -326,6 +326,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
         }
 
         const { unique, gender, countryCode, account } = await utils.aggregateCredentials(certificates)
+        log.debug('aggregating credentials result', { unique, gender, countryCode, account })
 
         if (!unique) {
           throw new Error('Failed to verify: certificates are missing uniqueness credential')
