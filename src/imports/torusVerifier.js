@@ -1,5 +1,5 @@
-import FetchNodeDetails from '@toruslabs/fetch-node-details'
-import TorusUtils from '@toruslabs/torus.js/dist/torusUtils-node.js'
+import { NodeDetailManager } from '@toruslabs/fetch-node-details'
+import { Torus } from '@toruslabs/torus.js'
 import moment from 'moment'
 import { get } from 'lodash'
 
@@ -56,12 +56,12 @@ class TorusVerifier {
 
   static factory(log = logger.child({ from: 'TorusVerifier' })) {
     const { torusNetwork, torusClientId } = Config
-    const torus = new TorusUtils({
+    const torus = new Torus({
       network: torusNetwork !== 'mainnet' ? 'testnet' : 'mainnet',
       clientId: torusClientId
     })
 
-    const fetchNodeDetails = new FetchNodeDetails({
+    const fetchNodeDetails = new NodeDetailManager({
       network: torusNetwork !== 'mainnet' ? 'testnet' : 'mainnet'
     })
 
