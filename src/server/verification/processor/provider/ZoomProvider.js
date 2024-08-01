@@ -122,16 +122,18 @@ class ZoomProvider implements IEnrollmentProvider {
 
     // 2. performing liveness check and storing facescan / audit trail images (if need)
     try {
-      await api[methodToInvoke](...methodArgs).then(fetchResult)
+      const enrollResult = await api[methodToInvoke](...methodArgs)
 
       log.debug('liveness enrollment success:', {
         methodToInvoke,
         enrollmentIdentifier,
-        alreadyEnrolled
+        alreadyEnrolled,
+        enrollResult
       })
     } catch (exception) {
       const { name, message, response } = exception
 
+      log.warn('enroll failed:', { enrollmentIdentifier, name, message })
       // if facemap doesn't match we won't show retry screen
       if (FacemapDoesNotMatch === name) {
         isNotMatch = true
@@ -190,6 +192,7 @@ class ZoomProvider implements IEnrollmentProvider {
         customLogger
       )
 
+      log.debug('duplicate search result:', { enrollmentIdentifier, results, faceSearchResponse })
       // excluding own enrollmentIdentifier
       const duplicate = results.find(
         ({ identifier: matchId, matchLevel }) =>
