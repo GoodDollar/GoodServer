@@ -124,6 +124,8 @@ class ZoomProvider implements IEnrollmentProvider {
     try {
       await api[methodToInvoke](...methodArgs).then(fetchResult)
 
+      fetchResult(enrollResult)
+
       log.debug('liveness enrollment success:', {
         methodToInvoke,
         enrollmentIdentifier,
