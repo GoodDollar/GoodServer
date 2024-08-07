@@ -259,14 +259,13 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
               //throw error so we de-whitelist user
               throw new Error('User failed to re-authenticate with V1 identifier')
             }
-          } else if (wasWhitelisted > 0 && enrollmentResult.success) {
-            log.info('user re-authenticated', {
-              wasWhitelisted,
-              enrollmentResult,
-              gdAddress,
-              v2Identifier
-            })
           }
+          log.info(wasWhitelisted > 0 && enrollmentResult.success ? 'user re-authenticated' : 'user enrolled', {
+            wasWhitelisted,
+            enrollmentResult,
+            gdAddress,
+            v2Identifier
+          })
           res.json(enrollmentResult)
         } catch (e) {
           if (isV1) {
