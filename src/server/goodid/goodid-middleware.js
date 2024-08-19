@@ -16,6 +16,7 @@ import MultiWallet from '../blockchain/MultiWallet'
 
 import { wrapAsync } from '../utils/helpers'
 import requestRateLimiter from '../utils/requestRateLimiter'
+import config from '../server.config'
 
 const { Location, Gender, Age, Identity } = Credential
 
@@ -332,12 +333,23 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
           throw new Error('Failed to verify: certificates are missing uniqueness credential')
         }
 
-        if ((countryCode !== 'NG' && countryCode !== 'CO') || gender !== 'Female') {
+        let registerToPool = countryCode
+        if (['development', 'staging'].includes(config.env)) {
+          //           -Men - Japan, Ukraine, Israel, Brazil, Nigeria
+          // --Women - US, Israel, Spain, Colombia
+          if (gender === 'Male' && ['JP', 'UA', 'IL', 'BR', 'NG'].includes(countryCode) === false) {
+            throw new Error("Failed to verify: allowed 'JP','UA','IL','BR','NG' for male only")
+          }
+          if (gender === 'Female' && ['US', 'IL', 'ES', 'CO'].includes(countryCode) === false) {
+            throw new Error("Failed to verify: allowed 'US','IL','ES','CO' for female only")
+          }
+          registerToPool = gender === 'Female' ? 'NG' : 'CO'
+        } else if ((countryCode !== 'NG' && countryCode !== 'CO') || gender !== 'Female') {
           throw new Error('Failed to verify: allowed for the Nigerian/Colombian accounts owned by women only')
         }
 
         await utils.checkS3AccountVideo(videoFilename, account)
-        await MultiWallet.registerRedtent(account, countryCode, log)
+        await MultiWallet.registerRedtent(account, registerToPool, log)
 
         res.status(200).json({ success: true })
       } catch (exception) {
