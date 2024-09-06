@@ -707,6 +707,12 @@ if (conf.get('env') === 'test') {
   conf.set('celoEnabled', false)
 }
 
+// get active segmented pools
+if (process.env.REDTENT_POOLS) {
+  const redtentPools = JSON.parse(process.env.REDTENT_POOLS)
+  conf.set('redtentPools', redtentPools)
+}
+
 // Perform validation
 conf.validate({ allowed: 'strict' })
 
