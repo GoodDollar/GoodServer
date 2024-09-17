@@ -136,8 +136,8 @@ class MultiWallet {
     return Promise.all(this.wallets.map(wallet => wallet.registerRedtent(account, countryCode, log)))
   }
 
-  async removePoolMember(account: string, poolAddress: string, log = multiLogger) {
-    return Promise.all(this.wallets.map(wallet => wallet.removePoolMember(account, poolAddress, log)))
+  async removePoolMember(account: string, poolAddresses: string[], log = multiLogger) {
+    return Promise.all(this.wallets.map(wallet => wallet.removePoolMember(account, poolAddresses, log)))
   }
 }
 

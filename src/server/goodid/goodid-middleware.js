@@ -366,15 +366,15 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
     requestRateLimiter(10, 1),
     wrapAsync(async (req, res) => {
       const { body, log } = req
-      const { address, poolAddress } = body
+      const { address, poolAddresses } = body
 
       try {
-        await MultiWallet.removePoolMember(address, poolAddress, log)
+        await MultiWallet.removePoolMember(address, poolAddresses, log)
         res.status(200).json({ success: true })
       } catch (exception) {
         const { message } = exception
 
-        log.error('Failed to remove member from pool:', message, exception, { address, poolAddress })
+        log.error('Failed to remove member from pool:', message, exception, { address, poolAddresses })
         res.status(400).json({ success: false, error: message })
       }
     })

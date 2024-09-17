@@ -910,7 +910,7 @@ export class Web3Wallet {
     }
   }
 
-  async removePoolMember(account: string, poolAddress: string, customLogger = null): Promise<TransactionReceipt> {
+  async removePoolMember(account: string, poolAddresses: string[], customLogger = null): Promise<TransactionReceipt[]> {
     const logger = customLogger || this.log
 
     try {
@@ -928,15 +928,17 @@ export class Web3Wallet {
         [account]
       )
 
-      const transaction = await this.proxyContract.methods.genericCall(poolAddress, encodedCall, 0)
-      const tx = await this.sendTransaction(transaction, {}, undefined, false, logger)
+      return poolAddresses.map(async poolAddress => {
+        const transaction = await this.proxyContract.methods.genericCall(poolAddress, encodedCall, 0)
+        const tx = await this.sendTransaction(transaction, {}, undefined, false, logger)
 
-      logger.info('removePoolMember success', { account, tx: tx.transactionHash, poolAddress })
-      return tx
+        logger.info('removePoolMember success', { account, tx: tx.transactionHash, poolAddress })
+        return tx
+      })
     } catch (exception) {
       const { message } = exception
 
-      logger.error('removePoolMember failed', message, exception, { account, poolAddress })
+      logger.error('removePoolMember failed', message, exception, { account, poolAddresses })
       throw exception
     }
   }
