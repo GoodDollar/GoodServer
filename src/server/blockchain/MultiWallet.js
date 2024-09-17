@@ -135,6 +135,10 @@ class MultiWallet {
   async registerRedtent(account: string, countryCode: string, log = multiLogger) {
     return Promise.all(this.wallets.map(wallet => wallet.registerRedtent(account, countryCode, log)))
   }
+
+  async removePoolMember(account: string, poolAddress: string, log = multiLogger) {
+    return Promise.all(this.wallets.map(wallet => wallet.removePoolMember(account, poolAddress, log)))
+  }
 }
 
 const celoWallet =

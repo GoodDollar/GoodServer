@@ -910,6 +910,37 @@ export class Web3Wallet {
     }
   }
 
+  async removePoolMember(account: string, poolAddress: string, customLogger = null): Promise<TransactionReceipt> {
+    const logger = customLogger || this.log
+
+    try {
+      let encodedCall = this.web3.eth.abi.encodeFunctionCall(
+        {
+          name: 'removeMember',
+          type: 'function',
+          inputs: [
+            {
+              name: 'member',
+              type: 'address'
+            }
+          ]
+        },
+        [account]
+      )
+
+      const transaction = await this.proxyContract.methods.genericCall(poolAddress, encodedCall, 0)
+      const tx = await this.sendTransaction(transaction, {}, undefined, false, logger)
+
+      logger.info('removePoolMember success', { account, tx: tx.transactionHash, poolAddress })
+      return tx
+    } catch (exception) {
+      const { message } = exception
+
+      logger.error('removePoolMember failed', message, exception, { account, poolAddress })
+      throw exception
+    }
+  }
+
   /**
    * Helper function to handle a tx Send call
    * @param tx
