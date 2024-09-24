@@ -38,6 +38,22 @@ const clearMemoizedFaucetAbuse = async () => {
 }
 if (conf.env !== 'test') setInterval(clearMemoizedFaucetAbuse, 60 * 60 * 1000) // clear every 1 hour
 
+let ipToAccounts = {}
+const checkMultiIpAccounts = (account, ip, logger) => {
+  let accounts = ipToAccounts[ip] || []
+  if (!accounts.includes[account]) {
+    accounts.push(account)
+  }
+  ipToAccounts[ip] = accounts
+  logger.debug('checkMultiIpAccounts:', { ip, account, accounts })
+  if (accounts.length >= 10) {
+    return accounts
+  }
+  return false
+}
+
+if (conf.env !== 'test') setInterval(() => (ipToAccounts = {}), 48 * 60 * 60 * 1000) // clear every 2 days (48 hours)
+
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   /**
    * @api {delete} /verify/face/:enrollmentIdentifier Enqueue user's face snapshot for disposal since 24h
@@ -622,6 +638,15 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         log.warn('faucet abuse found:', foundAbuse)
         return res.json({ ok: -1, error: 'faucet abuse: ' + foundAbuse.hash })
       }
+
+      const foundMultiIpAccounts = checkMultiIpAccounts(user.gdAddress, clientIp, log)
+      if (foundMultiIpAccounts) {
+        log.error('faucet multiip abuse found:', foundMultiIpAccounts.length, new Error('faucet multiip abuse'), {
+          foundMultiIpAccounts
+        })
+        return res.json({ ok: -1, error: 'faucet multiip abuse' })
+      }
+
       try {
         let txPromise = AdminWallet.topWallet(user.gdAddress, chainId, log)
           .then(tx => {
