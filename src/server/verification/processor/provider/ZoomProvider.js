@@ -109,16 +109,16 @@ class ZoomProvider implements IEnrollmentProvider {
     let methodArgs = [payload, customLogger]
 
     // b) if face verification enabled, we're checking is facescan already uploaded & enrolled
-    if (storeRecords) {
-      // refactored - using a separate method was added after initial implementation
-      // instead of the direct API call
-      alreadyEnrolled = await this.isEnrollmentExists(enrollmentIdentifier, customLogger)
-      // if already enrolled, will call /match-3d
-      // othwerise (if not enrolled/stored yet) - /enroll
-      methodToInvoke = alreadyEnrolled ? 'updateEnrollment' : 'submitEnrollment'
-      // match/enroll requires enromment identifier, pre-prepding it to the args list
-      methodArgs.unshift(enrollmentIdentifier)
-    }
+    // if (storeRecords) { // we now always store enrollments even for dev env
+    // refactored - using a separate method was added after initial implementation
+    // instead of the direct API call
+    alreadyEnrolled = await this.isEnrollmentExists(enrollmentIdentifier, customLogger)
+    // if already enrolled, will call /match-3d
+    // othwerise (if not enrolled/stored yet) - /enroll
+    methodToInvoke = alreadyEnrolled ? 'updateEnrollment' : 'submitEnrollment'
+    // match/enroll requires enromment identifier, pre-prepding it to the args list
+    methodArgs.unshift(enrollmentIdentifier)
+    // }
 
     // 2. performing liveness check and storing facescan / audit trail images (if need)
     try {
@@ -186,6 +186,7 @@ class ZoomProvider implements IEnrollmentProvider {
     // if already enrolled and already indexed then passed match-3d, no need to facesearch
     log.debug('Preparing enrollment to uniqueness index:', { enrollmentIdentifier, alreadyEnrolled, alreadyIndexed })
     if (storeRecords && !alreadyIndexed) {
+      // for dev env settings will be not to store records
       // 3. checking for duplicates
       const { results, ...faceSearchResponse } = await api.faceSearch(
         enrollmentIdentifier,
