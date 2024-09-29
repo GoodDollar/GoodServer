@@ -39,20 +39,36 @@ const clearMemoizedFaucetAbuse = async () => {
 if (conf.env !== 'test') setInterval(clearMemoizedFaucetAbuse, 60 * 60 * 1000) // clear every 1 hour
 
 let ipToAccounts = {}
+let faucetAddressBlocked = {}
+const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000
 const checkMultiIpAccounts = (account, ip, logger) => {
   let accounts = ipToAccounts[ip] || []
   if (!accounts.includes[account]) {
     accounts.push(account)
   }
   ipToAccounts[ip] = accounts
-  logger.debug('checkMultiIpAccounts:', { ip, account, accounts })
   if (accounts.length >= 10) {
+    logger.debug('checkMultiIpAccounts:', { ip, account, accounts })
+    accounts.forEach(addr => (faucetAddressBlocked[addr] = faucetAddressBlocked[addr] || Date.now()))
     return accounts
+  }
+  if (faucetAddressBlocked[account]) {
+    return true
   }
   return false
 }
 
 if (conf.env !== 'test') setInterval(() => (ipToAccounts = {}), 48 * 60 * 60 * 1000) // clear every 2 days (48 hours)
+if (conf.env !== 'test')
+  setInterval(
+    () => {
+      console.log('cleaning faucetAddressBlocked. total addresses:', Object.keys(faucetAddressBlocked).length)
+      Object.keys(faucetAddressBlocked).forEach(addr => {
+        if (faucetAddressBlocked[addr] + SEVEN_DAYS <= Date.now()) delete faucetAddressBlocked[addr]
+      })
+    },
+    24 * 60 * 60 * 1000
+  ) // clear every 1 day (24 hours)
 
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   /**
@@ -641,10 +657,12 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       const foundMultiIpAccounts = checkMultiIpAccounts(user.gdAddress, clientIp, log)
       if (foundMultiIpAccounts) {
-        log.error('faucet multiip abuse found:', foundMultiIpAccounts.length, new Error('faucet multiip abuse'), {
-          foundMultiIpAccounts
+        log.warn('faucet multiip abuse found:', foundMultiIpAccounts.length, new Error('faucet multiip abuse'), {
+          foundMultiIpAccounts,
+          clientIp,
+          account: user.gdAddress
         })
-        return res.json({ ok: -1, error: 'faucet multiip abuse' })
+        return res.json({ ok: -1, error: 'faucet multi abuse' })
       }
 
       try {
