@@ -101,6 +101,11 @@ class UserPrivate {
     return await this.model.findOne({ identifier }).lean()
   }
 
+  async getByIdentifierHash(identifier) {
+    return await this.model
+      .find({ $or: [{ email: identifier }, { walletAddress: identifier }, { mobile: identifier }, { identifier }] })
+      .lean()
+  }
   /**
    * complete Step by identifier and step name
    *
