@@ -614,6 +614,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       if (body.mobile)
         user = await storage.getUsersByMobile(body.mobile.startsWith('0x') === false ? sha3(body.mobile) : body.mobile)
       if (body.identifier) user = await storage.getUser(body.identifier)
+      if (body.identifierHash) user = await storage.getByIdentifierHash(body.identifierHash)
 
       res.json({ ok: 1, user })
     })
