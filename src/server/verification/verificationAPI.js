@@ -29,8 +29,8 @@ import { normalizeIdentifiers, verifyIdentifier } from './utils/utils.js'
 // if same user keep requesting.
 const cachedFindFaucetAbuse = memoize(findFaucetAbuse)
 const clearMemoizedFaucetAbuse = async () => {
-  if (cachedFindFaucetAbuse.values) {
-    cachedFindFaucetAbuse.values.clear()
+  if (cachedFindFaucetAbuse.cache) {
+    cachedFindFaucetAbuse.cache.clear()
     console.log('clearMemoizedFaucetAbuse done')
     return
   }
