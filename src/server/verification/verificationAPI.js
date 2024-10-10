@@ -24,6 +24,7 @@ import { recoverPublickey } from '../utils/eth'
 import { shouldLogVerificaitonError } from './utils/logger'
 import { syncUserEmail } from '../storage/addUserSteps'
 import { normalizeIdentifiers, verifyIdentifier } from './utils/utils.js'
+import ipcache from '../db/mongo/ipcache-provider.js'
 
 // try to cache responses from faucet abuse to prevent 500 errors from server
 // if same user keep requesting.
@@ -38,15 +39,12 @@ const clearMemoizedFaucetAbuse = async () => {
 }
 if (conf.env !== 'test') setInterval(clearMemoizedFaucetAbuse, 60 * 60 * 1000) // clear every 1 hour
 
-let ipToAccounts = {}
 let faucetAddressBlocked = {}
 const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000
-const checkMultiIpAccounts = (account, ip, logger) => {
-  let accounts = ipToAccounts[ip] || []
-  if (!accounts.includes[account]) {
-    accounts.push(account)
-  }
-  ipToAccounts[ip] = accounts
+const checkMultiIpAccounts = async (account, ip, logger) => {
+  const record = await ipcache.updateAndGet(ip.toLowerCase(), account.toLowerCase())
+  logger.debug('checkMultiIpAccounts:', { record })
+  const { accounts } = record
   if (accounts.length >= 10) {
     logger.debug('checkMultiIpAccounts:', { ip, account, accounts })
     accounts.forEach(addr => (faucetAddressBlocked[addr] = faucetAddressBlocked[addr] || Date.now()))
@@ -58,14 +56,22 @@ const checkMultiIpAccounts = (account, ip, logger) => {
   return false
 }
 
-if (conf.env !== 'test') setInterval(() => (ipToAccounts = {}), 48 * 60 * 60 * 1000) // clear every 2 days (48 hours)
 if (conf.env !== 'test')
   setInterval(
     () => {
-      console.log('cleaning faucetAddressBlocked. total addresses:', Object.keys(faucetAddressBlocked).length)
+      let cleared = 0
       Object.keys(faucetAddressBlocked).forEach(addr => {
-        if (faucetAddressBlocked[addr] + SEVEN_DAYS <= Date.now()) delete faucetAddressBlocked[addr]
+        if (faucetAddressBlocked[addr] + SEVEN_DAYS <= Date.now()) {
+          cleared += 1
+          delete faucetAddressBlocked[addr]
+        }
       })
+      console.log(
+        'cleaning faucetAddressBlocked after 7 days. total addresses:',
+        Object.keys(faucetAddressBlocked).length,
+        'cleared:',
+        cleared
+      )
     },
     24 * 60 * 60 * 1000
   ) // clear every 1 day (24 hours)
