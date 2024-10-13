@@ -661,7 +661,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         return res.json({ ok: -1, error: 'faucet abuse: ' + foundAbuse.hash })
       }
 
-      const foundMultiIpAccounts = checkMultiIpAccounts(user.gdAddress, clientIp, log)
+      const foundMultiIpAccounts = await checkMultiIpAccounts(user.gdAddress, clientIp, log)
       if (foundMultiIpAccounts) {
         log.warn('faucet multiip abuse found:', foundMultiIpAccounts.length, new Error('faucet multiip abuse'), {
           foundMultiIpAccounts,
