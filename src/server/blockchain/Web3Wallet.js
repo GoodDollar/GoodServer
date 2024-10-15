@@ -652,7 +652,7 @@ export class Web3Wallet {
       logger.debug('topWalletFaucet canTop result:', { address, canTop, wallet: this.name })
 
       if (canTop === false) {
-        return false
+        return false //we try to top from admin wallet
       }
 
       let userBalance = web3Utils.toBN(await this.web3.eth.getBalance(address))

@@ -18,9 +18,33 @@ import { cancelDisposalTask, getDisposalTask } from '../verification/cron/taskUt
 import createEnrollmentProcessor from '../verification/processor/EnrollmentProcessor'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import { default as AdminWallet } from '../blockchain/MultiWallet'
+import { deleteFaceId } from '../verification/verificationAPI'
 import Logger from '../../imports/logger'
 
 const { fishManager } = stakingModelTasks
+
+const deleteFromAnalytics = (userId, walletAddress, log) => {
+  const amplitudePromise = fetch(`https://amplitude.com/api/2/deletions/users`, {
+    headers: { Authorization: `Basic ${conf.amplitudeBasicAuth}`, 'Content-Type': 'application/json' },
+    method: 'POST',
+
+    body: JSON.stringify({
+      user_ids: [toChecksumAddress(userId.toLowerCase())], //amplitude id is case sensitive and is the original address form from user wallet
+      delete_from_org: 'True',
+      ignore_invalid_id: 'True'
+    })
+  })
+    .then(_ => _.text())
+    .then(_ => {
+      log.info('amplitude delete user result', { result: _ })
+      return {
+        amplitude: 'ok'
+      }
+    })
+    .catch(() => ({ amplitude: 'failed' }))
+
+  return [amplitudePromise]
+}
 
 const adminAuthenticate = (req, res, next) => {
   const { password } = req.body || {}
@@ -393,7 +417,8 @@ const setup = (app: Router, storage: StorageAPI) => {
   app.post(
     '/user/delete',
     wrapAsync(async (req, res) => {
-      const { user, log } = req
+      const { user, log, body } = req
+      const { enrollmentIdentifier = '', fvSigner = '' } = body
       log.info('delete user', { user })
 
       //first get number of accounts using same crmId before we delete the account
@@ -405,6 +430,11 @@ const setup = (app: Router, storage: StorageAPI) => {
         : 0
 
       const results = await Promise.all([
+        fvSigner || enrollmentIdentifier
+          ? deleteFaceId(fvSigner, enrollmentIdentifier, user, storage, log)
+              .then(() => ({ fv: 'ok' }))
+              .catch(() => ({ fv: 'failed' }))
+          : Promise.resolve({ fv: 'skipping' }),
         (user.identifier ? storage.deleteUser(user) : Promise.reject())
           .then(() => ({ mongodb: 'ok' }))
           .catch(() => ({ mongodb: 'failed' })),
@@ -415,30 +445,7 @@ const setup = (app: Router, storage: StorageAPI) => {
             : OnGage.deleteContact(user.crmId, log)
                 .then(() => ({ crm: 'ok' }))
                 .catch(() => ({ crm: 'failed' })),
-        fetch(`https://api.fullstory.com/users/v1/individual/${user.identifier}`, {
-          headers: { Authorization: `Basic ${conf.fullStoryKey}` },
-          method: 'DELETE'
-        })
-          .then(() => ({ fs: 'ok' }))
-          .catch(() => ({ fs: 'failed' })),
-        fetch(`https://amplitude.com/api/2/deletions/users`, {
-          headers: { Authorization: `Basic ${conf.amplitudeBasicAuth}`, 'Content-Type': 'application/json' },
-          method: 'POST',
-
-          body: JSON.stringify({
-            user_ids: [toChecksumAddress(user.identifier.toLowerCase())], //amplitude id is case sensitive and is the original address form from user wallet
-            delete_from_org: 'True',
-            ignore_invalid_id: 'True'
-          })
-        })
-          .then(_ => _.text())
-          .then(_ => {
-            log.info('amplitude delete user result', { result: _ })
-            return {
-              amplitude: 'ok'
-            }
-          })
-          .catch(() => ({ amplitude: 'failed' }))
+        ...deleteFromAnalytics(user.identifier, user.gdAddress)
       ])
 
       log.info('delete user results', { user, results })

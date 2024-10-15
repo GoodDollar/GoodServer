@@ -26,6 +26,32 @@ import { syncUserEmail } from '../storage/addUserSteps'
 import { normalizeIdentifiers, verifyIdentifier } from './utils/utils.js'
 import ipcache from '../db/mongo/ipcache-provider.js'
 
+export const deleteFaceId = async (fvSigner, enrollmentIdentifier, user, storage, log) => {
+  const { gdAddress } = user
+  log.debug('delete face request:', { fvSigner, enrollmentIdentifier, user })
+  const processor = createEnrollmentProcessor(storage, log)
+
+  // for v2 identifier - verify that identifier is for the address we are going to whitelist
+  verifyIdentifier(enrollmentIdentifier, gdAddress)
+
+  const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
+
+  // here we check if wallet was registered using v1 of v2 identifier
+  const [isV2, isV1] = await Promise.all([
+    processor.isIdentifierExists(v2Identifier),
+    v1Identifier && processor.isIdentifierExists(v1Identifier)
+  ])
+
+  if (isV2) {
+    //in v2 we expect the enrollmentidentifier to be the whole signature, so we cut it down to 42
+    await processor.enqueueDisposal(user, v2Identifier, log)
+  }
+
+  if (isV1) {
+    await processor.enqueueDisposal(user, v1Identifier, log)
+  }
+}
+
 // try to cache responses from faucet abuse to prevent 500 errors from server
 // if same user keep requesting.
 const cachedFindFaucetAbuse = memoize(findFaucetAbuse)
@@ -93,32 +119,10 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     wrapAsync(async (req, res) => {
       const { params, query, log, user } = req
       const { enrollmentIdentifier } = params
-      const { gdAddress } = user
       const { fvSigner = '' } = query
 
       try {
-        log.debug('delete face request:', { fvSigner, enrollmentIdentifier, user })
-        const processor = createEnrollmentProcessor(storage, log)
-
-        // for v2 identifier - verify that identifier is for the address we are going to whitelist
-        verifyIdentifier(enrollmentIdentifier, gdAddress)
-
-        const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
-
-        // here we check if wallet was registered using v1 of v2 identifier
-        const [isV2, isV1] = await Promise.all([
-          processor.isIdentifierExists(v2Identifier),
-          v1Identifier && processor.isIdentifierExists(v1Identifier)
-        ])
-
-        if (isV2) {
-          //in v2 we expect the enrollmentidentifier to be the whole signature, so we cut it down to 42
-          await processor.enqueueDisposal(user, v2Identifier, log)
-        }
-
-        if (isV1) {
-          await processor.enqueueDisposal(user, v1Identifier, log)
-        }
+        await deleteFaceId(fvSigner, enrollmentIdentifier, user, storage, log)
       } catch (exception) {
         const { message } = exception
 
