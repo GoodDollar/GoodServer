@@ -337,8 +337,8 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
         if (['development', 'staging'].includes(config.env)) {
           //           -Men - Japan, Ukraine, Israel, Brazil, Nigeria
           // --Women - US, Israel, Spain, Colombia
-          if (gender === 'Male' && ['JP', 'UA', 'IL', 'BR', 'NG'].includes(countryCode) === false) {
-            throw new Error("Failed to verify: allowed 'JP','UA','IL','BR','NG' for male only")
+          if (gender === 'Male' && ['JP', 'UA', 'IL', 'BR', 'NG', 'DN'].includes(countryCode) === false) {
+            throw new Error("Failed to verify: allowed 'JP','UA','IL','BR','NG', 'DN' for male only")
           }
           if (gender === 'Female' && ['US', 'IL', 'ES', 'CO'].includes(countryCode) === false) {
             throw new Error("Failed to verify: allowed 'US','IL','ES','CO' for female only")
