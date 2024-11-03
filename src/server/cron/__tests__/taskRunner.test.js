@@ -11,15 +11,8 @@ const TaskRunner = getTaskRunner()
 describe('TaskRunner', () => {
   const testTask = {
     name: 'testTask',
-    schedule: moment()
-      .add(3, 'seconds')
-      .toDate(),
-    execute: async ({ setTime }) =>
-      setTime(
-        moment()
-          .add(3, 'seconds')
-          .toDate()
-      )
+    schedule: 0,
+    execute: async ({ setTime }) => setTime(moment().add(1, 'seconds').toDate())
   }
 
   const testCronTask = {
@@ -37,6 +30,7 @@ describe('TaskRunner', () => {
   })
 
   test('it should queue task', async () => {
+    testTask.schedule = moment().add(1, 'seconds').toDate()
     expect(size(TaskRunner.tasks)).toEqual(0)
     TaskRunner.registerTask(testTask)
     expect(size(TaskRunner.tasks)).toEqual(1)
@@ -44,12 +38,12 @@ describe('TaskRunner', () => {
 
   test('it should run task', async () => {
     TaskRunner.startTasks()
-    await delay(3500)
+    await delay(1500)
     expect(executeSpy).toHaveBeenCalled()
   })
 
   test('it should run task again with rescheduled time', async () => {
-    await delay(3500)
+    await delay(1500)
     TaskRunner.stopTasks()
     // check if there was at lest one additional call during last 3.5sec
     expect(executeSpy.mock.calls.length).toBeGreaterThanOrEqual(2)
@@ -58,7 +52,7 @@ describe('TaskRunner', () => {
   test('it should run cron syntax multiple times', async () => {
     TaskRunner.registerTask(testCronTask)
     TaskRunner.startTasks()
-    await delay(2500)
+    await delay(3500)
     TaskRunner.stopTasks()
     // check if there was at lest 2 call during last 2.5 sec
     expect(executeCronSpy.mock.calls.length).toBeGreaterThanOrEqual(2)
