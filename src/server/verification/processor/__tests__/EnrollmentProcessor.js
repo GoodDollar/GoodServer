@@ -308,7 +308,7 @@ describe('EnrollmentProcessor', () => {
         unexistingEnrollmentIdentifier,
         failedEnrollmentIdentifier,
         enrollmentIdentifier
-      ].map(identifier => ({
+      ].map(identifier => () => ({
         _id: taskId(identifier),
         subject: { enrollmentIdentifier: identifier, executeAt: DisposeAt.AccountRemoved }
       }))

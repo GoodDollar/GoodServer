@@ -94,8 +94,9 @@ export default class EnrollmentSession {
   async onEnrollmentStarted() {
     const { storage, enrollmentIdentifier } = this
     const filters = forEnrollment(enrollmentIdentifier)
-
-    await storage.fetchTasksForProcessing(DISPOSE_ENROLLMENTS_TASK, filters)
+    // lock the current task record if exists
+    const iterator = storage.fetchTasksForProcessing(DISPOSE_ENROLLMENTS_TASK, filters)
+    await iterator()
   }
 
   onEnrollmentProcessing(processingPayload: IEnrollmentEventPayload) {

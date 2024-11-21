@@ -268,9 +268,9 @@ class UserPrivate {
       //
       // here we just fetching records matched by unique (for each call) lockId
       // there should be the same records were locked during .updateMany query
-      const pendingTasks = await taskModel.find({ lockId })
+      const pendingTasksIterator = () => taskModel.find({ lockId }).limit(1000)
 
-      return pendingTasks
+      return pendingTasksIterator
     } catch (exception) {
       const { message: errMessage } = exception
       const logPayload = { filters, taskName }
