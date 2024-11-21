@@ -22,7 +22,7 @@ const failDelayedTasksMock = jest.fn()
 const completeDelayedTasksMock = jest.fn()
 const cancelTasksQueuedMock = jest.fn()
 const removeDelayedTasksMock = jest.fn()
-const fetchTasksForProcessingMock = jest.fn()
+const fetchTasksForProcessingMock = jest.fn(() => Promise.resolve())
 const unlockDelayedTasksMock = jest.fn()
 const topWalletMock = jest.fn()
 
