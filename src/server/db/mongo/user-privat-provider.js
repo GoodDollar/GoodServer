@@ -258,7 +258,7 @@ class UserPrivate {
         // selecting tasks which aren't locked or completed by taskName and other filters
         { ...filters, status: { $nin: [Locked, Complete] }, taskName },
         // setting unique (for each fetchTasksForProcessing() call) lockId
-        { status: Locked, lockId }
+        { status: Locked, lockId, updatedAt: new Date() }
       )
 
       // queries aren't Promises in mongoose so we couldn't just
@@ -370,6 +370,10 @@ class UserPrivate {
       logger.error("Couldn't unlock and update delayed tasks", errMessage, exception, filters)
       throw exception
     }
+  }
+
+  async unlockOnStartup(): Promise<void> {
+    return this._unlockTasksBy({}, DelayedTaskStatus.Pending)
   }
 }
 
