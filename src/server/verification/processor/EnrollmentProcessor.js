@@ -219,6 +219,9 @@ class EnrollmentProcessor {
     try {
       const pendingTasksIterator = await storage.fetchTasksForProcessing(DISPOSE_ENROLLMENTS_TASK, enqueuedAtFilters)
       let enqueuedDisposalTasks = await pendingTasksIterator()
+      log.info('enqueued disposal tasks iterator result:', {
+        results: enqueuedDisposalTasks.length
+      })
       while (enqueuedDisposalTasks && enqueuedDisposalTasks.length > 0) {
         const enqueuedTasksCount = enqueuedDisposalTasks.length
 
@@ -242,8 +245,9 @@ class EnrollmentProcessor {
           (queue, tasksBatch) => queue.then(() => this._executeDisposalBatch(tasksBatch, onProcessed, customLogger)),
           Promise.resolve()
         ) //iterate over batches. each batch is executed when previous batch promise resolves
+
+        enqueuedDisposalTasks = await pendingTasksIterator()
       }
-      enqueuedDisposalTasks = await pendingTasksIterator()
     } catch (exception) {
       const { message: errMessage } = exception
       const logPayload = { e: exception, errMessage }

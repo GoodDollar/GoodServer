@@ -22,7 +22,7 @@ const failDelayedTasksMock = jest.fn()
 const completeDelayedTasksMock = jest.fn()
 const cancelTasksQueuedMock = jest.fn()
 const removeDelayedTasksMock = jest.fn()
-const fetchTasksForProcessingMock = jest.fn(() => Promise.resolve())
+const fetchTasksForProcessingMock = jest.fn()
 const unlockDelayedTasksMock = jest.fn()
 const topWalletMock = jest.fn()
 
@@ -92,11 +92,11 @@ describe('EnrollmentProcessor', () => {
     whitelistUserMock.mockImplementation(noopAsync)
     whitelistContactMock.mockImplementation(noopAsync)
     topWalletMock.mockImplementation(noopAsync)
+    fetchTasksForProcessingMock.mockResolvedValue(() => Promise.resolve())
 
     invokeMap(
       [
         updateUserMock,
-        fetchTasksForProcessingMock,
         failDelayedTasksMock,
         completeDelayedTasksMock,
         removeDelayedTasksMock,
@@ -302,17 +302,18 @@ describe('EnrollmentProcessor', () => {
     const taskId = identifier => `${identifier}-task-id`
     const onProcessedMock = jest.fn()
 
-    fetchTasksForProcessingMock.mockResolvedValueOnce(
+    const onceIterator = jest.fn().mockResolvedValueOnce(
       [
         nonIndexedEnrollmentIdentifier,
         unexistingEnrollmentIdentifier,
         failedEnrollmentIdentifier,
         enrollmentIdentifier
-      ].map(identifier => async () => ({
+      ].map(identifier => ({
         _id: taskId(identifier),
         subject: { enrollmentIdentifier: identifier, executeAt: DisposeAt.AccountRemoved }
       }))
     )
+    fetchTasksForProcessingMock.mockResolvedValueOnce(() => onceIterator())
 
     helper.mockEnrollmentFound(enrollmentIdentifier)
     helper.mockSuccessReadEnrollmentIndex(enrollmentIdentifier)
