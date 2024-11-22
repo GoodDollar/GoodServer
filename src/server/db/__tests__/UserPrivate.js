@@ -321,11 +321,14 @@ describe('UserPrivate', () => {
     await (
       await storage.fetchTasksForProcessing(testTaskName)
     )()
-    // this unlock running tasks
-    await storage.failDelayedTasks([_id])
 
     // so the next fetchTasksForProcessing() call now should return tasks
-    await expect(await (await storage.fetchTasksForProcessing(testTaskName))()).resolves.toBeArrayOfSize(1)
+    let iterator = await storage.fetchTasksForProcessing(testTaskName)
+    await expect(iterator()).resolves.toBeArrayOfSize(0)
+    // this unlock running tasks
+    await storage.failDelayedTasks([_id])
+    iterator = await storage.fetchTasksForProcessing(testTaskName)
+    await expect(iterator()).resolves.toBeArrayOfSize(1)
   })
 
   it("Complete/fail/update shouldn't switch pending status", async () => {
