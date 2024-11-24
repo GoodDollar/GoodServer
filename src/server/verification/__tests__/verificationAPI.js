@@ -390,6 +390,28 @@ describe('verificationAPI', () => {
       await testNotVerified()
     })
 
+    test('PUT /verify/face/:enrollmentIdentifier returns 200 and success: false when under age', async () => {
+      const unexpectedError = 'age check failed'
+
+      helper.mockEnrollmentNotFound(enrollmentIdentifier)
+      helper.mockSuccessEnrollmentUnderAge(enrollmentIdentifier)
+
+      await request(server)
+        .put(enrollmentUri)
+        .send(payload)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200, {
+          success: false,
+          error: unexpectedError,
+          enrollmentResult: {
+            isVerified: false,
+            isUnderAge: true
+          }
+        })
+
+      await testNotVerified()
+    })
+
     test('PUT /verify/face/:enrollmentIdentifier passes full verification flow even if user was already verified', async () => {
       await storage.updateUser({ identifier: userIdentifier, isVerified: true })
 
