@@ -40,11 +40,19 @@ export default async (app: Router) => {
   const corsConfig = {
     credentials: true,
     origin:
-      env === 'production' ? /(\.?goodd(ollar|app)\.org$)|localhost|localhost:3000|good-wallet-v2\.vercel\.app|goodwallet\.xyz/ : true
+      env === 'production'
+        ? /(\.?goodd(ollar|app)\.org$)|localhost|localhost:3000|good-wallet-v2\.vercel\.app|goodwallet\.xyz/
+        : true
   }
 
   if (env === 'production') {
     app.set('trust proxy', 1) //this is required for heroku to pass ips correctly to rate limiter
+  }
+
+  if (global.workerId === 0) {
+    UserDBPrivate.unlockOnStartup()
+      .then(() => logger.info('done unlocking tasks on startup'))
+      .catch(e => logger.error('failed unlocking tasks on startup', e.message, e))
   }
 
   // parse application/x-www-form-urlencoded
@@ -57,7 +65,6 @@ export default async (app: Router) => {
   app.use(cors(corsConfig))
   app.use(addRequestLogger)
   addLoginMiddlewares(app)
-
   addStorageMiddlewares(app, UserDBPrivate)
   addVerificationMiddlewares(app, VerificationAPI, UserDBPrivate)
   addGoodIDMiddleware(app, GoodIDUtils, UserDBPrivate)

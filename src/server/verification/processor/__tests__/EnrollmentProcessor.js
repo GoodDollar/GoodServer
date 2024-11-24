@@ -92,11 +92,11 @@ describe('EnrollmentProcessor', () => {
     whitelistUserMock.mockImplementation(noopAsync)
     whitelistContactMock.mockImplementation(noopAsync)
     topWalletMock.mockImplementation(noopAsync)
+    fetchTasksForProcessingMock.mockResolvedValue(() => Promise.resolve())
 
     invokeMap(
       [
         updateUserMock,
-        fetchTasksForProcessingMock,
         failDelayedTasksMock,
         completeDelayedTasksMock,
         removeDelayedTasksMock,
@@ -302,7 +302,7 @@ describe('EnrollmentProcessor', () => {
     const taskId = identifier => `${identifier}-task-id`
     const onProcessedMock = jest.fn()
 
-    fetchTasksForProcessingMock.mockResolvedValueOnce(
+    const onceIterator = jest.fn().mockResolvedValueOnce(
       [
         nonIndexedEnrollmentIdentifier,
         unexistingEnrollmentIdentifier,
@@ -313,6 +313,7 @@ describe('EnrollmentProcessor', () => {
         subject: { enrollmentIdentifier: identifier, executeAt: DisposeAt.AccountRemoved }
       }))
     )
+    fetchTasksForProcessingMock.mockResolvedValueOnce(() => onceIterator())
 
     helper.mockEnrollmentFound(enrollmentIdentifier)
     helper.mockSuccessReadEnrollmentIndex(enrollmentIdentifier)
