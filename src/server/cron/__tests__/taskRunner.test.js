@@ -38,12 +38,12 @@ describe('TaskRunner', () => {
 
   test('it should run task', async () => {
     TaskRunner.startTasks()
-    await delay(1500)
+    await delay(2500)
     expect(executeSpy).toHaveBeenCalled()
   })
 
   test('it should run task again with rescheduled time', async () => {
-    await delay(1500)
+    await delay(2500)
     TaskRunner.stopTasks()
     // check if there was at lest one additional call during last 3.5sec
     expect(executeSpy.mock.calls.length).toBeGreaterThanOrEqual(2)
