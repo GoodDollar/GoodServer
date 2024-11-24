@@ -49,7 +49,8 @@ export default async (app: Router) => {
     app.set('trust proxy', 1) //this is required for heroku to pass ips correctly to rate limiter
   }
 
-  if (global.workerId === 0) {
+  if (global.workerId <= 1) {
+    logger.info('start unlocking tasks on startup')
     UserDBPrivate.unlockOnStartup()
       .then(() => logger.info('done unlocking tasks on startup'))
       .catch(e => logger.error('failed unlocking tasks on startup', e.message, e))
