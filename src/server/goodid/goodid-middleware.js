@@ -105,7 +105,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
 
         const [countryCodeFromIP, countryCodeFromLocation] = await Promise.all([
           utils.getCountryCodeFromIPAddress(clientIp),
-          retryAttempt(utils.getCountryCodeFromGeoLocation(latitude, longitude), 3, 1500)
+          retryAttempt(() => utils.getCountryCodeFromGeoLocation(latitude, longitude), 3, 1500)
         ])
 
         log.debug('Got country data', { countryCodeFromIP, countryCodeFromLocation })
