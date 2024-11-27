@@ -17,6 +17,7 @@ import MultiWallet from '../blockchain/MultiWallet'
 import { wrapAsync } from '../utils/helpers'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import config from '../server.config'
+import { retry as retryAttempt } from '../utils/async'
 
 const { Location, Gender, Age, Identity } = Credential
 
@@ -104,7 +105,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
 
         const [countryCodeFromIP, countryCodeFromLocation] = await Promise.all([
           utils.getCountryCodeFromIPAddress(clientIp),
-          utils.getCountryCodeFromGeoLocation(latitude, longitude)
+          retryAttempt(utils.getCountryCodeFromGeoLocation(latitude, longitude), 3, 1500)
         ])
 
         log.debug('Got country data', { countryCodeFromIP, countryCodeFromLocation })
