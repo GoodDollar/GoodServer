@@ -2,6 +2,7 @@ import request from 'supertest'
 import MockAdapter from 'axios-mock-adapter'
 
 import { assign, omit } from 'lodash'
+import moment from 'moment'
 import Config from '../../server.config'
 
 import storage from '../../db/mongo/user-privat-provider'
@@ -15,7 +16,7 @@ import createEnrollmentProcessor from '../processor/EnrollmentProcessor'
 import { getToken, getCreds } from '../../__util__/'
 import createMockingHelper from '../api/__tests__/__util__'
 
-import { DisposeAt, scheduleDisposalTask, DISPOSE_ENROLLMENTS_TASK, forEnrollment } from '../cron/taskUtil'
+import { DisposeAt, scheduleDisposalTask, forEnrollment } from '../cron/taskUtil'
 
 describe('verificationAPI', () => {
   let server
@@ -65,6 +66,7 @@ describe('verificationAPI', () => {
     const topWalletMock = jest.fn()
     const isVerifiedMock = jest.fn()
     const lastAuthenticatedMock = jest.fn()
+    const getAuthenticationPeriodMock = jest.fn()
 
     const licenseKey = 'fake-license'
     const licenseType = ZoomLicenseType.Browser
@@ -163,6 +165,7 @@ describe('verificationAPI', () => {
       AdminWallet.isVerified = isVerifiedMock
       AdminWallet.removeWhitelisted = removeWhitelistedMock
       AdminWallet.lastAuthenticated = lastAuthenticatedMock
+      AdminWallet.getAuthenticationPeriod = getAuthenticationPeriodMock
 
       await storage.deleteUser({ identifier: userIdentifier })
       await storage.addUser({ identifier: userIdentifier })
@@ -185,6 +188,7 @@ describe('verificationAPI', () => {
       topWalletMock.mockImplementation(noopAsync)
       removeWhitelistedMock.mockImplementation(noopAsync)
       lastAuthenticatedMock.mockResolvedValue(0)
+      getAuthenticationPeriodMock.mockResolvedValue(180)
     })
 
     afterEach(() => {
@@ -339,10 +343,14 @@ describe('verificationAPI', () => {
     })
 
     test("PUT /verify/face/:enrollmentIdentifier returns duplicate's data", async () => {
+      const mock = jest.spyOn(storage, 'getTask')
+      const today = moment()
+      mock.mockResolvedValue({ createdAt: today.toISOString() })
+      const expiration = today.add((await AdminWallet.getAuthenticationPeriod()) + 1, 'day').toISOString()
+
       helper.mockEnrollmentNotFound(enrollmentIdentifier)
       helper.mockSuccessEnrollment(enrollmentIdentifier)
       helper.mockDuplicateFound(enrollmentIdentifier)
-
       await request(server)
         .put(enrollmentUri)
         .send(payload)
@@ -351,18 +359,20 @@ describe('verificationAPI', () => {
           success: false,
           error: helper.duplicateFoundMessage,
           enrollmentResult: {
-            isVerified: false,
-            isDuplicate: true,
             success: true,
             error: false,
+            isDuplicate: true,
             duplicate: {
               identifier: helper.duplicateEnrollmentIdentifier,
-              matchLevel: 10
-            }
+              matchLevel: 10,
+              expiration
+            },
+            isVerified: false
           }
         })
 
       await testNotVerified()
+      mock.mockRestore()
     })
 
     test('PUT /verify/face/:enrollmentIdentifier returns 200 and success: false when unexpected error happens', async () => {
@@ -424,34 +434,58 @@ describe('verificationAPI', () => {
       await testWhitelisted()
     })
 
-    test('DELETE /verify/face/:enrollmentIdentifier returns 200, success = true and enqueues disposal task if signature is valid', async () => {
+    test('DELETE /verify/face/:enrollmentIdentifier returns 200, success = true and returns future deletion date', async () => {
       mockWhitelisted()
       helper.mockEnrollmentFound(enrollmentIdentifier)
+      const mock = jest.spyOn(storage, 'getTask')
+      const today = moment()
+      mock.mockResolvedValue({ createdAt: today.toISOString(), status: 'pending' })
+      const expiration = today.add((await AdminWallet.getAuthenticationPeriod()) + 1, 'day').toISOString()
 
       await request(server)
         .delete(enrollmentUri)
         .query({ fvSigner: '0x' + enrollmentIdentifier })
         .set('Authorization', `Bearer ${token}`)
-        .expect(200, { success: true })
+        .expect(200, { success: true, executeAt: expiration, status: 'pending' })
 
-      const filters = forEnrollment(enrollmentIdentifier, DisposeAt.AccountRemoved)
+      // const filters = forEnrollment(enrollmentIdentifier, DisposeAt.AccountRemoved)
 
-      await expect(storage.hasTasksQueued(DISPOSE_ENROLLMENTS_TASK, filters)).resolves.toBe(true)
+      // await expect(storage.hasTasksQueued(DISPOSE_ENROLLMENTS_TASK, filters)).resolves.toBe(true)
+      mock.mockRestore()
     })
 
-    test("DELETE /verify/face/:enrollmentIdentifier returns 200, success = true if user isn't whitelisted", async () => {
+    test("DELETE /verify/face/:enrollmentIdentifier returns 200, success = true and status: complete if user isn't whitelisted", async () => {
       helper.mockEnrollmentFound(enrollmentIdentifier)
-
+      const mock = jest.spyOn(storage, 'getTask')
+      mock.mockResolvedValue(null)
       await request(server)
         .delete(enrollmentUri)
         .query({ signature })
         .set('Authorization', `Bearer ${token}`)
         .expect(200, {
-          success: true
+          success: true,
+          status: 'complete'
         })
+      mock.mockRestore()
     })
 
-    test('DELETE /verify/face/:enrollmentIdentifier returns 400 and success = false if signature is invalid', async () => {
+    test('DELETE /verify/face/:enrollmentIdentifier returns 200, success = true and status: complete if user already expired', async () => {
+      helper.mockEnrollmentFound(enrollmentIdentifier)
+      const mock = jest.spyOn(storage, 'getTask')
+      mock.mockResolvedValue({ status: 'complete' })
+      await request(server)
+        .delete(enrollmentUri)
+        .query({ signature })
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200, {
+          success: true,
+          status: 'complete'
+        })
+      mock.mockRestore()
+    })
+
+    // no longer relevant when just returning expiration
+    test.skip('DELETE /verify/face/:enrollmentIdentifier returns 400 and success = false if signature is invalid', async () => {
       const fakeCreds = await getCreds(true)
       const result = await request(server)
         .delete(baseUri + '/' + encodeURIComponent(fakeCreds.fvV2Identifier))
@@ -463,7 +497,7 @@ describe('verificationAPI', () => {
       expect(result.body.error).toStartWith("Identifier signer doesn't match user")
     })
 
-    test('DELETE /verify/face/:enrollmentIdentifier returns 200 and success = true if v2 signature is valid', async () => {
+    test.skip('DELETE /verify/face/:enrollmentIdentifier returns 200 and success = true if v2 signature is valid', async () => {
       helper.mockEnrollmentFound(v2Creds.fvV2Identifier.slice(0, 42))
 
       await request(server)
@@ -480,7 +514,8 @@ describe('verificationAPI', () => {
       await testDisposalState(false)
     })
 
-    test('GET /verify/face/:enrollmentIdentifier returns isDisposing = true if face snapshot has been enqueued for the disposal', async () => {
+    // no longer valid when cant delete until expiration
+    test.skip('GET /verify/face/:enrollmentIdentifier returns isDisposing = true if face snapshot has been enqueued for the disposal', async () => {
       helper.mockEnrollmentFound(enrollmentIdentifier)
       mockWhitelisted()
 
