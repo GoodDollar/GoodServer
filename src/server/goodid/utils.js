@@ -1,6 +1,5 @@
 import axios from 'axios'
 import { PhoneNumberUtil } from 'google-libphonenumber'
-import { basename, extname } from 'path'
 
 import { substituteParams } from '../utils/axios'
 import { assign, every, flatten, get, isUndefined, negate, pickBy, toUpper, map, uniq } from 'lodash'
@@ -132,13 +131,7 @@ export class GoodIDUtils {
     return assign({ id, account }, ...subjects)
   }
 
-  async checkS3AccountVideo(videoFilename, account) {
-    const filename = basename(videoFilename, extname(videoFilename)).toLowerCase()
-
-    if (filename !== account) {
-      throw new Error('Uploaded file name does not match account')
-    }
-
+  async checkS3AccountVideo(videoFilename) {
     await getS3Metadata(videoFilename, REDTENT_BUCKET).catch(() => {
       throw new Error('Uploaded file does not exist at S3 bucket')
     })
