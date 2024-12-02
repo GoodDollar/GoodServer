@@ -349,7 +349,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
           throw new Error('Failed to verify: allowed for the Nigerian/Colombian accounts owned by women only')
         }
 
-        await utils.checkS3AccountVideo(videoFilename, account)
+        await utils.checkS3AccountVideo(videoFilename)
         await MultiWallet.registerRedtent(account, registerToPool, log)
 
         res.status(200).json({ success: true })
