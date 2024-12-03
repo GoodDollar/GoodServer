@@ -18,7 +18,6 @@ import { cancelDisposalTask, getDisposalTask } from '../verification/cron/taskUt
 import createEnrollmentProcessor from '../verification/processor/EnrollmentProcessor'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import { default as AdminWallet } from '../blockchain/MultiWallet'
-import { deleteFaceId } from '../verification/verificationAPI'
 import Logger from '../../imports/logger'
 
 const { fishManager } = stakingModelTasks
@@ -417,8 +416,7 @@ const setup = (app: Router, storage: StorageAPI) => {
   app.post(
     '/user/delete',
     wrapAsync(async (req, res) => {
-      const { user, log, body } = req
-      const { enrollmentIdentifier = '', fvSigner = '' } = body
+      const { user, log } = req
       log.info('delete user', { user })
 
       //first get number of accounts using same crmId before we delete the account
@@ -430,11 +428,6 @@ const setup = (app: Router, storage: StorageAPI) => {
         : 0
 
       const results = await Promise.all([
-        fvSigner || enrollmentIdentifier
-          ? deleteFaceId(fvSigner, enrollmentIdentifier, user, storage, log)
-              .then(() => ({ fv: 'ok' }))
-              .catch(() => ({ fv: 'failed' }))
-          : Promise.resolve({ fv: 'skipping' }),
         (user.identifier ? storage.deleteUser(user) : Promise.reject())
           .then(() => ({ mongodb: 'ok' }))
           .catch(() => ({ mongodb: 'failed' })),

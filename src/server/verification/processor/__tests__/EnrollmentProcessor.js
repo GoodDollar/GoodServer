@@ -358,4 +358,16 @@ describe('EnrollmentProcessor', () => {
       [unexistingEnrollmentIdentifier, enrollmentIdentifier, nonIndexedEnrollmentIdentifier].map(taskId)
     )
   })
+
+  test('enroll() failes when under age', async () => {
+    helper.mockEnrollmentNotFound(enrollmentIdentifier)
+    helper.mockSuccessEnrollmentUnderAge(enrollmentIdentifier)
+
+    const wrappedResponse = expect(enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)).resolves
+
+    await wrappedResponse.toBeDefined()
+    await wrappedResponse.toHaveProperty('success', false)
+    await wrappedResponse.toHaveProperty('enrollmentResult.isVerified', false)
+    await wrappedResponse.toHaveProperty('error', 'age check failed')
+  })
 })

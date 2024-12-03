@@ -1,6 +1,5 @@
 // @flow
-import { assign, bindAll, get, omit, over } from 'lodash'
-import fs from 'fs'
+import { assign, bindAll, omit, over } from 'lodash'
 import { type IEnrollmentEventPayload } from './typings'
 import logger from '../../../imports/logger'
 import { DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment, scheduleDisposalTask } from '../cron/taskUtil'
@@ -65,19 +64,19 @@ export default class EnrollmentSession {
       }
 
       // TODO: remove this after research
-      if (conf.env.startsWith('prod') && get(exception, 'response.isDuplicate', false)) {
-        try {
-          const fileName = `${enrollmentIdentifier}-${exception.response.duplicate.identifier}`
-          const { auditTrailBase64 } = await this.provider.getEnrollment(exception.response.duplicate.identifier)
-          let a = Buffer.from(payload.auditTrailImage, 'base64')
-          let b = Buffer.from(auditTrailBase64, 'base64')
-          fs.writeFileSync(fileName + '-a.jpg', a)
-          fs.writeFileSync(fileName + '-b.jpg', b)
-          log.debug('wrote duplicate file:', { fileName })
-        } catch (e) {
-          log.error('failed writing duplicate files', e.message, e)
-        }
-      }
+      // if (conf.env.startsWith('prod') && get(exception, 'response.isDuplicate', false)) {
+      //   try {
+      //     const fileName = `${enrollmentIdentifier}-${exception.response.duplicate.identifier}`
+      //     const { auditTrailBase64 } = await this.provider.getEnrollment(exception.response.duplicate.identifier)
+      //     let a = Buffer.from(payload.auditTrailImage, 'base64')
+      //     let b = Buffer.from(auditTrailBase64, 'base64')
+      //     fs.writeFileSync(fileName + '-a.jpg', a)
+      //     fs.writeFileSync(fileName + '-b.jpg', b)
+      //     log.debug('wrote duplicate file:', { fileName })
+      //   } catch (e) {
+      //     log.error('failed writing duplicate files', e.message, e)
+      //   }
+      // }
 
       if (shouldLogVerificaitonError(exception)) {
         log.error(...logArgs)
