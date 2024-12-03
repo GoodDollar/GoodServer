@@ -89,7 +89,7 @@
     "express-pino-logger": "^4.0.0",
     "express-rate-limit": "^6.7.0",
     "express-validator": "^6.6.1",
-    "google-libphonenumber": "^3.2.34",
+    "google-libphonenumber": "^3.2.39",
     "hdkey": "^1.1.2",
     "ioredis": "^5.3.2",
     "is-base64": "^1.1.0",
