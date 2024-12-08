@@ -77,7 +77,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
       const { mobile: mobileHash, smsValidated, gdAddress } = user
       const { longitude, latitude } = get(body, 'geoposition.coords', {})
 
-      log.debug('Location certificate request', { longitude, latitude })
+      log.debug('Location certificate request', { longitude, latitude, user })
       const issueCertificate = async countryCode => {
         const certificate = await utils.issueCertificate(gdAddress, Location, { countryCode })
 
@@ -166,6 +166,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
       const { enrollmentIdentifier, fvSigner } = body
       const { gdAddress } = user
 
+      log.info('identity certificate request:', { user, enrollmentIdentifier })
       try {
         const processor = createEnrollmentProcessor(storage, log)
 
@@ -191,7 +192,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
 
         const { auditTrailBase64 } = await processor.getEnrollment(faceIdentifier, log)
         const estimation = await utils.ageGenderCheck(auditTrailBase64)
-
+        log.info('identity certificat request estimation:', { estimation })
         const certificate = await utils.issueCertificate(gdAddress, [Identity, Gender, Age], {
           unique: true,
           ...estimation
@@ -246,6 +247,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
       const { body, log } = req
       const { certificate } = body ?? {}
 
+      log.info('certificate verification request:', { certificate })
       try {
         if (!certificate) {
           throw new Error('Failed to verify credential: missing certificate data')
@@ -318,6 +320,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
       const { body, log } = req
       const { certificates, videoFilename } = body ?? {}
 
+      log.info('redtent request:', { certificates, videoFilename })
       try {
         if (isEmpty(certificates)) {
           throw new Error('Failed to verify: missing certificate data')
