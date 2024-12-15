@@ -616,10 +616,10 @@ export class Web3Wallet {
           .call()
           .then(() => true)
           .catch(e => {
-            if (e.message.search(/reverted/i) >= 0) {
+            if (e.message.search(/VM execution|reverted/i) >= 0) {
               return false
             } else {
-              logger.info('retrying canTopOrError', e.message, { chainId: this.networkId })
+              logger.info('retrying canTopOrError', e.message, { chainId: this.networkId, data: e.data })
               throw e
             }
           }),
