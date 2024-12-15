@@ -619,14 +619,14 @@ export class Web3Wallet {
             if (e.message.search(/reverted/i) >= 0) {
               return false
             } else {
-              logger.info('retrying canTopOrError', e.message)
+              logger.info('retrying canTopOrError', e.message, { chainId: this.networkId })
               throw e
             }
           }),
       3,
       1500
     ).catch(e => {
-      logger.error('canTopOrError failed after retries', e.message, e)
+      logger.error('canTopOrError failed after retries', e.message, e, { chainId: this.networkId })
       return e.message
     })
 
