@@ -609,11 +609,26 @@ export class Web3Wallet {
     let txHash = ''
 
     // simulate tx to detect revert
-    const canTopOrError = await this.proxyContract.methods
-      .topWallet(address)
-      .call()
-      .then(() => true)
-      .catch(e => e.message)
+    const canTopOrError = await retryAsync(
+      () =>
+        this.proxyContract.methods
+          .topWallet(address)
+          .call()
+          .then(() => true)
+          .catch(e => {
+            if (e.message.search(/reverted/i) >= 0) {
+              return false
+            } else {
+              logger.info('retrying canTopOrError', e.message)
+              throw e
+            }
+          }),
+      3,
+      1500
+    ).catch(e => {
+      logger.error('canTopOrError failed after retries', e.message, e)
+      return e.message
+    })
 
     if (canTopOrError !== true) {
       let userBalance = web3Utils.toBN(await this.web3.eth.getBalance(address))
