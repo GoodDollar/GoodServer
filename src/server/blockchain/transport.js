@@ -77,18 +77,18 @@ export class MultipleHttpProvider extends HttpProvider {
         return await this._sendRequest(payload)
       } catch (exception) {
         // log error to analytics if last peer failed, ie all rpcs failed
-        if (!isTxError(exception?.message) && peers[peers.length - 1] === item) {
-          const { message: originalMessage } = exception
+        const errorMessage = exception?.error ? JSON.stringify(exception?.error) : exception.message
+        if (!isTxError(errorMessage) && peers[peers.length - 1] === item) {
           const errorMessage = 'Failed all RPCs' // so in analytics all errors are grouped under same message
 
           // log.exception bypass network error filtering
-          log.error('MultiHttpProvider:', errorMessage, exception, { provider, originalMessage })
+          log.error('MultiHttpProvider:', errorMessage, exception, { provider })
         } else if (isRateLimitError(exception)) {
           log.warn('MultiHttpProvider rate limit error', exception.message, exception, { provider })
           endpoints.splice(endpoints.indexOf(item, 1))
           setTimeout(() => endpoints.push(item), 60000)
         } else {
-          log.warn('MultiHttpProvider failed to send:', exception.message, exception, { provider })
+          log.warn('MultiHttpProvider failed to send:', errorMessage, exception, { provider })
         }
 
         throw exception
@@ -107,17 +107,17 @@ export class MultipleHttpProvider extends HttpProvider {
     }
 
     // if not connection issue - stop fallback, throw error
-    const onFallback = error => {
-      const { message, code } = error
-
-      const txError = isTxError(message)
-      const conError = isConnectionError(message)
+    const onFallback = exception => {
+      const { message, error, code } = exception
+      const errorMessage = exception?.error ? JSON.stringify(exception?.error) : exception.message
+      const txError = isTxError(errorMessage)
+      const conError = isConnectionError(error)
 
       // retry if not tx issue and network error or if rpc responded with error (error.error)
-      const willFallback = !txError && !!(code || error.error || !message || conError)
+      const willFallback = !txError && !!(code || error || !message || conError)
 
       if (!willFallback) {
-        log.warn('send: got error without fallback', { message, error, willFallback, txError, conError })
+        log.warn('send: got error without fallback', { message, error, willFallback, txError, conError, exception })
       }
 
       return willFallback
