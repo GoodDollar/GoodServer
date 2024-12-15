@@ -1007,7 +1007,7 @@ export class Web3Wallet {
       })
 
       let txPromise = new Promise((res, rej) => {
-        tx.send({ gas, maxFeePerGas, maxPriorityFeePerGas, chainId: this.networkId, nonce, from: address, type: 0 })
+        tx.send({ gas, maxFeePerGas, maxPriorityFeePerGas, chainId: this.networkId, nonce, from: address })
           .on('transactionHash', h => {
             txHash = h
             logger.trace('got tx hash:', { txuuid, txHash, wallet: this.name })
