@@ -77,18 +77,18 @@ export class MultipleHttpProvider extends HttpProvider {
         return await this._sendRequest(payload)
       } catch (exception) {
         // log error to analytics if last peer failed, ie all rpcs failed
-        const errorMessage = exception?.error ? JSON.stringify(exception?.error) : exception.message
-        if (!isTxError(errorMessage) && peers[peers.length - 1] === item) {
+        const error = exception?.error ? JSON.stringify(exception?.error) : exception.message
+        if (!isTxError(error) && peers[peers.length - 1] === item) {
           const errorMessage = 'Failed all RPCs' // so in analytics all errors are grouped under same message
 
           // log.exception bypass network error filtering
-          log.error('MultiHttpProvider:', errorMessage, exception, { provider })
+          log.error('MultiHttpProvider:', errorMessage, exception, { error, provider })
         } else if (isRateLimitError(exception)) {
-          log.warn('MultiHttpProvider rate limit error', exception.message, exception, { provider })
+          log.warn('MultiHttpProvider rate limit error', exception.message, exception, { error, provider })
           endpoints.splice(endpoints.indexOf(item, 1))
           setTimeout(() => endpoints.push(item), 60000)
         } else {
-          log.warn('MultiHttpProvider failed to send:', errorMessage, exception, { provider })
+          log.warn('MultiHttpProvider failed to send:', error, exception, { provider })
         }
 
         throw exception
