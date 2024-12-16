@@ -619,26 +619,21 @@ export class Web3Wallet {
             if (e.message.search(/VM execution|reverted/i) >= 0) {
               return false
             } else {
-              logger.info('retrying canTopOrError', e.message, { chainId: this.networkId, data: e.data })
+              logger.debug('retrying canTopOrError', e.message, { chainId: this.networkId, data: e.data })
               throw e
             }
           }),
       3,
-      1500
+      500
     ).catch(e => {
-      logger.error('canTopOrError failed after retries', e.message, e, { chainId: this.networkId })
-      return e.message
+      logger.warn('canTopOrError failed after retries', e.message, e, { chainId: this.networkId })
+      throw e
     })
 
-    if (canTopOrError !== true) {
+    if (canTopOrError === false) {
       let userBalance = web3Utils.toBN(await this.web3.eth.getBalance(address))
       logger.debug('Topwallet will revert, skipping', { address, canTopOrError, wallet: this.name, userBalance })
-
-      // seems like user has balance so its not an error
-      if (userBalance.gt(web3Utils.toBN(this.gasPrice).mul(web3Utils.toBN('300000')))) {
-        return false
-      }
-      throw new Error(`${this.name}: Topwallet will revert, probably user passed limit`)
+      return false
     }
 
     try {
