@@ -269,7 +269,7 @@ describe('goodidAPI', () => {
       .set('X-Forwarded-For', testIPBR)
       .expect(400, {
         success: false,
-        error: 'Country of Your IP address does not match geolocation data'
+        error: 'location could not be verified'
       })
   })
 
