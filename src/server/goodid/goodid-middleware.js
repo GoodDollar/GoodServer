@@ -101,7 +101,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
 
         const clientIp = requestIp.getClientIp(req)
 
-        log.debug('Getting country data', { clientIp, longitude, latitude })
+        log.debug('Getting country data', { clientIp, longitude, latitude, gdAddress })
 
         const [countryCodeFromIP, countryCodeFromLocation] = await Promise.all([
           utils.getCountryCodeFromIPAddress(clientIp),
@@ -110,7 +110,8 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
 
         log.debug('Got country data', { countryCodeFromIP, countryCodeFromLocation })
         if (countryCodeFromIP !== countryCodeFromLocation) {
-          throw new Error('Country of Your IP address does not match geolocation data')
+          log.warn('ip doesnt match geolocation', { clientIp, longitude, latitude, gdAddress })
+          return res.status(400).json({ success: false, error: 'location could not be verified' })
         }
 
         await issueCertificate(countryCodeFromIP)
