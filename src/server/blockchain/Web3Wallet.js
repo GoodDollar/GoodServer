@@ -134,6 +134,7 @@ export class Web3Wallet {
   }
 
   async init() {
+    const { env } = conf
     const { log } = this
 
     log.debug('Initializing wallet:', { conf: this.ethereum })
@@ -143,15 +144,16 @@ export class Web3Wallet {
 
     assign(this.web3.eth, web3Default)
 
-    await this.web3.eth
-      .getGasPrice()
-      .then(price => (this.gasPrice = price))
-      .catch(e => {
-        log.error('failed to get gas price', e.message, e)
-        this.gasPrice = (11e9).toString()
-      })
-      .then(() => log.info('default gas price set to:', this.gasPrice))
-
+    if (env !== 'test') {
+      await this.web3.eth
+        .getGasPrice()
+        .then(price => (this.gasPrice = price))
+        .catch(e => {
+          log.error('failed to get gas price', e.message, e)
+          this.gasPrice = (11e9).toString()
+        })
+        .then(() => log.info('default gas price set to:', this.gasPrice))
+    }
     if (this.conf.privateKey) {
       let account = this.web3.eth.accounts.privateKeyToAccount(this.conf.privateKey)
 
