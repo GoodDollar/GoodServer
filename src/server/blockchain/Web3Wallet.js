@@ -77,6 +77,7 @@ export class Web3Wallet {
     this.maxFeePerGas = maxFeePerGas
     this.maxPriorityFeePerGas = maxPriorityFeePerGas
     this.log = logger.child({ from: `${name}/${this.networkId}` })
+    this.gasPrice = (11e9).toString()
 
     this.initialize()
   }
