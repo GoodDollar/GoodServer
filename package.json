@@ -102,7 +102,6 @@
     "passport": "^0.6.0",
     "passport-anonymous": "^1.0.1",
     "passport-jwt": "^4.0.0",
-    "pino": "^5.17.0",
     "rate-limit-redis": "^3.0.2",
     "request-ip": "^3.3.0",
     "rxjs": "^6.6.3",

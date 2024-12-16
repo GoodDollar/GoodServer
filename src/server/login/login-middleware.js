@@ -5,7 +5,7 @@ import { Strategy as AnonymousStrategy } from 'passport-anonymous'
 import { ExtractJwt, Strategy } from 'passport-jwt'
 import { Router } from 'express'
 import { defaults } from 'lodash'
-import * as Crypto from '@textile/crypto'
+import { PublicKey } from '@textile/crypto'
 import { TextEncoder } from 'util'
 import isBase64 from 'is-base64'
 import { sha3 } from 'web3-utils'
@@ -37,7 +37,8 @@ const FV_IDENTIFIER_MSG = `Sign this message to create your own unique identifie
 You can use this identifier in the future to delete this anonymized record.
 WARNING: do not sign this message unless you trust the website/application requesting this signature.`
 
-export const FV_IDENTIFIER_MSG2 = mustache(`Sign this message to request verifying your account {account} and to create your own secret unique identifier for your anonymized record.
+export const FV_IDENTIFIER_MSG2 =
+  mustache(`Sign this message to request verifying your account {account} and to create your own secret unique identifier for your anonymized record.
 You can use this identifier in the future to delete this anonymized record.
 WARNING: do not sign this message unless you trust the website/application requesting this signature.`)
 
@@ -65,7 +66,7 @@ const isProfileSignatureCompatible = (signature, nonce) => {
 
 const verifyProfilePublicKey = async (publicKeyString, signature, nonce) => {
   try {
-    const profilePublicKey = Crypto.PublicKey.fromString(publicKeyString)
+    const profilePublicKey = PublicKey.fromString(publicKeyString)
     const sigbytes = Uint8Array.from(Buffer.from(signature, 'base64'))
     const msgbytes = new TextEncoder().encode(MSG + nonce)
 

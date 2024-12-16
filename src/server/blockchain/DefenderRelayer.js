@@ -1,6 +1,6 @@
 // @flow
 import { Relayer, RelayerTransactionPayload } from '@openzeppelin/defender-relay-client'
-import { AutotaskClient } from '@openzeppelin/defender-autotask-client'
+// import { AutotaskClient } from '@openzeppelin/defender-autotask-client'
 import { keccak256 } from 'web3-utils'
 import Config from '../server.config'
 
@@ -12,7 +12,7 @@ export class DefenderRelayer {
   constructor(apiKey: string, apiSecret: stirng) {
     if (apiKey && apiSecret) {
       this.relayer = new Relayer({ apiKey, apiSecret })
-      this.autotask = new AutotaskClient({ apiKey, apiSecret })
+      // this.autotask = new AutotaskClient({ apiKey, apiSecret })
     }
   }
 
@@ -32,7 +32,7 @@ export class DefenderRelayer {
     return this.relayer.sendTransaction(payload)
   }
 
-  async triggerTask(taskId: string, data) {
-    return this.autotask.runAutotask(taskId, data)
-  }
+  // async triggerTask(taskId: string, data) {
+  //   return this.autotask.runAutotask(taskId, data)
+  // }
 }
