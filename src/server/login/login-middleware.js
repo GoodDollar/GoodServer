@@ -20,6 +20,7 @@ import { recoverPublickey } from '../utils/eth'
 import { mustache, strcasecmp } from '../utils/string'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import clientSettings from '../clients.config.js'
+import { verifyMessage } from '@ambire/signature-validator'
 
 const log = logger.child({ from: 'login-middleware' })
 
@@ -41,6 +42,9 @@ export const FV_IDENTIFIER_MSG2 =
   mustache(`Sign this message to request verifying your account {account} and to create your own secret unique identifier for your anonymized record.
 You can use this identifier in the future to delete this anonymized record.
 WARNING: do not sign this message unless you trust the website/application requesting this signature.`)
+
+const fuseProvider = new ethers.providers.JsonRpcProvider('https://rpc.fuse.io')
+const celoProvider = new ethers.providers.JsonRpcProvider('https://forno.celo.org')
 
 const isProfileSignatureCompatible = (signature, nonce) => {
   if (isBase64(signature)) {
@@ -265,33 +269,50 @@ const setup = (app: Router) => {
       log.debug('/auth/fv2', { message: 'authorizing' })
       log.debug('/auth/fv2', { body })
 
-      const { fvsig, account } = body
+      const { fvsig, account, chainId = '42220' } = body
 
       log.debug('/auth/fv2', { account, fvsig })
 
-      const recovered = recoverPublickey(fvsig, FV_IDENTIFIER_MSG2({ account }), '')
+      try {
+        let provider = celoProvider
+        switch (String(chainId)) {
+          case '42220':
+            provider = celoProvider
+            break
+          case '122':
+            provider = fuseProvider
+            break
+          default:
+            log.warn('unsupported chainId defaulting to Celo', chainId)
+        }
 
-      log.debug('/auth/fv2', {
-        message: 'Recovered public key',
-        recovered
-      })
-
-      // strcasemp returns non-zero if not match
-      if (strcasecmp(recovered, account)) {
-        log.warn('/auth/f2v', {
-          message: 'SigUtil unable to recover the message signer'
+        const verifyResult = await verifyMessage({
+          provider,
+          signer: account,
+          signature: fvsig,
+          message: FV_IDENTIFIER_MSG2({ account })
         })
 
-        throw new Error('Unable to verify credentials')
+        log.debug('verification result:', {
+          verifyResult
+        })
+
+        // strcasemp returns non-zero if not match
+        if (!verifyMessage) {
+          throw new Error('Unable to verify credentials')
+        }
+
+        const token = await generateJWT(account)
+
+        log.info('/auth/fv2', {
+          message: `JWT token: ${token}`
+        })
+
+        res.json({ token })
+      } catch (e) {
+        log.error('/auth/fv2 failed', e.message, e, { account, fvsig })
+        throw e
       }
-
-      const token = await generateJWT(recovered)
-
-      log.info('/auth/fv2', {
-        message: `JWT token: ${token}`
-      })
-
-      res.json({ token })
     })
   )
 
@@ -338,8 +359,8 @@ const setup = (app: Router) => {
         'function estimateSendFee(uint16,address,address,uint256,bool,bytes) view returns (uint256,uint256)'
       ])
       const bridgeEth = bridge.connect(new ethers.providers.CloudflareProvider())
-      const bridgeFuse = bridge.connect(new ethers.providers.JsonRpcProvider('https://rpc.fuse.io'))
-      const bridgeCelo = bridge.connect(new ethers.providers.JsonRpcProvider('https://forno.celo.org'))
+      const bridgeFuse = bridge.connect(fuseProvider)
+      const bridgeCelo = bridge.connect(celoProvider)
       const params = ethers.utils.solidityPack(['uint16', 'uint256'], [1, 400000])
       const [lzEthCelo, lzEthFuse, lzCeloEth, lzCeloFuse, lzFuseEth, lzFuseCelo] = await Promise.all([
         bridgeEth
