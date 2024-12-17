@@ -101,6 +101,11 @@ class UserPrivate {
     return await this.model.findOne({ identifier }).lean()
   }
 
+  async getByIdentifierHash(identifier) {
+    return await this.model
+      .find({ $or: [{ email: identifier }, { walletAddress: identifier }, { mobile: identifier }, { identifier }] })
+      .lean()
+  }
   /**
    * complete Step by identifier and step name
    *
@@ -253,7 +258,7 @@ class UserPrivate {
         // selecting tasks which aren't locked or completed by taskName and other filters
         { ...filters, status: { $nin: [Locked, Complete] }, taskName },
         // setting unique (for each fetchTasksForProcessing() call) lockId
-        { status: Locked, lockId }
+        { status: Locked, lockId, updatedAt: new Date() }
       )
 
       // queries aren't Promises in mongoose so we couldn't just
@@ -263,9 +268,9 @@ class UserPrivate {
       //
       // here we just fetching records matched by unique (for each call) lockId
       // there should be the same records were locked during .updateMany query
-      const pendingTasks = await taskModel.find({ lockId })
+      const pendingTasksIterator = async () => taskModel.find({ lockId }).limit(1000)
 
-      return pendingTasks
+      return pendingTasksIterator
     } catch (exception) {
       const { message: errMessage } = exception
       const logPayload = { filters, taskName }
@@ -365,6 +370,10 @@ class UserPrivate {
       logger.error("Couldn't unlock and update delayed tasks", errMessage, exception, filters)
       throw exception
     }
+  }
+
+  async unlockOnStartup(): Promise<void> {
+    return this._unlockTasksBy({}, DelayedTaskStatus.Pending)
   }
 }
 

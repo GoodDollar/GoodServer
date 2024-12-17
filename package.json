@@ -1,6 +1,6 @@
 {
   "name": "@gooddollar/goodserver",
-  "version": "1.59.1-1",
+  "version": "1.61.0",
   "description": "GoodDollar Server",
   "main": "src/server/index.js",
   "engines": {
@@ -49,6 +49,7 @@
   },
   "homepage": "https://gooddollar.org",
   "dependencies": {
+    "@ambire/signature-validator": "^1.4.1",
     "@aws-sdk/client-s3": "^3.552.0",
     "@axelar-network/axelarjs-sdk": "^0.13.6",
     "@babel/polyfill": "^7.11.5",
@@ -89,7 +90,7 @@
     "express-pino-logger": "^4.0.0",
     "express-rate-limit": "^6.7.0",
     "express-validator": "^6.6.1",
-    "google-libphonenumber": "^3.2.34",
+    "google-libphonenumber": "^3.2.39",
     "hdkey": "^1.1.2",
     "ioredis": "^5.3.2",
     "is-base64": "^1.1.0",
@@ -102,7 +103,6 @@
     "passport": "^0.6.0",
     "passport-anonymous": "^1.0.1",
     "passport-jwt": "^4.0.0",
-    "pino": "^5.17.0",
     "rate-limit-redis": "^3.0.2",
     "request-ip": "^3.3.0",
     "rxjs": "^6.6.3",

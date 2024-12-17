@@ -17,6 +17,7 @@ import MultiWallet from '../blockchain/MultiWallet'
 import { wrapAsync } from '../utils/helpers'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import config from '../server.config'
+import { retry as retryAttempt } from '../utils/async'
 
 const { Location, Gender, Age, Identity } = Credential
 
@@ -76,7 +77,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
       const { mobile: mobileHash, smsValidated, gdAddress } = user
       const { longitude, latitude } = get(body, 'geoposition.coords', {})
 
-      log.debug('Location certificate request', { longitude, latitude })
+      log.debug('Location certificate request', { longitude, latitude, user })
       const issueCertificate = async countryCode => {
         const certificate = await utils.issueCertificate(gdAddress, Location, { countryCode })
 
@@ -100,16 +101,17 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
 
         const clientIp = requestIp.getClientIp(req)
 
-        log.debug('Getting country data', { clientIp, longitude, latitude })
+        log.debug('Getting country data', { clientIp, longitude, latitude, gdAddress })
 
         const [countryCodeFromIP, countryCodeFromLocation] = await Promise.all([
           utils.getCountryCodeFromIPAddress(clientIp),
-          utils.getCountryCodeFromGeoLocation(latitude, longitude)
+          retryAttempt(() => utils.getCountryCodeFromGeoLocation(latitude, longitude), 3, 1500)
         ])
 
         log.debug('Got country data', { countryCodeFromIP, countryCodeFromLocation })
         if (countryCodeFromIP !== countryCodeFromLocation) {
-          throw new Error('Country of Your IP address does not match geolocation data')
+          log.warn('ip doesnt match geolocation', { clientIp, longitude, latitude, gdAddress })
+          return res.status(400).json({ success: false, error: 'location could not be verified' })
         }
 
         await issueCertificate(countryCodeFromIP)
@@ -165,6 +167,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
       const { enrollmentIdentifier, fvSigner } = body
       const { gdAddress } = user
 
+      log.info('identity certificate request:', { user, enrollmentIdentifier })
       try {
         const processor = createEnrollmentProcessor(storage, log)
 
@@ -190,7 +193,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
 
         const { auditTrailBase64 } = await processor.getEnrollment(faceIdentifier, log)
         const estimation = await utils.ageGenderCheck(auditTrailBase64)
-
+        log.info('identity certificat request estimation:', { estimation })
         const certificate = await utils.issueCertificate(gdAddress, [Identity, Gender, Age], {
           unique: true,
           ...estimation
@@ -245,6 +248,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
       const { body, log } = req
       const { certificate } = body ?? {}
 
+      log.info('certificate verification request:', { certificate })
       try {
         if (!certificate) {
           throw new Error('Failed to verify credential: missing certificate data')
@@ -317,6 +321,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
       const { body, log } = req
       const { certificates, videoFilename } = body ?? {}
 
+      log.info('redtent request:', { certificates, videoFilename })
       try {
         if (isEmpty(certificates)) {
           throw new Error('Failed to verify: missing certificate data')
@@ -337,8 +342,8 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
         if (['development', 'staging'].includes(config.env)) {
           //           -Men - Japan, Ukraine, Israel, Brazil, Nigeria
           // --Women - US, Israel, Spain, Colombia
-          if (gender === 'Male' && ['JP', 'UA', 'IL', 'BR', 'NG'].includes(countryCode) === false) {
-            throw new Error("Failed to verify: allowed 'JP','UA','IL','BR','NG' for male only")
+          if (gender === 'Male' && ['JP', 'UA', 'IL', 'BR', 'NG', 'DN'].includes(countryCode) === false) {
+            throw new Error("Failed to verify: allowed 'JP','UA','IL','BR','NG', 'DN' for male only")
           }
           if (gender === 'Female' && ['US', 'IL', 'ES', 'CO'].includes(countryCode) === false) {
             throw new Error("Failed to verify: allowed 'US','IL','ES','CO' for female only")
@@ -348,7 +353,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
           throw new Error('Failed to verify: allowed for the Nigerian/Colombian accounts owned by women only')
         }
 
-        await utils.checkS3AccountVideo(videoFilename, account)
+        await utils.checkS3AccountVideo(videoFilename)
         await MultiWallet.registerRedtent(account, registerToPool, log)
 
         res.status(200).json({ success: true })
