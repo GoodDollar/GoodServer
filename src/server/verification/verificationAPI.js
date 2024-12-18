@@ -999,7 +999,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         }
 
         if (parsedRes.success) {
-          const verifyResult = await OTP.verifyCaptcha(kvStorageIpKey)
+          const verifyResult = await OTP.verifyCaptcha(kvStorageIpKey, captchaType)
 
           log.debug('Recaptcha verified', { verifyResult, parsedRes })
 
