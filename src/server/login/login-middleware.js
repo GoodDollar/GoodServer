@@ -16,11 +16,10 @@ import logger from '../../imports/logger'
 import { wrapAsync } from '../utils/helpers'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
 import Config from '../server.config.js'
-import { recoverPublickey } from '../utils/eth'
-import { mustache, strcasecmp } from '../utils/string'
+import { recoverPublickey, verifyIdentifier } from '../utils/eth'
+import { strcasecmp } from '../utils/string'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import clientSettings from '../clients.config.js'
-import { verifyMessage } from '@ambire/signature-validator'
 
 const log = logger.child({ from: 'login-middleware' })
 
@@ -37,14 +36,6 @@ nonce:`
 const FV_IDENTIFIER_MSG = `Sign this message to create your own unique identifier for your anonymized record.
 You can use this identifier in the future to delete this anonymized record.
 WARNING: do not sign this message unless you trust the website/application requesting this signature.`
-
-export const FV_IDENTIFIER_MSG2 =
-  mustache(`Sign this message to request verifying your account {account} and to create your own secret unique identifier for your anonymized record.
-You can use this identifier in the future to delete this anonymized record.
-WARNING: do not sign this message unless you trust the website/application requesting this signature.`)
-
-const fuseProvider = new ethers.providers.JsonRpcProvider('https://rpc.fuse.io')
-const celoProvider = new ethers.providers.JsonRpcProvider('https://forno.celo.org')
 
 const isProfileSignatureCompatible = (signature, nonce) => {
   if (isBase64(signature)) {
@@ -274,34 +265,7 @@ const setup = (app: Router) => {
       log.debug('/auth/fv2', { account, fvsig })
 
       try {
-        let provider = celoProvider
-        switch (String(chainId)) {
-          case '42220':
-            provider = celoProvider
-            break
-          case '122':
-            provider = fuseProvider
-            break
-          default:
-            log.warn('unsupported chainId defaulting to Celo', chainId)
-        }
-
-        const verifyResult = await verifyMessage({
-          provider,
-          signer: account,
-          signature: fvsig,
-          message: FV_IDENTIFIER_MSG2({ account })
-        })
-
-        log.debug('verification result:', {
-          verifyResult
-        })
-
-        // strcasemp returns non-zero if not match
-        if (!verifyMessage) {
-          throw new Error('Unable to verify credentials')
-        }
-
+        await verifyIdentifier(fvsig, account, chainId)
         const token = await generateJWT(account)
 
         log.info('/auth/fv2', {
@@ -358,6 +322,10 @@ const setup = (app: Router) => {
       const bridge = new ethers.Contract('0xa3247276DbCC76Dd7705273f766eB3E8a5ecF4a5', [
         'function estimateSendFee(uint16,address,address,uint256,bool,bytes) view returns (uint256,uint256)'
       ])
+
+      const fuseProvider = new ethers.providers.JsonRpcProvider('https://rpc.fuse.io')
+      const celoProvider = new ethers.providers.JsonRpcProvider('https://forno.celo.org')
+
       const bridgeEth = bridge.connect(new ethers.providers.CloudflareProvider())
       const bridgeFuse = bridge.connect(fuseProvider)
       const bridgeCelo = bridge.connect(celoProvider)

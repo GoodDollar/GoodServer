@@ -10,7 +10,8 @@ import { Credential } from './veramo'
 
 import createEnrollmentProcessor from '../verification/processor/EnrollmentProcessor'
 import { enrollmentNotFoundMessage } from '../verification/utils/constants'
-import { normalizeIdentifiers, verifyIdentifier } from '../verification/utils/utils'
+import { normalizeIdentifiers } from '../verification/utils/utils'
+import { verifyIdentifier } from '../utils/eth.js'
 
 import MultiWallet from '../blockchain/MultiWallet'
 
@@ -177,7 +178,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
 
         const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
 
-        verifyIdentifier(enrollmentIdentifier, gdAddress)
+        await verifyIdentifier(enrollmentIdentifier, gdAddress)
 
         // here we check if wallet was registered using v1 of v2 identifier
         const [isV2, isV1] = await Promise.all([

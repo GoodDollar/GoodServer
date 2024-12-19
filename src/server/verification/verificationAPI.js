@@ -20,10 +20,11 @@ import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 import createIdScanProcessor from './processor/IdScanProcessor'
 
 import { cancelDisposalTask } from './cron/taskUtil'
-import { recoverPublickey } from '../utils/eth'
+import { recoverPublickey, verifyIdentifier } from '../utils/eth'
 import { shouldLogVerificaitonError } from './utils/logger'
 import { syncUserEmail } from '../storage/addUserSteps'
-import { normalizeIdentifiers, verifyIdentifier } from './utils/utils.js'
+import { normalizeIdentifiers } from './utils/utils.js'
+
 import ipcache from '../db/mongo/ipcache-provider.js'
 
 export const deleteFaceId = async (fvSigner, enrollmentIdentifier, user, storage, log) => {
@@ -32,7 +33,7 @@ export const deleteFaceId = async (fvSigner, enrollmentIdentifier, user, storage
   const processor = createEnrollmentProcessor(storage, log)
 
   // for v2 identifier - verify that identifier is for the address we are going to whitelist
-  verifyIdentifier(enrollmentIdentifier, gdAddress)
+  await verifyIdentifier(enrollmentIdentifier, gdAddress)
 
   const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
 
@@ -266,7 +267,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       try {
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
         // for v1 this will do nothing
-        verifyIdentifier(enrollmentIdentifier, gdAddress)
+        await verifyIdentifier(enrollmentIdentifier, gdAddress)
 
         const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
         const enrollmentProcessor = createEnrollmentProcessor(storage, log)
@@ -369,7 +370,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       try {
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
         // for v1 this will do nothing
-        verifyIdentifier(enrollmentIdentifier, gdAddress)
+        await verifyIdentifier(enrollmentIdentifier, gdAddress)
 
         const { v2Identifier } = normalizeIdentifiers(enrollmentIdentifier)
 
