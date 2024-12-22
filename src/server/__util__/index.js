@@ -1,6 +1,6 @@
 import request from 'supertest'
 import Web3 from 'web3'
-import { FV_IDENTIFIER_MSG2 } from '../login/login-middleware'
+import { FV_IDENTIFIER_MSG2 } from '../utils/eth.js'
 
 const web3 = new Web3()
 
