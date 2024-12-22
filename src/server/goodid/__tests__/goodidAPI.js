@@ -389,7 +389,7 @@ describe('goodidAPI', () => {
     expect(status).toBe(400)
     expect(body).toHaveProperty('success', false)
     expect(body).toHaveProperty('error')
-    expect(body.error).toStartWith("Identifier signer doesn't match user")
+    expect(body.error).toStartWith('FV identifier signature verification faild')
   })
 
   test('Identity certificate: should fail if face record does not exist', async () => {
