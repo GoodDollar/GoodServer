@@ -310,7 +310,7 @@ export class Web3Wallet {
     const { log } = this
 
     try {
-      const { nonce, release, fail, address } = await this.txManager.lock(this.addresses[0], 1000) // timeout of 1 sec, so all "workers" fail except for the first
+      const { nonce, release, fail, address } = await this.txManager.lock(this.addresses[0], 500) // timeout of 1 sec, so all "workers" fail except for the first
 
       try {
         log.debug('topAdmins:', { numAdmins, address, nonce })
