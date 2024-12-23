@@ -136,7 +136,7 @@ export class Web3Wallet {
   async init() {
     const { log } = this
 
-    log.debug('Initializing wallet:', { conf: this.ethereum })
+    log.debug('WalletInit: Initializing wallet:', { conf: this.ethereum })
 
     this.txManager = getManager(this.ethereum.network_id)
     this.web3 = new Web3(this.getWeb3TransportProvider(), null, web3Default)
@@ -158,7 +158,7 @@ export class Web3Wallet {
       this.address = account.address
       this.addWallet(account)
 
-      log.info('Initialized by private key:', { address: account.address })
+      log.info('WalletInit: Initialized by private key:', { address: account.address })
     } else if (this.mnemonic) {
       let root = HDKey.fromMasterSeed(bip39.mnemonicToSeed(this.mnemonic, this.conf.adminWalletPassword))
 
@@ -172,14 +172,14 @@ export class Web3Wallet {
 
       this.address = this.addresses[0]
 
-      log.info('Initialized by mnemonic:', { address: this.addresses })
+      log.info('WalletInit: Initialized by mnemonic:', { address: this.addresses })
     }
     try {
       const adminWalletAddress = get(ContractsAddress, `${this.network}.AdminWallet`)
-      log.info('Obtained AdminWallet address', { adminWalletAddress, network: this.network })
+      log.info('WalletInit: Obtained AdminWallet address', { adminWalletAddress, network: this.network })
 
       const adminWalletContractBalance = await this.web3.eth.getBalance(adminWalletAddress)
-      log.info(`AdminWallet contract balance`, { adminWalletContractBalance, adminWalletAddress })
+      log.info(`WalletInit: AdminWallet contract balance`, { adminWalletContractBalance, adminWalletAddress })
 
       this.proxyContract = new this.web3.eth.Contract(ProxyContractABI.abi, adminWalletAddress, { from: this.address })
 
@@ -198,12 +198,12 @@ export class Web3Wallet {
       this.txManager.getTransactionCount = this.web3.eth.getTransactionCount
       await this.txManager.createListIfNotExists(this.addresses)
 
-      log.info('Initialized wallet queue manager')
+      log.info('WalletInit: Initialized wallet queue manager')
 
       if (this.conf.topAdminsOnStartup) {
-        log.info('calling topAdmins...')
+        log.info('WalletInit: alling topAdmins...')
         await this.topAdmins(this.conf.numberOfAdminWalletAccounts).catch(e => {
-          log.warn('topAdmins failed', { e, errMessage: e.message })
+          log.warn('WalletInit: topAdmins failed', { e, errMessage: e.message })
         })
       }
 
@@ -214,19 +214,19 @@ export class Web3Wallet {
           const balance = await this.web3.eth.getBalance(addr)
           const isAdminWallet = await this.isVerifiedAdmin(addr)
 
-          log.info(`try address ${addr}:`, { balance, isAdminWallet, minAdminBalance })
+          log.info(`WalletInit: try address ${addr}:`, { balance, isAdminWallet, minAdminBalance })
 
           if (isAdminWallet && parseFloat(web3Utils.fromWei(balance, 'gwei')) > minAdminBalance) {
-            log.info(`admin wallet ${addr} balance ${balance}`)
+            log.info(`WalletInit: admin wallet ${addr} balance ${balance}`)
             this.filledAddresses.push(addr)
           }
         })
       )
 
-      log.info('Initialized adminwallet addresses', { filled: this.filledAddresses })
+      log.info('WalletInit: Initialized adminwallet addresses', { filled: this.filledAddresses })
 
       if (this.filledAddresses.length === 0) {
-        log.error('no admin wallet with funds')
+        log.error('WalletInit: no admin wallet with funds')
 
         await sendSlackAlert({
           msg: `critical: no fuse admin wallet with funds ${this.name}`
@@ -280,7 +280,7 @@ export class Web3Wallet {
       let nativebalance = await this.web3.eth.getBalance(this.address)
       this.nonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
 
-      log.debug('AdminWallet Ready:', {
+      log.debug('WalletInit: AdminWallet Ready:', {
         activeWallets: this.filledAddresses.length,
         account: this.address,
         gdbalance,
@@ -291,7 +291,7 @@ export class Web3Wallet {
         ContractsAddress: ContractsAddress[this.network]
       })
     } catch (e) {
-      log.error('Error initializing wallet', e.message, e)
+      log.error('WalletInit: Error initializing wallet', e.message, e)
 
       if (this.conf.env !== 'test' && this.conf.env !== 'development') {
         process.exit(-1)
