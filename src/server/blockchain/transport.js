@@ -10,10 +10,7 @@ const { providers } = Web3
 const { HttpProvider } = providers
 const log = logger.child({ from: 'MultipleHttpProvider' })
 
-export const isDuplicateTxError = message =>
-  String(message).search(/(same\s*(nonce|hash)|already\s*known|(fee|nonce)\s*too\s*low|underpriced)/i) >= 0
-
-const isTxError = message => isDuplicateTxError(message) || String(message)?.search(/reverted|gas/i) >= 0
+const isTxError = message => String(message)?.search(/hash|nonce|already\s*known|fee|underpriced|reverted|gas/i) >= 0
 
 const connectionErrorRegex = /((connection|network) (error|timeout)|invalid json rpc)/i
 const rateLimitErrorRegex = /too many|quota|limit/i
