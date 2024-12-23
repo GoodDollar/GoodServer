@@ -624,7 +624,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const user: LoggedUser = req.user || { gdAddress: account }
       const clientIp = requestIp.getClientIp(req)
 
-      const gdContract = AdminWallet.walletsMap[chainId].tokenContract._address
+      const gdContract = AdminWallet.walletsMap[chainId]?.tokenContract?._address
       log.debug('topwallet tx request:', {
         address: user.gdAddress,
         chainId,
@@ -639,7 +639,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           !user.isEmailConfirmed &&
           !user.smsValidated &&
           !(await AdminWallet.isVerified(user.gdAddress)) &&
-          !(await findGDTx(user.gdAddress, chainId, gdContract))
+          !(gdContract && (await findGDTx(user.gdAddress, chainId, gdContract)))
         ) {
           log.warn('topwallet denied, not registered user nor whitelisted nor did gd tx lately', {
             address: user.gdAddress,
