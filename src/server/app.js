@@ -20,7 +20,7 @@ const startWallet = async () => {
   const isTest = conf.env === 'test'
 
   try {
-    const addresses = await withTimeout(MultiWallet.ready, 60000, 'wallet not initialized')
+    const addresses = await withTimeout(MultiWallet.ready, 30000, 'wallet not initialized')
 
     log.info('AdminWallet ready', { addresses })
   } catch (e) {
@@ -35,7 +35,7 @@ const startWallet = async () => {
 const startApp = async () => {
   const app = express()
 
-  startWallet()
+  await startWallet()
   log.info('Wallet started, initializing middlewares')
   app.use(express.static('public'))
   middlewares(app)
