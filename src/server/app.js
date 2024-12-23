@@ -4,7 +4,6 @@ import { EventEmitter } from 'events'
 import middlewares from './server-middlewares'
 import MultiWallet from './blockchain/MultiWallet'
 
-import { withTimeout } from './utils/async'
 import conf from './server.config'
 
 import logger from '../imports/logger'
@@ -20,7 +19,8 @@ const startWallet = async () => {
   const isTest = conf.env === 'test'
 
   try {
-    const addresses = await withTimeout(MultiWallet.ready, 30000, 'wallet not initialized')
+    // const addresses = await withTimeout(MultiWallet.ready, 60000, 'wallet not initialized')
+    const addresses = await MultiWallet.ready
 
     log.info('AdminWallet ready', { addresses })
   } catch (e) {
