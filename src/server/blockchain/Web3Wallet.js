@@ -1087,10 +1087,11 @@ export class Web3Wallet {
                 network: this.networkId
               })
             } else if (attempt === 4) {
-              await this.txManager.unlock(currentAddress, currentNonce)
+              await this.txManager.unlock(currentAddress, netNonce)
               logger.info('stopped retrying for timedout tx attempts', {
                 currentAddress,
                 currentNonce,
+                netNonce,
                 attempt,
                 txuuid,
                 txHash,
@@ -1103,7 +1104,7 @@ export class Web3Wallet {
           3,
           10000
         ).catch(e => {
-          this.txManager.unlock(currentAddress, currentNonce)
+          this.txManager.unlock(currentAddress, netNonce)
           logger.error('retryAsync for timeout tx failed', e.message, e, { txHash })
         })
         // return assuming tx will mine
