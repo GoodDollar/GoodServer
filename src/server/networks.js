@@ -56,21 +56,24 @@ export default once(() => {
       network_id: 122,
       web3Transport: 'HttpProvider',
       httpWeb3Provider: fuseRpc ? fuseRpc : 'https://rpc.fuse.io/',
-      websocketWeb3Provider: 'wss://rpc.fuse.io/ws'
+      websocketWeb3Provider: 'wss://rpc.fuse.io/ws',
+      explorer: 'https://explorer.fuse.io'
     },
     42220: {
       network_id: 42220,
       web3Transport: 'HttpProvider',
       // eslint-disable-next-line prettier/prettier
       httpWeb3Provider: celoRpc ? celoRpc : 'https://forno.celo.org/,https://rpc.ankr.com/celo,https://1rpc.io/celo',
-      websocketWeb3Provider: ''
+      websocketWeb3Provider: '',
+      explorer: 'https://explorer.celo.org/mainnet,https://api.celoscan.io'
     },
     8453: {
       network_id: 8453,
       web3Transport: 'HttpProvider',
       // eslint-disable-next-line prettier/prettier
       httpWeb3Provider: baseRpc ? baseRpc : 'https://mainnet.base.org,https://rpc.ankr.com/base,https://1rpc.io/base',
-      websocketWeb3Provider: ''
+      websocketWeb3Provider: '',
+      explorer: 'https://base.blockscout.com'
     }
   }
 })
