@@ -135,6 +135,12 @@ const conf = convict({
     httpWeb3Provider: 'https://forno.celo.org',
     websocketWeb3Provider: ''
   },
+  base: {
+    network_id: 8453,
+    web3Transport: 'HttpProvider',
+    httpWeb3Provider: 'https://mainnet.base.org',
+    websocketWeb3Provider: ''
+  },
   ethereumMainnet: {
     network_id: 42,
     httpWeb3Provider: 'https://kovan.infura.io/v3/',
