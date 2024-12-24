@@ -622,12 +622,6 @@ const conf = convict({
     default: '',
     env: 'CF_WORKER_VERIFY_URL'
   },
-  celoEnabled: {
-    doc: 'Enables Celo network integration',
-    format: Boolean,
-    env: 'CELO_ENABLED',
-    default: true
-  },
   enableWhitelistAtChain: {
     doc: 'Enabled whitelisted on chainId specified feature',
     format: Boolean,
@@ -681,6 +675,7 @@ const network = conf.get('network')
 let networkId = 4447
 let mainNetworkId = 4447
 let celoNetworkId = 4447
+let baseNetworkId = 4447
 
 switch (network) {
   case 'fuse':
@@ -688,11 +683,13 @@ switch (network) {
     networkId = 122
     celoNetworkId = 42220
     mainNetworkId = 11155111
+    baseNetworkId = 8453
     break
   case 'production':
     networkId = 122
     celoNetworkId = 42220
     mainNetworkId = 1
+    baseNetworkId = 8453
     break
   default:
     break
@@ -701,11 +698,7 @@ switch (network) {
 conf.set('ethereumMainnet', networks[mainNetworkId])
 conf.set('ethereum', networks[networkId])
 conf.set('celo', networks[celoNetworkId])
-
-// exclude celo wallet from tests
-if (conf.get('env') === 'test') {
-  conf.set('celoEnabled', false)
-}
+conf.set('base', networks[baseNetworkId])
 
 // get active segmented pools
 if (process.env.REDTENT_POOLS) {

@@ -5,6 +5,7 @@ export default once(() => {
   const fuseRpc = process.env.FUSE_RPC
   const celoRpc = process.env.CELO_RPC
   const mainnetRpc = process.env.MAINNET_RPC
+  const baseRpc = process.env.BASE_RPC
 
   return {
     1: {
@@ -62,6 +63,13 @@ export default once(() => {
       web3Transport: 'HttpProvider',
       // eslint-disable-next-line prettier/prettier
       httpWeb3Provider: celoRpc ? celoRpc : 'https://forno.celo.org/,https://rpc.ankr.com/celo,https://1rpc.io/celo',
+      websocketWeb3Provider: ''
+    },
+    8453: {
+      network_id: 8453,
+      web3Transport: 'HttpProvider',
+      // eslint-disable-next-line prettier/prettier
+      httpWeb3Provider: baseRpc ? baseRpc : 'https://mainnet.base.org,https://rpc.ankr.com/base,https://1rpc.io/base',
       websocketWeb3Provider: ''
     }
   }

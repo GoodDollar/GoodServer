@@ -2,6 +2,8 @@
 import { assign, every, forOwn, isEmpty, isError, map, some } from 'lodash'
 import AdminWallet from './AdminWallet'
 import { CeloAdminWallet } from './CeloAdminWallet'
+import { BaseAdminWallet } from './BaseAdminWallet'
+
 import conf from '../server.config'
 import logger from '../../imports/logger'
 import { DefenderRelayer } from './DefenderRelayer'
@@ -137,14 +139,16 @@ class MultiWallet {
   }
 }
 
-const celoWallet =
-  conf.celoEnabled === false
-    ? {}
-    : {
-        42220: new CeloAdminWallet()
-      }
+let otherWallets = {}
+if (conf.env !== 'test') {
+  const celoWallet = new CeloAdminWallet()
+  otherWallets = {
+    42220: celoWallet,
+    8453: new BaseAdminWallet({}, celoWallet)
+  }
+}
 
 export default new MultiWallet({
   122: AdminWallet, // "main" wallet goes first
-  ...celoWallet
+  ...otherWallets
 })
