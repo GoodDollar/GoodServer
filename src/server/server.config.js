@@ -127,25 +127,29 @@ const conf = convict({
     network_id: 42,
     httpWeb3Provider: 'https://kovan.infura.io/v3/',
     websocketWeb3Provider: 'wss://kovan.infura.io/ws',
-    web3Transport: 'HttpProvider'
+    web3Transport: 'HttpProvider',
+    explorer: ''
   },
   celo: {
     network_id: 42220,
     web3Transport: 'HttpProvider',
     httpWeb3Provider: 'https://forno.celo.org',
-    websocketWeb3Provider: ''
+    websocketWeb3Provider: '',
+    explorer: ''
   },
   base: {
     network_id: 8453,
     web3Transport: 'HttpProvider',
     httpWeb3Provider: 'https://mainnet.base.org',
-    websocketWeb3Provider: ''
+    websocketWeb3Provider: '',
+    explorer: ''
   },
   ethereumMainnet: {
     network_id: 42,
     httpWeb3Provider: 'https://kovan.infura.io/v3/',
     websocketWeb3Provider: 'wss://kovan.infura.io/ws',
-    web3Transport: 'HttpProvider'
+    web3Transport: 'HttpProvider',
+    explorer: ''
   },
   network: {
     doc: 'The blockchain network to connect to',
