@@ -1074,6 +1074,17 @@ export class Web3Wallet {
         retryAsync(
           async attempt => {
             const receipt = await this.web3.eth.getTransactionReceipt(txHash).catch()
+            logger.debug('retrying for timedout tx', {
+              currentAddress,
+              currentNonce,
+              netNonce,
+              attempt,
+              txuuid,
+              txHash,
+              receipt,
+              wallet: this.name,
+              network: this.networkId
+            })
             if (receipt) {
               await this.txManager.unlock(currentAddress, currentNonce + 1)
               logger.info('receipt found for timedout tx attempts', {
