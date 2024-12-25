@@ -670,8 +670,9 @@ export class Web3Wallet {
 
   async topWalletFaucet(address, customLogger = null) {
     const logger = customLogger || this.log
-
+    const { name } = this
     try {
+      logger.debug('topWalletFaucet request:', { address, faucetContract: this.faucetContract._address, name })
       const canTop = await this.faucetContract.methods.canTop(address).call()
 
       logger.debug('topWalletFaucet canTop result:', { address, canTop, wallet: this.name })

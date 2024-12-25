@@ -30,6 +30,7 @@ export class BaseAdminWallet extends Web3Wallet {
   async topWallet(address, customLogger = null) {
     const logger = customLogger || this.log
     if (this.celoWallet.isVerified(address)) {
+      logger.debug('superfluid top wallet', { address })
       return this.topWalletFaucet(address, logger).catch(() => false)
     }
     logger.info('BaseAdminWallet topWalletFailed: address not whitelisted on celo', { address })
