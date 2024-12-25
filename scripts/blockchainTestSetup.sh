@@ -4,10 +4,9 @@ pushd /tmp/goodprotocol
 export CI=false
 export MNEMONIC='test test test test test test test test test test test junk'
 export ADMIN_MNEMONIC='test test test test test test test test test test test junk'
-yarn set version 3.6.0
+yarn set version 3.6.1
 echo "nodeLinker: node-modules" >> .yarnrc.yml
-yarn install
-npx patch-package
+yarn install --frozen-lockfile
 yarn runNode &
 yarn deployTest
 yarn minimize
