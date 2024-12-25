@@ -17,20 +17,26 @@ const options = {
 export class BaseAdminWallet extends Web3Wallet {
   constructor(opts = {}, celoWallet) {
     super('BaseAdminWallet', conf, { ...options, ...opts })
-    this.faucetContract = new this.web3.eth.Contract(
-      FaucetABI.abi,
-      get(ContractsAddress, `${this.network}.SuperfluidFaucet`),
-      {
-        from: this.address
-      }
-    )
     this.celoWallet = celoWallet
+  }
+
+  async initialize() {
+    const ready = super.initialize()
+    return ready.then(r => {
+      this.faucetContract = new this.web3.eth.Contract(
+        FaucetABI.abi,
+        get(ContractsAddress, `${this.network}.SuperfluidFaucet`),
+        {
+          from: this.address
+        }
+      )
+      return r
+    })
   }
 
   async topWallet(address, customLogger = null) {
     const logger = customLogger || this.log
     if (this.celoWallet.isVerified(address)) {
-      logger.debug('superfluid top wallet', { address })
       return this.topWalletFaucet(address, logger).catch(() => false)
     }
     logger.info('BaseAdminWallet topWalletFailed: address not whitelisted on celo', { address })

@@ -55,7 +55,6 @@ class MultiWallet {
 
     log.debug('MultiWallet: topWallet request:', { account, chainId })
     if (chainId === 'all') {
-      log.debug('MultiWallet: topWallet request executing all:', { account, chainId })
       const results = await Promise.all(this.wallets.map(wallet => runTx(wallet).catch(e => e)))
       const error = results.find(isError)
 
@@ -68,7 +67,6 @@ class MultiWallet {
 
     const { walletsMap, defaultChainId } = this
     const chain = chainId && chainId in walletsMap ? chainId : defaultChainId
-    log.debug('MultiWallet: topWallet request executing single:', { account, chainId, chain })
 
     return runTx(walletsMap[chain])
   }
