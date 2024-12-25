@@ -1,3 +1,6 @@
+import FaucetABI from '@gooddollar/goodprotocol/artifacts/contracts/fuseFaucet/FuseFaucetV2.sol/FuseFaucetV2.json'
+import ContractsAddress from '@gooddollar/goodprotocol/releases/deployment.json'
+import { get } from 'lodash'
 import { Web3Wallet } from './Web3Wallet'
 import conf from '../server.config'
 
@@ -14,6 +17,13 @@ const options = {
 export class BaseAdminWallet extends Web3Wallet {
   constructor(opts = {}, celoWallet) {
     super('BaseAdminWallet', conf, { ...options, ...opts })
+    this.faucetContract = new this.web3.eth.Contract(
+      FaucetABI.abi,
+      get(ContractsAddress, `${this.network}.SuperfluidFaucet`),
+      {
+        from: this.address
+      }
+    )
     this.celoWallet = celoWallet
   }
 
