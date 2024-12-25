@@ -25,6 +25,7 @@ import { getManager } from '../utils/tx-manager'
 import { sendSlackAlert } from '../../imports/slack'
 import { HttpProviderFactory, WebsocketProvider } from './transport'
 
+const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000'
 const FUSE_TX_TIMEOUT = 25000 // should be confirmed after max 5 blocks (25sec)
 const defaultGasPrice = web3Utils.toWei(String(conf.defaultGasPrice), 'gwei')
 
@@ -240,7 +241,7 @@ export class Web3Wallet {
 
       this.identityContract = new this.web3.eth.Contract(
         IdentityABI.abi,
-        get(ContractsAddress, `${this.network}.Identity`),
+        get(ContractsAddress, `${this.network}.Identity`, ADDRESS_ZERO),
         { from: this.address }
       )
 
@@ -251,17 +252,26 @@ export class Web3Wallet {
 
       this.tokenContract = new this.web3.eth.Contract(
         GoodDollarABI.abi,
-        get(ContractsAddress, `${this.network}.GoodDollar`),
+        get(ContractsAddress, `${this.network}.GoodDollar`, ADDRESS_ZERO),
         { from: this.address }
       )
 
-      this.UBIContract = new this.web3.eth.Contract(UBIABI.abi, get(ContractsAddress, `${this.network}.UBIScheme`), {
-        from: this.address
-      })
+      this.UBIContract = new this.web3.eth.Contract(
+        UBIABI.abi,
+        get(ContractsAddress, `${this.network}.UBIScheme`, ADDRESS_ZERO),
+        {
+          from: this.address
+        }
+      )
 
       this.faucetContract = new this.web3.eth.Contract(
         FaucetABI.abi,
-        get(ContractsAddress, `${this.network}.FuseFaucet`, get(ContractsAddress, `${this.network}.Faucet`)),
+        get(
+          ContractsAddress,
+          `${this.network}.FuseFaucet`,
+          get(ContractsAddress, `${this.network}.Faucet`),
+          ADDRESS_ZERO
+        ),
         {
           from: this.address
         }
@@ -278,15 +288,12 @@ export class Web3Wallet {
         })
       }
 
-      let gdbalance = await this.tokenContract.methods.balanceOf(this.address).call().then(parseInt)
-
       let nativebalance = await this.web3.eth.getBalance(this.address)
       this.nonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
 
       log.debug('WalletInit: AdminWallet Ready:', {
         activeWallets: this.filledAddresses.length,
         account: this.address,
-        gdbalance,
         nativebalance,
         networkId: this.networkId,
         network: this.network,
