@@ -6,7 +6,7 @@ const options = {
   ethereum: base,
   network: `${env}-base`,
   maxFeePerGas: (1e7).toFixed(0),
-  maxPriorityFeePerGas: (0e6).toFixed(0),
+  maxPriorityFeePerGas: (1e4).toFixed(0),
   fetchGasPrice: false,
   faucetTxCost: 500000
 }
