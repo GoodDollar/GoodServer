@@ -68,10 +68,11 @@ class MultiWallet {
       return results
     }
 
-    const { walletsMap, defaultChainId } = this
-    const chain = chainId && chainId in walletsMap ? chainId : defaultChainId
+    const { walletsMap } = this
 
-    return runTx(walletsMap[chain])
+    if (chainId in walletsMap) return runTx(walletsMap[chainId])
+
+    throw new Error(`unsupported chain ${chainId}`)
   }
 
   async whitelistUser(account, did, chainId = null, log = multiLogger) {
