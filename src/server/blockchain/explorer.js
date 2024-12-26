@@ -2,10 +2,13 @@ import axios from 'axios'
 import { isArray } from 'lodash'
 import { retry as retryAttempt, fallback } from '../utils/async'
 import { default as getNetworks } from '../networks'
+
+const NETWORKS = getNetworks()
 export const getExplorerTxs = async (address, chainId, query, from = null, allPages = true) => {
   const txs = []
   const url = '/api'
-  const networkExplorerUrls = getNetworks()[Number(chainId)].explorer
+
+  const networkExplorerUrls = NETWORKS[Number(chainId)].explorer
 
   const params = { module: 'account', address, sort: 'asc', page: 1, offset: 10000, ...query }
 

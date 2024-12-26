@@ -657,7 +657,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       // check for faucet abuse
       const foundAbuse = await cachedFindFaucetAbuse(user.gdAddress, chainId).catch(e => {
-        log.error('findFaucetAbuse failed', e.message, e)
+        log.error('findFaucetAbuse failed', e.message, e, { address: user.gdAddress, chainId })
         return
       })
 
