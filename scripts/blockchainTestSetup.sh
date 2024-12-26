@@ -5,6 +5,7 @@ export CI=false
 export MNEMONIC='test test test test test test test test test test test junk'
 export ADMIN_MNEMONIC='test test test test test test test test test test test junk'
 yarn set version 3.6.1
+yarn config set enableImmutableInstalls false
 echo "nodeLinker: node-modules" >> .yarnrc.yml
 yarn install
 yarn runNode &
