@@ -55,7 +55,10 @@ class MultiWallet {
 
     log.debug('MultiWallet: topWallet request:', { account, chainId })
     if (chainId === 'all') {
-      const results = await Promise.all(this.wallets.map(wallet => runTx(wallet).catch(e => e)))
+      // topwallet on chains that have ubi
+      const results = await Promise.all(
+        this.wallets.filter(_ => Number(_.UBIContract._address) > 0).map(wallet => runTx(wallet).catch(e => e))
+      )
       const error = results.find(isError)
 
       if (error) {
