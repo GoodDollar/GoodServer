@@ -24,7 +24,7 @@ export const extractSignature = signature => {
   return signature
 }
 
-export const recoverPublickey = (signature, msg, nonce) => {
+export const recoverPublickey = (signature, msg, nonce = '') => {
   const publicKey = accounts.recover(String(msg) + String(nonce), signature).toLowerCase()
 
   return publicKey
@@ -68,7 +68,7 @@ export const verifyIdentifier = async (fvsig, gdAddress, chainId = 42220) => {
   }
   const verifyResult = await verifyMessage({
     provider,
-    signer: gdAddress,
+    signer: toChecksumAddress(gdAddress),
     signature: fvsig,
     message: FV_IDENTIFIER_MSG2({ account: toChecksumAddress(gdAddress) })
   })
