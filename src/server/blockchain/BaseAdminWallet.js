@@ -36,6 +36,7 @@ export class BaseAdminWallet extends Web3Wallet {
 
   async topWallet(address, customLogger = null) {
     const logger = customLogger || this.log
+    if (!this.faucetContract) return true
     if (await this.celoWallet.isVerified(address)) {
       return this.topWalletFaucet(address, logger).catch(() => false)
     }

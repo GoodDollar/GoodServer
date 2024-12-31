@@ -139,7 +139,16 @@ export class Web3Wallet {
     const { env } = conf
     const { log } = this
 
-    log.debug('WalletInit: Initializing wallet:', { conf: this.ethereum })
+    const adminWalletAddress = get(ContractsAddress, `${this.network}.AdminWallet`)
+    log.debug('WalletInit: Initializing wallet:', { conf: this.ethereum, adminWalletAddress, name: this.name })
+    if (!adminWalletAddress) {
+      log.debug('WalletInit: missing adminwallet address skipping initialization', {
+        conf: this.ethereum,
+        adminWalletAddress,
+        name: this.name
+      })
+      return
+    }
 
     this.txManager = getManager(this.ethereum.network_id)
     this.web3 = new Web3(this.getWeb3TransportProvider(), null, web3Default)
@@ -179,7 +188,6 @@ export class Web3Wallet {
       log.info('WalletInit: Initialized by mnemonic:', { address: this.addresses })
     }
     try {
-      const adminWalletAddress = get(ContractsAddress, `${this.network}.AdminWallet`)
       log.info('WalletInit: Obtained AdminWallet address', { adminWalletAddress, network: this.network })
 
       const adminWalletContractBalance = await this.web3.eth.getBalance(adminWalletAddress)
