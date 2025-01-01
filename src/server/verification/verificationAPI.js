@@ -262,7 +262,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         return
       }
 
-      user.chainId = chainId || conf.defaultWhitelistChainId
+      // user.chainId = chainId || conf.defaultWhitelistChainId
+
+      //currently we force all new users to be marked as registered first on celo
+      //this is relevant for the invite rewards
+      user.chainId = 42220
 
       try {
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
