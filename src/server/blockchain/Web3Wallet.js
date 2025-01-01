@@ -147,7 +147,7 @@ export class Web3Wallet {
         adminWalletAddress,
         name: this.name
       })
-      return
+      return false
     }
 
     this.txManager = getManager(this.ethereum.network_id)
