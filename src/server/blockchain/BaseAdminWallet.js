@@ -23,13 +23,15 @@ export class BaseAdminWallet extends Web3Wallet {
   async initialize() {
     const ready = super.initialize()
     return ready.then(r => {
-      this.faucetContract = new this.web3.eth.Contract(
-        FaucetABI.abi,
-        get(ContractsAddress, `${this.network}.SuperfluidFaucet`),
-        {
-          from: this.address
-        }
-      )
+      if (r) {
+        this.faucetContract = new this.web3.eth.Contract(
+          FaucetABI.abi,
+          get(ContractsAddress, `${this.network}.SuperfluidFaucet`),
+          {
+            from: this.address
+          }
+        )
+      }
       return r
     })
   }
