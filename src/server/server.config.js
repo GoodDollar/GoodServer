@@ -642,7 +642,7 @@ const conf = convict({
     doc: 'Mark user as whitelisted on chainId if not supplied',
     format: Number,
     env: 'WHITELIST_CHAINID',
-    default: 122
+    default: 42220
   },
   forceFaucetCall: {
     doc: 'If user has enough gas to call faucet dont call faucet for them',
