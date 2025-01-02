@@ -51,7 +51,7 @@ export class BaseAdminWallet extends Web3Wallet {
   }
 
   async isVerified() {
-    return true
+    return false
   }
   async removeWhitelisted() {
     return true
