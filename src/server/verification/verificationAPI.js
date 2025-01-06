@@ -630,15 +630,23 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const clientIp = requestIp.getClientIp(req)
 
       const gdContract = AdminWallet.walletsMap[chainId]?.tokenContract?._address
+      const faucetContract = AdminWallet.walletsMap[chainId]?.faucetContract?._address
       log.debug('topwallet tx request:', {
         address: user.gdAddress,
         chainId,
         gdContract,
+        faucetContract,
         user: req.user,
         origin,
         host,
         clientIp
       })
+
+      if (!faucetContract) {
+        log.warn('topWallet unsupported chain', { chainId })
+        return res.json({ ok: -1, error: 'unsupported chain' })
+      }
+
       if (conf.env === 'production') {
         if (
           !user.isEmailConfirmed &&
