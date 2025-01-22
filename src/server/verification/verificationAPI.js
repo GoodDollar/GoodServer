@@ -3,7 +3,7 @@
 import { Router } from 'express'
 import passport from 'passport'
 import { get, defaults, memoize, omit } from 'lodash'
-import { sha3, toChecksumAddress, keccak256 } from 'web3-utils'
+import { sha3, keccak256 } from 'web3-utils'
 import web3Abi from 'web3-eth-abi'
 import requestIp from 'request-ip'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
@@ -20,19 +20,36 @@ import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 import createIdScanProcessor from './processor/IdScanProcessor'
 
 import { cancelDisposalTask } from './cron/taskUtil'
-import { recoverPublickey } from '../utils/eth'
+import { recoverPublickey, verifyIdentifier } from '../utils/eth'
 import { shouldLogVerificaitonError } from './utils/logger'
 import { syncUserEmail } from '../storage/addUserSteps'
-import { FV_IDENTIFIER_MSG2 } from '../login/login-middleware'
+import { normalizeIdentifiers } from './utils/utils.js'
 
-const verifyFVIdentifier = async (identifier, gdAddress) => {
-  //check v2, v2 identifier is expected to be the whole signature
-  if (identifier.length >= 42) {
-    const signer = recoverPublickey(identifier, FV_IDENTIFIER_MSG2({ account: toChecksumAddress(gdAddress) }), '')
+import ipcache from '../db/mongo/ipcache-provider.js'
 
-    if (signer.toLowerCase() !== gdAddress.toLowerCase()) {
-      throw new Error(`identifier signer doesn't match user ${signer} != ${gdAddress}`)
-    }
+export const deleteFaceId = async (fvSigner, enrollmentIdentifier, user, storage, log) => {
+  const { gdAddress } = user
+  log.debug('delete face request:', { fvSigner, enrollmentIdentifier, user })
+  const processor = createEnrollmentProcessor(storage, log)
+
+  // for v2 identifier - verify that identifier is for the address we are going to whitelist
+  await verifyIdentifier(enrollmentIdentifier, gdAddress)
+
+  const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
+
+  // here we check if wallet was registered using v1 of v2 identifier
+  const [isV2, isV1] = await Promise.all([
+    processor.isIdentifierExists(v2Identifier),
+    v1Identifier && processor.isIdentifierExists(v1Identifier)
+  ])
+
+  if (isV2) {
+    //in v2 we expect the enrollmentidentifier to be the whole signature, so we cut it down to 42
+    await processor.enqueueDisposal(user, v2Identifier, log)
+  }
+
+  if (isV1) {
+    await processor.enqueueDisposal(user, v1Identifier, log)
   }
 }
 
@@ -40,9 +57,51 @@ const verifyFVIdentifier = async (identifier, gdAddress) => {
 // if same user keep requesting.
 const cachedFindFaucetAbuse = memoize(findFaucetAbuse)
 const clearMemoizedFaucetAbuse = async () => {
-  cachedFindFaucetAbuse.values.clear()
+  if (cachedFindFaucetAbuse.cache) {
+    cachedFindFaucetAbuse.cache.clear()
+    console.log('clearMemoizedFaucetAbuse done')
+    return
+  }
+  console.log('clearMemoizedFaucetAbuse failed')
 }
 if (conf.env !== 'test') setInterval(clearMemoizedFaucetAbuse, 60 * 60 * 1000) // clear every 1 hour
+
+let faucetAddressBlocked = {}
+const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000
+const checkMultiIpAccounts = async (account, ip, logger) => {
+  const record = await ipcache.updateAndGet(ip.toLowerCase(), account.toLowerCase())
+  logger.debug('checkMultiIpAccounts:', { record })
+  const { accounts } = record
+  if (accounts.length >= 10) {
+    logger.debug('checkMultiIpAccounts:', { ip, account, accounts })
+    accounts.forEach(addr => (faucetAddressBlocked[addr] = faucetAddressBlocked[addr] || Date.now()))
+    return accounts
+  }
+  if (faucetAddressBlocked[account]) {
+    return true
+  }
+  return false
+}
+
+if (conf.env !== 'test')
+  setInterval(
+    () => {
+      let cleared = 0
+      Object.keys(faucetAddressBlocked).forEach(addr => {
+        if (faucetAddressBlocked[addr] + SEVEN_DAYS <= Date.now()) {
+          cleared += 1
+          delete faucetAddressBlocked[addr]
+        }
+      })
+      console.log(
+        'cleaning faucetAddressBlocked after 7 days. total addresses:',
+        Object.keys(faucetAddressBlocked).length,
+        'cleared:',
+        cleared
+      )
+    },
+    24 * 60 * 60 * 1000
+  ) // clear every 1 day (24 hours)
 
 const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
   /**
@@ -61,33 +120,10 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     wrapAsync(async (req, res) => {
       const { params, query, log, user } = req
       const { enrollmentIdentifier } = params
-      const { gdAddress } = user
       const { fvSigner = '' } = query
 
       try {
-        log.debug('delete face request:', { fvSigner, enrollmentIdentifier, user })
-        const processor = createEnrollmentProcessor(storage, log)
-
-        // for v2 identifier - verify that identifier is for the address we are going to whitelist
-        await verifyFVIdentifier(enrollmentIdentifier, gdAddress)
-
-        let v2Identifier = enrollmentIdentifier.slice(0, 42)
-        let v1Identifier = fvSigner && fvSigner.replace('0x', '') // wallet will also supply the v1 identifier as fvSigner, we remove '0x' for public address
-
-        // here we check if wallet was registered using v1 of v2 identifier
-        const [isV2, isV1] = await Promise.all([
-          processor.isIdentifierExists(v2Identifier),
-          v1Identifier && processor.isIdentifierExists(v1Identifier)
-        ])
-
-        if (isV2) {
-          //in v2 we expect the enrollmentidentifier to be the whole signature, so we cut it down to 42
-          await processor.enqueueDisposal(user, v2Identifier, log)
-        }
-
-        if (isV1) {
-          await processor.enqueueDisposal(user, v1Identifier, log)
-        }
+        await deleteFaceId(fvSigner, enrollmentIdentifier, user, storage, log)
       } catch (exception) {
         const { message } = exception
 
@@ -119,8 +155,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       log.debug('check face status request:', { fvSigner, enrollmentIdentifier, user })
 
       try {
-        let v2Identifier = enrollmentIdentifier.slice(0, 42)
-        let v1Identifier = fvSigner && fvSigner.replace('0x', '') // wallet also provide older identifier in case it was created before v2
+        const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
 
         const processor = createEnrollmentProcessor(storage, log)
         const [isDisposingV2, isDisposingV1] = await Promise.all([
@@ -227,16 +262,18 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         return
       }
 
-      user.chainId = chainId || conf.defaultWhitelistChainId
+      // user.chainId = chainId || conf.defaultWhitelistChainId
+
+      //currently we force all new users to be marked as registered first on celo
+      //this is relevant for the invite rewards
+      user.chainId = 42220
 
       try {
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
         // for v1 this will do nothing
-        await verifyFVIdentifier(enrollmentIdentifier, gdAddress)
+        await verifyIdentifier(enrollmentIdentifier, gdAddress)
 
-        let v2Identifier = enrollmentIdentifier.slice(0, 42)
-        let v1Identifier = fvSigner && fvSigner.replace('0x', '') // wallet will also supply the v1 identifier as fvSigner, we remove '0x' for public address
-
+        const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
         const enrollmentProcessor = createEnrollmentProcessor(storage, log)
 
         // here we check if wallet was registered using v1 of v2 identifier
@@ -269,14 +306,13 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
               //throw error so we de-whitelist user
               throw new Error('User failed to re-authenticate with V1 identifier')
             }
-          } else if (wasWhitelisted > 0 && enrollmentResult.success) {
-            log.info('user re-authenticated', {
-              wasWhitelisted,
-              enrollmentResult,
-              gdAddress,
-              v2Identifier
-            })
           }
+          log.info(wasWhitelisted > 0 && enrollmentResult.success ? 'user re-authenticated' : 'user enrolled', {
+            wasWhitelisted,
+            enrollmentResult,
+            gdAddress,
+            v2Identifier
+          })
           res.json(enrollmentResult)
         } catch (e) {
           if (isV1) {
@@ -338,9 +374,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       try {
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
         // for v1 this will do nothing
-        await verifyFVIdentifier(enrollmentIdentifier, gdAddress)
+        await verifyIdentifier(enrollmentIdentifier, gdAddress)
 
-        let v2Identifier = enrollmentIdentifier.slice(0, 42)
+        const { v2Identifier } = normalizeIdentifiers(enrollmentIdentifier)
 
         const idscanProcessor = createIdScanProcessor(storage, log)
 
@@ -593,22 +629,30 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const user: LoggedUser = req.user || { gdAddress: account }
       const clientIp = requestIp.getClientIp(req)
 
-      const gdContract = AdminWallet.walletsMap[chainId].tokenContract._address
+      const gdContract = AdminWallet.walletsMap[chainId]?.tokenContract?._address
+      const faucetContract = AdminWallet.walletsMap[chainId]?.faucetContract?._address
       log.debug('topwallet tx request:', {
         address: user.gdAddress,
         chainId,
         gdContract,
+        faucetContract,
         user: req.user,
         origin,
         host,
         clientIp
       })
+
+      if (!faucetContract) {
+        log.warn('topWallet unsupported chain', { chainId })
+        return res.json({ ok: -1, error: 'unsupported chain' })
+      }
+
       if (conf.env === 'production') {
         if (
           !user.isEmailConfirmed &&
           !user.smsValidated &&
           !(await AdminWallet.isVerified(user.gdAddress)) &&
-          !(await findGDTx(user.gdAddress, chainId, gdContract))
+          !(gdContract && (await findGDTx(user.gdAddress, chainId, gdContract)))
         ) {
           log.warn('topwallet denied, not registered user nor whitelisted nor did gd tx lately', {
             address: user.gdAddress,
@@ -625,7 +669,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       // check for faucet abuse
       const foundAbuse = await cachedFindFaucetAbuse(user.gdAddress, chainId).catch(e => {
-        log.error('findFaucetAbuse failed', e.message, e)
+        log.error('findFaucetAbuse failed', e.message, e, { address: user.gdAddress, chainId })
         return
       })
 
@@ -633,6 +677,17 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         log.warn('faucet abuse found:', foundAbuse)
         return res.json({ ok: -1, error: 'faucet abuse: ' + foundAbuse.hash })
       }
+
+      const foundMultiIpAccounts = await checkMultiIpAccounts(user.gdAddress, clientIp, log)
+      if (foundMultiIpAccounts) {
+        log.warn('faucet multiip abuse found:', foundMultiIpAccounts.length, new Error('faucet multiip abuse'), {
+          foundMultiIpAccounts,
+          clientIp,
+          account: user.gdAddress
+        })
+        return res.json({ ok: -1, error: 'faucet multi abuse' })
+      }
+
       try {
         let txPromise = AdminWallet.topWallet(user.gdAddress, chainId, log)
           .then(tx => {
@@ -957,7 +1012,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         }
 
         if (parsedRes.success) {
-          const verifyResult = await OTP.verifyCaptcha(kvStorageIpKey)
+          const verifyResult = await OTP.verifyCaptcha(kvStorageIpKey, captchaType)
 
           log.debug('Recaptcha verified', { verifyResult, parsedRes })
 

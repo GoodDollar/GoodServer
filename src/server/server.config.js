@@ -127,19 +127,29 @@ const conf = convict({
     network_id: 42,
     httpWeb3Provider: 'https://kovan.infura.io/v3/',
     websocketWeb3Provider: 'wss://kovan.infura.io/ws',
-    web3Transport: 'HttpProvider'
+    web3Transport: 'HttpProvider',
+    explorer: ''
   },
   celo: {
     network_id: 42220,
     web3Transport: 'HttpProvider',
     httpWeb3Provider: 'https://forno.celo.org',
-    websocketWeb3Provider: ''
+    websocketWeb3Provider: '',
+    explorer: ''
+  },
+  base: {
+    network_id: 8453,
+    web3Transport: 'HttpProvider',
+    httpWeb3Provider: 'https://mainnet.base.org',
+    websocketWeb3Provider: '',
+    explorer: ''
   },
   ethereumMainnet: {
     network_id: 42,
     httpWeb3Provider: 'https://kovan.infura.io/v3/',
     websocketWeb3Provider: 'wss://kovan.infura.io/ws',
-    web3Transport: 'HttpProvider'
+    web3Transport: 'HttpProvider',
+    explorer: ''
   },
   network: {
     doc: 'The blockchain network to connect to',
@@ -592,6 +602,12 @@ const conf = convict({
     default: 'VerificationEmail',
     env: 'AWS_SES_TEMPLATE_NAME'
   },
+  awsS3Region: {
+    doc: 'aws region for S3 file uploads',
+    format: String,
+    default: 'us-east-1',
+    env: 'AWS_S3_REGION'
+  },
   cfWorkerVerifyJwtSecret: {
     doc: 'Cloudflare verify worker JWT secret',
     format: String,
@@ -616,12 +632,6 @@ const conf = convict({
     default: '',
     env: 'CF_WORKER_VERIFY_URL'
   },
-  celoEnabled: {
-    doc: 'Enables Celo network integration',
-    format: Boolean,
-    env: 'CELO_ENABLED',
-    default: true
-  },
   enableWhitelistAtChain: {
     doc: 'Enabled whitelisted on chainId specified feature',
     format: Boolean,
@@ -632,7 +642,7 @@ const conf = convict({
     doc: 'Mark user as whitelisted on chainId if not supplied',
     format: Number,
     env: 'WHITELIST_CHAINID',
-    default: 122
+    default: 42220
   },
   forceFaucetCall: {
     doc: 'If user has enough gas to call faucet dont call faucet for them',
@@ -657,6 +667,12 @@ const conf = convict({
     format: String,
     env: 'DEFENDER_APISECRET',
     default: ''
+  },
+  redtentPools: {
+    doc: 'ubi pool by country',
+    format: Object,
+    env: 'REDTENT_POOLS',
+    default: {}
   }
 })
 
@@ -669,18 +685,21 @@ const network = conf.get('network')
 let networkId = 4447
 let mainNetworkId = 4447
 let celoNetworkId = 4447
+let baseNetworkId = 4447
 
 switch (network) {
   case 'fuse':
   case 'staging':
     networkId = 122
     celoNetworkId = 42220
-    mainNetworkId = 5
+    mainNetworkId = 11155111
+    baseNetworkId = 8453
     break
   case 'production':
     networkId = 122
     celoNetworkId = 42220
     mainNetworkId = 1
+    baseNetworkId = 8453
     break
   default:
     break
@@ -689,10 +708,12 @@ switch (network) {
 conf.set('ethereumMainnet', networks[mainNetworkId])
 conf.set('ethereum', networks[networkId])
 conf.set('celo', networks[celoNetworkId])
+conf.set('base', networks[baseNetworkId])
 
-// exclude celo wallet from tests
-if (conf.get('env') === 'test') {
-  conf.set('celoEnabled', false)
+// get active segmented pools
+if (process.env.REDTENT_POOLS) {
+  const redtentPools = JSON.parse(process.env.REDTENT_POOLS)
+  conf.set('redtentPools', redtentPools)
 }
 
 // Perform validation

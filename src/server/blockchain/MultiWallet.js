@@ -2,6 +2,8 @@
 import { assign, every, forOwn, isEmpty, isError, map, some } from 'lodash'
 import AdminWallet from './AdminWallet'
 import { CeloAdminWallet } from './CeloAdminWallet'
+import { BaseAdminWallet } from './BaseAdminWallet'
+
 import conf from '../server.config'
 import logger from '../../imports/logger'
 import { DefenderRelayer } from './DefenderRelayer'
@@ -51,8 +53,12 @@ class MultiWallet {
   async topWallet(account, chainId = null, log = multiLogger) {
     const runTx = wallet => wallet.topWallet(account, log)
 
+    log.debug('MultiWallet: topWallet request:', { account, chainId })
     if (chainId === 'all') {
-      const results = await Promise.all(this.wallets.map(wallet => runTx(wallet).catch(e => e)))
+      // topwallet on chains that have ubi
+      const results = await Promise.all(
+        this.wallets.filter(_ => Number(_.UBIContract?._address) > 0).map(wallet => runTx(wallet).catch(e => e))
+      )
       const error = results.find(isError)
 
       if (error) {
@@ -62,10 +68,11 @@ class MultiWallet {
       return results
     }
 
-    const { walletsMap, defaultChainId } = this
-    const chain = chainId && chainId in walletsMap ? chainId : defaultChainId
+    const { walletsMap } = this
 
-    return runTx(walletsMap[chain])
+    if (chainId in walletsMap) return runTx(walletsMap[chainId])
+
+    throw new Error(`unsupported chain ${chainId}`)
   }
 
   async whitelistUser(account, did, chainId = null, log = multiLogger) {
@@ -131,16 +138,22 @@ class MultiWallet {
   async getAuthenticationPeriod() {
     return this.mainWallet.getAuthenticationPeriod()
   }
+
+  async registerRedtent(account: string, countryCode: string, log = multiLogger) {
+    return Promise.all(this.wallets.map(wallet => wallet.registerRedtent(account, countryCode, log)))
+  }
 }
 
-const celoWallet =
-  conf.celoEnabled === false
-    ? {}
-    : {
-        42220: new CeloAdminWallet()
-      }
+let otherWallets = {}
+if (conf.env !== 'test') {
+  const celoWallet = new CeloAdminWallet()
+  otherWallets = {
+    42220: celoWallet,
+    8453: new BaseAdminWallet({}, celoWallet)
+  }
+}
 
 export default new MultiWallet({
   122: AdminWallet, // "main" wallet goes first
-  ...celoWallet
+  ...otherWallets
 })

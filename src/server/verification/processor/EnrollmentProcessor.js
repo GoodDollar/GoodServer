@@ -140,6 +140,13 @@ class EnrollmentProcessor {
     }
   }
 
+  async getEnrollment(enrollmentIdentifier: string, customLogger = null): Promise<any> {
+    const { provider, logger } = this
+    const log = customLogger || logger
+
+    return provider.getEnrollment(enrollmentIdentifier, log)
+  }
+
   async isIdentifierExists(enrollmentIdentifier: string) {
     return this.provider.isEnrollmentExists(enrollmentIdentifier)
   }
@@ -191,9 +198,7 @@ class EnrollmentProcessor {
 
     if (keepEnrollments > 0) {
       deletedAccountFilters.createdAt = {
-        $lte: moment()
-          .subtract(keepEnrollments, 'hours')
-          .toDate()
+        $lte: moment().subtract(keepEnrollments, 'hours').toDate()
       }
     }
 
@@ -212,28 +217,37 @@ class EnrollmentProcessor {
     }
 
     try {
-      const enqueuedDisposalTasks = await storage.fetchTasksForProcessing(DISPOSE_ENROLLMENTS_TASK, enqueuedAtFilters)
-      const enqueuedTasksCount = enqueuedDisposalTasks.length
-
-      if (enqueuedTasksCount <= 0) {
-        log.info('No enqueued disposal tasks ready to processing found, skipping')
-        return
-      }
-
-      const approximatedBatchSize = Math.round(enqueuedTasksCount / DISPOSE_BATCH_AMOUNT, 0)
-      const disposeBatchSize = Math.min(DISPOSE_BATCH_MAXIMAL, Math.max(DISPOSE_BATCH_MINIMAL, approximatedBatchSize))
-      const chunkedDisposalTasks = chunk(enqueuedDisposalTasks, disposeBatchSize)
-
-      log.info('Enqueued disposal tasks fetched and ready to processing', {
-        enqueuedTasksCount,
-        disposeBatchSize,
-        authenticationPeriod
+      const pendingTasksIterator = await storage.fetchTasksForProcessing(DISPOSE_ENROLLMENTS_TASK, enqueuedAtFilters)
+      let enqueuedDisposalTasks = await pendingTasksIterator()
+      log.info('enqueued disposal tasks iterator result:', {
+        results: enqueuedDisposalTasks.length
       })
+      while (enqueuedDisposalTasks && enqueuedDisposalTasks.length > 0) {
+        const enqueuedTasksCount = enqueuedDisposalTasks.length
 
-      await chunkedDisposalTasks.reduce(
-        (queue, tasksBatch) => queue.then(() => this._executeDisposalBatch(tasksBatch, onProcessed, customLogger)),
-        Promise.resolve()
-      ) //iterate over batches. each batch is executed when previous batch promise resolves
+        if (enqueuedTasksCount <= 0) {
+          log.info('No enqueued disposal tasks ready to processing found, skipping')
+          return
+        }
+
+        const approximatedBatchSize = Math.round(enqueuedTasksCount / DISPOSE_BATCH_AMOUNT, 0)
+        const disposeBatchSize = Math.min(DISPOSE_BATCH_MAXIMAL, Math.max(DISPOSE_BATCH_MINIMAL, approximatedBatchSize))
+        const chunkedDisposalTasks = chunk(enqueuedDisposalTasks, disposeBatchSize)
+
+        log.info('Enqueued disposal tasks fetched and ready to processing', {
+          enqueuedTasksCount,
+          disposeBatchSize,
+          authenticationPeriod,
+          enqueuedAtFilters
+        })
+
+        await chunkedDisposalTasks.reduce(
+          (queue, tasksBatch) => queue.then(() => this._executeDisposalBatch(tasksBatch, onProcessed, customLogger)),
+          Promise.resolve()
+        ) //iterate over batches. each batch is executed when previous batch promise resolves
+
+        enqueuedDisposalTasks = await pendingTasksIterator()
+      }
     } catch (exception) {
       const { message: errMessage } = exception
       const logPayload = { e: exception, errMessage }
@@ -279,7 +293,7 @@ class EnrollmentProcessor {
     )
 
     if (tasksSucceeded.length) {
-      await storage.removeDelayedTasks(tasksSucceeded)
+      await storage.completeDelayedTasks(tasksSucceeded)
     }
 
     if (tasksFailed.length) {
@@ -292,8 +306,8 @@ const enrollmentProcessors = new WeakMap()
 
 export default (storage, log) => {
   if (!enrollmentProcessors.has(storage)) {
-    log = log || logger.child({ from: 'EnrollmentProcessor' })
-    const enrollmentProcessor = new EnrollmentProcessor(Config, storage, AdminWallet, log)
+    const processorLogger = log || logger.child({ from: 'EnrollmentProcessor' })
+    const enrollmentProcessor = new EnrollmentProcessor(Config, storage, AdminWallet, processorLogger)
 
     enrollmentProcessor.registerProvier(getZoomProvider())
     enrollmentProcessors.set(storage, enrollmentProcessor)

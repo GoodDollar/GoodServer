@@ -2,12 +2,13 @@ import axios from 'axios'
 import { PhoneNumberUtil } from 'google-libphonenumber'
 
 import { substituteParams } from '../utils/axios'
-import { flatten, get, toUpper } from 'lodash'
-import { getAgent, getSubjectId } from './veramo'
+import { assign, every, flatten, get, isUndefined, negate, pickBy, toUpper, map, uniq } from 'lodash'
+import { getAgent, getSubjectAccount, getSubjectId } from './veramo'
+import { REDTENT_BUCKET, detectFaces, getS3Metadata } from './aws'
 
 export class GoodIDUtils {
   constructor(httpApi, phoneNumberApi, getVeramoAgent) {
-    const http = httpApi.create({})
+    const http = httpApi.create({ headers: { referer: 'https://gooddollar.org' } }) //required for nominatim
     const { request, response } = http.interceptors
 
     request.use(req => substituteParams(req))
@@ -21,6 +22,9 @@ export class GoodIDUtils {
   async getCountryCodeFromIPAddress(ip) {
     const countryCode = await this.http
       .get('https://get.geojs.io/v1/ip/country/:ip.json', { params: { ip } })
+      .catch(error => {
+        throw new Error(`HTTP request Failed to get country code from IP address: ${error.message}`)
+      })
       .then(response => get(response, 'country'))
 
     if (!countryCode) {
@@ -38,6 +42,9 @@ export class GoodIDUtils {
           lat: latitude,
           lon: longitude
         }
+      })
+      .catch(error => {
+        throw new Error(`HTTP request Failed to get country code from geolocation: ${error.message}`)
       })
       .then(response => get(response, 'address.country_code'))
       .then(toUpper)
@@ -62,6 +69,18 @@ export class GoodIDUtils {
     return phoneUtil.getRegionCodeForNumber(number)
   }
 
+  async ageGenderCheck(imageBase64) {
+    const { FaceDetails } = await detectFaces(imageBase64)
+    const [{ AgeRange, Gender }] = FaceDetails
+
+    const { Value: gender } = Gender
+    const { Low: min, High: max } = AgeRange
+
+    const age = pickBy({ min, max }, negate(isUndefined)) // filter up undefined
+
+    return { gender, age }
+  }
+
   async issueCertificate(gdAddress, credentials, payload = {}) {
     const agent = await this.getVeramoAgent()
     const identifier = await agent.didManagerGetByAlias({ alias: 'default' })
@@ -84,6 +103,38 @@ export class GoodIDUtils {
     const { verified } = await agent.verifyCredential({ credential: certificate })
 
     return verified
+  }
+
+  // verifies all certificates
+  // checks they issued for the same account
+  // fetches account as wallet address from subject id
+  // and returns all merged subjects with account data
+  async aggregateCredentials(certificates) {
+    const subjects = map(certificates, 'credentialSubject')
+    const subjectIds = subjects.map(({ id }) => id.toLowerCase())
+
+    // check all beling the same account
+    if (uniq(subjectIds).length > 1) {
+      throw new Error('Certificates issued for the different accounts')
+    }
+
+    const verifiedStatuses = await Promise.all(certificates.map(item => this.verifyCertificate(item)))
+
+    // check were all verified or not
+    if (!every(verifiedStatuses)) {
+      throw new Error('Some of the certificates have different issuer, is invalid or was failed to verify')
+    }
+
+    const [id] = subjectIds
+    const account = getSubjectAccount(id)
+
+    return assign({ id, account }, ...subjects)
+  }
+
+  async checkS3AccountVideo(videoFilename) {
+    await getS3Metadata(videoFilename, REDTENT_BUCKET).catch(() => {
+      throw new Error('Uploaded file does not exist at S3 bucket')
+    })
   }
 }
 

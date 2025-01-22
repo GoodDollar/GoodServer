@@ -25,8 +25,8 @@ import { getManager } from '../utils/tx-manager'
 import { sendSlackAlert } from '../../imports/slack'
 import { HttpProviderFactory, WebsocketProvider } from './transport'
 
+const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000'
 const FUSE_TX_TIMEOUT = 25000 // should be confirmed after max 5 blocks (25sec)
-const { estimateGasPrice } = conf
 const defaultGasPrice = web3Utils.toWei(String(conf.defaultGasPrice), 'gwei')
 
 export const adminMinBalance = conf.adminMinBalance
@@ -54,8 +54,13 @@ export class Web3Wallet {
   }
 
   constructor(name, conf, options = null) {
-    const { ethereum = null, network = null, initialGasPrice = null, fetchGasPrice = false, faucetTxCost = 150000 } =
-      options || {}
+    const {
+      ethereum = null,
+      network = null,
+      maxFeePerGas = 15e9,
+      maxPriorityFeePerGas = 1e9,
+      faucetTxCost = 150000
+    } = options || {}
     const ethOpts = ethereum || conf.ethereum
     const { network_id: networkId } = ethOpts
 
@@ -70,9 +75,10 @@ export class Web3Wallet {
     this.ethereum = ethOpts
     this.networkId = networkId
     this.numberOfAdminWalletAccounts = conf.privateKey ? 1 : conf.numberOfAdminWalletAccounts
-    this.gasPrice = initialGasPrice || defaultGasPrice
-    this.fetchGasPrice = fetchGasPrice || estimateGasPrice
+    this.maxFeePerGas = maxFeePerGas
+    this.maxPriorityFeePerGas = maxPriorityFeePerGas
     this.log = logger.child({ from: `${name}/${this.networkId}` })
+    this.gasPrice = (11e9).toString()
 
     this.initialize()
   }
@@ -130,29 +136,42 @@ export class Web3Wallet {
   }
 
   async init() {
+    const { env } = conf
     const { log } = this
 
-    log.debug('Initializing wallet:', { conf: this.ethereum })
+    const adminWalletAddress = get(ContractsAddress, `${this.network}.AdminWallet`)
+    log.debug('WalletInit: Initializing wallet:', { conf: this.ethereum, adminWalletAddress, name: this.name })
+    if (!adminWalletAddress) {
+      log.debug('WalletInit: missing adminwallet address skipping initialization', {
+        conf: this.ethereum,
+        adminWalletAddress,
+        name: this.name
+      })
+      return false
+    }
 
     this.txManager = getManager(this.ethereum.network_id)
     this.web3 = new Web3(this.getWeb3TransportProvider(), null, web3Default)
 
     assign(this.web3.eth, web3Default)
 
-    if (this.fetchGasPrice) {
+    if (env !== 'test') {
       await this.web3.eth
         .getGasPrice()
         .then(price => (this.gasPrice = price))
-        .catch(e => log.warn('failed to get gas price', e.message, e))
+        .catch(e => {
+          log.error('failed to get gas price', e.message, e)
+          this.gasPrice = (11e9).toString()
+        })
+        .then(() => log.info('default gas price set to:', this.gasPrice))
     }
-
     if (this.conf.privateKey) {
       let account = this.web3.eth.accounts.privateKeyToAccount(this.conf.privateKey)
 
       this.address = account.address
       this.addWallet(account)
 
-      log.info('Initialized by private key:', { address: account.address })
+      log.info('WalletInit: Initialized by private key:', { address: account.address })
     } else if (this.mnemonic) {
       let root = HDKey.fromMasterSeed(bip39.mnemonicToSeed(this.mnemonic, this.conf.adminWalletPassword))
 
@@ -166,14 +185,13 @@ export class Web3Wallet {
 
       this.address = this.addresses[0]
 
-      log.info('Initialized by mnemonic:', { address: this.addresses })
+      log.info('WalletInit: Initialized by mnemonic:', { address: this.addresses })
     }
     try {
-      const adminWalletAddress = get(ContractsAddress, `${this.network}.AdminWallet`)
-      log.info('Obtained AdminWallet address', { adminWalletAddress, network: this.network })
+      log.info('WalletInit: Obtained AdminWallet address', { adminWalletAddress, network: this.network })
 
       const adminWalletContractBalance = await this.web3.eth.getBalance(adminWalletAddress)
-      log.info(`AdminWallet contract balance`, { adminWalletContractBalance, adminWalletAddress })
+      log.info(`WalletInit: AdminWallet contract balance`, { adminWalletContractBalance, adminWalletAddress })
 
       this.proxyContract = new this.web3.eth.Contract(ProxyContractABI.abi, adminWalletAddress, { from: this.address })
 
@@ -192,12 +210,12 @@ export class Web3Wallet {
       this.txManager.getTransactionCount = this.web3.eth.getTransactionCount
       await this.txManager.createListIfNotExists(this.addresses)
 
-      log.info('Initialized wallet queue manager')
+      log.info('WalletInit: Initialized wallet queue manager')
 
       if (this.conf.topAdminsOnStartup) {
-        log.info('calling topAdmins...')
+        log.info('WalletInit: alling topAdmins...')
         await this.topAdmins(this.conf.numberOfAdminWalletAccounts).catch(e => {
-          log.warn('topAdmins failed', { e, errMessage: e.message })
+          log.warn('WalletInit: topAdmins failed', { e, errMessage: e.message })
         })
       }
 
@@ -208,19 +226,19 @@ export class Web3Wallet {
           const balance = await this.web3.eth.getBalance(addr)
           const isAdminWallet = await this.isVerifiedAdmin(addr)
 
-          log.info(`try address ${addr}:`, { balance, isAdminWallet, minAdminBalance })
+          log.info(`WalletInit: try address ${addr}:`, { balance, isAdminWallet, minAdminBalance })
 
           if (isAdminWallet && parseFloat(web3Utils.fromWei(balance, 'gwei')) > minAdminBalance) {
-            log.info(`admin wallet ${addr} balance ${balance}`)
+            log.info(`WalletInit: admin wallet ${addr} balance ${balance}`)
             this.filledAddresses.push(addr)
           }
         })
       )
 
-      log.info('Initialized adminwallet addresses', { filled: this.filledAddresses })
+      log.info('WalletInit: Initialized adminwallet addresses', { filled: this.filledAddresses })
 
       if (this.filledAddresses.length === 0) {
-        log.error('no admin wallet with funds')
+        log.error('WalletInit: no admin wallet with funds')
 
         await sendSlackAlert({
           msg: `critical: no fuse admin wallet with funds ${this.name}`
@@ -231,7 +249,7 @@ export class Web3Wallet {
 
       this.identityContract = new this.web3.eth.Contract(
         IdentityABI.abi,
-        get(ContractsAddress, `${this.network}.Identity`),
+        get(ContractsAddress, `${this.network}.Identity`, ADDRESS_ZERO),
         { from: this.address }
       )
 
@@ -242,17 +260,26 @@ export class Web3Wallet {
 
       this.tokenContract = new this.web3.eth.Contract(
         GoodDollarABI.abi,
-        get(ContractsAddress, `${this.network}.GoodDollar`),
+        get(ContractsAddress, `${this.network}.GoodDollar`, ADDRESS_ZERO),
         { from: this.address }
       )
 
-      this.UBIContract = new this.web3.eth.Contract(UBIABI.abi, get(ContractsAddress, `${this.network}.UBIScheme`), {
-        from: this.address
-      })
+      this.UBIContract = new this.web3.eth.Contract(
+        UBIABI.abi,
+        get(ContractsAddress, `${this.network}.UBIScheme`, ADDRESS_ZERO),
+        {
+          from: this.address
+        }
+      )
 
       this.faucetContract = new this.web3.eth.Contract(
         FaucetABI.abi,
-        get(ContractsAddress, `${this.network}.FuseFaucet`, get(ContractsAddress, `${this.network}.Faucet`)),
+        get(
+          ContractsAddress,
+          `${this.network}.FuseFaucet`,
+          get(ContractsAddress, `${this.network}.Faucet`),
+          ADDRESS_ZERO
+        ),
         {
           from: this.address
         }
@@ -269,18 +296,12 @@ export class Web3Wallet {
         })
       }
 
-      let gdbalance = await this.tokenContract.methods
-        .balanceOf(this.address)
-        .call()
-        .then(parseInt)
-
       let nativebalance = await this.web3.eth.getBalance(this.address)
       this.nonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
 
-      log.debug('AdminWallet Ready:', {
+      log.debug('WalletInit: AdminWallet Ready:', {
         activeWallets: this.filledAddresses.length,
         account: this.address,
-        gdbalance,
         nativebalance,
         networkId: this.networkId,
         network: this.network,
@@ -288,7 +309,7 @@ export class Web3Wallet {
         ContractsAddress: ContractsAddress[this.network]
       })
     } catch (e) {
-      log.error('Error initializing wallet', e.message, e)
+      log.error('WalletInit: Error initializing wallet', e.message, e)
 
       if (this.conf.env !== 'test' && this.conf.env !== 'development') {
         process.exit(-1)
@@ -307,7 +328,7 @@ export class Web3Wallet {
     const { log } = this
 
     try {
-      const { nonce, release, fail, address } = await this.txManager.lock(this.addresses[0], 1000) // timeout of 1 sec, so all "workers" fail except for the first
+      const { nonce, release, fail, address } = await this.txManager.lock(this.addresses[0], 500) // timeout of 1 sec, so all "workers" fail except for the first
 
       try {
         log.debug('topAdmins:', { numAdmins, address, nonce })
@@ -318,9 +339,13 @@ export class Web3Wallet {
             .estimateGas()
             .then(gas => parseInt(gas) + 200000) //buffer for proxy contract, reimburseGas?
             .catch(() => 1000000)
-          await this.proxyContract.methods
-            .topAdmins(i, i + 50)
-            .send({ gas, gasPrice: this.gasPrice, from: address, nonce })
+          await this.proxyContract.methods.topAdmins(i, i + 50).send({
+            gas,
+            maxFeePerGas: this.maxFeePerGas,
+            maxPriorityFeePerGas: this.maxPriorityFeePerGas,
+            from: address,
+            nonce
+          })
           log.debug('topAdmins success', { adminIdx: i })
         }
 
@@ -362,10 +387,7 @@ export class Web3Wallet {
 
       const [identityRecord, lastAuth] = await Promise.all([
         this.identityContract.methods.identities(address).call(),
-        this.identityContract.methods
-          .lastAuthenticated(address)
-          .call()
-          .then(parseInt)
+        this.identityContract.methods.lastAuthenticated(address).call().then(parseInt)
       ])
 
       if (parseInt(identityRecord.status) === 1) {
@@ -447,10 +469,7 @@ export class Web3Wallet {
     const { log } = this
 
     try {
-      const result = await this.identityContract.methods
-        .authenticationPeriod()
-        .call()
-        .then(parseInt)
+      const result = await this.identityContract.methods.authenticationPeriod().call().then(parseInt)
 
       return result
     } catch (exception) {
@@ -465,10 +484,7 @@ export class Web3Wallet {
     const { log } = this
 
     try {
-      const result = await this.identityContract.methods
-        .getWhitelistedOnChainId(account)
-        .call()
-        .then(parseInt)
+      const result = await this.identityContract.methods.getWhitelistedOnChainId(account).call().then(parseInt)
 
       return result
     } catch (exception) {
@@ -611,21 +627,31 @@ export class Web3Wallet {
     let txHash = ''
 
     // simulate tx to detect revert
-    const canTopOrError = await this.proxyContract.methods
-      .topWallet(address)
-      .call()
-      .then(() => true)
-      .catch(e => e.message)
+    const canTopOrError = await retryAsync(
+      () =>
+        this.proxyContract.methods
+          .topWallet(address)
+          .call()
+          .then(() => true)
+          .catch(e => {
+            if (e.message.search(/VM execution|reverted/i) >= 0) {
+              return false
+            } else {
+              logger.debug('retrying canTopOrError', e.message, { chainId: this.networkId, data: e.data })
+              throw e
+            }
+          }),
+      3,
+      500
+    ).catch(e => {
+      logger.warn('canTopOrError failed after retries', e.message, e, { chainId: this.networkId })
+      throw e
+    })
 
-    if (canTopOrError !== true) {
+    if (canTopOrError === false) {
       let userBalance = web3Utils.toBN(await this.web3.eth.getBalance(address))
       logger.debug('Topwallet will revert, skipping', { address, canTopOrError, wallet: this.name, userBalance })
-
-      // seems like user has balance so its not an error
-      if (userBalance.gt(web3Utils.toBN(this.gasPrice).mul(web3Utils.toBN('300000')))) {
-        return false
-      }
-      throw new Error(`${this.name}: Topwallet will revert, probably user passed limit`)
+      return false
     }
 
     try {
@@ -652,14 +678,13 @@ export class Web3Wallet {
 
   async topWalletFaucet(address, customLogger = null) {
     const logger = customLogger || this.log
-
     try {
       const canTop = await this.faucetContract.methods.canTop(address).call()
 
       logger.debug('topWalletFaucet canTop result:', { address, canTop, wallet: this.name })
 
       if (canTop === false) {
-        return false
+        return false //we try to top from admin wallet
       }
 
       let userBalance = web3Utils.toBN(await this.web3.eth.getBalance(address))
@@ -876,6 +901,47 @@ export class Web3Wallet {
       })
   }
 
+  async registerRedtent(account: string, countryCode: string, customLogger = null): Promise<TransactionReceipt> {
+    const logger = customLogger || this.log
+
+    if (this.networkId != 42220) {
+      logger.info(`skipping registerRedtent for non Celo: ${this.networkId}`)
+      return
+    }
+    const poolAddress = conf.redtentPools[countryCode]
+
+    try {
+      let encodedCall = this.web3.eth.abi.encodeFunctionCall(
+        {
+          name: 'addMember',
+          type: 'function',
+          inputs: [
+            {
+              name: 'member',
+              type: 'address'
+            },
+            {
+              name: 'extraData',
+              type: 'bytes'
+            }
+          ]
+        },
+        [account, '0x']
+      )
+
+      const transaction = await this.proxyContract.methods.genericCall(poolAddress, encodedCall, 0)
+      const tx = await this.sendTransaction(transaction, {}, undefined, false, logger)
+
+      logger.info('registerRedtent success', { account, countryCode, tx: tx.transactionHash, poolAddress })
+      return tx
+    } catch (exception) {
+      const { message } = exception
+
+      logger.error('registerRedtent failed', message, exception, { account, poolAddress, countryCode })
+      throw exception
+    }
+  }
+
   /**
    * Helper function to handle a tx Send call
    * @param tx
@@ -886,13 +952,18 @@ export class Web3Wallet {
    * @param {function} promiEvents.onError
    * @param {object} gasValues
    * @param {number} gasValues.gas
-   * @param {number} gasValues.gasPrice
+   * @param {number} gasValues.maxFeePerGas
+   * @param {number} gasValues.maxPriorityFeePerGas
    * @returns {Promise<Promise|Q.Promise<any>|Promise<*>|Promise<*>|Promise<*>|*>}
    */
   async sendTransaction(
     tx: any,
     txCallbacks: PromiEvents = {},
-    { gas, gasPrice }: GasValues = { gas: undefined, gasPrice: undefined },
+    { gas, maxPriorityFeePerGas, maxFeePerGas }: GasValues = {
+      gas: undefined,
+      maxFeePerGas: undefined,
+      maxPriorityFeePerGas: undefined
+    },
     retry = true,
     customLogger = null
   ) {
@@ -919,7 +990,8 @@ export class Web3Wallet {
         gas = defaultGas
       }
 
-      gasPrice = gasPrice || this.gasPrice
+      maxFeePerGas = maxFeePerGas || this.maxFeePerGas
+      maxPriorityFeePerGas = maxPriorityFeePerGas || this.maxPriorityFeePerGas
 
       logger.trace('getting tx lock:', { txuuid })
 
@@ -935,10 +1007,19 @@ export class Web3Wallet {
 
       currentAddress = address
       currentNonce = nonce
-      logger.debug(`sending tx from:`, { address, nonce, txuuid, balance, gas, gasPrice, wallet: this.name })
+      logger.debug(`sending tx from:`, {
+        address,
+        nonce,
+        txuuid,
+        balance,
+        gas,
+        maxFeePerGas,
+        maxPriorityFeePerGas,
+        wallet: this.name
+      })
 
       let txPromise = new Promise((res, rej) => {
-        tx.send({ gas, gasPrice, chainId: this.networkId, nonce, from: address, type: 0 })
+        tx.send({ gas, maxFeePerGas, maxPriorityFeePerGas, chainId: this.networkId, nonce, from: address })
           .on('transactionHash', h => {
             txHash = h
             logger.trace('got tx hash:', { txuuid, txHash, wallet: this.name })
@@ -973,7 +1054,8 @@ export class Web3Wallet {
                 errMessage: e.message,
                 nonce,
                 gas,
-                gasPrice,
+                maxFeePerGas,
+                maxPriorityFeePerGas,
                 address,
                 balance,
                 wallet: this.name,
@@ -1009,6 +1091,17 @@ export class Web3Wallet {
         retryAsync(
           async attempt => {
             const receipt = await this.web3.eth.getTransactionReceipt(txHash).catch()
+            logger.debug('retrying for timedout tx', {
+              currentAddress,
+              currentNonce,
+              netNonce,
+              attempt,
+              txuuid,
+              txHash,
+              receipt,
+              wallet: this.name,
+              network: this.networkId
+            })
             if (receipt) {
               await this.txManager.unlock(currentAddress, currentNonce + 1)
               logger.info('receipt found for timedout tx attempts', {
@@ -1022,10 +1115,11 @@ export class Web3Wallet {
                 network: this.networkId
               })
             } else if (attempt === 4) {
-              await this.txManager.unlock(currentAddress, currentNonce)
+              await this.txManager.unlock(currentAddress, netNonce)
               logger.info('stopped retrying for timedout tx attempts', {
                 currentAddress,
                 currentNonce,
+                netNonce,
                 attempt,
                 txuuid,
                 txHash,
@@ -1038,7 +1132,7 @@ export class Web3Wallet {
           3,
           10000
         ).catch(e => {
-          this.txManager.unlock(currentAddress, currentNonce)
+          this.txManager.unlock(currentAddress, netNonce)
           logger.error('retryAsync for timeout tx failed', e.message, e, { txHash })
         })
         // return assuming tx will mine
@@ -1046,7 +1140,8 @@ export class Web3Wallet {
       } else if (retry && (e.message.includes('FeeTooLowToCompete') || e.message.includes('underpriced'))) {
         logger.warn('sendTransaction assuming duplicate nonce:', {
           error: e.message,
-          gasPrice,
+          maxFeePerGas,
+          maxPriorityFeePerGas,
           currentAddress,
           currentNonce,
           netNonce,
@@ -1058,7 +1153,7 @@ export class Web3Wallet {
         // increase nonce, since we assume therre's a tx pending with same nonce
         await this.txManager.unlock(currentAddress, currentNonce + 1)
 
-        return this.sendTransaction(tx, txCallbacks, { gas, gasPrice }, false, logger)
+        return this.sendTransaction(tx, txCallbacks, { gas, maxFeePerGas, maxPriorityFeePerGas }, false, logger)
       } else if (retry && e.message.toLowerCase().includes('revert') === false) {
         logger.warn('sendTransaction retrying non reverted error:', {
           error: e.message,
@@ -1072,14 +1167,15 @@ export class Web3Wallet {
         })
 
         await this.txManager.unlock(currentAddress, netNonce)
-        return this.sendTransaction(tx, txCallbacks, { gas, gasPrice }, false, logger)
+        return this.sendTransaction(tx, txCallbacks, { gas, maxFeePerGas, maxPriorityFeePerGas }, false, logger)
       }
 
       await this.txManager.unlock(currentAddress, netNonce)
       logger.error('sendTransaction error:', e.message, e, {
         from: currentAddress,
         currentNonce,
-        gasPrice,
+        maxFeePerGas,
+        maxPriorityFeePerGas,
         netNonce,
         txuuid,
         txHash,
@@ -1101,13 +1197,18 @@ export class Web3Wallet {
    * @param {function} promiEvents.onError
    * @param {object} gasValues
    * @param {number} gasValues.gas
-   * @param {number} gasValues.gasPrice
+   * @param {number} gasValues.maxFeePerGas
+   * @param {number} gasValues.maxPriorityFeePerGas
    * @returns {Promise<Promise|Q.Promise<any>|Promise<*>|Promise<*>|Promise<*>|*>}
    */
   async sendNative(
     params: { from: string, to: string, value: string },
     txCallbacks: PromiEvents = {},
-    { gas, gasPrice }: GasValues = { gas: undefined, gasPrice: undefined }
+    { gas, maxFeePerGas, maxPriorityFeePerGas }: GasValues = {
+      gas: undefined,
+      maxFeePerGas: undefined,
+      maxPriorityFeePerGas: undefined
+    }
   ) {
     let currentAddress
     const { log } = this
@@ -1116,16 +1217,25 @@ export class Web3Wallet {
       const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
 
       gas = gas || defaultGas
-      gasPrice = gasPrice || this.gasPrice
+      maxFeePerGas = maxFeePerGas || this.maxFeePerGas
+      maxPriorityFeePerGas = maxPriorityFeePerGas || this.maxPriorityFeePerGas
 
       const { nonce, release, fail, address } = await this.txManager.lock(this.filledAddresses)
 
-      log.debug('sendNative', { nonce, gas, gasPrice })
+      log.debug('sendNative', { nonce, gas, maxFeePerGas, maxPriorityFeePerGas })
       currentAddress = address
 
       return new Promise((res, rej) => {
         this.web3.eth
-          .sendTransaction({ gas, gasPrice, chainId: this.networkId, nonce, ...params, from: address })
+          .sendTransaction({
+            gas,
+            maxFeePerGas,
+            maxPriorityFeePerGas,
+            chainId: this.networkId,
+            nonce,
+            ...params,
+            from: address
+          })
           .on('transactionHash', h => {
             if (onTransactionHash) {
               onTransactionHash(h)
@@ -1155,7 +1265,8 @@ export class Web3Wallet {
                 params,
                 nonce,
                 gas,
-                gasPrice,
+                maxFeePerGas,
+                maxPriorityFeePerGas,
                 address,
                 newNonce: netNonce,
                 wallet: this.name,
@@ -1165,7 +1276,7 @@ export class Web3Wallet {
               await this.txManager.unlock(address, netNonce)
 
               try {
-                await this.sendNative(params, txCallbacks, { gas, gasPrice }).then(res)
+                await this.sendNative(params, txCallbacks, { gas, maxFeePerGas, maxPriorityFeePerGas }).then(res)
               } catch (e) {
                 rej(e)
               }

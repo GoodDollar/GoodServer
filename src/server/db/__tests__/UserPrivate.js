@@ -37,7 +37,8 @@ describe('UserPrivate', () => {
   const testTaskStatusSwitch = async status => {
     const { _id } = await storage.enqueueTask(testTaskName, testTaskSubject)
 
-    await storage.fetchTasksForProcessing(testTaskName)
+    const iterator = await storage.fetchTasksForProcessing(testTaskName)
+    await iterator()
 
     switch (status) {
       case DelayedTaskStatus.Complete:
@@ -254,7 +255,8 @@ describe('UserPrivate', () => {
   it('Should fetch tasks', async () => {
     const { _id } = await storage.enqueueTask(testTaskName, testTaskSubject)
 
-    const wrappedResponse = expect(storage.fetchTasksForProcessing(testTaskName)).resolves
+    const iterator = await storage.fetchTasksForProcessing(testTaskName)
+    const wrappedResponse = expect(iterator()).resolves
 
     await wrappedResponse.toBeArrayOfSize(1)
 
@@ -273,7 +275,8 @@ describe('UserPrivate', () => {
     await storage.enqueueTask(testTaskName, testTaskSubject)
 
     // this call locks the tasks found and should set running status
-    await expect(storage.fetchTasksForProcessing(testTaskName)).resolves.toEqual(
+    const iterator = await storage.fetchTasksForProcessing(testTaskName)
+    await expect(iterator()).resolves.toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           status: DelayedTaskStatus.Locked,
@@ -283,7 +286,8 @@ describe('UserPrivate', () => {
     )
 
     // so calling fetchTasksForProcessing() again should return empty list
-    await expect(storage.fetchTasksForProcessing(testTaskName)).resolves.toBeArrayOfSize(0)
+    const iterator2 = await storage.fetchTasksForProcessing(testTaskName)
+    await expect(iterator2()).resolves.toBeArrayOfSize(0)
   })
 
   it('Should complete/fail/unlock tasks', async () => {
@@ -296,7 +300,9 @@ describe('UserPrivate', () => {
 
   it('Should unlock tasks also by the filters', async () => {
     await storage.enqueueTask(testTaskName, testTaskSubject)
-    await storage.fetchTasksForProcessing(testTaskName)
+    await (
+      await storage.fetchTasksForProcessing(testTaskName)
+    )()
     await storage.unlockDelayedTasks(testTaskName)
 
     await expect(taskModel.find({ taskName: testTaskName })).resolves.toEqual(
@@ -312,12 +318,17 @@ describe('UserPrivate', () => {
   it('Should unlock failed tasks', async () => {
     const { _id } = await storage.enqueueTask(testTaskName, testTaskSubject)
 
-    await storage.fetchTasksForProcessing(testTaskName)
-    // this unlock running tasks
-    await storage.failDelayedTasks([_id])
+    await (
+      await storage.fetchTasksForProcessing(testTaskName)
+    )()
 
     // so the next fetchTasksForProcessing() call now should return tasks
-    await expect(storage.fetchTasksForProcessing(testTaskName)).resolves.toBeArrayOfSize(1)
+    let iterator = await storage.fetchTasksForProcessing(testTaskName)
+    await expect(iterator()).resolves.toBeArrayOfSize(0)
+    // this unlock running tasks
+    await storage.failDelayedTasks([_id])
+    iterator = await storage.fetchTasksForProcessing(testTaskName)
+    await expect(iterator()).resolves.toBeArrayOfSize(1)
   })
 
   it("Complete/fail/update shouldn't switch pending status", async () => {
@@ -339,8 +350,9 @@ describe('UserPrivate', () => {
     const { _id } = await storage.enqueueTask(testTaskName, testTaskSubject)
 
     await testTasksExists(true)
-    await storage.fetchTasksForProcessing(testTaskName)
-
+    await (
+      await storage.fetchTasksForProcessing(testTaskName)
+    )()
     await expect(storage.removeDelayedTasks([_id])).resolves.toBeUndefined()
     await testTasksExists(false)
   })

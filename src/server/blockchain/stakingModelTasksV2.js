@@ -180,10 +180,7 @@ export class StakingModelManager {
       // throw e
     })
 
-    const balanceBefore = await this.cDai.methods
-      .balanceOf(AdminWallet.mainnetAddresses[0])
-      .call()
-      .then(parseInt)
+    const balanceBefore = await this.cDai.methods.balanceOf(AdminWallet.mainnetAddresses[0]).call().then(parseInt)
     this.log.info('mockInterest: approved and allocated dai. minting cDai...', { balanceBefore })
     await AdminWallet.sendTransactionMainnet(
       this.cDai.methods.mint(toWei('2000', 'ether')),
@@ -194,10 +191,7 @@ export class StakingModelManager {
       this.log.warn('mockInterest: cdai mint failed', e.message, e)
     })
 
-    let ownercDaiBalanceAfter = await this.cDai.methods
-      .balanceOf(AdminWallet.mainnetAddresses[0])
-      .call()
-      .then(parseInt)
+    let ownercDaiBalanceAfter = await this.cDai.methods.balanceOf(AdminWallet.mainnetAddresses[0]).call().then(parseInt)
 
     let toTransfer = ownercDaiBalanceAfter - balanceBefore
     this.log.info('mockInterest: minted fake cDai, transferring to staking contract...', {
@@ -338,11 +332,13 @@ class FishingManager {
   }
 
   init = once(async () => {
+    this.log.info('initializing...')
     await AdminWallet.ready
 
     this.ubiContract = new AdminWallet.web3.eth.Contract(UBISchemeABI.abi, this.ubiScheme, {
       from: AdminWallet.address
     })
+    this.log.info('done initializing')
   })
 
   /**
@@ -368,12 +364,7 @@ class FishingManager {
    */
   getUBICalculatedDays = async forceDaysAgo => {
     const dayFuseBlocks = (60 * 60 * 24) / 5
-    const maxInactiveDays =
-      forceDaysAgo ||
-      (await this.ubiContract.methods
-        .maxInactiveDays()
-        .call()
-        .then(parseInt))
+    const maxInactiveDays = forceDaysAgo || (await this.ubiContract.methods.maxInactiveDays().call().then(parseInt))
 
     const daysagoBlocks = dayFuseBlocks * (maxInactiveDays + 1)
     const curBlock = await AdminWallet.web3.eth.getBlockNumber()
@@ -381,10 +372,7 @@ class FishingManager {
     await AdminWallet.sendTransaction(this.ubiContract.methods.setDay(), {}).catch(() =>
       this.log.warn('fishManager set day failed')
     )
-    const currentUBIDay = await this.ubiContract.methods
-      .currentDay()
-      .call()
-      .then(parseInt)
+    const currentUBIDay = await this.ubiContract.methods.currentDay().call().then(parseInt)
     this.log.info('getInactiveAccounts', { daysagoBlocks, blocksAgo, currentUBIDay, maxInactiveDays })
     //get claims that were done before inactive period days ago, these accounts has the potential to be inactive
     //first we get the starting block

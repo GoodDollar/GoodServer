@@ -19,6 +19,7 @@ const updateUserMock = jest.fn()
 const enqueueTaskMock = jest.fn()
 const hasTasksQueuedMock = jest.fn()
 const failDelayedTasksMock = jest.fn()
+const completeDelayedTasksMock = jest.fn()
 const cancelTasksQueuedMock = jest.fn()
 const removeDelayedTasksMock = jest.fn()
 const fetchTasksForProcessingMock = jest.fn()
@@ -40,6 +41,7 @@ const storageMock = {
   removeDelayedTasks: removeDelayedTasksMock,
   unlockDelayedTasks: unlockDelayedTasksMock,
   failDelayedTasks: failDelayedTasksMock,
+  completeDelayedTasks: completeDelayedTasksMock,
   cancelTasksQueued: cancelTasksQueuedMock
 }
 
@@ -90,15 +92,14 @@ describe('EnrollmentProcessor', () => {
     whitelistUserMock.mockImplementation(noopAsync)
     whitelistContactMock.mockImplementation(noopAsync)
     topWalletMock.mockImplementation(noopAsync)
+    fetchTasksForProcessingMock.mockResolvedValue(() => Promise.resolve())
 
     invokeMap(
       [
         updateUserMock,
-
-        fetchTasksForProcessingMock,
         failDelayedTasksMock,
+        completeDelayedTasksMock,
         removeDelayedTasksMock,
-
         topWalletMock,
         removeWhitelistedMock
       ],
@@ -116,6 +117,7 @@ describe('EnrollmentProcessor', () => {
         fetchTasksForProcessingMock,
         failDelayedTasksMock,
         removeDelayedTasksMock,
+        completeDelayedTasksMock,
         cancelTasksQueuedMock,
         whitelistUserMock,
         whitelistContactMock,
@@ -300,7 +302,7 @@ describe('EnrollmentProcessor', () => {
     const taskId = identifier => `${identifier}-task-id`
     const onProcessedMock = jest.fn()
 
-    fetchTasksForProcessingMock.mockResolvedValueOnce(
+    const onceIterator = jest.fn().mockResolvedValueOnce(
       [
         nonIndexedEnrollmentIdentifier,
         unexistingEnrollmentIdentifier,
@@ -311,6 +313,7 @@ describe('EnrollmentProcessor', () => {
         subject: { enrollmentIdentifier: identifier, executeAt: DisposeAt.AccountRemoved }
       }))
     )
+    fetchTasksForProcessingMock.mockResolvedValueOnce(() => onceIterator())
 
     helper.mockEnrollmentFound(enrollmentIdentifier)
     helper.mockSuccessReadEnrollmentIndex(enrollmentIdentifier)
@@ -351,7 +354,7 @@ describe('EnrollmentProcessor', () => {
       expect.objectContaining({ message: helper.serviceErrorMessage })
     )
 
-    expect(removeDelayedTasksMock).toHaveBeenCalledWith(
+    expect(completeDelayedTasksMock).toHaveBeenCalledWith(
       [unexistingEnrollmentIdentifier, enrollmentIdentifier, nonIndexedEnrollmentIdentifier].map(taskId)
     )
   })
