@@ -61,6 +61,7 @@ jobs:
       LOG_LEVEL: error
       CHUNKS: ${{ needs.setup.outputs['test-chunks'] }}
       BLOCKCHAIN_CHUNKS: ${{ needs.setup.outputs['wallet-chunk-id'] }}
+      MONGO_DB_URI: ${{ secrets.MONGO_DB_URI }}
 
     runs-on: ubuntu-latest
     steps:

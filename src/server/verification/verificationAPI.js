@@ -20,11 +20,12 @@ import fetch from 'cross-fetch'
 import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 import createIdScanProcessor from './processor/IdScanProcessor'
 
-import { cancelDisposalTask, getDisposalTask } from './cron/taskUtil'
+import { cancelDisposalTask } from './cron/taskUtil'
 import { recoverPublickey } from '../utils/eth'
 import { shouldLogVerificaitonError } from './utils/logger'
 import { syncUserEmail } from '../storage/addUserSteps'
-import { normalizeIdentifiers, verifyIdentifier } from './utils/utils.js'
+import { normalizeIdentifiers } from './utils/utils.js'
+
 import ipcache from '../db/mongo/ipcache-provider.js'
 import { DelayedTaskStatus } from '../db/mongo/models/delayed-task.js'
 
@@ -34,7 +35,7 @@ export const deleteFaceId = async (fvSigner, enrollmentIdentifier, user, storage
   const processor = createEnrollmentProcessor(storage, log)
 
   // for v2 identifier - verify that identifier is for the address we are going to whitelist
-  verifyIdentifier(enrollmentIdentifier, gdAddress)
+  await verifyIdentifier(enrollmentIdentifier, gdAddress)
 
   const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
 
@@ -274,12 +275,16 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         return
       }
 
-      user.chainId = chainId || conf.defaultWhitelistChainId
+      // user.chainId = chainId || conf.defaultWhitelistChainId
+
+      //currently we force all new users to be marked as registered first on celo
+      //this is relevant for the invite rewards
+      user.chainId = 42220
 
       try {
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
         // for v1 this will do nothing
-        verifyIdentifier(enrollmentIdentifier, gdAddress)
+        await verifyIdentifier(enrollmentIdentifier, gdAddress)
 
         const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
         const enrollmentProcessor = createEnrollmentProcessor(storage, log)
@@ -392,7 +397,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       try {
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
         // for v1 this will do nothing
-        verifyIdentifier(enrollmentIdentifier, gdAddress)
+        await verifyIdentifier(enrollmentIdentifier, gdAddress)
 
         const { v2Identifier } = normalizeIdentifiers(enrollmentIdentifier)
 
@@ -647,22 +652,30 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const user: LoggedUser = req.user || { gdAddress: account }
       const clientIp = requestIp.getClientIp(req)
 
-      const gdContract = AdminWallet.walletsMap[chainId].tokenContract._address
+      const gdContract = AdminWallet.walletsMap[chainId]?.tokenContract?._address
+      const faucetContract = AdminWallet.walletsMap[chainId]?.faucetContract?._address
       log.debug('topwallet tx request:', {
         address: user.gdAddress,
         chainId,
         gdContract,
+        faucetContract,
         user: req.user,
         origin,
         host,
         clientIp
       })
+
+      if (!faucetContract) {
+        log.warn('topWallet unsupported chain', { chainId })
+        return res.json({ ok: -1, error: 'unsupported chain' })
+      }
+
       if (conf.env === 'production') {
         if (
           !user.isEmailConfirmed &&
           !user.smsValidated &&
           !(await AdminWallet.isVerified(user.gdAddress)) &&
-          !(await findGDTx(user.gdAddress, chainId, gdContract))
+          !(gdContract && (await findGDTx(user.gdAddress, chainId, gdContract)))
         ) {
           log.warn('topwallet denied, not registered user nor whitelisted nor did gd tx lately', {
             address: user.gdAddress,
@@ -679,7 +692,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       // check for faucet abuse
       const foundAbuse = await cachedFindFaucetAbuse(user.gdAddress, chainId).catch(e => {
-        log.error('findFaucetAbuse failed', e.message, e)
+        log.error('findFaucetAbuse failed', e.message, e, { address: user.gdAddress, chainId })
         return
       })
 
@@ -1022,7 +1035,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         }
 
         if (parsedRes.success) {
-          const verifyResult = await OTP.verifyCaptcha(kvStorageIpKey)
+          const verifyResult = await OTP.verifyCaptcha(kvStorageIpKey, captchaType)
 
           log.debug('Recaptcha verified', { verifyResult, parsedRes })
 

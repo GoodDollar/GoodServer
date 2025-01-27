@@ -494,7 +494,7 @@ describe('verificationAPI', () => {
         .expect(400)
 
       expect(result.body.success).toEqual(false)
-      expect(result.body.error).toStartWith("Identifier signer doesn't match user")
+      expect(result.body.error).toStartWith('FV identifier signature verification faild')
     })
 
     test.skip('DELETE /verify/face/:enrollmentIdentifier returns 200 and success = true if v2 signature is valid', async () => {

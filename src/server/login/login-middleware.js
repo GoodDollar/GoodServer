@@ -5,7 +5,7 @@ import { Strategy as AnonymousStrategy } from 'passport-anonymous'
 import { ExtractJwt, Strategy } from 'passport-jwt'
 import { Router } from 'express'
 import { defaults } from 'lodash'
-import * as Crypto from '@textile/crypto'
+import { PublicKey } from '@textile/crypto'
 import { TextEncoder } from 'util'
 import isBase64 from 'is-base64'
 import { sha3 } from 'web3-utils'
@@ -16,8 +16,8 @@ import logger from '../../imports/logger'
 import { wrapAsync } from '../utils/helpers'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
 import Config from '../server.config.js'
-import { recoverPublickey } from '../utils/eth'
-import { mustache, strcasecmp } from '../utils/string'
+import { recoverPublickey, verifyIdentifier } from '../utils/eth'
+import { strcasecmp } from '../utils/string'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import clientSettings from '../clients.config.js'
 
@@ -36,10 +36,6 @@ nonce:`
 const FV_IDENTIFIER_MSG = `Sign this message to create your own unique identifier for your anonymized record.
 You can use this identifier in the future to delete this anonymized record.
 WARNING: do not sign this message unless you trust the website/application requesting this signature.`
-
-export const FV_IDENTIFIER_MSG2 = mustache(`Sign this message to request verifying your account {account} and to create your own secret unique identifier for your anonymized record.
-You can use this identifier in the future to delete this anonymized record.
-WARNING: do not sign this message unless you trust the website/application requesting this signature.`)
 
 const isProfileSignatureCompatible = (signature, nonce) => {
   if (isBase64(signature)) {
@@ -65,7 +61,7 @@ const isProfileSignatureCompatible = (signature, nonce) => {
 
 const verifyProfilePublicKey = async (publicKeyString, signature, nonce) => {
   try {
-    const profilePublicKey = Crypto.PublicKey.fromString(publicKeyString)
+    const profilePublicKey = PublicKey.fromString(publicKeyString)
     const sigbytes = Uint8Array.from(Buffer.from(signature, 'base64'))
     const msgbytes = new TextEncoder().encode(MSG + nonce)
 
@@ -264,33 +260,23 @@ const setup = (app: Router) => {
       log.debug('/auth/fv2', { message: 'authorizing' })
       log.debug('/auth/fv2', { body })
 
-      const { fvsig, account } = body
+      const { fvsig, account, chainId = '42220' } = body
 
       log.debug('/auth/fv2', { account, fvsig })
 
-      const recovered = recoverPublickey(fvsig, FV_IDENTIFIER_MSG2({ account }), '')
+      try {
+        await verifyIdentifier(fvsig, account, chainId)
+        const token = await generateJWT(account)
 
-      log.debug('/auth/fv2', {
-        message: 'Recovered public key',
-        recovered
-      })
-
-      // strcasemp returns non-zero if not match
-      if (strcasecmp(recovered, account)) {
-        log.warn('/auth/f2v', {
-          message: 'SigUtil unable to recover the message signer'
+        log.info('/auth/fv2', {
+          message: `JWT token: ${token}`
         })
 
-        throw new Error('Unable to verify credentials')
+        res.json({ token })
+      } catch (e) {
+        log.error('/auth/fv2 failed', e.message, e, { account, fvsig })
+        throw e
       }
-
-      const token = await generateJWT(recovered)
-
-      log.info('/auth/fv2', {
-        message: `JWT token: ${token}`
-      })
-
-      res.json({ token })
     })
   )
 
@@ -336,9 +322,13 @@ const setup = (app: Router) => {
       const bridge = new ethers.Contract('0xa3247276DbCC76Dd7705273f766eB3E8a5ecF4a5', [
         'function estimateSendFee(uint16,address,address,uint256,bool,bytes) view returns (uint256,uint256)'
       ])
+
+      const fuseProvider = new ethers.providers.JsonRpcProvider('https://rpc.fuse.io')
+      const celoProvider = new ethers.providers.JsonRpcProvider('https://forno.celo.org')
+
       const bridgeEth = bridge.connect(new ethers.providers.CloudflareProvider())
-      const bridgeFuse = bridge.connect(new ethers.providers.JsonRpcProvider('https://rpc.fuse.io'))
-      const bridgeCelo = bridge.connect(new ethers.providers.JsonRpcProvider('https://forno.celo.org'))
+      const bridgeFuse = bridge.connect(fuseProvider)
+      const bridgeCelo = bridge.connect(celoProvider)
       const params = ethers.utils.solidityPack(['uint16', 'uint256'], [1, 400000])
       const [lzEthCelo, lzEthFuse, lzCeloEth, lzCeloFuse, lzFuseEth, lzFuseCelo] = await Promise.all([
         bridgeEth

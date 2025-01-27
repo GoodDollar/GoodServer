@@ -1,11 +1,14 @@
 import axios from 'axios'
 import { isArray } from 'lodash'
-import { retry as retryAttempt } from '../utils/async'
+import { retry as retryAttempt, fallback } from '../utils/async'
+import { default as getNetworks } from '../networks'
 
+const NETWORKS = getNetworks()
 export const getExplorerTxs = async (address, chainId, query, from = null, allPages = true) => {
   const txs = []
   const url = '/api'
-  const networkExplorerUrl = Number(chainId) === 122 ? 'https://explorer.fuse.io' : 'https://explorer.celo.org/mainnet'
+
+  const networkExplorerUrls = NETWORKS[Number(chainId)].explorer
 
   const params = { module: 'account', address, sort: 'asc', page: 1, offset: 10000, ...query }
 
@@ -15,29 +18,21 @@ export const getExplorerTxs = async (address, chainId, query, from = null, allPa
   }
 
   for (;;) {
-    const options = { baseURL: networkExplorerUrl, params }
+    const calls = networkExplorerUrls.split(',').map(networkExplorerUrl => {
+      const options = { baseURL: networkExplorerUrl, params }
+      return () =>
+        axios.get(url, options).then(result => {
+          if (isArray(result.data.result)) {
+            return result
+          }
+          throw new Error(`NOTOK ${result.data.result}`)
+        })
+    })
+
     const {
       data: { result = [] }
-    } = await retryAttempt(
-      () =>
-        axios
-          .get(url, options)
-          .then(result => {
-            if (isArray(result.data.result)) {
-              return result
-            }
-            throw new Error(`NOTOK ${result.data.result}`)
-          })
-          .catch(e => {
-            if (Number(chainId) === 122) {
-              throw e
-            }
-            //retry with other explorer
-            return axios.get(url, { ...options, networkExplorerUrl: 'https://api.celoscan.io' })
-          }),
-      3,
-      1500
-    )
+    } = await retryAttempt(() => fallback(calls), 3, 1500)
+
     const chunk = result.filter(({ value }) => value !== '0')
     params.page += 1
     txs.push(...chunk)
@@ -55,7 +50,7 @@ export const findFaucetAbuse = async (address, chainId) => {
   const lastTxs = await getExplorerTxs(
     address,
     chainId,
-    { action: 'txlist', sort: 'desc', offset: 100 },
+    { action: 'txlist', sort: 'desc', offset: 200 },
     undefined,
     false
   )
