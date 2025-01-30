@@ -23,8 +23,9 @@ class ZoomProvider implements IEnrollmentProvider {
   logger = null
 
   constructor(api, Config, logger) {
-    const { skipFaceVerification, disableFaceVerification } = Config
+    const { skipFaceVerification, disableFaceVerification, minAgeGroup } = Config
 
+    this.minAgeGroup = minAgeGroup
     this.api = api
     this.logger = logger
     this.storeRecords = !disableFaceVerification && !skipFaceVerification
@@ -132,10 +133,20 @@ class ZoomProvider implements IEnrollmentProvider {
         alreadyEnrolled,
         enrollResult
       })
+
+      if (enrollResult.ageV2GroupEnumInt < this.minAgeGroup) {
+        const e = new Error('age check failed')
+        e.name = 'AgeCheck'
+        throw e
+      }
     } catch (exception) {
       const { name, message, response } = exception
 
       log.warn('enroll failed:', { enrollmentIdentifier, name, message })
+      if ('AgeCheck' === name) {
+        await notifyProcessor({ isUnderAge: true })
+        throwException(message, { isUnderAge: true }, response)
+      }
       // if facemap doesn't match we won't show retry screen
       if (FacemapDoesNotMatch === name) {
         isNotMatch = true

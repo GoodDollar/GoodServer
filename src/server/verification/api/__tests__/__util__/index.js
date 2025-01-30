@@ -191,6 +191,12 @@ export default zoomServiceMock => {
     faceScanResponse('enrollment', enrollmentPayloadMatcher(enrollmentIdentifier), payload)
   }
 
+  const mockSuccessEnrollmentUnderAge = enrollmentIdentifier => {
+    const payload = { externalDatabaseRefID: enrollmentIdentifier, ageV2GroupEnumInt: 2 }
+
+    faceScanResponse('enrollment', enrollmentPayloadMatcher(enrollmentIdentifier), payload)
+  }
+
   const mockFailedEnrollment = (enrollmentIdentifier, withReasonFlags = {}, resultBlob = null) => {
     const payloadMatcher = enrollmentPayloadMatcher(enrollmentIdentifier)
     let reasonFlags = withReasonFlags
@@ -305,6 +311,7 @@ export default zoomServiceMock => {
     mockSuccessEnrollment,
     mockFailedEnrollment,
     mockEnrollmentAlreadyExists,
+    mockSuccessEnrollmentUnderAge,
 
     failedMatchMessage,
     mockSuccessUpdateEnrollment,

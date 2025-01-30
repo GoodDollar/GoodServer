@@ -6,6 +6,7 @@ import { get, defaults, memoize, omit } from 'lodash'
 import { sha3, keccak256 } from 'web3-utils'
 import web3Abi from 'web3-eth-abi'
 import requestIp from 'request-ip'
+import moment from 'moment'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import { default as AdminWallet } from '../blockchain/MultiWallet'
 import { findFaucetAbuse, findGDTx } from '../blockchain/explorer'
@@ -19,13 +20,14 @@ import fetch from 'cross-fetch'
 import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 import createIdScanProcessor from './processor/IdScanProcessor'
 
-import { cancelDisposalTask } from './cron/taskUtil'
+import { cancelDisposalTask, getDisposalTask } from './cron/taskUtil'
 import { recoverPublickey, verifyIdentifier } from '../utils/eth'
 import { shouldLogVerificaitonError } from './utils/logger'
 import { syncUserEmail } from '../storage/addUserSteps'
 import { normalizeIdentifiers } from './utils/utils.js'
 
 import ipcache from '../db/mongo/ipcache-provider.js'
+import { DelayedTaskStatus } from '../db/mongo/models/delayed-task.js'
 
 export const deleteFaceId = async (fvSigner, enrollmentIdentifier, user, storage, log) => {
   const { gdAddress } = user
@@ -123,7 +125,20 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { fvSigner = '' } = query
 
       try {
-        await deleteFaceId(fvSigner, enrollmentIdentifier, user, storage, log)
+        const authenticationPeriod = await AdminWallet.getAuthenticationPeriod()
+
+        const record = await getDisposalTask(storage, enrollmentIdentifier)
+        log.debug('get face disposal task result:', { enrollmentIdentifier, record })
+        if (record == null || record.status === DelayedTaskStatus.Complete) {
+          return res.json({ success: true, status: DelayedTaskStatus.Complete })
+        }
+        return res.json({
+          success: true,
+          status: record.status,
+          executeAt: moment(record.createdAt)
+            .add(authenticationPeriod + 1, 'days')
+            .toISOString()
+        })
       } catch (exception) {
         const { message } = exception
 
@@ -131,8 +146,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         res.status(400).json({ success: false, error: message })
         return
       }
-
-      res.json({ success: true })
     })
   )
 
@@ -294,6 +307,16 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           const wasWhitelisted = await AdminWallet.lastAuthenticated(gdAddress)
           const enrollmentResult = await enrollmentProcessor.enroll(user, v2Identifier, payload, log)
 
+          // fetch duplicate expiration
+          if (enrollmentResult.success === false && enrollmentResult.enrollmentResult?.isDuplicate) {
+            const dup = enrollmentResult.enrollmentResult.duplicate.identifier
+            const authenticationPeriod = await AdminWallet.getAuthenticationPeriod()
+            const record = await getDisposalTask(storage, dup)
+            const expiration = moment(record?.createdAt || 0)
+              .add(authenticationPeriod + 1, 'days')
+              .toISOString()
+            enrollmentResult.enrollmentResult.duplicate.expiration = expiration
+          }
           // log warn if user was whitelisted but unable to pass FV again
           if (wasWhitelisted > 0 && enrollmentResult.success === false) {
             log.warn('user failed to re-authenticate', {

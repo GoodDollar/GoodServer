@@ -308,6 +308,12 @@ const conf = convict({
     env: 'ZOOM_MINIMAL_MATCHLEVEL',
     default: 1
   },
+  minAgeGroup: {
+    doc: 'Minimal FaceTec age group threshold',
+    format: Number,
+    env: 'ZOOM_MINIMAL_AGEGROUP',
+    default: 3
+  },
   zoomSearchIndexName: {
     doc: 'FaceTec 3d DB search index name',
     format: '*',
