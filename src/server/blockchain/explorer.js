@@ -6,7 +6,7 @@ import { default as getNetworks } from '../networks'
 const NETWORKS = getNetworks()
 export const getExplorerTxs = async (address, chainId, query, from = null, allPages = true) => {
   const txs = []
-  const url = '/api'
+  const url = ''
 
   const networkExplorerUrls = NETWORKS[Number(chainId)].explorer
 

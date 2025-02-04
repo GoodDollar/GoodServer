@@ -6,7 +6,9 @@ export default once(() => {
   const celoRpc = process.env.CELO_RPC
   const mainnetRpc = process.env.MAINNET_RPC
   const baseRpc = process.env.BASE_RPC
-
+  const fuseExplorers = process.env.FUSE_EXPLORERS || 'https://explorer.fuse.io/api'
+  const celoExplorers = process.env.CELO_EXPLORERS || 'https://celo.blockscout.com/api,https://api.celoscan.io/api'
+  const baseExplorers = process.env.BASE_EXPLORERS || 'https://base.blockscout.com/api'
   return {
     1: {
       network_id: 1,
@@ -43,7 +45,7 @@ export default once(() => {
       web3Transport: 'HttpProvider',
       httpWeb3Provider: fuseRpc ? fuseRpc : 'https://rpc.fuse.io/',
       websocketWeb3Provider: 'wss://rpc.fuse.io/ws',
-      explorer: 'https://explorer.fuse.io'
+      explorer: fuseExplorers
     },
     42220: {
       network_id: 42220,
@@ -51,7 +53,7 @@ export default once(() => {
       // eslint-disable-next-line prettier/prettier
       httpWeb3Provider: celoRpc ? celoRpc : 'https://forno.celo.org/,https://rpc.ankr.com/celo,https://1rpc.io/celo',
       websocketWeb3Provider: '',
-      explorer: 'https://explorer.celo.org/mainnet,https://api.celoscan.io'
+      explorer: celoExplorers
     },
     8453: {
       network_id: 8453,
@@ -59,7 +61,7 @@ export default once(() => {
       // eslint-disable-next-line prettier/prettier
       httpWeb3Provider: baseRpc ? baseRpc : 'https://mainnet.base.org,https://rpc.ankr.com/base,https://1rpc.io/base',
       websocketWeb3Provider: '',
-      explorer: 'https://base.blockscout.com'
+      explorer: baseExplorers
     }
   }
 })
