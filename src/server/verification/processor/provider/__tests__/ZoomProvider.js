@@ -7,7 +7,7 @@ import getZoomProvider from '../ZoomProvider'
 import { ZoomLicenseType } from '../../../utils/constants'
 import createMockingHelper from '../../../api/__tests__/__util__'
 import { levelConfigs } from '../../../../../imports/logger/options'
-import { GoodIDUtils } from '../../../../goodid/utils'
+import GoodIDUtils from '../../../../goodid/utils'
 // make sure age test fails
 GoodIDUtils.ageGenderCheck = jest.fn().mockResolvedValue({ age: { min: 15 } })
 

@@ -11,6 +11,10 @@ import createMockingHelper from '../../api/__tests__/__util__'
 import { createTaskSubject, DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment } from '../../cron/taskUtil'
 import { noopAsync } from '../../../utils/async'
 
+import GoodIDUtils from '../../../goodid/utils'
+// make sure age test fails
+GoodIDUtils.ageGenderCheck = jest.fn().mockResolvedValue({ age: { min: 15 } })
+
 let helper
 let zoomServiceMock
 
