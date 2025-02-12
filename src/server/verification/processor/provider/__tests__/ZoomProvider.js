@@ -7,6 +7,9 @@ import getZoomProvider from '../ZoomProvider'
 import { ZoomLicenseType } from '../../../utils/constants'
 import createMockingHelper from '../../../api/__tests__/__util__'
 import { levelConfigs } from '../../../../../imports/logger/options'
+import { GoodIDUtils } from '../../../../goodid/utils'
+// make sure age test fails
+GoodIDUtils.ageGenderCheck = jest.fn().mockResolvedValue({ age: { min: 15 } })
 
 const ZoomProvider = getZoomProvider()
 let helper
@@ -274,11 +277,7 @@ describe('ZoomProvider', () => {
     const uri = helper.enrollmentUri(enrollmentIdentifier)
     const unexpectedError = 'Unexpected error during search'
 
-    zoomServiceMock
-      .onGet(uri)
-      .replyOnce(500)
-      .onGet(uri)
-      .networkErrorOnce()
+    zoomServiceMock.onGet(uri).replyOnce(500).onGet(uri).networkErrorOnce()
 
     await testEnrollmentServiceError(helper.serviceErrorMessage)
     await testEnrollmentServiceError('Network Error')

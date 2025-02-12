@@ -17,6 +17,7 @@ import ServerConfig from '../../../server.config'
 
 import { type IEnrollmentProvider } from '../typings'
 import { strcasecmp } from '../../../utils/string'
+import GoodIDUtils from '../../../goodid/utils'
 
 class ZoomProvider implements IEnrollmentProvider {
   api = null
@@ -135,9 +136,19 @@ class ZoomProvider implements IEnrollmentProvider {
       })
 
       if (enrollResult.ageV2GroupEnumInt < this.minAgeGroup) {
-        const e = new Error('age check failed')
-        e.name = 'AgeCheck'
-        throw e
+        const { age } = await GoodIDUtils.ageGenderCheck(payload.auditTrailImage)
+        if (age.min < 16) {
+          log.debug('age check failed', { enrollmentIdentifier, ageGroup: enrollResult.ageV2GroupEnumInt, awsAge: age })
+          const e = new Error('age check failed')
+          e.name = 'AgeCheck'
+          throw e
+        } else {
+          log.debug('age check recover:', {
+            enrollmentIdentifier,
+            ageGroup: enrollResult.ageV2GroupEnumInt,
+            awsAge: age
+          })
+        }
       }
     } catch (exception) {
       const { name, message, response } = exception

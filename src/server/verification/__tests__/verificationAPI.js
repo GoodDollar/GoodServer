@@ -18,6 +18,11 @@ import createMockingHelper from '../api/__tests__/__util__'
 
 import { DisposeAt, scheduleDisposalTask, forEnrollment } from '../cron/taskUtil'
 
+import GoodIDUtils from '../../goodid/utils'
+
+// make sure age test fails
+GoodIDUtils.ageGenderCheck = jest.fn().mockResolvedValue({ age: { min: 15 } })
+
 describe('verificationAPI', () => {
   let server
   const { skipEmailVerification, zoomProductionMode, defaultWhitelistChainId } = Config
