@@ -74,7 +74,7 @@ const checkMultiIpAccounts = async (account, ip, logger) => {
   const record = await ipcache.updateAndGet(ip.toLowerCase(), account.toLowerCase())
   logger.debug('checkMultiIpAccounts:', { record })
   const { accounts } = record
-  if (accounts.length >= 3) {
+  if (accounts.length >= 5) {
     logger.debug('checkMultiIpAccounts:', { ip, account, accounts })
     accounts.forEach(addr => (faucetAddressBlocked[addr] = faucetAddressBlocked[addr] || Date.now()))
     return accounts
