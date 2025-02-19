@@ -55,7 +55,7 @@
     "@babel/polyfill": "^7.11.5",
     "@babel/runtime": "^7.16.5",
     "@gooddollar/goodcontracts": "^2.6.1",
-    "@gooddollar/goodprotocol": "^2.0.28",
+    "@gooddollar/goodprotocol": "^2.0.30",
     "@openzeppelin/defender-autotask-client": "^1.50.0",
     "@openzeppelin/defender-relay-client": "^1.49.0",
     "@sentry/integrations": "^5.30.0",
