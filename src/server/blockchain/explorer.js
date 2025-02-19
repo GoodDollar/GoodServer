@@ -10,7 +10,7 @@ export const getExplorerTxs = async (address, chainId, query, from = null, allPa
 
   const networkExplorerUrls = NETWORKS[Number(chainId)].explorer
 
-  const params = { module: 'account', address, sort: 'asc', page: 1, offset: 10000, ...query }
+  const params = { module: 'account', address, sort: 'asc', page: 1, ...query }
 
   if (from) {
     params.start_block = from
@@ -50,7 +50,9 @@ export const findFaucetAbuse = async (address, chainId) => {
   const lastTxs = await getExplorerTxs(
     address,
     chainId,
-    { action: 'txlist', sort: 'desc', offset: 200 },
+    //blockscout has a bug with offset that causes timeout, temporarily remove 19/2/2025
+    // { action: 'txlist', sort: 'desc', offset: 200 },
+    { action: 'txlist', sort: 'desc' },
     undefined,
     false
   )
