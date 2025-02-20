@@ -213,7 +213,7 @@ export class Web3Wallet {
       log.info('WalletInit: Initialized wallet queue manager')
 
       if (this.conf.topAdminsOnStartup) {
-        log.info('WalletInit: alling topAdmins...')
+        log.info('WalletInit: calling topAdmins...')
         await this.topAdmins(this.conf.numberOfAdminWalletAccounts).catch(e => {
           log.warn('WalletInit: topAdmins failed', { e, errMessage: e.message })
         })
