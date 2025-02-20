@@ -1,4 +1,4 @@
-import FaucetABI from '@gooddollar/goodprotocol/artifacts/contracts/fuseFaucet/FuseFaucetV2.sol/FuseFaucetV2.json'
+import { default as SuperfluidFaucetABI } from '@gooddollar/goodprotocol/artifacts/contracts/fuseFaucet/SuperfluidFacuet.sol/SuperfluidFaucet.json'
 import ContractsAddress from '@gooddollar/goodprotocol/releases/deployment.json'
 import { get } from 'lodash'
 import { Web3Wallet } from './Web3Wallet'
@@ -25,7 +25,7 @@ export class BaseAdminWallet extends Web3Wallet {
     return ready.then(r => {
       if (r) {
         this.faucetContract = new this.web3.eth.Contract(
-          FaucetABI.abi,
+          SuperfluidFaucetABI.abi,
           get(ContractsAddress, `${this.network}.SuperfluidFaucet`),
           {
             from: this.address
@@ -40,7 +40,15 @@ export class BaseAdminWallet extends Web3Wallet {
     const logger = customLogger || this.log
     if (!this.faucetContract) return true
     if (await this.celoWallet.isVerified(address)) {
-      return this.topWalletFaucet(address, logger).catch(() => false)
+      const { baseFeePerGas = 1e7 } = await this.web3.eth.getBlock('latest')
+      const canTop = await this.faucetContract.methods
+        .canTop(address, baseFeePerGas)
+        .call()
+        .catch(() => true)
+      if (canTop) {
+        return this.topWalletFaucet(address, logger).catch(() => false)
+      }
+      return false
     }
     logger.info('BaseAdminWallet topWalletFailed: address not whitelisted on celo', { address })
     return false
