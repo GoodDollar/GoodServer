@@ -256,7 +256,7 @@ class AdminWallet extends Web3Wallet {
 
 // fuse defaults
 const options = {
-  maxFeePerGas: (15e9).toFixed(0),
+  maxFeePerGas: (25e9).toFixed(0),
   maxPriorityFeePerGas: (1e9).toFixed(0)
 }
 
