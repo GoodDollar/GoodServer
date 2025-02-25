@@ -1115,7 +1115,8 @@ export class Web3Wallet {
                 network: this.networkId
               })
             } else if (attempt === 4) {
-              await this.txManager.unlock(currentAddress, netNonce)
+              //increase nonce assuming tx went through
+              await this.txManager.unlock(currentAddress, currentNonce + 1)
               logger.info('stopped retrying for timedout tx attempts', {
                 currentAddress,
                 currentNonce,
