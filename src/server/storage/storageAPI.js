@@ -711,8 +711,9 @@ const setup = (app: Router, storage: StorageAPI) => {
     wrapAsync(async (req, res) => {
       const { body, log } = req
       let result = {}
-      if (body.identifier) result = await storage.updateUser({ identifier: body.identifier, ageVerified: true })
-      log.info('admin age verify', body.identifier, result)
+      const identifier = body.identifier || sha3(toChecksumAddress(body.account))
+      if (identifier) result = await storage.updateUser({ identifier, ageVerified: true })
+      log.info('admin age verify', body, result)
       res.json({ ok: 1, result })
     })
   )
