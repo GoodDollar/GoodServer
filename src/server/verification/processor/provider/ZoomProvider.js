@@ -60,6 +60,7 @@ class ZoomProvider implements IEnrollmentProvider {
     enrollmentIdentifier: string,
     payload: any,
     onEnrollmentProcessing: (payload: IEnrollmentEventPayload) => void | Promise<void>,
+    skipAgeCheck = false,
     customLogger = null
   ): Promise<any> {
     const { api, logger, storeRecords } = this
@@ -132,10 +133,11 @@ class ZoomProvider implements IEnrollmentProvider {
         methodToInvoke,
         enrollmentIdentifier,
         alreadyEnrolled,
-        enrollResult
+        enrollResult,
+        skipAgeCheck
       })
 
-      if (enrollResult.ageV2GroupEnumInt < this.minAgeGroup) {
+      if (skipAgeCheck !== true && enrollResult.ageV2GroupEnumInt < this.minAgeGroup) {
         const { age } = await GoodIDUtils.ageGenderCheck(payload.auditTrailImage)
         if (age.min < 16) {
           log.debug('age check failed', { enrollmentIdentifier, ageGroup: enrollResult.ageV2GroupEnumInt, awsAge: age })

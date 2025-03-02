@@ -362,6 +362,8 @@ describe('EnrollmentProcessor', () => {
   test('enroll() failes when under age', async () => {
     helper.mockEnrollmentNotFound(enrollmentIdentifier)
     helper.mockSuccessEnrollmentUnderAge(enrollmentIdentifier)
+    helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
+    helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
 
     const wrappedResponse = expect(enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)).resolves
 
@@ -369,5 +371,18 @@ describe('EnrollmentProcessor', () => {
     await wrappedResponse.toHaveProperty('success', false)
     await wrappedResponse.toHaveProperty('enrollmentResult.isVerified', false)
     await wrappedResponse.toHaveProperty('error', 'age check failed')
+  })
+
+  test('enroll() success when under age but age marked as verified', async () => {
+    helper.mockEnrollmentNotFound(enrollmentIdentifier)
+    helper.mockSuccessEnrollmentUnderAge(enrollmentIdentifier)
+    helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
+    helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
+    const verifiedUser = { ...user, ageVerified: true }
+    const wrappedResponse = expect(enrollmentProcessor.enroll(verifiedUser, enrollmentIdentifier, payload)).resolves
+
+    await wrappedResponse.toBeDefined()
+    await wrappedResponse.toHaveProperty('success', true)
+    await wrappedResponse.toHaveProperty('enrollmentResult.isVerified', true)
   })
 })

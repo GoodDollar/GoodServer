@@ -38,13 +38,20 @@ export default class EnrollmentSession {
     log.info('Enrollment session started', {
       enrollmentIdentifier,
       userIdentifier: user.loggedInAs,
+      ageVerified: user.ageVerified,
       payload: omit(payload, 'faceMap', 'faceScan', 'auditTrailImage', 'lowQualityAuditTrailImage')
     })
 
     try {
       await this.onEnrollmentStarted()
 
-      const enrollmentResult = await provider.enroll(enrollmentIdentifier, payload, onEnrollmentProcessing, log)
+      const enrollmentResult = await provider.enroll(
+        enrollmentIdentifier,
+        payload,
+        onEnrollmentProcessing,
+        user.ageVerified,
+        log
+      )
 
       log.info('Enrollment session completed with result:', enrollmentResult)
 
