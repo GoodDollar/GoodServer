@@ -704,6 +704,18 @@ const setup = (app: Router, storage: StorageAPI) => {
       }
     })
   )
+
+  app.post(
+    '/admin/user/verifyAge',
+    adminAuthenticate,
+    wrapAsync(async (req, res) => {
+      const { body, log } = req
+      let result = {}
+      if (body.identifier) result = await storage.updateUser({ identifier: body.identifier, ageVerified: true })
+      log.info('admin age verify', body.identifier, result)
+      res.json({ ok: 1, result })
+    })
+  )
 }
 
 export default setup
