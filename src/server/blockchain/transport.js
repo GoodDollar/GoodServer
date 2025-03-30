@@ -80,7 +80,7 @@ export class MultipleHttpProvider extends HttpProvider {
           const errorMessage = 'Failed all RPCs' // so in analytics all errors are grouped under same message
 
           // log.exception bypass network error filtering
-          log.error('MultiHttpProvider:', errorMessage, exception, { error, provider })
+          log.error('MultiHttpProvider:', errorMessage, exception, { error, provider, payload })
         } else if (isRateLimitError(exception)) {
           log.warn('MultiHttpProvider rate limit error', exception.message, exception, { error, provider })
           endpoints.splice(endpoints.indexOf(item, 1))
