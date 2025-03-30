@@ -57,8 +57,8 @@ export class Web3Wallet {
     const {
       ethereum = null,
       network = null,
-      maxFeePerGas = 25e9,
-      maxPriorityFeePerGas = 1e9,
+      maxFeePerGas = 27e9,
+      maxPriorityFeePerGas = 1e8,
       faucetTxCost = 150000
     } = options || {}
     const ethOpts = ethereum || conf.ethereum
