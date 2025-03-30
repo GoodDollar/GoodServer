@@ -326,7 +326,7 @@ const setup = (app: Router) => {
       const fuseProvider = new ethers.providers.JsonRpcProvider('https://rpc.fuse.io')
       const celoProvider = new ethers.providers.JsonRpcProvider('https://forno.celo.org')
 
-      const bridgeEth = bridge.connect(new ethers.providers.JsonRpcProvider('https://rpc.ankr.com/eth'))
+      const bridgeEth = bridge.connect(new ethers.providers.JsonRpcProvider('https://rpc.flashbots.net'))
       const bridgeFuse = bridge.connect(fuseProvider)
       const bridgeCelo = bridge.connect(celoProvider)
       const params = ethers.utils.solidityPack(['uint16', 'uint256'], [1, 400000])
