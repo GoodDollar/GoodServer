@@ -23,7 +23,7 @@ import { type TransactionReceipt } from './blockchain-types'
 
 import { getManager } from '../utils/tx-manager'
 import { sendSlackAlert } from '../../imports/slack'
-import { HttpProviderFactory, WebsocketProvider } from './transport'
+// import { HttpProviderFactory, WebsocketProvider } from './transport'
 
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000'
 const FUSE_TX_TIMEOUT = 25000 // should be confirmed after max 5 blocks (25sec)
@@ -95,30 +95,54 @@ export class Web3Wallet {
   }
 
   getWeb3TransportProvider(): HttpProvider | WebSocketProvider {
+    const { log } = this
     let provider
     let web3Provider
-    const { web3Transport, websocketWeb3Provider, httpWeb3Provider } = this.ethereum
-    const { log } = this
-
-    switch (web3Transport) {
+    let transport = conf.ethereum.web3Transport
+    switch (transport) {
       case 'WebSocket':
-        provider = websocketWeb3Provider
-        web3Provider = new WebsocketProvider(provider)
+        provider = conf.ethereum.websocketWeb3Provider
+        web3Provider = new Web3.providers.WebsocketProvider(provider)
         break
 
       case 'HttpProvider':
-      default: {
-        provider = httpWeb3Provider
-        web3Provider = HttpProviderFactory.create(provider, {
+      default:
+        provider = conf.ethereum.httpWeb3Provider
+        web3Provider = new Web3.providers.HttpProvider(provider, {
           timeout: FUSE_TX_TIMEOUT
         })
         break
-      }
     }
+    log.debug({ conf, web3Provider, provider })
 
-    log.debug({ conf: this.conf, web3Provider, provider, wallet: this.name, network: this.networkId })
     return web3Provider
   }
+
+  // getWeb3TransportProvider(): HttpProvider | WebSocketProvider {
+  //   let provider
+  //   let web3Provider
+  //   const { web3Transport, websocketWeb3Provider, httpWeb3Provider } = this.ethereum
+  //   const { log } = this
+
+  //   switch (web3Transport) {
+  //     case 'WebSocket':
+  //       provider = websocketWeb3Provider
+  //       web3Provider = new WebsocketProvider(provider)
+  //       break
+
+  //     case 'HttpProvider':
+  //     default: {
+  //       provider = httpWeb3Provider
+  //       web3Provider = HttpProviderFactory.create(provider, {
+  //         timeout: FUSE_TX_TIMEOUT
+  //       })
+  //       break
+  //     }
+  //   }
+
+  //   log.debug({ conf: this.conf, web3Provider, provider, wallet: this.name, network: this.networkId })
+  //   return web3Provider
+  // }
 
   addWalletAccount(web3, account) {
     const { eth } = web3
