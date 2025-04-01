@@ -27,7 +27,6 @@ import { sendSlackAlert } from '../../imports/slack'
 
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000'
 const FUSE_TX_TIMEOUT = 25000 // should be confirmed after max 5 blocks (25sec)
-const defaultGasPrice = web3Utils.toWei(String(conf.defaultGasPrice), 'gwei')
 
 export const adminMinBalance = conf.adminMinBalance
 
@@ -37,7 +36,6 @@ export const defaultGas = 500000
 
 export const web3Default = {
   defaultBlock: 'latest',
-  defaultGasPrice,
   transactionBlockTimeout: 5,
   transactionConfirmationBlocks: 1,
   transactionPollingTimeout: 30
@@ -78,7 +76,6 @@ export class Web3Wallet {
     this.maxFeePerGas = maxFeePerGas
     this.maxPriorityFeePerGas = maxPriorityFeePerGas
     this.log = logger.child({ from: `${name}/${this.networkId}` })
-    this.gasPrice = (11e9).toString()
 
     this.initialize()
   }
@@ -98,16 +95,16 @@ export class Web3Wallet {
     const { log } = this
     let provider
     let web3Provider
-    let transport = conf.ethereum.web3Transport
+    let transport = this.ethereum.web3Transport
     switch (transport) {
       case 'WebSocket':
-        provider = conf.ethereum.websocketWeb3Provider
+        provider = this.ethereum.websocketWeb3Provider
         web3Provider = new Web3.providers.WebsocketProvider(provider)
         break
 
       case 'HttpProvider':
       default:
-        provider = conf.ethereum.httpWeb3Provider
+        provider = this.ethereum.httpWeb3Provider.split(',')[0]
         web3Provider = new Web3.providers.HttpProvider(provider, {
           timeout: FUSE_TX_TIMEOUT
         })
@@ -115,6 +112,13 @@ export class Web3Wallet {
     }
     log.debug({ conf, web3Provider, provider })
 
+    log.debug('getWeb3TransportProvider', {
+      conf: this.conf,
+      web3Provider,
+      provider,
+      wallet: this.name,
+      network: this.networkId
+    })
     return web3Provider
   }
 
@@ -160,7 +164,6 @@ export class Web3Wallet {
   }
 
   async init() {
-    const { env } = conf
     const { log } = this
 
     const adminWalletAddress = get(ContractsAddress, `${this.network}.AdminWallet`)
@@ -179,16 +182,6 @@ export class Web3Wallet {
 
     assign(this.web3.eth, web3Default)
 
-    if (env !== 'test') {
-      await this.web3.eth
-        .getGasPrice()
-        .then(price => (this.gasPrice = price))
-        .catch(e => {
-          log.error('failed to get gas price', e.message, e)
-          this.gasPrice = (11e9).toString()
-        })
-        .then(() => log.info('default gas price set to:', this.gasPrice))
-    }
     if (this.conf.privateKey) {
       let account = this.web3.eth.accounts.privateKeyToAccount(this.conf.privateKey)
 
@@ -712,7 +705,8 @@ export class Web3Wallet {
       }
 
       let userBalance = web3Utils.toBN(await this.web3.eth.getBalance(address))
-      let faucetTxCost = web3Utils.toBN(this.faucetTxCost).mul(web3Utils.toBN(this.gasPrice))
+      const gasPrice = await this.web3.eth.getGasPrice()
+      let faucetTxCost = web3Utils.toBN(this.faucetTxCost).mul(web3Utils.toBN(gasPrice))
 
       logger.debug('topWalletFaucet:', {
         address,
