@@ -5,8 +5,8 @@ const { celo, env } = conf
 const options = {
   ethereum: celo,
   network: `${env}-celo`,
-  maxFeePerGas: (27e9).toFixed(0),
-  maxPriorityFeePerGas: (1e8).toFixed(0),
+  maxFeePerGas: (30e9).toFixed(0),
+  maxPriorityFeePerGas: (2e8).toFixed(0),
   fetchGasPrice: false,
   faucetTxCost: 250000
 }
