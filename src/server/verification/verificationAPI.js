@@ -1062,20 +1062,17 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     wrapAsync(async (req, res) => {
       const { log, query } = req
       const { user_id, value, token, signature } = query
-      log.debug('offerwall payout request:', { user_id, value, token, signature })
 
+      // Secret key (replace with your actual secret key)
+      const secretKey = conf.offerwallSecret
+
+      // Concatenate the inputs with "."
+      const concatenatedString = `${secretKey}.${user_id}.${parseInt(value)}.${token}`
+
+      // Generate MD5 hash
+      const calculatedSignature = crypto.createHash('md5').update(concatenatedString).digest('hex')
+      log.debug('offerwall payout request:', { user_id, value, token, signature, calculatedSignature })
       try {
-        const { user_id, value, token, signature } = req.body
-
-        // Secret key (replace with your actual secret key)
-        const secretKey = conf.offerwallSecret
-
-        // Concatenate the inputs with "."
-        const concatenatedString = `${secretKey}.${user_id}.${parseInt(value)}.${token}`
-
-        // Generate MD5 hash
-        const calculatedSignature = crypto.createHash('md5').update(concatenatedString).digest('hex')
-
         // Compare the calculated signature with the provided signature
         if (calculatedSignature !== signature) {
           throw new Error('Invalid signature')
