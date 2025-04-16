@@ -3,7 +3,7 @@ import crypto from 'crypto'
 import { Router } from 'express'
 import passport from 'passport'
 import { get, defaults, memoize, omit } from 'lodash'
-import { sha3, keccak256 } from 'web3-utils'
+import { sha3, keccak256, toWei } from 'web3-utils'
 import web3Abi from 'web3-eth-abi'
 import requestIp from 'request-ip'
 import moment from 'moment'
@@ -1056,7 +1056,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
     })
   )
-
+  const payouts = new WeakSet()
   app.get(
     '/verify/offerwall',
     wrapAsync(async (req, res) => {
@@ -1071,7 +1071,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         const secretKey = conf.offerwallSecret
 
         // Concatenate the inputs with "."
-        const concatenatedString = `${secretKey}.${user_id}.${value}.${token}`
+        const concatenatedString = `${secretKey}.${user_id}.${parseInt(value)}.${token}`
 
         // Generate MD5 hash
         const calculatedSignature = crypto.createHash('md5').update(concatenatedString).digest('hex')
@@ -1080,12 +1080,17 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         if (calculatedSignature !== signature) {
           throw new Error('Invalid signature')
         }
-        log.info('offerwall payout success:', { user_id, value, token })
+        if (payouts.has(token)) {
+          throw new Error('Already paid')
+        }
+        const tx = await AdminWallet.walletsMap[42220].transferWalletGooDollars(user_id, toWei(String(value)), log)
+        payouts.add(token)
+        log.info('offerwall payout success:', { user_id, value, token, tx: tx.transactionHash })
         res.json({ success: true })
       } catch (exception) {
         const { message } = exception
 
-        log.error('face record disposing check failed:', message, exception, { user_id, value, token, signature })
+        log.error('offerwall payout request failed:', message, exception, { user_id, value, token, signature })
         res.status(400).json({ success: false, error: message })
       }
     })
