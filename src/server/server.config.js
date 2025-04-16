@@ -679,6 +679,12 @@ const conf = convict({
     format: Object,
     env: 'REDTENT_POOLS',
     default: {}
+  },
+  offerwallSecret: {
+    doc: 'pubscale offerwall secret',
+    format: String,
+    env: 'OFFERWALL_SECRET',
+    default: ''
   }
 })
 

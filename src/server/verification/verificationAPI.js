@@ -1,5 +1,5 @@
 // @flow
-
+import crypto from 'crypto'
 import { Router } from 'express'
 import passport from 'passport'
 import { get, defaults, memoize, omit } from 'lodash'
@@ -1052,6 +1052,40 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           captchaType,
           parsedRes
         })
+        res.status(400).json({ success: false, error: message })
+      }
+    })
+  )
+
+  app.get(
+    '/verify/offerwall',
+    wrapAsync(async (req, res) => {
+      const { log, query } = req
+      const { user_id, value, token, signature } = query
+      log.debug('offerwall payout request:', { user_id, value, token, signature })
+
+      try {
+        const { user_id, value, token, signature } = req.body
+
+        // Secret key (replace with your actual secret key)
+        const secretKey = conf.offerwallSecret
+
+        // Concatenate the inputs with "."
+        const concatenatedString = `${secretKey}.${user_id}.${value}.${token}`
+
+        // Generate MD5 hash
+        const calculatedSignature = crypto.createHash('md5').update(concatenatedString).digest('hex')
+
+        // Compare the calculated signature with the provided signature
+        if (calculatedSignature !== signature) {
+          throw new Error('Invalid signature')
+        }
+        log.info('offerwall payout success:', { user_id, value, token })
+        res.json({ success: true })
+      } catch (exception) {
+        const { message } = exception
+
+        log.error('face record disposing check failed:', message, exception, { user_id, value, token, signature })
         res.status(400).json({ success: false, error: message })
       }
     })
