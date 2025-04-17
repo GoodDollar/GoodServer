@@ -549,7 +549,7 @@ class FishingManager {
       .call()
       .then(parseInt)
     if (gdbalance > 0) {
-      const transferTX = await AdminWallet.transferWalletGooDollars(this.ubiScheme, gdbalance, this.log)
+      const transferTX = await AdminWallet.transferWalletGoodDollars(this.ubiScheme, gdbalance, this.log)
       this.log.info('transfered fished funds to ubi', { tx: transferTX.transactionHash, gdbalance })
     }
     return gdbalance

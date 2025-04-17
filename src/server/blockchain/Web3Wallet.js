@@ -864,7 +864,7 @@ export class Web3Wallet {
    * @param {*} logger
    * @returns
    */
-  async transferWalletGooDollars(to, value, customLogger = null): Promise<TransactionReceipt> {
+  async transferWalletGoodDollars(to, value, customLogger = null): Promise<TransactionReceipt> {
     const logger = customLogger || this.log
 
     try {
@@ -885,17 +885,17 @@ export class Web3Wallet {
         },
         [to, value]
       )
-      logger.info('transferWalletGooDollars sending tx', { encodedCall, to, value })
+      logger.info('transferWalletGoodDollars sending tx', { encodedCall, to, value })
 
       const transaction = await this.proxyContract.methods.genericCall(this.tokenContract._address, encodedCall, 0)
       const tx = await this.sendTransaction(transaction, {}, undefined, false, logger)
 
-      logger.info('transferWalletGooDollars success', { to, value, tx: tx.transactionHash })
+      logger.info('transferWalletGoodDollars success', { to, value, tx: tx.transactionHash })
       return tx
     } catch (exception) {
       const { message } = exception
 
-      logger.error('transferWalletGooDollars failed', message, exception, { to, value })
+      logger.error('transferWalletGoodDollars failed', message, exception, { to, value })
       throw exception
     }
   }

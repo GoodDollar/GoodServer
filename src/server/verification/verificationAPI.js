@@ -1056,7 +1056,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
     })
   )
-  const payouts = new WeakSet()
+  const payouts = new Set()
   app.get(
     '/verify/offerwall',
     wrapAsync(async (req, res) => {
@@ -1080,7 +1080,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         if (payouts.has(token)) {
           throw new Error('Already paid')
         }
-        const tx = await AdminWallet.walletsMap[42220].transferWalletGooDollars(user_id, toWei(String(value)), log)
+        const tx = await AdminWallet.walletsMap[42220].transferWalletGoodDollars(user_id, toWei(String(value)), log)
         payouts.add(token)
         log.info('offerwall payout success:', { user_id, value, token, tx: tx.transactionHash })
         res.json({ success: true })
