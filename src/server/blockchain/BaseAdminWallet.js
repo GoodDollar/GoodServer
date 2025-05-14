@@ -8,8 +8,8 @@ const { base, env } = conf
 const options = {
   ethereum: base,
   network: `${env}-base`,
-  maxFeePerGas: (1e8).toFixed(0),
-  maxPriorityFeePerGas: (1e4).toFixed(0),
+  maxFeePerGas: undefined, // will force use of estimatefees
+  maxPriorityFeePerGas: undefined, // will force use of estimate fees
   fetchGasPrice: false,
   faucetTxCost: 500000
 }

@@ -960,6 +960,21 @@ export class Web3Wallet {
     }
   }
 
+  async getFeeEstimates() {
+    const result = await this.web3.eth.getFeeHistory('0x5', 'latest', [10])
+
+    const baseFees = result.baseFeePerGas.map(hex => parseInt(hex, 16))
+    const rewards = result.reward.map(r => parseInt(r[0], 16)) // 10th percentile
+
+    const latestBaseFee = baseFees[baseFees.length - 1]
+    const minPriorityFee = Math.min(...rewards)
+
+    return {
+      baseFee: Math.floor(latestBaseFee * 1.1), // in wei
+      priorityFee: minPriorityFee // in wei
+    }
+  }
+
   /**
    * Helper function to handle a tx Send call
    * @param tx
@@ -1011,6 +1026,11 @@ export class Web3Wallet {
       maxFeePerGas = maxFeePerGas || this.maxFeePerGas
       maxPriorityFeePerGas = maxPriorityFeePerGas || this.maxPriorityFeePerGas
 
+      if (!maxFeePerGas || !maxPriorityFeePerGas) {
+        const { baseFee, priorityFee } = await this.getFeeEstimates()
+        maxFeePerGas = maxFeePerGas || baseFee
+        maxPriorityFeePerGas = maxPriorityFeePerGas || priorityFee
+      }
       logger.trace('getting tx lock:', { txuuid })
 
       const { nonce, release, address } = await this.txManager.lock(this.filledAddresses)
