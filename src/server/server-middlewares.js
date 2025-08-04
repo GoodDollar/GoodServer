@@ -3,6 +3,7 @@ import express, { Router } from 'express'
 import bodyParser from 'body-parser'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
+import axios from 'axios'
 import { version as contractsVersion } from '@gooddollar/goodcontracts/package.json'
 
 import addLoginMiddlewares from './login/login-middleware'
@@ -78,6 +79,15 @@ export default async (app: Router) => {
       res.json(value)
     })
   )
+
+  app.get('/check-ip', async (req, res) => {
+    try {
+      const { data } = await axios.get('https://ifconfig.me/ip')
+      res.send(data)
+    } catch (e) {
+      res.status(500).send(e.message)
+    }
+  })
 
   // error handler
   app.use((error, req, res, next) => {
