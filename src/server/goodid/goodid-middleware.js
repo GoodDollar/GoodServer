@@ -165,7 +165,8 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { user, body, log } = req
-      const { enrollmentIdentifier, fvSigner } = body
+      // Currently certificates for goodid are only supported on celo
+      const { enrollmentIdentifier, fvSigner, chainId = 42220 } = body
       const { gdAddress } = user
 
       log.info('identity certificate request:', { user, enrollmentIdentifier })
@@ -177,8 +178,8 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
         }
 
         const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
-
-        await verifyIdentifier(enrollmentIdentifier, gdAddress)
+        // Currently certificates for goodid are only supported on celo
+        await verifyIdentifier(enrollmentIdentifier, gdAddress, chainId)
 
         // here we check if wallet was registered using v1 of v2 identifier
         const [isV2, isV1] = await Promise.all([

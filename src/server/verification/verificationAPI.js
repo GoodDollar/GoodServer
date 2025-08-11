@@ -29,6 +29,8 @@ import { normalizeIdentifiers } from './utils/utils.js'
 import ipcache from '../db/mongo/ipcache-provider.js'
 import { DelayedTaskStatus } from '../db/mongo/models/delayed-task.js'
 
+// currently faces stay until they expire, no option for user to delete their face record
+/*
 export const deleteFaceId = async (fvSigner, enrollmentIdentifier, user, storage, log) => {
   const { gdAddress } = user
   log.debug('delete face request:', { fvSigner, enrollmentIdentifier, user })
@@ -54,6 +56,7 @@ export const deleteFaceId = async (fvSigner, enrollmentIdentifier, user, storage
     await processor.enqueueDisposal(user, v1Identifier, log)
   }
 }
+*/
 
 // try to cache responses from faucet abuse to prevent 500 errors from server
 // if same user keep requesting.
@@ -277,14 +280,23 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       // user.chainId = chainId || conf.defaultWhitelistChainId
 
-      //currently we force all new users to be marked as registered first on celo
+      //currently we force all new users to be marked as registered first on celo or xdc if specified
       //this is relevant for the invite rewards
-      user.chainId = 42220
+      switch (String(chainId)) {
+        case '122':
+        case '50':
+        case '42220':
+          user.chainId = chainId
+          break
+        default:
+          user.chainId = 42220
+          break
+      }
 
       try {
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
         // for v1 this will do nothing
-        await verifyIdentifier(enrollmentIdentifier, gdAddress)
+        await verifyIdentifier(enrollmentIdentifier, gdAddress, chainId)
 
         const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
         const enrollmentProcessor = createEnrollmentProcessor(storage, log)
@@ -383,7 +395,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     wrapAsync(async (req, res) => {
       const { user, log, params, body } = req
       const { enrollmentIdentifier } = params
-      const { ...payload } = body || {} // payload is the facetec data
+      const { chainId, ...payload } = body || {} // payload is the facetec data
       const { gdAddress } = user
 
       log.debug('idscan request:', { user, payloadFields: Object.keys(payload) })
@@ -397,7 +409,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       try {
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
         // for v1 this will do nothing
-        await verifyIdentifier(enrollmentIdentifier, gdAddress)
+        await verifyIdentifier(enrollmentIdentifier, gdAddress, chainId)
 
         const { v2Identifier } = normalizeIdentifiers(enrollmentIdentifier)
 
