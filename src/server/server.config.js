@@ -123,13 +123,6 @@ const conf = convict({
     env: 'INFURA_API',
     default: ''
   },
-  ethereum: {
-    network_id: 42,
-    httpWeb3Provider: 'https://kovan.infura.io/v3/',
-    websocketWeb3Provider: 'wss://kovan.infura.io/ws',
-    web3Transport: 'HttpProvider',
-    explorer: ''
-  },
   celo: {
     network_id: 42220,
     web3Transport: 'HttpProvider',
@@ -728,7 +721,8 @@ switch (network) {
 }
 
 conf.set('ethereumMainnet', networks[mainNetworkId])
-conf.set('ethereum', networks[networkId])
+conf.set('ethereum', networks[networkId]) //backward compat
+conf.set('fuse', networks[networkId])
 conf.set('celo', networks[celoNetworkId])
 conf.set('base', networks[baseNetworkId])
 conf.set('xdc', networks[xdcNetworkId])

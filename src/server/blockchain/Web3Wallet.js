@@ -60,7 +60,7 @@ export class Web3Wallet {
       faucetTxCost = 150000,
       gasPrice = undefined
     } = options || {}
-    const ethOpts = ethereum || conf.ethereum
+    const ethOpts = ethereum || conf.fuse
     const { network_id: networkId } = ethOpts
 
     this.faucetTxCost = faucetTxCost

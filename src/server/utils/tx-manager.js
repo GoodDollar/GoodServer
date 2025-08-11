@@ -11,7 +11,7 @@ class TransactionRun {
   static getManagerInstance() {
     let queueManager = null
 
-    queueManager = getManager(config.ethereum.network_id)
+    queueManager = getManager(config.fuse.network_id)
     return queueManager
   }
 }
