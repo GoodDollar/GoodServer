@@ -21,4 +21,8 @@ describe('explorer', () => {
     const txList = await getExplorerTxs('0x2CeADe86A04e474F3cf9BD87208514d818010627', 122, query, undefined, false)
     expect(txList.length > 0)
   })
+  test.skip('should fetch from xdc', async () => {
+    const txList = await getExplorerTxs('0x2CeADe86A04e474F3cf9BD87208514d818010627', 50, query, undefined, false)
+    expect(txList.length > 0)
+  })
 })

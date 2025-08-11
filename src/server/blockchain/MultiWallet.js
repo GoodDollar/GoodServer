@@ -3,6 +3,7 @@ import { assign, every, forOwn, isEmpty, isError, map, some } from 'lodash'
 import AdminWallet from './AdminWallet'
 import { CeloAdminWallet } from './CeloAdminWallet'
 import { BaseAdminWallet } from './BaseAdminWallet'
+import { XdcAdminWallet } from './XdcAdminWallet'
 
 import conf from '../server.config'
 import logger from '../../imports/logger'
@@ -149,7 +150,8 @@ if (conf.env !== 'test') {
   const celoWallet = new CeloAdminWallet()
   otherWallets = {
     42220: celoWallet,
-    8453: new BaseAdminWallet({}, celoWallet)
+    8453: new BaseAdminWallet({}, celoWallet),
+    50: new XdcAdminWallet({})
   }
 }
 

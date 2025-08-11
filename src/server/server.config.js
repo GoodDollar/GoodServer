@@ -144,6 +144,13 @@ const conf = convict({
     websocketWeb3Provider: '',
     explorer: ''
   },
+  xdc: {
+    network_id: 50,
+    web3Transport: 'HttpProvider',
+    httpWeb3Provider: 'https://rpc.xdc.network',
+    websocketWeb3Provider: '',
+    explorer: ''
+  },
   ethereumMainnet: {
     network_id: 42,
     httpWeb3Provider: 'https://kovan.infura.io/v3/',
@@ -698,6 +705,7 @@ let networkId = 4447
 let mainNetworkId = 4447
 let celoNetworkId = 4447
 let baseNetworkId = 4447
+let xdcNetworkId = 4447
 
 switch (network) {
   case 'fuse':
@@ -706,12 +714,14 @@ switch (network) {
     celoNetworkId = 42220
     mainNetworkId = 11155111
     baseNetworkId = 8453
+    xdcNetworkId = 50
     break
   case 'production':
     networkId = 122
     celoNetworkId = 42220
     mainNetworkId = 1
     baseNetworkId = 8453
+    xdcNetworkId = 50
     break
   default:
     break
@@ -721,6 +731,7 @@ conf.set('ethereumMainnet', networks[mainNetworkId])
 conf.set('ethereum', networks[networkId])
 conf.set('celo', networks[celoNetworkId])
 conf.set('base', networks[baseNetworkId])
+conf.set('xdc', networks[xdcNetworkId])
 
 // get active segmented pools
 if (process.env.REDTENT_POOLS) {

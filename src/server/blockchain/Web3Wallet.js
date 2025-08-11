@@ -57,7 +57,8 @@ export class Web3Wallet {
       network = null,
       maxFeePerGas = undefined,
       maxPriorityFeePerGas = undefined,
-      faucetTxCost = 150000
+      faucetTxCost = 150000,
+      gasPrice = undefined
     } = options || {}
     const ethOpts = ethereum || conf.ethereum
     const { network_id: networkId } = ethOpts
@@ -75,6 +76,7 @@ export class Web3Wallet {
     this.numberOfAdminWalletAccounts = conf.privateKey ? 1 : conf.numberOfAdminWalletAccounts
     this.maxFeePerGas = maxFeePerGas
     this.maxPriorityFeePerGas = maxPriorityFeePerGas
+    this.gasPrice = gasPrice
     this.log = logger.child({ from: `${name}/${this.networkId}` })
 
     this.initialize()
@@ -992,7 +994,7 @@ export class Web3Wallet {
   async sendTransaction(
     tx: any,
     txCallbacks: PromiEvents = {},
-    { gas, maxPriorityFeePerGas, maxFeePerGas }: GasValues = {
+    { gas, maxPriorityFeePerGas, maxFeePerGas, gasPrice }: GasValues = {
       gas: undefined,
       maxFeePerGas: undefined,
       maxPriorityFeePerGas: undefined
@@ -1023,10 +1025,16 @@ export class Web3Wallet {
         gas = defaultGas
       }
 
+      gasPrice = gasPrice || this.gasPrice
       maxFeePerGas = maxFeePerGas || this.maxFeePerGas
       maxPriorityFeePerGas = maxPriorityFeePerGas || this.maxPriorityFeePerGas
 
-      if (!maxFeePerGas || !maxPriorityFeePerGas) {
+      if (gasPrice && !maxFeePerGas && !maxPriorityFeePerGas) {
+        logger.info('using legacy gasPrice tx')
+      } else {
+        gasPrice = undefined
+      }
+      if (!gasPrice && (!maxFeePerGas || !maxPriorityFeePerGas)) {
         const { baseFee, priorityFee } = await this.getFeeEstimates()
         maxFeePerGas = maxFeePerGas || baseFee
         maxPriorityFeePerGas = maxPriorityFeePerGas || priorityFee
@@ -1057,7 +1065,7 @@ export class Web3Wallet {
       })
 
       let txPromise = new Promise((res, rej) => {
-        tx.send({ gas, maxFeePerGas, maxPriorityFeePerGas, chainId: this.networkId, nonce, from: address })
+        tx.send({ gas, maxFeePerGas, maxPriorityFeePerGas, gasPrice, chainId: this.networkId, nonce, from: address })
           .on('transactionHash', h => {
             txHash = h
             logger.trace('got tx hash:', { txuuid, txHash, wallet: this.name })
@@ -1192,7 +1200,13 @@ export class Web3Wallet {
         // increase nonce, since we assume therre's a tx pending with same nonce
         await this.txManager.unlock(currentAddress, currentNonce + 1)
 
-        return this.sendTransaction(tx, txCallbacks, { gas, maxFeePerGas, maxPriorityFeePerGas }, false, logger)
+        return this.sendTransaction(
+          tx,
+          txCallbacks,
+          { gas, gasPrice, maxFeePerGas, maxPriorityFeePerGas },
+          false,
+          logger
+        )
       } else if (retry && e.message.toLowerCase().includes('revert') === false) {
         logger.warn('sendTransaction retrying non reverted error:', {
           error: e.message,
@@ -1206,7 +1220,13 @@ export class Web3Wallet {
         })
 
         await this.txManager.unlock(currentAddress, netNonce)
-        return this.sendTransaction(tx, txCallbacks, { gas, maxFeePerGas, maxPriorityFeePerGas }, false, logger)
+        return this.sendTransaction(
+          tx,
+          txCallbacks,
+          { gas, gasPrice, maxFeePerGas, maxPriorityFeePerGas },
+          false,
+          logger
+        )
       }
 
       await this.txManager.unlock(currentAddress, netNonce)
@@ -1243,10 +1263,11 @@ export class Web3Wallet {
   async sendNative(
     params: { from: string, to: string, value: string },
     txCallbacks: PromiEvents = {},
-    { gas, maxFeePerGas, maxPriorityFeePerGas }: GasValues = {
+    { gas, maxFeePerGas, maxPriorityFeePerGas, gasPrice }: GasValues = {
       gas: undefined,
       maxFeePerGas: undefined,
-      maxPriorityFeePerGas: undefined
+      maxPriorityFeePerGas: undefined,
+      gasPrice: undefined
     }
   ) {
     let currentAddress
@@ -1256,9 +1277,19 @@ export class Web3Wallet {
       const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
 
       gas = gas || defaultGas
+      gasPrice = gasPrice || this.gasPrice
       maxFeePerGas = maxFeePerGas || this.maxFeePerGas
       maxPriorityFeePerGas = maxPriorityFeePerGas || this.maxPriorityFeePerGas
-
+      if (gasPrice && !maxFeePerGas && !maxPriorityFeePerGas) {
+        logger.info('using legacy gasPrice tx')
+      } else {
+        gasPrice = undefined
+      }
+      if (!gasPrice && (!maxFeePerGas || !maxPriorityFeePerGas)) {
+        const { baseFee, priorityFee } = await this.getFeeEstimates()
+        maxFeePerGas = maxFeePerGas || baseFee
+        maxPriorityFeePerGas = maxPriorityFeePerGas || priorityFee
+      }
       const { nonce, release, fail, address } = await this.txManager.lock(this.filledAddresses)
 
       log.debug('sendNative', { nonce, gas, maxFeePerGas, maxPriorityFeePerGas })
@@ -1268,6 +1299,7 @@ export class Web3Wallet {
         this.web3.eth
           .sendTransaction({
             gas,
+            gasPrice,
             maxFeePerGas,
             maxPriorityFeePerGas,
             chainId: this.networkId,
@@ -1315,7 +1347,9 @@ export class Web3Wallet {
               await this.txManager.unlock(address, netNonce)
 
               try {
-                await this.sendNative(params, txCallbacks, { gas, maxFeePerGas, maxPriorityFeePerGas }).then(res)
+                await this.sendNative(params, txCallbacks, { gas, gasPrice, maxFeePerGas, maxPriorityFeePerGas }).then(
+                  res
+                )
               } catch (e) {
                 rej(e)
               }

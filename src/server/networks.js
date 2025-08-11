@@ -6,9 +6,12 @@ export default once(() => {
   const celoRpc = process.env.CELO_RPC
   const mainnetRpc = process.env.MAINNET_RPC
   const baseRpc = process.env.BASE_RPC
+  const xdcRpc = process.env.XDC_RPC
+
   const fuseExplorers = process.env.FUSE_EXPLORERS || 'https://explorer.fuse.io/api'
   const celoExplorers = process.env.CELO_EXPLORERS || 'https://celo.blockscout.com/api,https://api.celoscan.io/api'
   const baseExplorers = process.env.BASE_EXPLORERS || 'https://base.blockscout.com/api'
+  const xdcExplorers = process.env.XDC_EXPLORERS || 'https://api.etherscan.io/v2/api'
   return {
     1: {
       network_id: 1,
@@ -54,6 +57,14 @@ export default once(() => {
       httpWeb3Provider: celoRpc ? celoRpc : 'https://forno.celo.org/',
       websocketWeb3Provider: '',
       explorer: celoExplorers
+    },
+    50: {
+      network_id: 50,
+      web3Transport: 'HttpProvider',
+      // eslint-disable-next-line prettier/prettier
+      httpWeb3Provider: xdcRpc ? xdcRpc : 'https://rpc.xdc.network/',
+      websocketWeb3Provider: '',
+      explorer: xdcExplorers
     },
     8453: {
       network_id: 8453,
