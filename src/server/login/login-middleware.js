@@ -323,43 +323,53 @@ const setup = (app: Router) => {
         'function estimateSendFee(uint16,address,address,uint256,bool,bytes) view returns (uint256,uint256)'
       ])
 
-      const fuseProvider = new ethers.providers.JsonRpcProvider('https://rpc.fuse.io')
-      const celoProvider = new ethers.providers.JsonRpcProvider('https://forno.celo.org')
+      const fuseProvider = new ethers.providers.JsonRpcProvider(Config['fuse'].httpWeb3Provider.split(',')[0])
+      const celoProvider = new ethers.providers.JsonRpcProvider(Config['celo'].httpWeb3Provider.split(',')[0])
 
-      const bridgeEth = bridge.connect(new ethers.providers.JsonRpcProvider('https://rpc.flashbots.net'))
+      const bridgeEth = bridge.connect(
+        new ethers.providers.JsonRpcProvider(Config['ethereumMainnet'].httpWeb3Provider.split(',')[0])
+      )
       const bridgeFuse = bridge.connect(fuseProvider)
       const bridgeCelo = bridge.connect(celoProvider)
+      const bridgeXdc = bridge.connect(
+        new ethers.providers.JsonRpcProvider(Config['xdc'].httpWeb3Provider.split(',')[0])
+      )
+
       const params = ethers.utils.solidityPack(['uint16', 'uint256'], [1, 400000])
-      const [lzEthCelo, lzEthFuse, lzCeloEth, lzCeloFuse, lzFuseEth, lzFuseCelo] = await Promise.all([
-        bridgeEth
-          .estimateSendFee(125, ethers.constants.AddressZero, ethers.constants.AddressZero, 0, false, params)
-          .then(_ => _[0].toString() / 1e18),
-        bridgeEth
-          .estimateSendFee(138, ethers.constants.AddressZero, ethers.constants.AddressZero, 0, false, params)
-          .then(_ => _[0].toString() / 1e18),
-        bridgeCelo
-          .estimateSendFee(101, ethers.constants.AddressZero, ethers.constants.AddressZero, 0, false, params)
-          .then(_ => _[0].toString() / 1e18),
-        bridgeCelo
-          .estimateSendFee(138, ethers.constants.AddressZero, ethers.constants.AddressZero, 0, false, params)
-          .then(_ => _[0].toString() / 1e18),
-        bridgeFuse
-          .estimateSendFee(101, ethers.constants.AddressZero, ethers.constants.AddressZero, 0, false, params)
-          .then(_ => _[0].toString() / 1e18),
-        bridgeFuse
-          .estimateSendFee(125, ethers.constants.AddressZero, ethers.constants.AddressZero, 0, false, params)
-          .then(_ => _[0].toString() / 1e18)
-      ])
+      // Define chain info
+      const chains = [
+        { name: 'ETH', id: 101, provider: bridgeEth, symbol: 'ETH' },
+        { name: 'FUSE', id: 138, provider: bridgeFuse, symbol: 'Fuse' },
+        { name: 'CELO', id: 125, provider: bridgeCelo, symbol: 'Celo' },
+        { name: 'XDC', id: 365, provider: bridgeXdc, symbol: 'XDC' }
+      ]
+
+      // Calculate all pairs except same-chain
+      const lzFees = {}
+      const feePromises = []
+
+      for (let from of chains) {
+        for (let to of chains) {
+          if (from.name === to.name) continue
+          const key = `LZ_${from.name}_TO_${to.name}`
+          // Estimate send fee
+          const promise = from.provider
+            .estimateSendFee(to.id, ethers.constants.AddressZero, ethers.constants.AddressZero, 0, false, params)
+            .then(_ => {
+              // _[0] is the fee BigNumber
+              lzFees[key] = _.length > 0 ? _[0].toString() / 1e18 + ' ' + from.symbol : null
+            })
+            .catch(() => {
+              lzFees[key] = null
+            })
+          feePromises.push(promise)
+        }
+      }
+
+      await Promise.all(feePromises)
       res.json({
         AXELAR: { AXL_CELO_TO_ETH: axlCeloEth + ' Celo', AXL_ETH_TO_CELO: axlEthCelo + ' ETH' },
-        LAYERZERO: {
-          LZ_ETH_TO_CELO: lzEthCelo + ' ETH',
-          LZ_ETH_TO_FUSE: lzEthFuse + ' ETH',
-          LZ_CELO_TO_ETH: lzCeloEth + ' Celo',
-          LZ_CELO_TO_FUSE: lzCeloFuse + ' CELO',
-          LZ_FUSE_TO_ETH: lzFuseEth + ' Fuse',
-          LZ_FUSE_TO_CELO: lzFuseCelo + ' Fuse'
-        }
+        LAYERZERO: lzFees
       })
     })
   )

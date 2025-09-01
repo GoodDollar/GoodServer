@@ -123,13 +123,6 @@ const conf = convict({
     env: 'INFURA_API',
     default: ''
   },
-  ethereum: {
-    network_id: 42,
-    httpWeb3Provider: 'https://kovan.infura.io/v3/',
-    websocketWeb3Provider: 'wss://kovan.infura.io/ws',
-    web3Transport: 'HttpProvider',
-    explorer: ''
-  },
   celo: {
     network_id: 42220,
     web3Transport: 'HttpProvider',
@@ -141,6 +134,13 @@ const conf = convict({
     network_id: 8453,
     web3Transport: 'HttpProvider',
     httpWeb3Provider: 'https://mainnet.base.org',
+    websocketWeb3Provider: '',
+    explorer: ''
+  },
+  xdc: {
+    network_id: 50,
+    web3Transport: 'HttpProvider',
+    httpWeb3Provider: 'https://rpc.xdc.network',
     websocketWeb3Provider: '',
     explorer: ''
   },
@@ -400,11 +400,20 @@ const conf = convict({
     env: 'SENTRY_DSN',
     default: ''
   },
+  // network configurations (populated later from ./networks)
   fuse: {
-    doc: 'Main url for fuse api',
-    format: 'url',
-    env: 'FUSE_API',
-    default: 'https://explorer.fuse.io'
+    network_id: 122,
+    web3Transport: 'HttpProvider',
+    httpWeb3Provider: 'https://rpc.fuse.io',
+    websocketWeb3Provider: 'wss://rpc.fuse.io/ws',
+    explorer: ''
+  },
+  ethereum: {
+    network_id: 1,
+    web3Transport: 'HttpProvider',
+    httpWeb3Provider: 'https://mainnet.infura.io/v3/',
+    websocketWeb3Provider: 'wss://mainnet.infura.io/ws',
+    explorer: ''
   },
   rateLimitMinutes: {
     doc: 'Amount of minutes used for request rate limiter',
@@ -698,6 +707,7 @@ let networkId = 4447
 let mainNetworkId = 4447
 let celoNetworkId = 4447
 let baseNetworkId = 4447
+let xdcNetworkId = 4447
 
 switch (network) {
   case 'fuse':
@@ -706,21 +716,25 @@ switch (network) {
     celoNetworkId = 42220
     mainNetworkId = 11155111
     baseNetworkId = 8453
+    xdcNetworkId = 50
     break
   case 'production':
     networkId = 122
     celoNetworkId = 42220
     mainNetworkId = 1
     baseNetworkId = 8453
+    xdcNetworkId = 50
     break
   default:
     break
 }
 
 conf.set('ethereumMainnet', networks[mainNetworkId])
-conf.set('ethereum', networks[networkId])
+conf.set('ethereum', networks[networkId]) //backward compat
+conf.set('fuse', networks[networkId])
 conf.set('celo', networks[celoNetworkId])
 conf.set('base', networks[baseNetworkId])
+conf.set('xdc', networks[xdcNetworkId])
 
 // get active segmented pools
 if (process.env.REDTENT_POOLS) {
