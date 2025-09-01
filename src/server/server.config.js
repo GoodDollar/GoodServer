@@ -400,11 +400,20 @@ const conf = convict({
     env: 'SENTRY_DSN',
     default: ''
   },
+  // network configurations (populated later from ./networks)
   fuse: {
-    doc: 'Main url for fuse api',
-    format: 'url',
-    env: 'FUSE_API',
-    default: 'https://explorer.fuse.io'
+    network_id: 122,
+    web3Transport: 'HttpProvider',
+    httpWeb3Provider: 'https://rpc.fuse.io',
+    websocketWeb3Provider: 'wss://rpc.fuse.io/ws',
+    explorer: ''
+  },
+  ethereum: {
+    network_id: 1,
+    web3Transport: 'HttpProvider',
+    httpWeb3Provider: 'https://mainnet.infura.io/v3/',
+    websocketWeb3Provider: 'wss://mainnet.infura.io/ws',
+    explorer: ''
   },
   rateLimitMinutes: {
     doc: 'Amount of minutes used for request rate limiter',
