@@ -86,7 +86,7 @@
     "delay": "^4.4.0",
     "dotenv": "^6.2.0",
     "ethers": "^5.7.2",
-    "express": "^4.17.1",
+    "express": "^4.21.2",
     "express-pino-logger": "^4.0.0",
     "express-rate-limit": "^6.7.0",
     "express-validator": "^6.6.1",
