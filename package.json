@@ -72,7 +72,7 @@
     "@veramo/kms-local": "^5.1.2",
     "await-mutex": "^1.0.2",
     "aws-sdk": "^2.1376.0",
-    "axios": "^1.6.0",
+    "axios": "^1.8.2",
     "axios-retry": "^3.2.5",
     "big-number": "^2.0.0",
     "bip39-light": "^1.0.7",
