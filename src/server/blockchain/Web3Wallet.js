@@ -698,7 +698,7 @@ export class Web3Wallet {
   async banInFaucet(address, customLogger = null) {
     const logger = customLogger || this.log
     try {
-      logger.debug('banInFauct:', {
+      logger.debug('banInFaucet:', {
         address
       })
 
