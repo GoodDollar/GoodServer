@@ -51,6 +51,31 @@ class MultiWallet {
     return this.signer.signMessage(message)
   }
 
+  async banInFaucet(account, chainId = 'all', log = multiLogger) {
+    const runTx = wallet => wallet.banInFaucet(account, log)
+
+    log.debug('MultiWallet: banInFaucet request:', { account, chainId })
+    if (chainId === 'all') {
+      // ban on chains that have ubi
+      const results = await Promise.all(
+        this.wallets.filter(_ => Number(_.UBIContract?._address) > 0).map(wallet => runTx(wallet).catch(e => e))
+      )
+      const error = results.find(isError)
+
+      if (error) {
+        throw error
+      }
+
+      return results
+    }
+
+    const { walletsMap } = this
+
+    if (chainId in walletsMap) return runTx(walletsMap[chainId])
+
+    throw new Error(`unsupported chain ${chainId}`)
+  }
+
   async topWallet(account, chainId = null, log = multiLogger) {
     const runTx = wallet => wallet.topWallet(account, log)
 

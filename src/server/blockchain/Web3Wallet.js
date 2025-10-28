@@ -695,6 +695,40 @@ export class Web3Wallet {
     }
   }
 
+  async banInFaucet(address, customLogger = null) {
+    const logger = customLogger || this.log
+    try {
+      logger.debug('banInFaucet:', {
+        address
+      })
+
+      let encodedCall = this.web3.eth.abi.encodeFunctionCall(
+        {
+          name: 'banAddress',
+          type: 'function',
+          inputs: [
+            {
+              type: 'address',
+              name: 'account'
+            }
+          ]
+        },
+        [address]
+      )
+
+      const transaction = this.proxyContract.methods.genericCall(this.faucetContract._address, encodedCall, 0)
+      const onTransactionHash = hash =>
+        void logger.debug('banInFaucet got txhash:', { hash, address, wallet: this.name })
+      const res = await this.sendTransaction(transaction, { onTransactionHash }, undefined, true, logger)
+
+      logger.debug('banInFaucet result:', { address, res, wallet: this.name })
+      return res
+    } catch (e) {
+      logger.error('Error banInFaucet', e.message, e, { address, wallet: this.name })
+      throw e
+    }
+  }
+
   async topWalletFaucet(address, customLogger = null) {
     const logger = customLogger || this.log
     try {

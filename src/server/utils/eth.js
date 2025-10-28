@@ -54,6 +54,8 @@ export const verifyIdentifier = async (fvsig, gdAddress, chainId = 42220) => {
 
   const fuseProvider = new ethers.providers.JsonRpcProvider('https://rpc.fuse.io')
   const celoProvider = new ethers.providers.JsonRpcProvider('https://forno.celo.org')
+  const xdcProvider = new ethers.providers.JsonRpcProvider('https://rpc.xdc.network')
+
   let provider = celoProvider
   switch (String(chainId)) {
     case '42220':
@@ -61,6 +63,9 @@ export const verifyIdentifier = async (fvsig, gdAddress, chainId = 42220) => {
       break
     case '122':
       provider = fuseProvider
+      break
+    case '50':
+      provider = xdcProvider
       break
     default:
       break
