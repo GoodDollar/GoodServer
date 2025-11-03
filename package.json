@@ -10,6 +10,7 @@
   "scripts": {
     "build": "webpack --mode production --config webpack.server.config.js",
     "postbuild": "babel-node scripts/dbUpdates.js",
+    "postinstall": "patch-package",
     "test": "jest --silent=false --forceExit --detectOpenHandles --maxWorkers=1",
     "test:staging": "jest --forceExit --detectOpenHandles",
     "test:setup": "./scripts/blockchainTestSetup.sh",
