@@ -720,8 +720,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           clientIp,
           account: user.gdAddress
         })
-        AdminWallet.banInFaucet(user.gdAddress, 'all', log).catch(e => {
-          log.error('findFaucetAbuse banInFaucet failed:', e.message, e, { address: user.gdAddress })
+        AdminWallet.banInFaucet(foundMultiIpAccounts, 'all', log).catch(e => {
+          log.error('findFaucetAbuse banInFaucet failed:', e.message, e, {
+            address: user.gdAddress,
+            foundMultiIpAccounts
+          })
         })
         return res.json({ ok: -1, error: 'faucet multi abuse' })
       }
