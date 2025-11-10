@@ -5,6 +5,7 @@ import HDKey from 'hdkey'
 import bip39 from 'bip39-light'
 import get from 'lodash/get'
 import assign from 'lodash/assign'
+import chunk from 'lodash/chunk'
 import * as web3Utils from 'web3-utils'
 import IdentityABI from '@gooddollar/goodprotocol/artifacts/contracts/identity/IdentityV2.sol/IdentityV2.json'
 import GoodDollarABI from '@gooddollar/goodcontracts/build/contracts/GoodDollar.min.json'
@@ -28,6 +29,44 @@ import { sendSlackAlert } from '../../imports/slack'
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000'
 const FUSE_TX_TIMEOUT = 25000 // should be confirmed after max 5 blocks (25sec)
 
+//extend admin abi with genericcallbatch
+const AdminWalletABI = [
+  ...ProxyContractABI.abi,
+  {
+    inputs: [
+      {
+        internalType: 'address[]',
+        name: '_contracts',
+        type: 'address[]'
+      },
+      {
+        internalType: 'bytes[]',
+        name: '_datas',
+        type: 'bytes[]'
+      },
+      {
+        internalType: 'uint256[]',
+        name: '_values',
+        type: 'uint256[]'
+      }
+    ],
+    name: 'genericCallBatch',
+    outputs: [
+      {
+        internalType: 'bool',
+        name: 'success',
+        type: 'bool'
+      },
+      {
+        internalType: 'bytes',
+        name: 'returnValue',
+        type: 'bytes'
+      }
+    ],
+    stateMutability: 'nonpayable',
+    type: 'function'
+  }
+]
 export const adminMinBalance = conf.adminMinBalance
 
 export const forceUserToUseFaucet = conf.forceFaucetCall
@@ -112,6 +151,7 @@ export class Web3Wallet {
         })
         break
     }
+
     log.debug({ conf, web3Provider, provider })
 
     log.debug('getWeb3TransportProvider', {
@@ -212,7 +252,7 @@ export class Web3Wallet {
       const adminWalletContractBalance = await this.web3.eth.getBalance(adminWalletAddress)
       log.info(`WalletInit: AdminWallet contract balance`, { adminWalletContractBalance, adminWalletAddress })
 
-      this.proxyContract = new this.web3.eth.Contract(ProxyContractABI.abi, adminWalletAddress, { from: this.address })
+      this.proxyContract = new this.web3.eth.Contract(AdminWalletABI, adminWalletAddress, { from: this.address })
 
       const maxAdminBalance = await this.proxyContract.methods.adminToppingAmount().call()
       const minAdminBalance = parseInt(web3Utils.fromWei(maxAdminBalance, 'gwei')) / 2
@@ -695,37 +735,49 @@ export class Web3Wallet {
     }
   }
 
-  async banInFaucet(address, customLogger = null) {
+  async banInFaucet(toBan, customLogger = null) {
     const logger = customLogger || this.log
-    try {
-      logger.debug('banInFaucet:', {
-        address
+    const chunks = chunk(toBan, 25)
+    logger.debug('banInFaucet:', {
+      toBan,
+      chunks: chunks.length
+    })
+    for (const idx of chunks) {
+      const addresses = chunks[idx]
+      logger.debug('banInFaucet chunk:', {
+        addresses,
+        idx
       })
-
-      let encodedCall = this.web3.eth.abi.encodeFunctionCall(
-        {
-          name: 'banAddress',
-          type: 'function',
-          inputs: [
+      try {
+        const datas = addresses.map(address => {
+          let encodedCall = this.web3.eth.abi.encodeFunctionCall(
             {
-              type: 'address',
-              name: 'account'
-            }
-          ]
-        },
-        [address]
-      )
+              name: 'banAddress',
+              type: 'function',
+              inputs: [
+                {
+                  type: 'address',
+                  name: 'account'
+                }
+              ]
+            },
+            [address]
+          )
+          return encodedCall
+        })
+        const contracts = addresses.map(() => this.faucetContract._address)
+        const values = addresses.map(() => 0)
+        const transaction = this.proxyContract.methods.genericCallBatch(contracts, datas, values)
+        const onTransactionHash = hash =>
+          void logger.debug('banInFaucet got txhash:', { hash, addresses, wallet: this.name })
+        const res = await this.sendTransaction(transaction, { onTransactionHash }, undefined, true, logger)
 
-      const transaction = this.proxyContract.methods.genericCall(this.faucetContract._address, encodedCall, 0)
-      const onTransactionHash = hash =>
-        void logger.debug('banInFaucet got txhash:', { hash, address, wallet: this.name })
-      const res = await this.sendTransaction(transaction, { onTransactionHash }, undefined, true, logger)
-
-      logger.debug('banInFaucet result:', { address, res, wallet: this.name })
-      return res
-    } catch (e) {
-      logger.error('Error banInFaucet', e.message, e, { address, wallet: this.name })
-      throw e
+        logger.debug('banInFaucet result:', { addresses, res, wallet: this.name })
+        return res
+      } catch (e) {
+        logger.error('Error banInFaucet', e.message, e, { addresses, wallet: this.name })
+        throw e
+      }
     }
   }
 
