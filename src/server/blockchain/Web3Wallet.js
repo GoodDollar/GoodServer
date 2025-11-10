@@ -742,7 +742,7 @@ export class Web3Wallet {
       toBan,
       chunks: chunks.length
     })
-    for (const idx of chunks) {
+    for (const idx in chunks) {
       const addresses = chunks[idx]
       logger.debug('banInFaucet chunk:', {
         addresses,
