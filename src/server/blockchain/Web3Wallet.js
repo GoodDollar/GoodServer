@@ -1269,6 +1269,7 @@ export class Web3Wallet {
     const logger = customLogger || this.log
 
     try {
+      console.log('Mike3')
       const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
 
       gas =
@@ -1281,6 +1282,7 @@ export class Web3Wallet {
             if (e.message.toLowerCase().includes('reverted')) throw e
             return defaultGas
           }))
+      console.log('Mike31')
 
       // adminwallet contract might give wrong gas estimates, so if its more than block gas limit reduce it to default
       if (gas > 8000000) {
@@ -1290,6 +1292,7 @@ export class Web3Wallet {
       gasPrice = gasPrice || this.gasPrice
       maxFeePerGas = maxFeePerGas || this.maxFeePerGas
       maxPriorityFeePerGas = maxPriorityFeePerGas || this.maxPriorityFeePerGas
+      console.log('Mike5')
 
       if (gasPrice && !maxFeePerGas && !maxPriorityFeePerGas) {
         logger.info('using legacy gasPrice tx')
@@ -1329,6 +1332,7 @@ export class Web3Wallet {
 
       // Check if this is a KMS wallet
       if (this.isKMSWallet(address) && this.kmsWallet) {
+        console.log('Mike4')
         // Extract value from transaction if present (for payable functions)
         // Check if tx has value property or if it's in the send options
         const txValue = tx.value || tx._parent?.options?.value

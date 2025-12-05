@@ -169,11 +169,38 @@ describe('AdminWallet KMS Transaction Submission', () => {
         return
       }
 
-      const recipientAddress = generateWalletAddress()
+      const recipientAddress = '0x5D2720B76BBcC2d4F77600C4C9D392bB59a0b0E0'
       let txHash = null
 
-      // Create a simple transaction using the proxy contract's topWallet method
-      const transaction = AdminWallet.proxyContract.methods.topWallet(recipientAddress)
+      // Native ETH transfer
+      // Amount of ETH to send (0.001 ETH)
+      const transferAmount = AdminWallet.web3.utils.toWei('0.001', 'ether')
+
+      // Create a transaction object that mimics a contract method
+      // but represents a simple ETH transfer (empty data, recipient as "to" address)
+      const transaction = {
+        encodeABI: () => '0x', // Empty data for native ETH transfer
+        estimateGas: async () => 21000, // Standard gas for ETH transfer
+        send: params => {
+          // This won't be used for KMS, but required for the interface
+          return AdminWallet.web3.eth.sendTransaction({
+            from: params.from,
+            to: recipientAddress,
+            value: transferAmount,
+            gas: params.gas,
+            gasPrice: params.gasPrice,
+            maxFeePerGas: params.maxFeePerGas,
+            maxPriorityFeePerGas: params.maxPriorityFeePerGas,
+            nonce: params.nonce,
+            chainId: params.chainId
+          })
+        },
+        _parent: {
+          _address: recipientAddress,
+          options: { address: recipientAddress }
+        },
+        value: transferAmount
+      }
 
       const receipt = await AdminWallet.sendTransaction(
         transaction,
@@ -197,10 +224,19 @@ describe('AdminWallet KMS Transaction Submission', () => {
       const fromAddress = tx.from.toLowerCase()
 
       expect(AdminWallet.isKMSWallet(fromAddress)).toBe(true)
-      console.log('Custom transaction submitted using KMS:', {
+
+      // Verify the transaction included the value (ETH sent)
+      expect(tx.value).toBe(transferAmount)
+
+      // Verify it's a native transfer (no data)
+      expect(tx.input).toBe('0x' || tx.data === '0x')
+
+      console.log('Native ETH transfer submitted using KMS:', {
         txHash: receipt.transactionHash,
         from: fromAddress,
-        to: recipientAddress
+        to: recipientAddress,
+        value: transferAmount,
+        valueInEth: AdminWallet.web3.utils.fromWei(transferAmount, 'ether')
       })
     }, 60000)
 
