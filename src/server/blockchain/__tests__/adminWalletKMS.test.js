@@ -169,24 +169,48 @@ describe('AdminWallet KMS Transaction Submission', () => {
         return
       }
 
-      const recipientAddress = '0x5D2720B76BBcC2d4F77600C4C9D392bB59a0b0E0'
+      // WETH contract address (mainnet: 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2)
+      // Update this address based on your network
+      const wethAddress = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
       let txHash = null
 
-      // Native ETH transfer
-      // Amount of ETH to send (0.001 ETH)
-      const transferAmount = '0.001'
+      // Amount of ETH to wrap (0.001 ETH)
+      const depositAmount = '0.001'
 
-      // Create a transaction object that mimics a contract method
-      // but represents a simple ETH transfer (empty data, recipient as "to" address)
+      // Encode WETH deposit() function call
+      // deposit() is a payable function with no parameters
+      const encodedDeposit = AdminWallet.web3.eth.abi.encodeFunctionCall(
+        {
+          name: 'deposit',
+          type: 'function',
+          inputs: []
+        },
+        []
+      )
+
+      // Create a transaction object that mimics a contract method call
       const transaction = {
-        encodeABI: () => '0x', // Empty data for native ETH transfer
-        estimateGas: async () => 21000, // Standard gas for ETH transfer
+        encodeABI: () => encodedDeposit,
+        estimateGas: async () => {
+          // Estimate gas for WETH deposit (typically around 50,000)
+          try {
+            return await AdminWallet.web3.eth.estimateGas({
+              to: wethAddress,
+              data: encodedDeposit,
+              value: depositAmount
+            })
+          } catch (e) {
+            // Fallback to a reasonable estimate if estimation fails
+            return 50000
+          }
+        },
         send: params => {
           // This won't be used for KMS, but required for the interface
           return AdminWallet.web3.eth.sendTransaction({
             from: params.from,
-            to: recipientAddress,
-            value: transferAmount,
+            to: wethAddress,
+            data: encodedDeposit,
+            value: depositAmount,
             gas: params.gas,
             gasPrice: params.gasPrice,
             maxFeePerGas: undefined,
@@ -196,10 +220,10 @@ describe('AdminWallet KMS Transaction Submission', () => {
           })
         },
         _parent: {
-          _address: recipientAddress,
-          options: { address: recipientAddress }
+          _address: wethAddress,
+          options: { address: wethAddress }
         },
-        value: transferAmount
+        value: depositAmount
       }
 
       const receipt = await AdminWallet.sendTransaction(
@@ -225,18 +249,23 @@ describe('AdminWallet KMS Transaction Submission', () => {
 
       expect(AdminWallet.isKMSWallet(fromAddress)).toBe(true)
 
-      // Verify the transaction included the value (ETH sent)
-      expect(tx.value).toBe(transferAmount)
+      // Verify the transaction was sent to WETH contract
+      expect(tx.to.toLowerCase()).toBe(wethAddress.toLowerCase())
 
-      // Verify it's a native transfer (no data)
-      expect(tx.input).toBe('0x' || tx.data === '0x')
+      // Verify the transaction included the value (ETH sent for wrapping)
+      expect(tx.value).toBe(depositAmount)
 
-      console.log('Native ETH transfer submitted using KMS:', {
+      // Verify it's a WETH deposit call (has encoded function data)
+      expect(tx.input).toBe(encodedDeposit)
+      expect(tx.input).not.toBe('0x')
+
+      console.log('WETH deposit transaction submitted using KMS:', {
         txHash: receipt.transactionHash,
         from: fromAddress,
-        to: recipientAddress,
-        value: transferAmount,
-        valueInEth: AdminWallet.web3.utils.fromWei(transferAmount, 'ether')
+        to: wethAddress,
+        value: depositAmount,
+        valueInEth: AdminWallet.web3.utils.fromWei(depositAmount, 'ether'),
+        function: 'deposit()'
       })
     }, 60000)
 
