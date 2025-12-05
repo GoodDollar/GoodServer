@@ -85,6 +85,8 @@ module.exports = {
     "multiformats/cid": "<rootDir>/node_modules/multiformats/src/cid.js",
     "ipfs-unixfs": "<rootDir>/node_modules/ipfs-unixfs/dist/index.min.js",
     "uint8arrays":"<rootDir>/node_modules/uint8arrays/dist/index.min.js",
+    // Force kms-ethereum-signing to use compiled dist files instead of TypeScript source
+    "^kms-ethereum-signing$": "<rootDir>/.yalc/kms-ethereum-signing/dist/index.js",
   },
 
   // An array of regexp pattern strings, matched against all module paths before considered 'visible' to the module loader
@@ -184,7 +186,7 @@ module.exports = {
 
   // An array of regexp pattern strings that are matched against all source file paths, matched files will skip transformation
   transformIgnorePatterns: [
-    "/node_modules/(?!(@veramo|multiformats|key-did-resolver)/)", 
+    "/node_modules/(?!(@veramo|multiformats|key-did-resolver|@aws-sdk)/)", 
     "\\.pnp\\.[^\\\/]+$"
   ],
   

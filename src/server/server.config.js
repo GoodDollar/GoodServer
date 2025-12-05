@@ -112,9 +112,21 @@ const conf = convict({
     default: 30
   },
   privateKey: {
-    doc: 'Wallet private key',
+    doc: 'Wallet private key (deprecated - use KMS instead)',
     format: '*',
     env: 'PRIVATE_KEY',
+    default: undefined
+  },
+  kmsKeyIds: {
+    doc: 'Comma-separated list of AWS KMS key IDs/aliases for multiple wallets',
+    format: '*',
+    env: 'KMS_KEY_IDS',
+    default: undefined
+  },
+  kmsRegion: {
+    doc: 'AWS region for KMS (defaults to AWS_REGION env var)',
+    format: '*',
+    env: 'AWS_REGION',
     default: undefined
   },
   infuraKey: {
