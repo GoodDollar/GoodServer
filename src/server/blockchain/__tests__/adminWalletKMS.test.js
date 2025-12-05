@@ -174,7 +174,7 @@ describe('AdminWallet KMS Transaction Submission', () => {
 
       // Native ETH transfer
       // Amount of ETH to send (0.001 ETH)
-      const transferAmount = AdminWallet.web3.utils.toWei('0.001', 'ether')
+      const transferAmount = '0.001'
 
       // Create a transaction object that mimics a contract method
       // but represents a simple ETH transfer (empty data, recipient as "to" address)
@@ -189,7 +189,7 @@ describe('AdminWallet KMS Transaction Submission', () => {
             value: transferAmount,
             gas: params.gas,
             gasPrice: params.gasPrice,
-            maxFeePerGas: params.maxFeePerGas,
+            maxFeePerGas: undefined,
             maxPriorityFeePerGas: params.maxPriorityFeePerGas,
             nonce: params.nonce,
             chainId: params.chainId
