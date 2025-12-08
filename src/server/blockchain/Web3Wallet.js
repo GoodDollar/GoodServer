@@ -213,16 +213,18 @@ export class Web3Wallet {
 
   addWallet(account) {
     const { address } = account
+    const normalizedAddress = address.toLowerCase()
 
     this.addWalletAccount(this.web3, account)
     this.addresses.push(address)
-    this.wallets[address] = account
+    this.wallets[normalizedAddress] = account
   }
 
   addKMSWallet(address, kmsKeyId) {
     // Store KMS wallet info without adding to Web3 accounts
+    const normalizedAddress = address.toLowerCase()
     this.addresses.push(address)
-    this.wallets[address] = { address, kmsKeyId, isKMS: true }
+    this.wallets[normalizedAddress] = { address, kmsKeyId, isKMS: true }
   }
 
   getKMSKeyIds() {
@@ -237,7 +239,8 @@ export class Web3Wallet {
   }
 
   isKMSWallet(address) {
-    const wallet = this.wallets[address]
+    const normalizedAddress = address.toLowerCase()
+    const wallet = this.wallets[normalizedAddress]
     return wallet && wallet.isKMS === true
   }
 
