@@ -1,0 +1,10 @@
+{
+  "version": "v1",
+  "packages": {
+    "kms-ethereum-signing": {
+      "signature": "d4066f5820d547972f68adb237fe5593",
+      "file": true,
+      "replaced": "^1.0.0"
+    }
+  }
+}
