@@ -51,7 +51,6 @@
   "homepage": "https://gooddollar.org",
   "dependencies": {
     "@ambire/signature-validator": "^1.5.0",
-    "@aws-sdk/client-kms": "^3.490.0",
     "@aws-sdk/client-s3": "^3.552.0",
     "@axelar-network/axelarjs-sdk": "^0.13.6",
     "@babel/polyfill": "^7.11.5",
