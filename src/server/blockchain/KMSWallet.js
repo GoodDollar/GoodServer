@@ -5,7 +5,7 @@ import {
   signMessage as kmsSignMessage,
   getPublicKey,
   importKMSKey
-} from 'kms-ethereum-signing'
+} from '@gooddollar/kms-ethereum-signing'
 import logger from '../../imports/logger'
 
 const log = logger.child({ from: 'KMSWallet' })
