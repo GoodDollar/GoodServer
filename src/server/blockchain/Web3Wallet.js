@@ -267,25 +267,39 @@ export class Web3Wallet {
     const kmsKeyIds = this.getKMSKeyIds()
 
     if (kmsKeyIds && kmsKeyIds.length > 0) {
-      // Initialize KMS wallet
-      this.kmsWallet = new KMSWallet(this.conf.kmsRegion)
+      try {
+        // Initialize KMS wallet
+        this.kmsWallet = new KMSWallet(this.conf.kmsRegion)
 
-      // Initialize with provided KMS key IDs
-      const addresses = await this.kmsWallet.initialize(kmsKeyIds)
-      addresses.forEach(address => {
-        const keyId = this.kmsWallet.getKeyId(address)
-        this.addKMSWallet(address, keyId)
-        // Add KMS addresses to filledAddresses (they don't need admin verification)
-        this.filledAddresses.push(address)
-      })
-      this.address = addresses[0]
-      log.info('WalletInit: Initialized by KMS keys:', {
-        addresses,
-        keyIds: kmsKeyIds,
-        network: this.network,
-        filledAddresses: this.filledAddresses
-      })
-    } else if (this.conf.privateKey) {
+        // Initialize with provided KMS key IDs
+        const addresses = await this.kmsWallet.initialize(kmsKeyIds)
+        addresses.forEach(address => {
+          const keyId = this.kmsWallet.getKeyId(address)
+          this.addKMSWallet(address, keyId)
+          // Add KMS addresses to filledAddresses (they don't need admin verification)
+          this.filledAddresses.push(address)
+        })
+        this.address = addresses[0]
+        log.info('WalletInit: Initialized by KMS keys:', {
+          addresses,
+          keyIds: kmsKeyIds,
+          network: this.network,
+          filledAddresses: this.filledAddresses
+        })
+      } catch (error) {
+        // KMS initialization failed (e.g., missing AWS credentials, AWS SDK version mismatch)
+        // This is expected in CI environments without AWS credentials
+        log.warn('WalletInit: KMS initialization failed, falling back to regular wallet:', {
+          error: error.message,
+          keyIds: kmsKeyIds,
+          network: this.network
+        })
+        // Continue to privateKey/mnemonic initialization below
+      }
+    }
+
+    // If KMS wasn't configured or failed, try private key or mnemonic
+    if (!this.address && this.conf.privateKey) {
       // Fallback to private key (deprecated)
       let account = this.web3.eth.accounts.privateKeyToAccount(this.conf.privateKey)
 
