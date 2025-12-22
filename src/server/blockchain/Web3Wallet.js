@@ -271,8 +271,11 @@ export class Web3Wallet {
         // Initialize KMS wallet
         this.kmsWallet = new KMSWallet(this.conf.kmsRegion)
 
-        // Initialize with provided KMS key IDs
-        const addresses = await this.kmsWallet.initialize(kmsKeyIds)
+        // Initialize with provided KMS key IDs - add timeout to prevent hanging in CI
+        const addresses = await Promise.race([
+          this.kmsWallet.initialize(kmsKeyIds),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('KMS initialization timeout')), 5000))
+        ])
         addresses.forEach(address => {
           const keyId = this.kmsWallet.getKeyId(address)
           this.addKMSWallet(address, keyId)
@@ -287,13 +290,15 @@ export class Web3Wallet {
           filledAddresses: this.filledAddresses
         })
       } catch (error) {
-        // KMS initialization failed (e.g., missing AWS credentials, AWS SDK version mismatch)
+        // KMS initialization failed (e.g., missing AWS credentials, AWS SDK version mismatch, timeout)
         // This is expected in CI environments without AWS credentials
         log.warn('WalletInit: KMS initialization failed, falling back to regular wallet:', {
           error: error.message,
           keyIds: kmsKeyIds,
           network: this.network
         })
+        // Clear kmsWallet reference to prevent any lingering async operations
+        this.kmsWallet = null
         // Continue to privateKey/mnemonic initialization below
       }
     }
