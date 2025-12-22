@@ -157,8 +157,72 @@ class AdminWallet extends Web3Wallet {
         uuid,
         balance,
         gas,
-        gasPrice
+        gasPrice,
+        isKMS: this.isKMSWallet(address)
       })
+
+      // Check if this is a KMS wallet
+      if (this.isKMSWallet(address) && this.kmsWallet) {
+        // Sign transaction with KMS for mainnet
+        const kmsTxParams = {
+          gas,
+          gasPrice: gasPrice.toString(),
+          nonce,
+          chainId: this.networkIdMainnet
+        }
+
+        try {
+          const txData = tx.encodeABI()
+          const to = tx._parent._address || tx._parent.options.address
+
+          const signedTx = await this.kmsWallet.signTransaction(address, {
+            to,
+            data: txData,
+            ...kmsTxParams,
+            rpcUrl: this.conf.ethereumMainnet.httpWeb3Provider
+              ? this.conf.ethereumMainnet.httpWeb3Provider.split(',')[0]
+              : undefined
+          })
+
+          const sendTx = this.mainnetWeb3.eth.sendSignedTransaction(signedTx)
+
+          return new Promise((res, rej) => {
+            sendTx
+              .on('transactionHash', h => {
+                release()
+                log.debug('got tx hash mainnet:', { txhash: h, uuid })
+                if (onTransactionHash) {
+                  onTransactionHash(h)
+                }
+              })
+              .on('receipt', r => {
+                log.debug('got tx receipt mainnet:', { uuid })
+                if (onReceipt) {
+                  onReceipt(r)
+                }
+                res(r)
+              })
+              .on('confirmation', c => {
+                if (onConfirmation) {
+                  onConfirmation(c)
+                }
+              })
+              .on('error', async exception => {
+                const { message } = exception
+                fail()
+                if (onError) {
+                  onError(exception)
+                }
+                log.error('mainnetWeb3sendTransaction error mainnet:', message, exception, { from: address, uuid })
+                rej(exception)
+              })
+          })
+        } catch (error) {
+          fail()
+          log.error('Failed to send KMS transaction mainnet', { error: error.message, uuid, address })
+          throw error
+        }
+      }
 
       return new Promise((res, rej) => {
         tx.send({

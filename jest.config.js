@@ -85,6 +85,9 @@ module.exports = {
     "multiformats/cid": "<rootDir>/node_modules/multiformats/src/cid.js",
     "ipfs-unixfs": "<rootDir>/node_modules/ipfs-unixfs/dist/index.min.js",
     "uint8arrays":"<rootDir>/node_modules/uint8arrays/dist/index.min.js",
+    // Note: kms-ethereum-signing mapping removed - Jest will resolve it via package.json main field
+    // If you need to force a specific path, uncomment and adjust:
+    // "^kms-ethereum-signing$": "<rootDir>/node_modules/kms-ethereum-signing/dist/index.js",
   },
 
   // An array of regexp pattern strings, matched against all module paths before considered 'visible' to the module loader
@@ -184,7 +187,7 @@ module.exports = {
 
   // An array of regexp pattern strings that are matched against all source file paths, matched files will skip transformation
   transformIgnorePatterns: [
-    "/node_modules/(?!(@veramo|multiformats|key-did-resolver)/)", 
+    "/node_modules/(?!(@veramo|multiformats|key-did-resolver|@aws-sdk)/)", 
     "\\.pnp\\.[^\\\/]+$"
   ],
   

@@ -17,3 +17,5 @@ config/*/*
 test/jest-envs/*
 uploads/*
 .idea/
+
+.yalc/
