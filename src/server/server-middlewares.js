@@ -44,6 +44,17 @@ export default async (app: Router) => {
         ? /(\.?goodd(ollar|app)\.org$)|localhost|localhost:3000|good-wallet-v2\.vercel\.app|goodwallet\.xyz/
         : true
   }
+  const openCorsConfig = {
+    origin: true,
+    credentials: false
+  }
+  const openCorsPaths = new Set(['/verify/topwallet'])
+  const corsDelegate = (req, callback) => {
+    if (openCorsPaths.has(req.path)) {
+      return callback(null, openCorsConfig)
+    }
+    return callback(null, corsConfig)
+  }
 
   if (env === 'production') {
     app.set('trust proxy', 1) //this is required for heroku to pass ips correctly to rate limiter
@@ -63,7 +74,7 @@ export default async (app: Router) => {
   app.use(bodyParser.json({ limit: '100mb' }))
   // parse UTM cookies
   app.use(cookieParser())
-  app.use(cors(corsConfig))
+  app.use(cors(corsDelegate))
   app.use(addRequestLogger)
   addLoginMiddlewares(app)
   addStorageMiddlewares(app, UserDBPrivate)
