@@ -279,15 +279,12 @@ export class Web3Wallet {
         addresses.forEach(address => {
           const keyId = this.kmsWallet.getKeyId(address)
           this.addKMSWallet(address, keyId)
-          // Add KMS addresses to filledAddresses (they don't need admin verification)
-          this.filledAddresses.push(address)
         })
         this.address = addresses[0]
         log.info('WalletInit: Initialized by KMS keys:', {
           addresses,
           keyIds: kmsKeyIds,
-          network: this.network,
-          filledAddresses: this.filledAddresses
+          network: this.network
         })
       } catch (error) {
         // KMS initialization failed (e.g., missing AWS credentials, AWS SDK version mismatch, timeout)
