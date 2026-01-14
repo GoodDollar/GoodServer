@@ -1148,6 +1148,10 @@ export class Web3Wallet {
   /**
    * Send transaction using KMS signing
    * @private
+   * @param {Object} options - Additional options for mainnet transactions
+   * @param {Web3} options.web3Instance - Optional Web3 instance (defaults to this.web3)
+   * @param {string} options.rpcUrl - Optional RPC URL override (defaults to this.ethereum.httpWeb3Provider)
+   * @param {Function} options.fail - Optional fail callback for error handling
    */
   async sendTransactionWithKMS(
     tx: any,
@@ -1167,11 +1171,20 @@ export class Web3Wallet {
       currentAddress: string,
       txuuid: string,
       logger: any
-    }
+    },
+    options: {
+      web3Instance?: Web3,
+      rpcUrl?: string,
+      fail?: Function
+    } = {}
   ) {
     const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
     const { release, txuuid, logger } = context
     const { gas, maxFeePerGas, maxPriorityFeePerGas, gasPrice, nonce, chainId } = txParams
+    const { web3Instance, rpcUrl, fail } = options
+
+    // Use provided web3 instance or default to this.web3
+    const web3 = web3Instance || this.web3
 
     try {
       // Extract transaction data from Web3 contract method
@@ -1189,7 +1202,7 @@ export class Web3Wallet {
         nonce,
         chainId,
         gasLimit: gas.toString(),
-        rpcUrl: this.ethereum.httpWeb3Provider ? this.ethereum.httpWeb3Provider.split(',')[0] : undefined
+        rpcUrl: rpcUrl || (this.ethereum.httpWeb3Provider ? this.ethereum.httpWeb3Provider.split(',')[0] : undefined)
       }
 
       // Add value if non-zero (for payable functions)
@@ -1212,7 +1225,7 @@ export class Web3Wallet {
 
       // Submit signed transaction
       logger.debug('Submitting signed transaction', { txuuid })
-      const sendTx = this.web3.eth.sendSignedTransaction(signedTx)
+      const sendTx = web3.eth.sendSignedTransaction(signedTx)
 
       // Set up event handlers
       return new Promise((res, rej) => {
@@ -1240,6 +1253,11 @@ export class Web3Wallet {
             }
           })
           .on('error', async e => {
+            // Call fail callback if provided (for mainnet error handling)
+            if (fail) {
+              fail()
+            }
+
             logger.error('KMS transaction error:', { txuuid, error: e.message, wallet: this.name })
 
             if (onError) {
@@ -1250,6 +1268,10 @@ export class Web3Wallet {
           })
       })
     } catch (error) {
+      // Call fail callback if provided (for mainnet error handling)
+      if (fail) {
+        fail()
+      }
       release()
       logger.error('Failed to send transaction with KMS', {
         txuuid,
