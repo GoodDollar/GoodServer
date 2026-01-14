@@ -1146,6 +1146,31 @@ export class Web3Wallet {
   }
 
   /**
+   * Check if the RPC supports EIP-1559 by querying the latest block for baseFeePerGas
+   * @param web3Instance - Web3 instance to check (defaults to this.web3)
+   * @returns Promise resolving to boolean indicating EIP-1559 support
+   */
+  async supportsEIP1559(web3Instance?: Web3): Promise<boolean> {
+    const { log } = this
+    try {
+      const web3 = web3Instance || this.web3
+      if (!web3) {
+        log.warn('No web3 instance available for EIP-1559 check')
+        return false
+      }
+      const latestBlock = await web3.eth.getBlock('latest')
+      // EIP-1559 networks include baseFeePerGas in the block
+      return latestBlock.baseFeePerGas != null
+    } catch (error) {
+      log.warn('Failed to check EIP-1559 support, assuming legacy network', {
+        error: error.message
+      })
+      // If we can't check, assume it doesn't support EIP-1559 (safer fallback)
+      return false
+    }
+  }
+
+  /**
    * Send transaction using KMS signing
    * @private
    * @param {Object} options - Additional options for mainnet transactions
@@ -1180,7 +1205,7 @@ export class Web3Wallet {
   ) {
     const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
     const { release, txuuid, logger } = context
-    const { gas, maxFeePerGas, maxPriorityFeePerGas, gasPrice, nonce, chainId } = txParams
+    let { gas, maxFeePerGas, maxPriorityFeePerGas, gasPrice, nonce, chainId } = txParams
     const { web3Instance, rpcUrl, fail } = options
 
     // Use provided web3 instance or default to this.web3
@@ -1211,6 +1236,15 @@ export class Web3Wallet {
         kmsTxParams.value = value
       }
 
+      // Check if the RPC supports EIP-1559. If it doesn't, remove maxFeePerGas
+      // to use the legacy gasPrice field instead
+      const supportsEIP1559 = await this.supportsEIP1559(web3)
+      if (!supportsEIP1559) {
+        logger.debug('Network does not support EIP-1559, removing maxFeePerGas', { chainId })
+        maxFeePerGas = undefined
+        maxPriorityFeePerGas = undefined
+      }
+
       // Add gas pricing
       if (maxFeePerGas && maxPriorityFeePerGas) {
         kmsTxParams.maxFeePerGas = maxFeePerGas.toString()
@@ -1220,7 +1254,7 @@ export class Web3Wallet {
       }
 
       // Sign transaction with KMS
-      logger.debug('Signing transaction with KMS', { address, txuuid, chainId })
+      logger.debug('Signing transaction with KMS', { address, txuuid, chainId, supportsEIP1559 })
       const signedTx = await this.kmsWallet.signTransaction(address, kmsTxParams)
 
       // Submit signed transaction

@@ -116,12 +116,6 @@ export class KMSWallet {
     const region = this.getRegion(address)
 
     try {
-      if (transaction.rpcUrl != undefined && transaction.rpcUrl.includes('localhost')) {
-        transaction = {
-          ...transaction,
-          maxFeePerGas: undefined
-        }
-      }
       const signedTx = await kmsSignTransaction(keyId, transaction, region)
       log.debug('Transaction signed with KMS', { address, keyId, chainId: transaction.chainId })
       return signedTx
