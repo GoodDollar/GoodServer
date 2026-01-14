@@ -161,10 +161,11 @@ class AdminWallet extends Web3Wallet {
         isKMS: this.isKMSWallet(address)
       })
 
-      // Check if this is a KMS wallet
+      // Get PromiEvent - either from KMS signing or regular signing
+      let promiEvent
       if (this.isKMSWallet(address) && this.kmsWallet) {
-        // Use the shared KMS transaction signing method from Web3Wallet
-        return this.sendTransactionWithKMS(
+        // Sign transaction with KMS and get PromiEvent
+        promiEvent = await this._signTransactionWithKMS(
           tx,
           address,
           {
@@ -173,28 +174,28 @@ class AdminWallet extends Web3Wallet {
             nonce,
             chainId: this.networkIdMainnet
           },
-          txCallbacks,
-          { release, currentAddress: address, txuuid: uuid, logger: log },
           {
             web3Instance: this.mainnetWeb3,
             rpcUrl: this.conf.ethereumMainnet.httpWeb3Provider
               ? this.conf.ethereumMainnet.httpWeb3Provider.split(',')[0]
-              : undefined,
-            fail
+              : undefined
           }
         )
-      }
-
-      return new Promise((res, rej) => {
-        tx.send({
+      } else {
+        // Use traditional signing flow
+        promiEvent = tx.send({
           gas,
           gasPrice,
           nonce,
           from: address
         })
+      }
+
+      // Wrap PromiEvent with shared event handlers, but handle mainnet-specific retry logic
+      return new Promise((res, rej) => {
+        promiEvent
           .on('transactionHash', h => {
             release()
-
             log.debug('got tx hash mainnet:', { txhash: h, uuid })
 
             if (onTransactionHash) {

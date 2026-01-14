@@ -1168,7 +1168,181 @@ export class Web3Wallet {
   }
 
   /**
-   * Send transaction using KMS signing
+   * Sign transaction with KMS and return a PromiEvent
+   * @private
+   * @param {Object} options - Additional options for mainnet transactions
+   * @param {Web3} options.web3Instance - Optional Web3 instance (defaults to this.web3)
+   * @param {string} options.rpcUrl - Optional RPC URL override (defaults to this.ethereum.httpWeb3Provider)
+   */
+  async _signTransactionWithKMS(
+    tx: any,
+    address: string,
+    txParams: {
+      gas: number,
+      maxFeePerGas?: string,
+      maxPriorityFeePerGas?: string,
+      gasPrice?: string,
+      nonce: number,
+      chainId: number,
+      value?: string | number
+    },
+    options: {
+      web3Instance?: Web3,
+      rpcUrl?: string
+    } = {}
+  ): Promise<PromiEvent> {
+    const { gas, maxFeePerGas, maxPriorityFeePerGas, gasPrice, nonce, chainId } = txParams
+    const { web3Instance, rpcUrl } = options
+    const logger = this.log
+
+    // Use provided web3 instance or default to this.web3
+    const web3 = web3Instance || this.web3
+
+    // Extract transaction data from Web3 contract method
+    const txData = tx.encodeABI()
+    const to = tx._parent._address || tx._parent.options.address
+
+    // Extract value if present (for payable functions like WETH deposit)
+    // Value can be passed via txParams.value, tx.value, or tx._parent.options.value
+    const value = txParams.value || tx.value || tx._parent?.options?.value || '0'
+
+    // Build transaction parameters for KMS
+    const kmsTxParams = {
+      to,
+      data: txData,
+      nonce,
+      chainId,
+      gasLimit: gas.toString(),
+      rpcUrl: rpcUrl || (this.ethereum.httpWeb3Provider ? this.ethereum.httpWeb3Provider.split(',')[0] : undefined)
+    }
+
+    // Add value if non-zero (for payable functions)
+    // kms-ethereum-signing expects value as a decimal string
+    if (value && value !== '0' && value !== 0) {
+      kmsTxParams.value = value
+    }
+
+    // Check if the RPC supports EIP-1559. If it doesn't, remove maxFeePerGas
+    // to use the legacy gasPrice field instead
+    const supportsEIP1559 = await this.supportsEIP1559(web3)
+    let adjustedMaxFeePerGas = maxFeePerGas
+    let adjustedMaxPriorityFeePerGas = maxPriorityFeePerGas
+    if (!supportsEIP1559) {
+      logger.debug('Network does not support EIP-1559, removing maxFeePerGas', { chainId })
+      adjustedMaxFeePerGas = undefined
+      adjustedMaxPriorityFeePerGas = undefined
+    }
+
+    // Add gas pricing
+    if (adjustedMaxFeePerGas && adjustedMaxPriorityFeePerGas) {
+      kmsTxParams.maxFeePerGas = adjustedMaxFeePerGas.toString()
+      kmsTxParams.maxPriorityFeePerGas = adjustedMaxPriorityFeePerGas.toString()
+    } else if (gasPrice) {
+      kmsTxParams.gasPrice = gasPrice.toString()
+    }
+
+    // Sign transaction with KMS
+    logger.debug('Signing transaction with KMS', { address, chainId, supportsEIP1559 })
+    const signedTx = await this.kmsWallet.signTransaction(address, kmsTxParams)
+
+    // Return PromiEvent from sending signed transaction
+    return web3.eth.sendSignedTransaction(signedTx)
+  }
+
+  /**
+   * Wrap a PromiEvent with shared event handlers
+   * @private
+   */
+  _wrapPromiEventWithHandlers(
+    promiEvent: PromiEvent,
+    txCallbacks: PromiEvents,
+    context: {
+      release: Function,
+      txuuid: string,
+      logger: any,
+      txHash?: string,
+      address?: string,
+      nonce?: number,
+      gas?: number,
+      maxFeePerGas?: string,
+      maxPriorityFeePerGas?: string
+    },
+    options: {
+      fail?: Function,
+      onSent?: Function,
+      checkFundsError?: boolean
+    } = {}
+  ): Promise<TransactionReceipt> {
+    const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
+    const { release, txuuid, logger, address, nonce, gas, maxFeePerGas, maxPriorityFeePerGas } = context
+    const { fail, onSent, checkFundsError } = options
+
+    return new Promise((res, rej) => {
+      promiEvent
+        .on('transactionHash', h => {
+          context.txHash = h
+          logger.trace('got tx hash:', { txuuid, txHash: h, wallet: this.name })
+          release()
+
+          if (onTransactionHash) {
+            onTransactionHash(h)
+          }
+        })
+        .on('sent', payload => {
+          if (onSent) {
+            onSent(payload)
+          }
+          logger.debug('tx sent:', { txHash: context.txHash, payload, txuuid, wallet: this.name })
+        })
+        .on('receipt', r => {
+          logger.debug('got tx receipt:', { txuuid, txHash: r.transactionHash, wallet: this.name })
+
+          if (onReceipt) {
+            onReceipt(r)
+          }
+
+          res(r)
+        })
+        .on('confirmation', c => {
+          if (onConfirmation) {
+            onConfirmation(c)
+          }
+        })
+        .on('error', async e => {
+          // Check for funds error if requested (for non-KMS transactions)
+          if (checkFundsError && isFundsError(e) && address) {
+            const balance = await this.web3.eth.getBalance(address)
+            logger.warn('sendTransaciton funds issue retry', {
+              errMessage: e.message,
+              nonce,
+              gas,
+              maxFeePerGas,
+              maxPriorityFeePerGas,
+              address,
+              balance,
+              wallet: this.name,
+              network: this.networkId
+            })
+          }
+
+          // Call fail callback if provided (for mainnet error handling)
+          if (fail) {
+            fail()
+          }
+
+          logger.error('Transaction error:', { txuuid, error: e.message, wallet: this.name })
+
+          if (onError) {
+            onError(e)
+          }
+
+          rej(e)
+        })
+    })
+  }
+
+  /**
+   * Send transaction using KMS signing (kept for backward compatibility)
    * @private
    * @param {Object} options - Additional options for mainnet transactions
    * @param {Web3} options.web3Instance - Optional Web3 instance (defaults to this.web3)
@@ -1200,104 +1374,16 @@ export class Web3Wallet {
       fail?: Function
     } = {}
   ) {
-    const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
     const { release, txuuid, logger } = context
-    let { gas, maxFeePerGas, maxPriorityFeePerGas, gasPrice, nonce, chainId } = txParams
     const { web3Instance, rpcUrl, fail } = options
 
-    // Use provided web3 instance or default to this.web3
-    const web3 = web3Instance || this.web3
-
     try {
-      // Extract transaction data from Web3 contract method
-      const txData = tx.encodeABI()
-      const to = tx._parent._address || tx._parent.options.address
-
-      // Extract value if present (for payable functions like WETH deposit)
-      // Value can be passed via txParams.value, tx.value, or tx._parent.options.value
-      const value = txParams.value || tx.value || tx._parent?.options?.value || '0'
-
-      // Build transaction parameters for KMS
-      const kmsTxParams = {
-        to,
-        data: txData,
-        nonce,
-        chainId,
-        gasLimit: gas.toString(),
-        rpcUrl: rpcUrl || (this.ethereum.httpWeb3Provider ? this.ethereum.httpWeb3Provider.split(',')[0] : undefined)
-      }
-
-      // Add value if non-zero (for payable functions)
-      // kms-ethereum-signing expects value as a decimal string
-      if (value && value !== '0' && value !== 0) {
-        kmsTxParams.value = value
-      }
-
-      // Check if the RPC supports EIP-1559. If it doesn't, remove maxFeePerGas
-      // to use the legacy gasPrice field instead
-      const supportsEIP1559 = await this.supportsEIP1559(web3)
-      if (!supportsEIP1559) {
-        logger.debug('Network does not support EIP-1559, removing maxFeePerGas', { chainId })
-        maxFeePerGas = undefined
-        maxPriorityFeePerGas = undefined
-      }
-
-      // Add gas pricing
-      if (maxFeePerGas && maxPriorityFeePerGas) {
-        kmsTxParams.maxFeePerGas = maxFeePerGas.toString()
-        kmsTxParams.maxPriorityFeePerGas = maxPriorityFeePerGas.toString()
-      } else if (gasPrice) {
-        kmsTxParams.gasPrice = gasPrice.toString()
-      }
-
-      // Sign transaction with KMS
-      logger.debug('Signing transaction with KMS', { address, txuuid, chainId, supportsEIP1559 })
-      const signedTx = await this.kmsWallet.signTransaction(address, kmsTxParams)
-
-      // Submit signed transaction
-      logger.debug('Submitting signed transaction', { txuuid })
-      const sendTx = web3.eth.sendSignedTransaction(signedTx)
-
-      // Set up event handlers
-      return new Promise((res, rej) => {
-        sendTx
-          .on('transactionHash', h => {
-            logger.trace('got tx hash:', { txuuid, txHash: h, wallet: this.name })
-            release()
-
-            if (onTransactionHash) {
-              onTransactionHash(h)
-            }
-          })
-          .on('receipt', r => {
-            logger.debug('got tx receipt:', { txuuid, txHash: r.transactionHash, wallet: this.name })
-
-            if (onReceipt) {
-              onReceipt(r)
-            }
-
-            res(r)
-          })
-          .on('confirmation', c => {
-            if (onConfirmation) {
-              onConfirmation(c)
-            }
-          })
-          .on('error', async e => {
-            // Call fail callback if provided (for mainnet error handling)
-            if (fail) {
-              fail()
-            }
-
-            logger.error('KMS transaction error:', { txuuid, error: e.message, wallet: this.name })
-
-            if (onError) {
-              onError(e)
-            }
-
-            rej(e)
-          })
+      const promiEvent = await this._signTransactionWithKMS(tx, address, txParams, {
+        web3Instance,
+        rpcUrl
       })
+
+      return this._wrapPromiEventWithHandlers(promiEvent, txCallbacks, { release, txuuid, logger }, { fail })
     } catch (error) {
       // Call fail callback if provided (for mainnet error handling)
       if (fail) {
@@ -1344,8 +1430,6 @@ export class Web3Wallet {
     const logger = customLogger || this.log
 
     try {
-      const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
-
       gas =
         gas ||
         (await tx
@@ -1402,101 +1486,60 @@ export class Web3Wallet {
         isKMS: this.isKMSWallet(address)
       })
 
-      // Check if this is a KMS wallet
-      if (this.isKMSWallet(address) && this.kmsWallet) {
-        // Extract value from transaction if present (for payable functions)
-        // Check if tx has value property or if it's in the send options
-        const txValue = tx.value || tx._parent?.options?.value
-
-        // Sign transaction with KMS
-        return this.sendTransactionWithKMS(
-          tx,
-          address,
-          {
-            gas,
-            maxFeePerGas,
-            maxPriorityFeePerGas,
-            gasPrice,
-            nonce,
-            chainId: this.networkId,
-            value: txValue
-          },
-          txCallbacks,
-          { release, currentAddress, txuuid, logger }
-        )
-      }
-
-      // Use traditional signing flow
       // Extract value if present (for payable functions)
       const txValue = tx.value || tx._parent?.options?.value
-      const sendParams = {
-        gas,
-        maxFeePerGas,
-        maxPriorityFeePerGas,
-        gasPrice,
-        chainId: this.networkId,
-        nonce,
-        from: address
+
+      // Get PromiEvent - either from KMS signing or regular signing
+      let promiEvent
+      if (this.isKMSWallet(address) && this.kmsWallet) {
+        // Sign transaction with KMS and get PromiEvent
+        promiEvent = await this._signTransactionWithKMS(tx, address, {
+          gas,
+          maxFeePerGas,
+          maxPriorityFeePerGas,
+          gasPrice,
+          nonce,
+          chainId: this.networkId,
+          value: txValue
+        })
+      } else {
+        // Use traditional signing flow
+        const sendParams = {
+          gas,
+          maxFeePerGas,
+          maxPriorityFeePerGas,
+          gasPrice,
+          chainId: this.networkId,
+          nonce,
+          from: address
+        }
+        if (txValue) {
+          sendParams.value = txValue
+        }
+        promiEvent = tx.send(sendParams)
       }
-      if (txValue) {
-        sendParams.value = txValue
-      }
 
-      let txPromise = new Promise((res, rej) => {
-        tx.send(sendParams)
-          .on('transactionHash', h => {
-            txHash = h
-            logger.trace('got tx hash:', { txuuid, txHash, wallet: this.name })
-
-            if (onTransactionHash) {
-              onTransactionHash(h)
-            }
-          })
-          .on('sent', payload => {
-            release()
-            logger.debug('tx sent:', { txHash, payload, txuuid, wallet: this.name })
-          })
-          .on('receipt', r => {
-            logger.debug('got tx receipt:', { txuuid, txHash, wallet: this.name })
-
-            if (onReceipt) {
-              onReceipt(r)
-            }
-
-            res(r)
-          })
-          .on('confirmation', c => {
-            if (onConfirmation) {
-              onConfirmation(c)
-            }
-          })
-          .on('error', async e => {
-            if (isFundsError(e)) {
-              balance = await this.web3.eth.getBalance(address)
-
-              logger.warn('sendTransaciton funds issue retry', {
-                errMessage: e.message,
-                nonce,
-                gas,
-                maxFeePerGas,
-                maxPriorityFeePerGas,
-                address,
-                balance,
-                wallet: this.name,
-                network: this.networkId
-              })
-            }
-
-            //we maually unlock in catch
-            //fail()
-
-            if (onError) {
-              onError(e)
-            }
-
-            rej(e)
-          })
-      })
+      // Wrap PromiEvent with shared event handlers
+      const txPromise = this._wrapPromiEventWithHandlers(
+        promiEvent,
+        txCallbacks,
+        {
+          release,
+          txuuid,
+          logger,
+          address,
+          nonce,
+          gas,
+          maxFeePerGas,
+          maxPriorityFeePerGas
+        },
+        {
+          onSent: payload => {
+            txHash = payload?.transactionHash || txHash
+          },
+          checkFundsError: !this.isKMSWallet(address) // Only check funds errors for non-KMS
+        }
+      )
 
       const response = await withTimeout(txPromise, FUSE_TX_TIMEOUT, `${this.name} tx timeout`)
 
