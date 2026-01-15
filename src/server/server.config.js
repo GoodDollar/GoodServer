@@ -89,9 +89,9 @@ const conf = convict({
   },
   mnemonic: {
     doc: 'Wallet mnemonic',
-    format: String,
+    format: '*',
     env: 'MNEMONIC',
-    default: null
+    default: undefined
   },
   numberOfAdminWalletAccounts: {
     doc: 'Number of admin wallet accounts',

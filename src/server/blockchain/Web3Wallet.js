@@ -263,6 +263,17 @@ export class Web3Wallet {
 
     assign(this.web3.eth, web3Default)
 
+    // Check if provider supports EIP-1559, and set maxFeePerGas/maxPriorityFeePerGas to undefined if not
+    const supportsEIP1559 = await this.supportsEIP1559(this.web3)
+    if (!supportsEIP1559) {
+      log.debug('Provider does not support EIP-1559, clearing maxFeePerGas and maxPriorityFeePerGas', {
+        network: this.network,
+        networkId: this.networkId
+      })
+      this.maxFeePerGas = undefined
+      this.maxPriorityFeePerGas = undefined
+    }
+
     // Check for KMS configuration first
     const kmsKeyIds = this.getKMSKeyIds()
 
@@ -1143,7 +1154,42 @@ export class Web3Wallet {
   }
 
   /**
-   * Check if the RPC supports EIP-1559 by querying the latest block for baseFeePerGas
+   * Normalize gas pricing parameters - handles legacy gasPrice vs EIP-1559 fees
+   * Deduplicates gas pricing logic used in sendTransaction and sendNative
+   * @private
+   * @param {Object} params - Gas pricing parameters
+   * @param {string|undefined} params.gasPrice - Legacy gas price
+   * @param {string|undefined} params.maxFeePerGas - EIP-1559 max fee per gas
+   * @param {string|undefined} params.maxPriorityFeePerGas - EIP-1559 priority fee
+   * @param {Object} logger - Logger instance
+   * @returns {Promise<Object>} Normalized gas pricing with gasPrice, maxFeePerGas, maxPriorityFeePerGas
+   */
+  async normalizeGasPricing({ gasPrice, maxFeePerGas, maxPriorityFeePerGas }, logger) {
+    // Use instance defaults if not provided
+    gasPrice = gasPrice || this.gasPrice
+    maxFeePerGas = maxFeePerGas || this.maxFeePerGas
+    maxPriorityFeePerGas = maxPriorityFeePerGas || this.maxPriorityFeePerGas
+
+    // Decide between legacy gasPrice and EIP-1559 fees
+    if (gasPrice && !maxFeePerGas && !maxPriorityFeePerGas) {
+      logger.info('using legacy gasPrice tx')
+    } else {
+      gasPrice = undefined
+    }
+
+    // Fetch fee estimates if EIP-1559 fees are not provided
+    if (!gasPrice && (!maxFeePerGas || !maxPriorityFeePerGas)) {
+      const { baseFee, priorityFee } = await this.getFeeEstimates()
+      maxFeePerGas = maxFeePerGas || baseFee
+      maxPriorityFeePerGas = maxPriorityFeePerGas || priorityFee
+    }
+
+    return { gasPrice, maxFeePerGas, maxPriorityFeePerGas }
+  }
+
+  /**
+   * Check if the RPC supports EIP-1559 using multiple methods:
+   * Check chain ID against known EIP-1559 supporting networks
    * @param web3Instance - Web3 instance to check (defaults to this.web3)
    * @returns Promise resolving to boolean indicating EIP-1559 support
    */
@@ -1155,12 +1201,41 @@ export class Web3Wallet {
         log.warn('No web3 instance available for EIP-1559 check')
         return false
       }
-      const latestBlock = await web3.eth.getBlock('latest')
-      // EIP-1559 networks include baseFeePerGas in the block
-      return latestBlock.baseFeePerGas != null
+
+      const chainId = await web3.eth.getChainId()
+      const knownEIP1559Chains = new Set([
+        1, // Ethereum Mainnet
+        11155111, // Ethereum Sepolia
+        8453, // Base
+        137, // Polygon
+        42161, // Arbitrum One
+        10, // Optimism
+        5, // Goerli
+        80001 // Mumbai (Polygon testnet)
+      ])
+
+      if (knownEIP1559Chains.has(chainId)) {
+        // For known EIP-1559 chains, verify with block check
+        // Ethereum Mainnet requires block >= 12965000 (London fork)
+        if (chainId === 1) {
+          const latestBlock = await web3.eth.getBlock('latest')
+          const londonForkBlock = 12965000
+          if (latestBlock.number < londonForkBlock) {
+            log.debug('Ethereum Mainnet block number indicates pre-London fork', {
+              blockNumber: latestBlock.number,
+              londonForkBlock
+            })
+            return false
+          }
+        }
+        return true
+      }
+
+      return false
     } catch (error) {
       log.warn('Failed to check EIP-1559 support, assuming legacy network', {
-        error: error.message
+        error: error.message,
+        networkId: this.networkId
       })
       // If we can't check, assume it doesn't support EIP-1559 (safer fallback)
       return false
@@ -1191,6 +1266,8 @@ export class Web3Wallet {
       rpcUrl?: string
     } = {}
   ): Promise<PromiEvent> {
+    // This function is async because it needs to await KMS signing,
+    // but returns a PromiEvent which should be used directly without awaiting
     const { gas, maxFeePerGas, maxPriorityFeePerGas, gasPrice, nonce, chainId } = txParams
     const { web3Instance, rpcUrl } = options
     const logger = this.log
@@ -1246,7 +1323,15 @@ export class Web3Wallet {
     const signedTx = await this.kmsWallet.signTransaction(address, kmsTxParams)
 
     // Return PromiEvent from sending signed transaction
-    return web3.eth.sendSignedTransaction(signedTx)
+    // Note: PromiEvents are thenable (implement Promise interface), so when returned from async function,
+    // they get wrapped in Promise.resolve(). We need to return it in a way that
+    // preserves the PromiEvent object, not its resolved value.
+    // Create the PromiEvent
+    const promiEvent = web3.eth.sendSignedTransaction(signedTx)
+
+    // Return a Promise that resolves to a non-thenable object containing the PromiEvent
+    // This prevents the PromiEvent from being treated as thenable when awaited
+    return Promise.resolve({ __promiEvent: promiEvent })
   }
 
   /**
@@ -1278,6 +1363,22 @@ export class Web3Wallet {
     const { fail, onSent, checkFundsError } = options
 
     return new Promise((res, rej) => {
+      // Verify promiEvent is actually a PromiEvent (has .on method)
+      if (!promiEvent || typeof promiEvent.on !== 'function') {
+        const error = new Error(
+          `Expected PromiEvent but got ${typeof promiEvent}${promiEvent?.constructor?.name ? ` (${promiEvent.constructor.name})` : ''}. This may indicate the PromiEvent was already resolved.`
+        )
+        logger.error('Invalid PromiEvent in _wrapPromiEventWithHandlers', {
+          type: typeof promiEvent,
+          hasOn: promiEvent && typeof promiEvent.on,
+          constructor: promiEvent?.constructor?.name,
+          keys: promiEvent ? Object.keys(promiEvent).slice(0, 10) : null,
+          txuuid
+        })
+        rej(error)
+        return
+      }
+
       promiEvent
         .on('transactionHash', h => {
           context.txHash = h
@@ -1378,10 +1479,14 @@ export class Web3Wallet {
     const { web3Instance, rpcUrl, fail } = options
 
     try {
-      const promiEvent = await this._signTransactionWithKMS(tx, address, txParams, {
+      // Note: _signTransactionWithKMS returns a Promise that resolves to { __promiEvent: PromiEvent }
+      // to prevent the PromiEvent from being treated as thenable
+      const promiEventWrapper = await this._signTransactionWithKMS(tx, address, txParams, {
         web3Instance,
         rpcUrl
       })
+      // Extract the PromiEvent from the wrapper (don't await it!)
+      const promiEvent = promiEventWrapper.__promiEvent
 
       return this._wrapPromiEventWithHandlers(promiEvent, txCallbacks, { release, txuuid, logger }, { fail })
     } catch (error) {
@@ -1446,20 +1551,12 @@ export class Web3Wallet {
         gas = defaultGas
       }
 
-      gasPrice = gasPrice || this.gasPrice
-      maxFeePerGas = maxFeePerGas || this.maxFeePerGas
-      maxPriorityFeePerGas = maxPriorityFeePerGas || this.maxPriorityFeePerGas
+      // Normalize gas pricing (deduplicated logic)
+      const normalizedGas = await this.normalizeGasPricing({ gasPrice, maxFeePerGas, maxPriorityFeePerGas }, logger)
+      gasPrice = normalizedGas.gasPrice
+      maxFeePerGas = normalizedGas.maxFeePerGas
+      maxPriorityFeePerGas = normalizedGas.maxPriorityFeePerGas
 
-      if (gasPrice && !maxFeePerGas && !maxPriorityFeePerGas) {
-        logger.info('using legacy gasPrice tx')
-      } else {
-        gasPrice = undefined
-      }
-      if (!gasPrice && (!maxFeePerGas || !maxPriorityFeePerGas)) {
-        const { baseFee, priorityFee } = await this.getFeeEstimates()
-        maxFeePerGas = maxFeePerGas || baseFee
-        maxPriorityFeePerGas = maxPriorityFeePerGas || priorityFee
-      }
       logger.trace('getting tx lock:', { txuuid })
 
       const { nonce, release, address } = await this.txManager.lock(this.filledAddresses)
@@ -1493,7 +1590,9 @@ export class Web3Wallet {
       let promiEvent
       if (this.isKMSWallet(address) && this.kmsWallet) {
         // Sign transaction with KMS and get PromiEvent
-        promiEvent = await this._signTransactionWithKMS(tx, address, {
+        // Note: _signTransactionWithKMS returns a Promise that resolves to { __promiEvent: PromiEvent }
+        // to prevent the PromiEvent from being treated as thenable
+        const promiEventWrapper = await this._signTransactionWithKMS(tx, address, {
           gas,
           maxFeePerGas,
           maxPriorityFeePerGas,
@@ -1502,6 +1601,8 @@ export class Web3Wallet {
           chainId: this.networkId,
           value: txValue
         })
+        // Extract the PromiEvent from the wrapper (don't await it!)
+        promiEvent = promiEventWrapper.__promiEvent
       } else {
         // Use traditional signing flow
         const sendParams = {
@@ -1698,19 +1799,13 @@ export class Web3Wallet {
       const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
 
       gas = gas || defaultGas
-      gasPrice = gasPrice || this.gasPrice
-      maxFeePerGas = maxFeePerGas || this.maxFeePerGas
-      maxPriorityFeePerGas = maxPriorityFeePerGas || this.maxPriorityFeePerGas
-      if (gasPrice && !maxFeePerGas && !maxPriorityFeePerGas) {
-        logger.info('using legacy gasPrice tx')
-      } else {
-        gasPrice = undefined
-      }
-      if (!gasPrice && (!maxFeePerGas || !maxPriorityFeePerGas)) {
-        const { baseFee, priorityFee } = await this.getFeeEstimates()
-        maxFeePerGas = maxFeePerGas || baseFee
-        maxPriorityFeePerGas = maxPriorityFeePerGas || priorityFee
-      }
+
+      // Normalize gas pricing (deduplicated logic)
+      const normalizedGas = await this.normalizeGasPricing({ gasPrice, maxFeePerGas, maxPriorityFeePerGas }, log)
+      gasPrice = normalizedGas.gasPrice
+      maxFeePerGas = normalizedGas.maxFeePerGas
+      maxPriorityFeePerGas = normalizedGas.maxPriorityFeePerGas
+
       const { nonce, release, fail, address } = await this.txManager.lock(this.filledAddresses)
 
       log.debug('sendNative', { nonce, gas, maxFeePerGas, maxPriorityFeePerGas })
