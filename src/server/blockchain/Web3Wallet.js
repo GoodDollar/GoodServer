@@ -132,7 +132,11 @@ export class Web3Wallet {
     this.log = logger.child({ from: `${name}/${this.networkId}` })
     this.kmsWallet = null // Will be initialized if KMS is used
 
-    this.initialize()
+    // Skip automatic initialization in test environment to prevent async operations
+    // from running after Jest tears down the test environment
+    if (this.conf.env !== 'test') {
+      this.initialize()
+    }
   }
 
   async initialize() {
