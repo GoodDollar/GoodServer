@@ -324,7 +324,7 @@ export class Web3Wallet {
       this.addWallet(account)
 
       log.info('WalletInit: Initialized by private key:', { address: account.address })
-    } else if (this.mnemonic) {
+    } else if (!this.address && this.mnemonic) {
       // Fallback to mnemonic
       let root = HDKey.fromMasterSeed(bip39.mnemonicToSeed(this.mnemonic, this.conf.adminWalletPassword))
 
