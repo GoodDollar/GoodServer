@@ -6,6 +6,7 @@ import {
   getPublicKey,
   importKMSKey
 } from '@gooddollar/kms-ethereum-signing'
+import AWS from 'aws-sdk'
 import logger from '../../imports/logger'
 
 const log = logger.child({ from: 'KMSWallet' })
@@ -21,6 +22,69 @@ export class KMSWallet {
   constructor(region?: string) {
     this.kmsKeys = new Map()
     this.region = region || process.env.AWS_REGION
+  }
+
+  /**
+   * Discover KMS keys by tag
+   * @param tagFilter - Tag filter in format "Key=Value" (e.g., "Environment=test")
+   * @returns Promise resolving to array of key IDs
+   */
+  async discoverKeysByTag(tagFilter: string): Promise<string[]> {
+    if (!tagFilter || !tagFilter.includes('=')) {
+      throw new Error(`Invalid tag filter format. Expected "Key=Value", got: ${tagFilter}`)
+    }
+
+    const [tagKey, tagValue] = tagFilter.split('=').map(s => s.trim())
+    if (!tagKey || !tagValue) {
+      throw new Error(`Invalid tag filter format. Expected "Key=Value", got: ${tagFilter}`)
+    }
+
+    const kms = new AWS.KMS({ region: this.region })
+    const keyIds = []
+    let nextMarker = undefined
+
+    try {
+      do {
+        const params = {
+          Marker: nextMarker
+        }
+
+        const response = await kms.listKeys(params).promise()
+
+        for (const keyMetadata of response.Keys || []) {
+          const keyId = keyMetadata.KeyId
+
+          try {
+            // Get tags for this key
+            const tagParams = {
+              KeyId: keyId
+            }
+            const tagsResponse = await kms.listResourceTags(tagParams).promise()
+
+            // Check if key has the matching tag
+            const hasMatchingTag = (tagsResponse.Tags || []).some(
+              tag => tag.TagKey === tagKey && tag.TagValue === tagValue
+            )
+
+            if (hasMatchingTag) {
+              keyIds.push(keyId)
+              log.debug('Found KMS key matching tag', { keyId, tagKey, tagValue })
+            }
+          } catch (error) {
+            // Skip keys that we can't access (e.g., permission issues)
+            log.warn('Failed to check tags for KMS key', { keyId, error: error.message })
+          }
+        }
+
+        nextMarker = response.NextMarker
+      } while (nextMarker)
+
+      log.info('Discovered KMS keys by tag', { tagFilter, count: keyIds.length, keyIds })
+      return keyIds
+    } catch (error) {
+      log.error('Failed to discover KMS keys by tag', { tagFilter, error: error.message })
+      throw error
+    }
   }
 
   /**

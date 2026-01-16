@@ -123,6 +123,12 @@ const conf = convict({
     env: 'KMS_KEY_IDS',
     default: undefined
   },
+  kmsKeysTag: {
+    doc: 'AWS KMS tag filter (e.g., Environment=test) to discover keys by tag. If set, all keys matching this tag will be used.',
+    format: '*',
+    env: 'KMS_KEYS_TAG',
+    default: undefined
+  },
   kmsRegion: {
     doc: 'AWS region for KMS (defaults to AWS_REGION env var)',
     format: '*',

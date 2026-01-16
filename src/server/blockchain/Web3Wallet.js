@@ -218,13 +218,20 @@ export class Web3Wallet {
     this.wallets[normalizedAddress] = { address, kmsKeyId, isKMS: true }
   }
 
-  getKMSKeyIds() {
-    // Support comma-separated list of keys
-    if (this.conf.kmsKeyIds) {
-      return this.conf.kmsKeyIds
-        .split(',')
-        .map(k => k.trim())
-        .filter(k => k)
+  async getKMSKeyIdsByTag() {
+    // If KMS_KEYS_TAG is set, discover keys by tag
+    if (this.conf.kmsKeysTag) {
+      try {
+        const kmsWallet = new KMSWallet(this.conf.kmsRegion)
+        const keyIds = await kmsWallet.discoverKeysByTag(this.conf.kmsKeysTag)
+        return keyIds.length > 0 ? keyIds : null
+      } catch (error) {
+        this.log.warn('Failed to discover KMS keys by tag', {
+          tag: this.conf.kmsKeysTag,
+          error: error.message
+        })
+        return null
+      }
     }
     return null
   }
@@ -267,7 +274,28 @@ export class Web3Wallet {
     }
 
     // Check for KMS configuration first
-    const kmsKeyIds = this.getKMSKeyIds()
+    let kmsKeyIds = null
+    let kmsKeySource = null
+
+    // Try tag-based discovery first
+    if (this.conf.kmsKeysTag) {
+      try {
+        kmsKeyIds = await this.getKMSKeyIdsByTag()
+        if (kmsKeyIds && kmsKeyIds.length > 0) {
+          kmsKeySource = 'tag'
+          log.info('WalletInit: Discovered KMS keys by tag', {
+            tag: this.conf.kmsKeysTag,
+            keyCount: kmsKeyIds.length
+          })
+        }
+      } catch (error) {
+        log.warn('WalletInit: Failed to discover KMS keys by tag, trying direct key IDs', {
+          tag: this.conf.kmsKeysTag,
+          error: error.message
+        })
+      }
+    }
+
     if (kmsKeyIds && kmsKeyIds.length > 0) {
       this.numberOfAdminWalletAccounts = kmsKeyIds.length
     } else {
@@ -279,10 +307,10 @@ export class Web3Wallet {
         // Initialize KMS wallet
         this.kmsWallet = new KMSWallet(this.conf.kmsRegion)
 
-        // Initialize with provided KMS key IDs - add timeout to prevent hanging in CI
+        // Initialize with discovered/provided KMS key IDs - add timeout to prevent hanging in CI
         const addresses = await Promise.race([
           this.kmsWallet.initialize(kmsKeyIds),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('KMS initialization timeout')), 5000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('KMS initialization timeout')), 10000))
         ])
         addresses.forEach(address => {
           const keyId = this.kmsWallet.getKeyId(address)
@@ -292,6 +320,8 @@ export class Web3Wallet {
         log.info('WalletInit: Initialized by KMS keys:', {
           addresses,
           keyIds: kmsKeyIds,
+          source: kmsKeySource,
+          tag: kmsKeySource === 'tag' ? this.conf.kmsKeysTag : undefined,
           network: this.network
         })
       } catch (error) {
@@ -300,6 +330,8 @@ export class Web3Wallet {
         log.warn('WalletInit: KMS initialization failed, falling back to regular wallet:', {
           error: error.message,
           keyIds: kmsKeyIds,
+          source: kmsKeySource,
+          tag: kmsKeySource === 'tag' ? this.conf.kmsKeysTag : undefined,
           network: this.network
         })
         // Clear kmsWallet reference to prevent any lingering async operations

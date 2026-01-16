@@ -27,8 +27,8 @@ const generateWalletAddress = () => web3.eth.accounts.create().address
  */
 describe('AdminWallet KMS Transaction Submission', () => {
   const isKMSConfigured = () => {
-    const kmsKeyIds = conf.kmsKeyIds
-    return kmsKeyIds && kmsKeyIds.trim().length > 0
+    const kmsKeysTag = conf.kmsKeysTag
+    return kmsKeysTag !== undefined && kmsKeysTag !== null
   }
 
   beforeAll(async () => {
