@@ -43,8 +43,7 @@ describe('AdminWallet KMS Transaction Submission', () => {
       } else {
         console.log('KMS is not configured. Set KMS_KEY_IDS env var to enable KMS tests.')
       }
-      // This test always passes - it's just for information
-      expect(typeof configured).toBe('boolean')
+      expect(configured).toBe(true)
     })
 
     test('should have KMS wallet initialized if KMS is configured', async () => {
@@ -219,7 +218,7 @@ describe('AdminWallet KMS Transaction Submission', () => {
             from: params.from,
             to: wethAddress,
             data: encodedDeposit,
-            value: AdminWallet.web3.utils.toWei(depositAmount, 'ether'),
+            value: depositAmount,
             gas: params.gas,
             gasPrice: params.gasPrice,
             maxFeePerGas: undefined,
