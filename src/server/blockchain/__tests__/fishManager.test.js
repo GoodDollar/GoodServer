@@ -36,12 +36,6 @@ xdescribe('fishManager', () => {
     await AdminWallet.ready
   })
 
-  afterAll(async () => {
-    // Wait for any pending async operations (like AWS SDK calls) to complete
-    // before Jest tears down the test environment
-    await new Promise(resolve => setTimeout(resolve, 2000))
-  })
-
   test(`fishManager get next day should be in the future (need to run script simulateInterestDays.js in goodcontracts)`, async () => {
     const blockchainNow = await AdminWallet.web3.eth
       .getBlock('latest')

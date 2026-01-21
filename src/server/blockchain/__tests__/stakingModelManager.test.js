@@ -46,12 +46,6 @@ xdescribe('stakingModelManager', () => {
     )
   })
 
-  afterAll(async () => {
-    // Wait for any pending async operations (like AWS SDK calls) to complete
-    // before Jest tears down the test environment
-    await new Promise(resolve => setTimeout(resolve, 2000))
-  })
-
   //run this first so next tests dont fail
   test(`stakingModelManager should mock interest`, async () => {
     await next_interval(101)
