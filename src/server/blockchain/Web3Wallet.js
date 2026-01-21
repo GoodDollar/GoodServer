@@ -1293,6 +1293,28 @@ export class Web3Wallet {
           false,
           logger
         )
+      } else if (retry && e.message.toLowerCase().includes('nonce')) {
+        logger.warn('sendTransaction retrying tx with too low nonce:', {
+          error: e.message,
+          currentAddress,
+          currentNonce,
+          netNonce,
+          txuuid,
+          txHash,
+          wallet: this.name,
+          network: this.networkId
+        })
+
+        // increase nonce, since we assume our local nonce is behind on the network.
+        await this.txManager.unlock(currentAddress, netNonce + 1)
+
+        return this.sendTransaction(
+          tx,
+          txCallbacks,
+          { gas, gasPrice, maxFeePerGas, maxPriorityFeePerGas },
+          false,
+          logger
+        )
       } else if (retry && e.message.toLowerCase().includes('revert') === false) {
         logger.warn('sendTransaction retrying non reverted error:', {
           error: e.message,
