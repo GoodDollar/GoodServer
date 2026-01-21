@@ -100,7 +100,7 @@
     "lodash": "^4.17.21",
     "math-random": "^1.0.4",
     "moment": "^2.29.2",
-    "mongoose": "^8.1.0",
+    "mongoose": "^8.9.5",
     "passport": "^0.6.0",
     "passport-anonymous": "^1.0.1",
     "passport-jwt": "^4.0.0",
