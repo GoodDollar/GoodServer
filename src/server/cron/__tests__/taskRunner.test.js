@@ -29,6 +29,13 @@ describe('TaskRunner', () => {
     await walletNonce.syncIndexes()
   })
 
+  afterAll(async () => {
+    // Wait for any pending async operations (like AWS SDK calls from AdminWallet initialization)
+    // to complete before Jest tears down the test environment
+    TaskRunner.stopTasks()
+    await new Promise(resolve => setTimeout(resolve, 2000))
+  })
+
   test('it should queue task', async () => {
     testTask.schedule = moment().add(1, 'seconds').toDate()
     expect(size(TaskRunner.tasks)).toEqual(0)

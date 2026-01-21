@@ -21,7 +21,7 @@ const nextBlock = () =>
     )
   )
 
-const next_interval = async function(interval = 5760) {
+const next_interval = async function (interval = 5760) {
   let blocks = interval
   let ps = []
   for (let i = 0; i < blocks; ++i) {
@@ -44,6 +44,12 @@ xdescribe('stakingModelManager', () => {
       get(ContractsAddress, `${AdminWallet.network}-mainnet.GoodDollar`),
       { from: AdminWallet.address }
     )
+  })
+
+  afterAll(async () => {
+    // Wait for any pending async operations (like AWS SDK calls) to complete
+    // before Jest tears down the test environment
+    await new Promise(resolve => setTimeout(resolve, 2000))
   })
 
   //run this first so next tests dont fail
