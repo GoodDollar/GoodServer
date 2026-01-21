@@ -51,6 +51,7 @@ jobs:
       NETWORK: dapptest
       # MNEMONIC: 'myth like bonus scare over problem client lizard pioneer submit female collect'
       ADMIN_MNEMONIC: 'test test test test test test test test test test test junk'
+      KMS_KEYS_TAG: "Environment=Development"
       ALCHEMY_API: ${{ secrets.ALCHEMY_API }}
       AWS_SES_ACCESS_KEY: ${{ secrets.AWS_SES_ACCESS_KEY }}
       AWS_SES_SECRET_ACCESS_KEY: ${{ secrets.AWS_SES_SECRET_ACCESS_KEY }}
