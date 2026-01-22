@@ -34,7 +34,7 @@ const next_interval = async function (interval = 5760) {
   return Promise.all(ps)
 }
 
-xdescribe('stakingModelManager', () => {
+describe.skip('stakingModelManager', () => {
   beforeAll(async () => {
     await AdminWallet.ready
 
