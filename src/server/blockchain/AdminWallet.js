@@ -23,7 +23,10 @@ class AdminWallet extends Web3Wallet {
 
   addWallet(account) {
     super.addWallet(account)
-    this.addWalletAccount(this.mainnetWeb3, account)
+    // Only add to mainnet if mainnetWeb3 is initialized and not in test mode
+    if (this.mainnetWeb3 && this.conf.env !== 'test') {
+      this.addWalletAccount(this.mainnetWeb3, account)
+    }
   }
 
   getMainnetWeb3TransportProvider(): HttpProvider | WebSocketProvider {
