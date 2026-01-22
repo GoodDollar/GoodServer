@@ -57,41 +57,47 @@ class AdminWallet extends Web3Wallet {
     const { log, conf } = this
     const { ethereumMainnet, env } = conf
 
-    log.debug('Initializing wallet mainnet:', { mainnet: ethereumMainnet })
+    // Skip mainnet initialization in test mode to prevent async operations after Jest tears down
+    if (env !== 'test') {
+      log.debug('Initializing wallet mainnet:', { mainnet: ethereumMainnet })
 
-    const mainnetWeb3 = new Web3(this.getMainnetWeb3TransportProvider(), null, web3Default)
-    const mainnetTxManager = getManager(ethereumMainnet.network_id)
-    const { eth } = mainnetWeb3
-    const mainnetAddresses = []
+      const mainnetWeb3 = new Web3(this.getMainnetWeb3TransportProvider(), null, web3Default)
+      const mainnetTxManager = getManager(ethereumMainnet.network_id)
+      const { eth } = mainnetWeb3
+      const mainnetAddresses = []
 
-    assign(mainnetTxManager, { getTransactionCount: eth.getTransactionCount })
-    assign(eth, web3Default, { transactionPollingTimeout: 600 }) // slow ropsten
-    assign(this, { mainnetWeb3, mainnetTxManager, mainnetAddresses })
+      assign(mainnetTxManager, { getTransactionCount: eth.getTransactionCount })
+      assign(eth, web3Default, { transactionPollingTimeout: 600 }) // slow ropsten
+      assign(this, { mainnetWeb3, mainnetTxManager, mainnetAddresses })
+    } else {
+      // Initialize empty arrays in test mode to prevent undefined errors
+      this.mainnetAddresses = []
+    }
 
     await super.init()
 
-    if (env !== 'production') {
+    if (env !== 'production' && this.mainnetWeb3) {
       log.info('Initializing adminwallet mainnet addresses', { addresses: this.addresses })
 
       await Promise.all(
         this.addresses.map(async addr => {
-          const mainnetBalance = await mainnetWeb3.eth.getBalance(addr)
+          const mainnetBalance = await this.mainnetWeb3.eth.getBalance(addr)
 
           log.info(`try mainnnet address ${addr}:`, { mainnetBalance, adminMinBalance })
 
           if (parseFloat(web3Utils.fromWei(mainnetBalance, 'gwei')) > adminMinBalance * 100) {
             log.info(`admin wallet ${addr} mainnet balance ${mainnetBalance}`)
-            mainnetAddresses.push(addr)
+            this.mainnetAddresses.push(addr)
           }
         })
       )
 
-      log.info('Initialized adminwallet mainnet addresses', { mainnetAddresses })
-      await mainnetTxManager.createListIfNotExists(mainnetAddresses)
+      log.info('Initialized adminwallet mainnet addresses', { mainnetAddresses: this.mainnetAddresses })
+      await this.mainnetTxManager.createListIfNotExists(this.mainnetAddresses)
     }
 
     log.debug('AdminWallet mainnet Ready:', {
-      activeMainnetWallets: mainnetAddresses.length
+      activeMainnetWallets: this.mainnetAddresses ? this.mainnetAddresses.length : 0
     })
 
     return true
