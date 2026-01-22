@@ -106,9 +106,19 @@ export class KMSWallet {
         addresses.push(address)
         log.info('KMS wallet initialized', { keyId, address })
       } catch (error) {
+        // Skip keys that are pending import or not ready
+        // This allows tests to continue with available keys
+        if (error.message && error.message.includes('pending import')) {
+          log.warn('Skipping KMS key - pending import', { keyId, error: error.message })
+          continue
+        }
         log.error('Failed to initialize KMS key', { keyId, error: error.message })
         throw error
       }
+    }
+
+    if (addresses.length === 0) {
+      throw new Error('No KMS keys were successfully initialized. All keys may be pending import or unavailable.')
     }
 
     return addresses
