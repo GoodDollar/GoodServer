@@ -894,6 +894,14 @@ export class Web3Wallet {
 
   async topWalletFaucet(address, customLogger = null) {
     const logger = customLogger || this.log
+
+    // Check if faucet contract is properly initialized with a valid address
+    const faucetAddress = this.faucetContract?.options?.address
+    if (!faucetAddress || faucetAddress === ADDRESS_ZERO) {
+      logger.debug('topWalletFaucet: no valid faucet contract address', { wallet: this.name })
+      return false // fall back to admin wallet topping
+    }
+
     try {
       const canTop = await this.faucetContract.methods.canTop(address).call()
 
@@ -1188,21 +1196,55 @@ export class Web3Wallet {
   async normalizeGasPricing({ gasPrice, maxFeePerGas, maxPriorityFeePerGas }, logger) {
     // Use instance defaults if not provided
     gasPrice = gasPrice || this.gasPrice
-    maxFeePerGas = maxFeePerGas || this.maxFeePerGas
-    maxPriorityFeePerGas = maxPriorityFeePerGas || this.maxPriorityFeePerGas
+    maxFeePerGas = maxFeePerGas !== undefined ? maxFeePerGas : this.maxFeePerGas
+    maxPriorityFeePerGas = maxPriorityFeePerGas !== undefined ? maxPriorityFeePerGas : this.maxPriorityFeePerGas
+
+    // Convert string values to numbers for comparison
+    const maxFeeNum = maxFeePerGas ? (typeof maxFeePerGas === 'string' ? parseInt(maxFeePerGas) : maxFeePerGas) : 0
+    const maxPriorityNum = maxPriorityFeePerGas
+      ? typeof maxPriorityFeePerGas === 'string'
+        ? parseInt(maxPriorityFeePerGas)
+        : maxPriorityFeePerGas
+      : 0
 
     // Decide between legacy gasPrice and EIP-1559 fees
-    if (gasPrice && !maxFeePerGas && !maxPriorityFeePerGas) {
+    if (gasPrice && !maxFeeNum && !maxPriorityNum) {
       logger.info('using legacy gasPrice tx')
     } else {
       gasPrice = undefined
     }
 
-    // Fetch fee estimates if EIP-1559 fees are not provided
-    if (!gasPrice && (!maxFeePerGas || !maxPriorityFeePerGas)) {
+    // Fetch fee estimates if EIP-1559 fees are not provided or invalid
+    if (!gasPrice && (!maxFeeNum || !maxPriorityNum)) {
       const { baseFee, priorityFee } = await this.getFeeEstimates()
-      maxFeePerGas = maxFeePerGas || baseFee
-      maxPriorityFeePerGas = maxPriorityFeePerGas || priorityFee
+      maxFeePerGas = maxFeeNum || baseFee
+      maxPriorityFeePerGas = maxPriorityNum || priorityFee
+    }
+
+    // Ensure maxFeePerGas >= maxPriorityFeePerGas (EIP-1559 requirement)
+    // Convert to numbers for comparison (handle both string and number types, and 0 values)
+    const finalMaxFee =
+      maxFeePerGas !== undefined && maxFeePerGas !== null
+        ? typeof maxFeePerGas === 'string'
+          ? parseInt(maxFeePerGas) || 0
+          : maxFeePerGas
+        : 0
+    const finalMaxPriority =
+      maxPriorityFeePerGas !== undefined && maxPriorityFeePerGas !== null
+        ? typeof maxPriorityFeePerGas === 'string'
+          ? parseInt(maxPriorityFeePerGas) || 0
+          : maxPriorityFeePerGas
+        : 0
+
+    // If both are set and maxFeePerGas is invalid (0 or less than maxPriorityFeePerGas), adjust it
+    if (finalMaxPriority > 0 && (finalMaxFee === 0 || finalMaxFee < finalMaxPriority)) {
+      logger.warn('maxFeePerGas < maxPriorityFeePerGas or is 0, adjusting maxFeePerGas', {
+        originalMaxFeePerGas: maxFeePerGas,
+        maxPriorityFeePerGas: maxPriorityFeePerGas,
+        adjustedMaxFeePerGas: maxPriorityFeePerGas
+      })
+      // Set maxFeePerGas to at least maxPriorityFeePerGas
+      maxFeePerGas = maxPriorityFeePerGas
     }
 
     return { gasPrice, maxFeePerGas, maxPriorityFeePerGas }
