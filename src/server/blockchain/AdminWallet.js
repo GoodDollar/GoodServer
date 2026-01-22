@@ -23,10 +23,7 @@ class AdminWallet extends Web3Wallet {
 
   addWallet(account) {
     super.addWallet(account)
-    // Only add to mainnet if mainnetWeb3 is initialized and not in test mode
-    if (this.mainnetWeb3 && this.conf.env !== 'test') {
-      this.addWalletAccount(this.mainnetWeb3, account)
-    }
+    this.addWalletAccount(this.mainnetWeb3, account)
   }
 
   getMainnetWeb3TransportProvider(): HttpProvider | WebSocketProvider {
@@ -57,22 +54,16 @@ class AdminWallet extends Web3Wallet {
     const { log, conf } = this
     const { ethereumMainnet, env } = conf
 
-    // Skip mainnet initialization in test mode to prevent async operations after Jest tears down
-    if (env !== 'test') {
-      log.debug('Initializing wallet mainnet:', { mainnet: ethereumMainnet })
+    log.debug('Initializing wallet mainnet:', { mainnet: ethereumMainnet })
 
-      const mainnetWeb3 = new Web3(this.getMainnetWeb3TransportProvider(), null, web3Default)
-      const mainnetTxManager = getManager(ethereumMainnet.network_id)
-      const { eth } = mainnetWeb3
-      const mainnetAddresses = []
+    const mainnetWeb3 = new Web3(this.getMainnetWeb3TransportProvider(), null, web3Default)
+    const mainnetTxManager = getManager(ethereumMainnet.network_id)
+    const { eth } = mainnetWeb3
+    const mainnetAddresses = []
 
-      assign(mainnetTxManager, { getTransactionCount: eth.getTransactionCount })
-      assign(eth, web3Default, { transactionPollingTimeout: 600 }) // slow ropsten
-      assign(this, { mainnetWeb3, mainnetTxManager, mainnetAddresses })
-    } else {
-      // Initialize empty arrays in test mode to prevent undefined errors
-      this.mainnetAddresses = []
-    }
+    assign(mainnetTxManager, { getTransactionCount: eth.getTransactionCount })
+    assign(eth, web3Default, { transactionPollingTimeout: 600 }) // slow ropsten
+    assign(this, { mainnetWeb3, mainnetTxManager, mainnetAddresses })
 
     await super.init()
 

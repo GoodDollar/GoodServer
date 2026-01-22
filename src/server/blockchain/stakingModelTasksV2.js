@@ -44,6 +44,11 @@ export class StakingModelManager {
     // polling timeout since ethereum has network congestion and we try to pay little gas so it will take a long time to confirm tx
     await AdminWallet.ready
 
+    // Skip mainnet contract initialization in test mode
+    if (!AdminWallet.mainnetWeb3) {
+      return
+    }
+
     this.managerContract = new AdminWallet.mainnetWeb3.eth.Contract(FundManagerABI.abi, this.managerAddress, {
       transactionPollingTimeout: 1000,
       from: AdminWallet.address
@@ -107,6 +112,11 @@ export class StakingModelManager {
 
   waitForTransferInterest = async txHash => {
     const { log } = this
+
+    // Skip if mainnetWeb3 is not available (e.g., in test mode)
+    if (!AdminWallet.mainnetWeb3) {
+      throw new Error('mainnetWeb3 not available')
+    }
 
     return retryAttempt(
       async retry => {
