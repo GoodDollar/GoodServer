@@ -24,7 +24,7 @@ class AdminWallet extends Web3Wallet {
   addWallet(account) {
     super.addWallet(account)
     // Only add to mainnet if mainnetWeb3 is initialized and not in test mode
-    if (this.mainnetWeb3 && this.conf.env !== 'test') {
+    if (!this.useKMS) {
       this.addWalletAccount(this.mainnetWeb3, account)
     }
   }
