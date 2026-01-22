@@ -5,7 +5,7 @@
 jest.mock('../../db/mongo-db')
 
 import Web3 from 'web3'
-import AdminWallet from '../AdminWallet'
+import { createAdminWallet } from '../AdminWallet'
 import conf from '../../server.config'
 
 const web3 = new Web3()
@@ -26,6 +26,8 @@ const generateWalletAddress = () => web3.eth.accounts.create().address
  * Tests will be skipped if KMS is not configured.
  */
 describe('AdminWallet KMS Transaction Submission', () => {
+  const AdminWallet = createAdminWallet(true) // Use KMS
+
   const isKMSConfigured = () => {
     const kmsKeysTag = conf.kmsKeysTag
     return kmsKeysTag !== undefined && kmsKeysTag !== null

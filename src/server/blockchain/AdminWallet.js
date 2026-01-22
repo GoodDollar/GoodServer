@@ -286,4 +286,8 @@ const options = {
   maxPriorityFeePerGas: (1e9).toFixed(0)
 }
 
-export default new AdminWallet('AdminWallet', conf, options, true)
+export const createAdminWallet = (useKMS = false) => {
+  return new AdminWallet('AdminWallet', conf, options, useKMS)
+}
+
+export default createAdminWallet()
