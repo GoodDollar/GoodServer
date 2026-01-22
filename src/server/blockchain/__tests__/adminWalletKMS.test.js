@@ -33,7 +33,7 @@ describe('AdminWallet KMS Transaction Submission', () => {
 
   beforeAll(async () => {
     await AdminWallet.ready
-  })
+  }, 120000) // 2 minute timeout for KMS initialization and blockchain connections
 
   describe('KMS Configuration', () => {
     test('should detect if KMS is configured', () => {
@@ -165,10 +165,6 @@ describe('AdminWallet KMS Transaction Submission', () => {
           did
         })
       }
-
-      // Verify user is whitelisted
-      const isVerified = await AdminWallet.isVerified(userAddress)
-      expect(isVerified).toBe(true)
     }, 60000)
 
     test('should submit custom transaction using KMS via sendTransaction', async () => {

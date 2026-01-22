@@ -14,8 +14,8 @@ import { HttpProviderFactory, WebsocketProvider } from './transport'
 const defaultRopstenGasPrice = web3Utils.toWei('5', 'gwei')
 
 class AdminWallet extends Web3Wallet {
-  constructor(name, conf, options) {
-    super(name, conf, options)
+  constructor(name, conf, options, useKMS = false) {
+    super(name, conf, options, useKMS)
 
     this.networkIdMainnet = conf.ethereumMainnet.network_id
     this.maxMainnetGasPrice = conf.maxGasPrice * 1000000000 // maxGasPrice is in gwei, convert to wei
@@ -286,4 +286,4 @@ const options = {
   maxPriorityFeePerGas: (1e9).toFixed(0)
 }
 
-export default new AdminWallet('AdminWallet', conf, options)
+export default new AdminWallet('AdminWallet', conf, options, true)

@@ -91,7 +91,7 @@ export class Web3Wallet {
     return this.initialize()
   }
 
-  constructor(name, conf, options = null) {
+  constructor(name, conf, options = null, useKMS = false) {
     const {
       ethereum = null,
       network = null,
@@ -103,6 +103,7 @@ export class Web3Wallet {
     const ethOpts = ethereum || conf.fuse
     const { network_id: networkId } = ethOpts
 
+    this.useKMS = useKMS
     this.faucetTxCost = faucetTxCost
     this.name = name
     this.addresses = []
@@ -168,32 +169,6 @@ export class Web3Wallet {
     })
     return web3Provider
   }
-
-  // getWeb3TransportProvider(): HttpProvider | WebSocketProvider {
-  //   let provider
-  //   let web3Provider
-  //   const { web3Transport, websocketWeb3Provider, httpWeb3Provider } = this.ethereum
-  //   const { log } = this
-
-  //   switch (web3Transport) {
-  //     case 'WebSocket':
-  //       provider = websocketWeb3Provider
-  //       web3Provider = new WebsocketProvider(provider)
-  //       break
-
-  //     case 'HttpProvider':
-  //     default: {
-  //       provider = httpWeb3Provider
-  //       web3Provider = HttpProviderFactory.create(provider, {
-  //         timeout: FUSE_TX_TIMEOUT
-  //       })
-  //       break
-  //     }
-  //   }
-
-  //   log.debug({ conf: this.conf, web3Provider, provider, wallet: this.name, network: this.networkId })
-  //   return web3Provider
-  // }
 
   addWalletAccount(web3, account) {
     const { eth } = web3
@@ -273,97 +248,104 @@ export class Web3Wallet {
       this.maxPriorityFeePerGas = undefined
     }
 
-    // Check for KMS configuration first
-    let kmsKeyIds = null
-    let kmsKeySource = null
+    // Initialize wallet based on useKMS flag
+    if (this.useKMS) {
+      // If useKMS is true, only use KMS wallet initialization (no fallback)
+      let kmsKeyIds = null
+      let kmsKeySource = null
 
-    // Try tag-based discovery first
-    if (this.conf.kmsKeysTag) {
-      try {
-        kmsKeyIds = await this.getKMSKeyIdsByTag()
-        if (kmsKeyIds && kmsKeyIds.length > 0) {
-          kmsKeySource = 'tag'
-          log.info('WalletInit: Discovered KMS keys by tag', {
+      // Try tag-based discovery first
+      if (this.conf.kmsKeysTag) {
+        try {
+          kmsKeyIds = await this.getKMSKeyIdsByTag()
+          if (kmsKeyIds && kmsKeyIds.length > 0) {
+            kmsKeySource = 'tag'
+            log.info('WalletInit: Discovered KMS keys by tag', {
+              tag: this.conf.kmsKeysTag,
+              keyCount: kmsKeyIds.length
+            })
+          }
+        } catch (error) {
+          log.warn('WalletInit: Failed to discover KMS keys by tag, trying direct key IDs', {
             tag: this.conf.kmsKeysTag,
-            keyCount: kmsKeyIds.length
+            error: error.message
           })
         }
-      } catch (error) {
-        log.warn('WalletInit: Failed to discover KMS keys by tag, trying direct key IDs', {
-          tag: this.conf.kmsKeysTag,
-          error: error.message
-        })
       }
-    }
 
-    if (kmsKeyIds && kmsKeyIds.length > 0) {
+      // If tag-based discovery didn't work, try direct key IDs
+      if (!kmsKeyIds || kmsKeyIds.length === 0) {
+        if (this.conf.kmsKeyIds) {
+          // Parse comma-separated key IDs
+          kmsKeyIds = this.conf.kmsKeyIds
+            .split(',')
+            .map(id => id.trim())
+            .filter(id => id.length > 0)
+          kmsKeySource = 'direct'
+          if (kmsKeyIds.length > 0) {
+            log.info('WalletInit: Using direct KMS key IDs', {
+              keyCount: kmsKeyIds.length
+            })
+          }
+        }
+      }
+
+      if (!kmsKeyIds || kmsKeyIds.length === 0) {
+        throw new Error('KMS wallet requested (useKMS=true) but no KMS keys found. Configure kmsKeysTag or kmsKeyIds.')
+      }
+
       this.numberOfAdminWalletAccounts = kmsKeyIds.length
+
+      // Initialize KMS wallet
+      this.kmsWallet = new KMSWallet(this.conf.kmsRegion)
+
+      // Initialize with discovered/provided KMS key IDs - add timeout to prevent hanging in CI
+      const addresses = await Promise.race([
+        this.kmsWallet.initialize(kmsKeyIds),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('KMS initialization timeout')), 10000))
+      ])
+      addresses.forEach(address => {
+        const keyId = this.kmsWallet.getKeyId(address)
+        this.addKMSWallet(address, keyId)
+      })
+      this.address = addresses[0]
+      log.info('WalletInit: Initialized by KMS keys:', {
+        addresses,
+        keyIds: kmsKeyIds,
+        source: kmsKeySource,
+        tag: kmsKeySource === 'tag' ? this.conf.kmsKeysTag : undefined,
+        network: this.network
+      })
     } else {
+      // If useKMS is false, skip KMS and use mnemonic or private key
       this.numberOfAdminWalletAccounts = conf.privateKey ? 1 : conf.numberOfAdminWalletAccounts
-    }
 
-    if (kmsKeyIds && kmsKeyIds.length > 0) {
-      try {
-        // Initialize KMS wallet
-        this.kmsWallet = new KMSWallet(this.conf.kmsRegion)
+      // Try mnemonic first
+      if (this.mnemonic) {
+        let root = HDKey.fromMasterSeed(bip39.mnemonicToSeed(this.mnemonic, this.conf.adminWalletPassword))
 
-        // Initialize with discovered/provided KMS key IDs - add timeout to prevent hanging in CI
-        const addresses = await Promise.race([
-          this.kmsWallet.initialize(kmsKeyIds),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('KMS initialization timeout')), 10000))
-        ])
-        addresses.forEach(address => {
-          const keyId = this.kmsWallet.getKeyId(address)
-          this.addKMSWallet(address, keyId)
-        })
-        this.address = addresses[0]
-        log.info('WalletInit: Initialized by KMS keys:', {
-          addresses,
-          keyIds: kmsKeyIds,
-          source: kmsKeySource,
-          tag: kmsKeySource === 'tag' ? this.conf.kmsKeysTag : undefined,
-          network: this.network
-        })
-      } catch (error) {
-        // KMS initialization failed (e.g., missing AWS credentials, AWS SDK version mismatch, timeout)
-        // This is expected in CI environments without AWS credentials
-        log.warn('WalletInit: KMS initialization failed, falling back to regular wallet:', {
-          error: error.message,
-          keyIds: kmsKeyIds,
-          source: kmsKeySource,
-          tag: kmsKeySource === 'tag' ? this.conf.kmsKeysTag : undefined,
-          network: this.network
-        })
-        // Clear kmsWallet reference to prevent any lingering async operations
-        this.kmsWallet = null
-        // Continue to privateKey/mnemonic initialization below
-      }
-    }
+        for (let i = 0; i < this.numberOfAdminWalletAccounts; i++) {
+          const path = "m/44'/60'/0'/0/" + i
+          let addrNode = root.derive(path)
+          let account = this.web3.eth.accounts.privateKeyToAccount('0x' + addrNode._privateKey.toString('hex'))
 
-    // If KMS wasn't configured or failed, try private key or mnemonic
-    if (!this.address && this.conf.privateKey) {
-      // Fallback to private key (deprecated)
-      let account = this.web3.eth.accounts.privateKeyToAccount(this.conf.privateKey)
+          this.addWallet(account)
+        }
 
-      this.address = account.address
-      this.addWallet(account)
+        this.address = this.addresses[0]
 
-      log.info('WalletInit: Initialized by private key:', { address: account.address })
-    } else if (!this.address && this.mnemonic) {
-      // Fallback to mnemonic
-      let root = HDKey.fromMasterSeed(bip39.mnemonicToSeed(this.mnemonic, this.conf.adminWalletPassword))
+        log.info('WalletInit: Initialized by mnemonic:', { address: this.addresses })
+      } else if (this.conf.privateKey) {
+        // Fallback to private key if mnemonic is not configured
+        let account = this.web3.eth.accounts.privateKeyToAccount(this.conf.privateKey)
 
-      for (let i = 0; i < this.numberOfAdminWalletAccounts; i++) {
-        const path = "m/44'/60'/0'/0/" + i
-        let addrNode = root.derive(path)
-        let account = this.web3.eth.accounts.privateKeyToAccount('0x' + addrNode._privateKey.toString('hex'))
-
+        this.address = account.address
         this.addWallet(account)
+
+        log.info('WalletInit: Initialized by private key:', { address: account.address })
+      } else {
+        log.warn('WalletInit: No wallet configuration found (useKMS=false, no mnemonic, no privateKey)')
       }
-
-      this.address = this.addresses[0]
-
-      log.info('WalletInit: Initialized by mnemonic:', { address: this.addresses })
     }
 
     // In test mode, if adminWalletAddress is missing, skip contract initialization but return success
