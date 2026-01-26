@@ -174,6 +174,7 @@ export class Web3Wallet {
     const { eth } = web3
 
     eth.accounts.wallet.add(account)
+    web3.utils.toChecksumAddress(account.address)
     eth.defaultAccount = account.address
     // Force synchronous address validation by accessing the wallet entry
     // This ensures keccak module imports happen during initialization, not after Jest tears down
