@@ -164,13 +164,14 @@ class AdminWallet extends Web3Wallet {
       // Get PromiEvent - either from KMS signing or regular signing
       let promiEvent
       if (this.isKMSWallet(address) && this.kmsWallet) {
-        // Sign transaction with KMS and get PromiEvent
-        promiEvent = await this._signTransactionWithKMS(tx, address, {
+        // Sign transaction with KMS, then create PromiEvent synchronously
+        const signedTx = await this._signTransactionWithKMS(tx, address, {
           gas,
           gasPrice: gasPrice.toString(),
           nonce,
           chainId: this.networkIdMainnet
         })
+        promiEvent = this.web3.eth.sendSignedTransaction(signedTx)
       } else {
         // Use traditional signing flow
         promiEvent = tx.send({

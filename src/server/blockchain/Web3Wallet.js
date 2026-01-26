@@ -1308,7 +1308,7 @@ export class Web3Wallet {
   }
 
   /**
-   * Sign transaction with KMS and return a PromiEvent
+   * Sign transaction with KMS and return the signed transaction string
    * @private
    */
   async _signTransactionWithKMS(
@@ -1323,14 +1323,9 @@ export class Web3Wallet {
       chainId: number,
       value?: string | number
     }
-  ): Promise<PromiEvent> {
-    // This function is async because it needs to await KMS signing,
-    // but returns a PromiEvent which should be used directly without awaiting
+  ): Promise<string> {
     const { gas, maxFeePerGas, maxPriorityFeePerGas, gasPrice, nonce, chainId } = txParams
     const logger = this.log
-
-    // Use this.web3
-    const web3 = this.web3
 
     // Extract transaction data from Web3 contract method
     const txData = tx.encodeABI()
@@ -1379,16 +1374,7 @@ export class Web3Wallet {
     logger.debug('Signing transaction with KMS', { address, chainId, supportsEIP1559 })
     const signedTx = await this.kmsWallet.signTransaction(address, kmsTxParams)
 
-    // Return PromiEvent from sending signed transaction
-    // Note: PromiEvents are thenable (implement Promise interface), so when returned from async function,
-    // they get wrapped in Promise.resolve(). We need to return it in a way that
-    // preserves the PromiEvent object, not its resolved value.
-    // Create the PromiEvent
-    const promiEvent = web3.eth.sendSignedTransaction(signedTx)
-
-    // Return a Promise that resolves to a non-thenable object containing the PromiEvent
-    // This prevents the PromiEvent from being treated as thenable when awaited
-    return Promise.resolve({ __promiEvent: promiEvent })
+    return signedTx
   }
 
   /**
@@ -1532,11 +1518,9 @@ export class Web3Wallet {
     const { fail } = options
 
     try {
-      // Note: _signTransactionWithKMS returns a Promise that resolves to { __promiEvent: PromiEvent }
-      // to prevent the PromiEvent from being treated as thenable
-      const promiEventWrapper = await this._signTransactionWithKMS(tx, address, txParams)
-      // Extract the PromiEvent from the wrapper (don't await it!)
-      const promiEvent = promiEventWrapper.__promiEvent
+      // Sign transaction with KMS, then create PromiEvent synchronously
+      const signedTx = await this._signTransactionWithKMS(tx, address, txParams)
+      const promiEvent = this.web3.eth.sendSignedTransaction(signedTx)
 
       return this._wrapPromiEventWithHandlers(promiEvent, txCallbacks, { release, txuuid, logger }, { fail })
     } catch (error) {
@@ -1639,10 +1623,8 @@ export class Web3Wallet {
       // Get PromiEvent - either from KMS signing or regular signing
       let promiEvent
       if (this.isKMSWallet(address) && this.kmsWallet) {
-        // Sign transaction with KMS and get PromiEvent
-        // Note: _signTransactionWithKMS returns a Promise that resolves to { __promiEvent: PromiEvent }
-        // to prevent the PromiEvent from being treated as thenable
-        const promiEventWrapper = await this._signTransactionWithKMS(tx, address, {
+        // Sign transaction with KMS, then create PromiEvent synchronously
+        const signedTx = await this._signTransactionWithKMS(tx, address, {
           gas,
           maxFeePerGas,
           maxPriorityFeePerGas,
@@ -1651,8 +1633,7 @@ export class Web3Wallet {
           chainId: this.networkId,
           value: txValue
         })
-        // Extract the PromiEvent from the wrapper (don't await it!)
-        promiEvent = promiEventWrapper.__promiEvent
+        promiEvent = this.web3.eth.sendSignedTransaction(signedTx)
       } else {
         // Use traditional signing flow
         const sendParams = {
