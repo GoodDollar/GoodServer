@@ -1197,60 +1197,54 @@ export class Web3Wallet {
    * @returns {Promise<Object>} Normalized gas pricing with gasPrice, maxFeePerGas, maxPriorityFeePerGas
    */
   async normalizeGasPricing({ gasPrice, maxFeePerGas, maxPriorityFeePerGas }, logger) {
-    // Use instance defaults if not provided
-    gasPrice = gasPrice || this.gasPrice
-    maxFeePerGas = maxFeePerGas !== undefined ? maxFeePerGas : this.maxFeePerGas
-    maxPriorityFeePerGas = maxPriorityFeePerGas !== undefined ? maxPriorityFeePerGas : this.maxPriorityFeePerGas
-
-    // Convert string values to numbers for comparison
-    const maxFeeNum = maxFeePerGas ? (typeof maxFeePerGas === 'string' ? parseInt(maxFeePerGas) : maxFeePerGas) : 0
-    const maxPriorityNum = maxPriorityFeePerGas
-      ? typeof maxPriorityFeePerGas === 'string'
-        ? parseInt(maxPriorityFeePerGas)
-        : maxPriorityFeePerGas
-      : 0
-
-    // Decide between legacy gasPrice and EIP-1559 fees
-    if (gasPrice && !maxFeeNum && !maxPriorityNum) {
-      logger.info('using legacy gasPrice tx')
-    } else {
-      gasPrice = undefined
+    // Helper to convert value to number (handles string, number, null, undefined)
+    const toNumber = val => {
+      if (val === null || val === undefined) return 0
+      return typeof val === 'string' ? parseInt(val) || 0 : Number(val) || 0
     }
 
-    // Fetch fee estimates if EIP-1559 fees are not provided or invalid
-    if (!gasPrice && (!maxFeeNum || !maxPriorityNum)) {
-      const { baseFee, priorityFee } = await this.getFeeEstimates()
-      maxFeePerGas = maxFeeNum || baseFee
-      maxPriorityFeePerGas = maxPriorityNum || priorityFee
-    }
+    // Check if network supports EIP-1559
+    const supportsEIP1559 = await this.supportsEIP1559()
 
-    // Ensure maxFeePerGas >= maxPriorityFeePerGas (EIP-1559 requirement)
-    // Convert to numbers for comparison (handle both string and number types, and 0 values)
-    const finalMaxFee =
-      maxFeePerGas !== undefined && maxFeePerGas !== null
-        ? typeof maxFeePerGas === 'string'
-          ? parseInt(maxFeePerGas) || 0
-          : maxFeePerGas
-        : 0
-    const finalMaxPriority =
-      maxPriorityFeePerGas !== undefined && maxPriorityFeePerGas !== null
-        ? typeof maxPriorityFeePerGas === 'string'
-          ? parseInt(maxPriorityFeePerGas) || 0
-          : maxPriorityFeePerGas
-        : 0
-
-    // If both are set and maxFeePerGas is invalid (0 or less than maxPriorityFeePerGas), adjust it
-    if (finalMaxPriority > 0 && (finalMaxFee === 0 || finalMaxFee < finalMaxPriority)) {
-      logger.warn('maxFeePerGas < maxPriorityFeePerGas or is 0, adjusting maxFeePerGas', {
-        originalMaxFeePerGas: maxFeePerGas,
-        maxPriorityFeePerGas: maxPriorityFeePerGas,
-        adjustedMaxFeePerGas: maxPriorityFeePerGas
+    if (!supportsEIP1559) {
+      // Network doesn't support EIP-1559, use legacy gasPrice only
+      gasPrice = gasPrice || this.gasPrice
+      logger.debug('Network does not support EIP-1559, using legacy gasPrice', {
+        network: this.network,
+        networkId: this.networkId
       })
-      // Set maxFeePerGas to at least maxPriorityFeePerGas
-      maxFeePerGas = maxPriorityFeePerGas
-    }
+      return { gasPrice, maxFeePerGas: undefined, maxPriorityFeePerGas: undefined }
+    } else {
+      // Network supports EIP-1559, process EIP-1559 fees
+      // Use instance defaults if not provided
+      maxFeePerGas = maxFeePerGas !== undefined ? maxFeePerGas : this.maxFeePerGas
+      maxPriorityFeePerGas = maxPriorityFeePerGas !== undefined ? maxPriorityFeePerGas : this.maxPriorityFeePerGas
 
-    return { gasPrice, maxFeePerGas, maxPriorityFeePerGas }
+      // Convert to numbers for comparison
+      let maxFeeNum = toNumber(maxFeePerGas)
+      let maxPriorityNum = toNumber(maxPriorityFeePerGas)
+
+      // Fetch fee estimates if EIP-1559 fees are not provided or invalid
+      if (!maxFeeNum || !maxPriorityNum) {
+        const { baseFee, priorityFee } = await this.getFeeEstimates()
+        maxFeePerGas = maxFeeNum || baseFee
+        maxPriorityFeePerGas = maxPriorityNum || priorityFee
+        maxFeeNum = toNumber(maxFeePerGas)
+        maxPriorityNum = toNumber(maxPriorityFeePerGas)
+      }
+
+      // Ensure maxFeePerGas >= maxPriorityFeePerGas (EIP-1559 requirement)
+      if (maxPriorityNum > 0 && (maxFeeNum === 0 || maxFeeNum < maxPriorityNum)) {
+        logger.warn('maxFeePerGas < maxPriorityFeePerGas or is 0, adjusting maxFeePerGas', {
+          originalMaxFeePerGas: maxFeePerGas,
+          maxPriorityFeePerGas: maxPriorityFeePerGas,
+          adjustedMaxFeePerGas: maxPriorityFeePerGas
+        })
+        maxFeePerGas = maxPriorityFeePerGas
+      }
+
+      return { gasPrice: undefined, maxFeePerGas, maxPriorityFeePerGas }
+    }
   }
 
   /**
