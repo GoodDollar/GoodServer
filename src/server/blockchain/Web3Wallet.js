@@ -241,7 +241,7 @@ export class Web3Wallet {
     assign(this.web3.eth, web3Default)
 
     // Check if provider supports EIP-1559, and set maxFeePerGas/maxPriorityFeePerGas to undefined if not
-    const supportsEIP1559 = await this.supportsEIP1559(this.web3)
+    const supportsEIP1559 = await this.supportsEIP1559()
     if (!supportsEIP1559) {
       log.debug('Provider does not support EIP-1559, clearing maxFeePerGas and maxPriorityFeePerGas', {
         network: this.network,
@@ -1256,13 +1256,12 @@ export class Web3Wallet {
   /**
    * Check if the RPC supports EIP-1559 using multiple methods:
    * Check chain ID against known EIP-1559 supporting networks
-   * @param web3Instance - Web3 instance to check (defaults to this.web3)
    * @returns Promise resolving to boolean indicating EIP-1559 support
    */
-  async supportsEIP1559(web3Instance?: Web3): Promise<boolean> {
+  async supportsEIP1559(): Promise<boolean> {
     const { log } = this
     try {
-      const web3 = web3Instance || this.web3
+      const web3 = this.web3
       if (!web3) {
         log.warn('No web3 instance available for EIP-1559 check')
         return false
@@ -1311,9 +1310,6 @@ export class Web3Wallet {
   /**
    * Sign transaction with KMS and return a PromiEvent
    * @private
-   * @param {Object} options - Additional options for mainnet transactions
-   * @param {Web3} options.web3Instance - Optional Web3 instance (defaults to this.web3)
-   * @param {string} options.rpcUrl - Optional RPC URL override (defaults to this.ethereum.httpWeb3Provider)
    */
   async _signTransactionWithKMS(
     tx: any,
@@ -1326,20 +1322,15 @@ export class Web3Wallet {
       nonce: number,
       chainId: number,
       value?: string | number
-    },
-    options: {
-      web3Instance?: Web3,
-      rpcUrl?: string
-    } = {}
+    }
   ): Promise<PromiEvent> {
     // This function is async because it needs to await KMS signing,
     // but returns a PromiEvent which should be used directly without awaiting
     const { gas, maxFeePerGas, maxPriorityFeePerGas, gasPrice, nonce, chainId } = txParams
-    const { web3Instance, rpcUrl } = options
     const logger = this.log
 
-    // Use provided web3 instance or default to this.web3
-    const web3 = web3Instance || this.web3
+    // Use this.web3
+    const web3 = this.web3
 
     // Extract transaction data from Web3 contract method
     const txData = tx.encodeABI()
@@ -1356,7 +1347,7 @@ export class Web3Wallet {
       nonce,
       chainId,
       gasLimit: gas.toString(),
-      rpcUrl: rpcUrl || (this.ethereum.httpWeb3Provider ? this.ethereum.httpWeb3Provider.split(',')[0] : undefined)
+      rpcUrl: this.ethereum.httpWeb3Provider ? this.ethereum.httpWeb3Provider.split(',')[0] : undefined
     }
 
     // Add value if non-zero (for payable functions)
@@ -1367,7 +1358,7 @@ export class Web3Wallet {
 
     // Check if the RPC supports EIP-1559. If it doesn't, remove maxFeePerGas
     // to use the legacy gasPrice field instead
-    const supportsEIP1559 = await this.supportsEIP1559(web3)
+    const supportsEIP1559 = await this.supportsEIP1559()
     let adjustedMaxFeePerGas = maxFeePerGas
     let adjustedMaxPriorityFeePerGas = maxPriorityFeePerGas
     if (!supportsEIP1559) {
@@ -1512,8 +1503,6 @@ export class Web3Wallet {
    * Send transaction using KMS signing (kept for backward compatibility)
    * @private
    * @param {Object} options - Additional options for mainnet transactions
-   * @param {Web3} options.web3Instance - Optional Web3 instance (defaults to this.web3)
-   * @param {string} options.rpcUrl - Optional RPC URL override (defaults to this.ethereum.httpWeb3Provider)
    * @param {Function} options.fail - Optional fail callback for error handling
    */
   async sendTransactionWithKMS(
@@ -1536,21 +1525,16 @@ export class Web3Wallet {
       logger: any
     },
     options: {
-      web3Instance?: Web3,
-      rpcUrl?: string,
       fail?: Function
     } = {}
   ) {
     const { release, txuuid, logger } = context
-    const { web3Instance, rpcUrl, fail } = options
+    const { fail } = options
 
     try {
       // Note: _signTransactionWithKMS returns a Promise that resolves to { __promiEvent: PromiEvent }
       // to prevent the PromiEvent from being treated as thenable
-      const promiEventWrapper = await this._signTransactionWithKMS(tx, address, txParams, {
-        web3Instance,
-        rpcUrl
-      })
+      const promiEventWrapper = await this._signTransactionWithKMS(tx, address, txParams)
       // Extract the PromiEvent from the wrapper (don't await it!)
       const promiEvent = promiEventWrapper.__promiEvent
 
