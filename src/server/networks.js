@@ -16,7 +16,7 @@ export default once(() => {
     1: {
       network_id: 1,
       web3Transport: 'HttpProvider',
-      httpWeb3Provider: `https://rpc.flashbots.net,https://eth-rpc.gateway.pokt.network,https://cloudflare-eth.com,https://eth-mainnet.alchemyapi.io/v2/${alchemyKey}`,
+      httpWeb3Provider: `https://rpc.flashbots.net,https://eth-rpc.gateway.pokt.network,https://cloudflare-eth.com,https://eth-mainnet.g.alchemyapi.com/v2/${alchemyKey}`,
       websocketWeb3Provider: 'wss://mainnet.infura.io/ws',
       explorer: ''
     },
