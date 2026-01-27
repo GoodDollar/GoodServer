@@ -6,6 +6,13 @@ import getTaskRunner from '../TaskRunner'
 import { noopAsync } from '../../utils/async'
 import walletNonce from '../../db/mongo/models/wallet-nonce'
 
+jest.mock('../../blockchain/AdminWallet', () => {
+  return jest.fn().mockImplementation(() => ({
+    init: jest.fn().mockResolvedValue(undefined),
+    addWallet: jest.fn()
+  }))
+})
+
 const TaskRunner = getTaskRunner()
 
 describe('TaskRunner', () => {
