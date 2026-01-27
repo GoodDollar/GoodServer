@@ -15,7 +15,7 @@ import ContractsAddress from '@gooddollar/goodprotocol/releases/deployment.json'
 import FaucetABI from '@gooddollar/goodprotocol/artifacts/contracts/fuseFaucet/FuseFaucetV2.sol/FuseFaucetV2.json'
 import BuyGDFactoryABI from '@gooddollar/goodprotocol/artifacts/abis/BuyGDCloneFactory.min.json'
 import BuyGDABI from '@gooddollar/goodprotocol/artifacts/abis/BuyGDClone.min.json'
-// import { toChecksumAddress } from 'web3-utils'
+import { toChecksumAddress, sha3 } from 'web3-utils'
 
 import conf from '../server.config'
 import logger from '../../imports/logger'
@@ -30,6 +30,11 @@ import { KMSWallet } from './KMSWallet'
 
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000'
 const FUSE_TX_TIMEOUT = 25000 // should be confirmed after max 5 blocks (25sec)
+
+// Force keccak module to load at import time by calling sha3
+// This ensures keccak is loaded synchronously before Jest can tear down
+// Using a dummy input to trigger the import without side effects
+void sha3('0x00')
 
 //extend admin abi with genericcallbatch
 const AdminWalletABI = [
@@ -175,7 +180,7 @@ export class Web3Wallet {
     const { eth } = web3
 
     eth.accounts.wallet.add(account)
-    eth.defaultAccount = account.address
+    eth.defaultAccount = toChecksumAddress(account.address)
   }
 
   addWallet(account) {
