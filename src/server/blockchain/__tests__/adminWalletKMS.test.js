@@ -25,7 +25,7 @@ const generateWalletAddress = () => web3.eth.accounts.create().address
  *
  * Tests will be skipped if KMS is not configured.
  */
-describe.skip('AdminWallet KMS Transaction Submission', () => {
+describe('AdminWallet KMS Transaction Submission', () => {
   const AdminWallet = createAdminWallet(true) // Use KMS
 
   const isKMSConfigured = () => {

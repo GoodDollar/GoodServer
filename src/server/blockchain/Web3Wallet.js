@@ -15,6 +15,7 @@ import ContractsAddress from '@gooddollar/goodprotocol/releases/deployment.json'
 import FaucetABI from '@gooddollar/goodprotocol/artifacts/contracts/fuseFaucet/FuseFaucetV2.sol/FuseFaucetV2.json'
 import BuyGDFactoryABI from '@gooddollar/goodprotocol/artifacts/abis/BuyGDCloneFactory.min.json'
 import BuyGDABI from '@gooddollar/goodprotocol/artifacts/abis/BuyGDClone.min.json'
+import { toChecksumAddress } from 'web3-utils'
 
 import conf from '../server.config'
 import logger from '../../imports/logger'
@@ -174,11 +175,11 @@ export class Web3Wallet {
     const { eth } = web3
 
     eth.accounts.wallet.add(account)
-    web3.utils.toChecksumAddress(account.address)
-    eth.defaultAccount = account.address
+    const checksumAddress = toChecksumAddress(account.address)
+    eth.defaultAccount = checksumAddress
     // Force synchronous address validation by accessing the wallet entry
     // This ensures keccak module imports happen during initialization, not after Jest tears down
-    void eth.accounts.wallet[account.address]
+    void eth.accounts.wallet[checksumAddress]
   }
 
   addWallet(account) {
