@@ -1410,13 +1410,12 @@ export class Web3Wallet {
     },
     options: {
       fail?: Function,
-      onSent?: Function,
-      checkFundsError?: boolean
+      onSent?: Function
     } = {}
   ): Promise<TransactionReceipt> {
     const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
     const { release, txuuid, logger, address, nonce, gas, maxFeePerGas, maxPriorityFeePerGas } = context
-    const { fail, onSent, checkFundsError } = options
+    const { fail, onSent } = options
 
     return new Promise((res, rej) => {
       // Verify promiEvent is actually a PromiEvent (has .on method)
@@ -1467,7 +1466,7 @@ export class Web3Wallet {
         })
         .on('error', async e => {
           // Check for funds error if requested (for non-KMS transactions)
-          if (checkFundsError && isFundsError(e) && address) {
+          if (isFundsError(e) && address) {
             const balance = await this.web3.eth.getBalance(address)
             logger.warn('sendTransaciton funds issue retry', {
               errMessage: e.message,
@@ -1681,8 +1680,7 @@ export class Web3Wallet {
         {
           onSent: payload => {
             txHash = payload?.transactionHash || txHash
-          },
-          checkFundsError: !this.isKMSWallet(address) // Only check funds errors for non-KMS
+          }
         }
       )
 
