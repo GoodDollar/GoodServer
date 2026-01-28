@@ -125,6 +125,7 @@ export class Web3Wallet {
     this.gasPrice = gasPrice
     this.log = logger.child({ from: `${name}/${this.networkId}` })
     this.kmsWallet = null // Will be initialized if KMS is used
+    this._supportsEIP1559 = null // Cached EIP-1559 support check result
 
     // Skip automatic initialization in test environment to prevent async operations
     // from running after Jest tears down the test environment
@@ -243,9 +244,10 @@ export class Web3Wallet {
 
     assign(this.web3.eth, web3Default)
 
-    // Check if provider supports EIP-1559, and set maxFeePerGas/maxPriorityFeePerGas to undefined if not
-    const supportsEIP1559 = await this.supportsEIP1559()
-    if (!supportsEIP1559) {
+    // Check if provider supports EIP-1559 once on wallet creation and cache the result
+    // This avoids repeated RPC calls for the same network
+    this._supportsEIP1559 = await this.supportsEIP1559()
+    if (!this._supportsEIP1559) {
       log.debug('Provider does not support EIP-1559, clearing maxFeePerGas and maxPriorityFeePerGas', {
         network: this.network,
         networkId: this.networkId
@@ -1253,14 +1255,21 @@ export class Web3Wallet {
   /**
    * Check if the RPC supports EIP-1559 using multiple methods:
    * Check chain ID against known EIP-1559 supporting networks
+   * Result is cached after first call to avoid repeated RPC calls
    * @returns Promise resolving to boolean indicating EIP-1559 support
    */
   async supportsEIP1559(): Promise<boolean> {
+    // Return cached result if available (set during wallet initialization)
+    if (this._supportsEIP1559 !== null) {
+      return this._supportsEIP1559
+    }
+
     const { log } = this
     try {
       const web3 = this.web3
       if (!web3) {
         log.warn('No web3 instance available for EIP-1559 check')
+        this._supportsEIP1559 = false
         return false
       }
 
@@ -1273,7 +1282,10 @@ export class Web3Wallet {
         42161, // Arbitrum One
         10, // Optimism
         5, // Goerli
-        80001 // Mumbai (Polygon testnet)
+        80001, // Mumbai (Polygon testnet)
+        122, // Fuse
+        42220 // Celo
+        // Note: XDC (50) will also become EIP-1559 soon and should be added when it's live
       ])
 
       if (knownEIP1559Chains.has(chainId)) {
@@ -1287,12 +1299,15 @@ export class Web3Wallet {
               blockNumber: latestBlock.number,
               londonForkBlock
             })
+            this._supportsEIP1559 = false
             return false
           }
         }
+        this._supportsEIP1559 = true
         return true
       }
 
+      this._supportsEIP1559 = false
       return false
     } catch (error) {
       log.warn('Failed to check EIP-1559 support, assuming legacy network', {
@@ -1300,6 +1315,7 @@ export class Web3Wallet {
         networkId: this.networkId
       })
       // If we can't check, assume it doesn't support EIP-1559 (safer fallback)
+      this._supportsEIP1559 = false
       return false
     }
   }
