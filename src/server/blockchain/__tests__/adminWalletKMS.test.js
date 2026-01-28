@@ -23,7 +23,8 @@ const generateWalletAddress = () => web3.eth.accounts.create().address
  * 2. Set AWS_REGION environment variable (e.g., 'us-east-1')
  * 3. Ensure AWS credentials are configured (via AWS CLI, IAM role, or env vars)
  *
- * Tests will be skipped if KMS is not configured.
+ * IMPORTANT: All tests will FAIL if KMS is not configured. This ensures that
+ * KMS functionality is properly tested and not silently skipped.
  */
 describe('AdminWallet KMS Transaction Submission', () => {
   const AdminWallet = createAdminWallet(true) // Use KMS
@@ -34,36 +35,26 @@ describe('AdminWallet KMS Transaction Submission', () => {
   }
 
   beforeAll(async () => {
+    // Fail all tests if KMS is not configured
+    if (!isKMSConfigured()) {
+      throw new Error('KMS is not configured. Set KMS_KEY_IDS env var to enable KMS tests. All tests will fail.')
+    }
     await AdminWallet.ready
   }, 120000) // 2 minute timeout for KMS initialization and blockchain connections
 
   describe('KMS Configuration', () => {
     test('should detect if KMS is configured', () => {
       const configured = isKMSConfigured()
-      if (configured) {
-        console.log('KMS is configured with key IDs:', conf.kmsKeyIds)
-      } else {
-        console.log('KMS is not configured. Set KMS_KEY_IDS env var to enable KMS tests.')
-      }
+      console.log('KMS is configured with key IDs:', conf.kmsKeysTag)
       expect(configured).toBe(true)
     })
 
     test('should have KMS wallet initialized if KMS is configured', async () => {
-      if (!isKMSConfigured()) {
-        console.log('Skipping: KMS not configured')
-        return
-      }
-
       expect(AdminWallet.kmsWallet).toBeDefined()
       expect(AdminWallet.kmsWallet).not.toBeNull()
     })
 
     test('should have KMS addresses if KMS is configured', async () => {
-      if (!isKMSConfigured()) {
-        console.log('Skipping: KMS not configured')
-        return
-      }
-
       expect(AdminWallet.addresses).toBeDefined()
       expect(AdminWallet.addresses.length).toBeGreaterThan(0)
 
@@ -73,11 +64,6 @@ describe('AdminWallet KMS Transaction Submission', () => {
     })
 
     test('should identify KMS wallet addresses correctly', async () => {
-      if (!isKMSConfigured()) {
-        console.log('Skipping: KMS not configured')
-        return
-      }
-
       const kmsAddresses = AdminWallet.addresses.filter(addr => AdminWallet.isKMSWallet(addr))
 
       expect(kmsAddresses.length).toBeGreaterThan(0)
@@ -95,11 +81,6 @@ describe('AdminWallet KMS Transaction Submission', () => {
 
   describe('KMS Transaction Submission', () => {
     test('should submit topWallet transaction using KMS', async () => {
-      if (!isKMSConfigured()) {
-        console.log('Skipping: KMS not configured')
-        return
-      }
-
       // Verify KMS wallet is available
       const kmsAddress = AdminWallet.addresses.find(addr => AdminWallet.isKMSWallet(addr))
       expect(kmsAddress).toBeDefined()
@@ -139,11 +120,6 @@ describe('AdminWallet KMS Transaction Submission', () => {
     }, 60000) // 60 second timeout for KMS operations
 
     test('should submit whitelist transaction using KMS', async () => {
-      if (!isKMSConfigured()) {
-        console.log('Skipping: KMS not configured')
-        return
-      }
-
       const userAddress = generateWalletAddress()
       const did = 'did:gd:test-' + Math.random().toString(36).substring(7)
 
@@ -170,11 +146,6 @@ describe('AdminWallet KMS Transaction Submission', () => {
     }, 60000)
 
     test('should submit custom transaction using KMS via sendTransaction', async () => {
-      if (!isKMSConfigured()) {
-        console.log('Skipping: KMS not configured')
-        return
-      }
-
       // WETH contract address (mainnet: 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2)
       // Update this address based on your network
       const wethAddress = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
@@ -276,11 +247,6 @@ describe('AdminWallet KMS Transaction Submission', () => {
     }, 60000)
 
     test('should handle multiple KMS transactions in sequence', async () => {
-      if (!isKMSConfigured()) {
-        console.log('Skipping: KMS not configured')
-        return
-      }
-
       const addresses = [generateWalletAddress(), generateWalletAddress(), generateWalletAddress()]
 
       const receipts = []
@@ -307,11 +273,6 @@ describe('AdminWallet KMS Transaction Submission', () => {
 
   describe('KMS Wallet Information', () => {
     test('should provide KMS key information for addresses', async () => {
-      if (!isKMSConfigured()) {
-        console.log('Skipping: KMS not configured')
-        return
-      }
-
       const kmsAddresses = AdminWallet.addresses.filter(addr => AdminWallet.isKMSWallet(addr))
 
       expect(kmsAddresses.length).toBeGreaterThan(0)
@@ -331,11 +292,6 @@ describe('AdminWallet KMS Transaction Submission', () => {
     })
 
     test('should list all KMS addresses', async () => {
-      if (!isKMSConfigured()) {
-        console.log('Skipping: KMS not configured')
-        return
-      }
-
       const kmsAddresses = AdminWallet.kmsWallet.getAddresses()
 
       expect(kmsAddresses).toBeDefined()
