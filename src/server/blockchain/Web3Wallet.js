@@ -1363,26 +1363,19 @@ export class Web3Wallet {
       kmsTxParams.value = value
     }
 
-    // Check if the RPC supports EIP-1559. If it doesn't, remove maxFeePerGas
-    // to use the legacy gasPrice field instead
-    const supportsEIP1559 = await this.supportsEIP1559()
-    let adjustedMaxFeePerGas = maxFeePerGas
-    let adjustedMaxPriorityFeePerGas = maxPriorityFeePerGas
-    if (!supportsEIP1559) {
-      logger.debug('Network does not support EIP-1559, removing maxFeePerGas', { chainId })
-      adjustedMaxFeePerGas = undefined
-      adjustedMaxPriorityFeePerGas = undefined
-    }
+    // Normalize gas pricing (deduplicated logic)
+    const normalizedGas = await this.normalizeGasPricing({ gasPrice, maxFeePerGas, maxPriorityFeePerGas }, logger)
 
     // Add gas pricing
-    if (adjustedMaxFeePerGas && adjustedMaxPriorityFeePerGas) {
-      kmsTxParams.maxFeePerGas = adjustedMaxFeePerGas.toString()
-      kmsTxParams.maxPriorityFeePerGas = adjustedMaxPriorityFeePerGas.toString()
-    } else if (gasPrice) {
-      kmsTxParams.gasPrice = gasPrice.toString()
+    if (normalizedGas.maxFeePerGas && normalizedGas.maxPriorityFeePerGas) {
+      kmsTxParams.maxFeePerGas = normalizedGas.maxFeePerGas.toString()
+      kmsTxParams.maxPriorityFeePerGas = normalizedGas.maxPriorityFeePerGas.toString()
+    } else if (normalizedGas.gasPrice) {
+      kmsTxParams.gasPrice = normalizedGas.gasPrice.toString()
     }
 
     // Sign transaction with KMS
+    const supportsEIP1559 = await this.supportsEIP1559()
     logger.debug('Signing transaction with KMS', { address, chainId, supportsEIP1559 })
     const signedTx = await this.kmsWallet.signTransaction(address, kmsTxParams)
 
