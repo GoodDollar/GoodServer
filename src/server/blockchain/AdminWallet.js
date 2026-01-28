@@ -14,8 +14,8 @@ import { HttpProviderFactory, WebsocketProvider } from './transport'
 const defaultRopstenGasPrice = web3Utils.toWei('5', 'gwei')
 
 class AdminWallet extends Web3Wallet {
-  constructor(name, conf, options) {
-    super(name, conf, options)
+  constructor(name, conf, options, useKMS = false) {
+    super(name, conf, options, useKMS)
 
     this.networkIdMainnet = conf.ethereumMainnet.network_id
     this.maxMainnetGasPrice = conf.maxGasPrice * 1000000000 // maxGasPrice is in gwei, convert to wei
@@ -67,28 +67,28 @@ class AdminWallet extends Web3Wallet {
 
     await super.init()
 
-    if (env !== 'production') {
+    if (env !== 'production' && this.mainnetWeb3) {
       log.info('Initializing adminwallet mainnet addresses', { addresses: this.addresses })
 
       await Promise.all(
         this.addresses.map(async addr => {
-          const mainnetBalance = await mainnetWeb3.eth.getBalance(addr)
+          const mainnetBalance = await this.mainnetWeb3.eth.getBalance(addr)
 
           log.info(`try mainnnet address ${addr}:`, { mainnetBalance, adminMinBalance })
 
           if (parseFloat(web3Utils.fromWei(mainnetBalance, 'gwei')) > adminMinBalance * 100) {
             log.info(`admin wallet ${addr} mainnet balance ${mainnetBalance}`)
-            mainnetAddresses.push(addr)
+            this.mainnetAddresses.push(addr)
           }
         })
       )
 
-      log.info('Initialized adminwallet mainnet addresses', { mainnetAddresses })
-      await mainnetTxManager.createListIfNotExists(mainnetAddresses)
+      log.info('Initialized adminwallet mainnet addresses', { mainnetAddresses: this.mainnetAddresses })
+      await this.mainnetTxManager.createListIfNotExists(this.mainnetAddresses)
     }
 
     log.debug('AdminWallet mainnet Ready:', {
-      activeMainnetWallets: mainnetAddresses.length
+      activeMainnetWallets: this.mainnetAddresses ? this.mainnetAddresses.length : 0
     })
 
     return true
@@ -157,19 +157,36 @@ class AdminWallet extends Web3Wallet {
         uuid,
         balance,
         gas,
-        gasPrice
+        gasPrice,
+        isKMS: this.isKMSWallet(address)
       })
 
-      return new Promise((res, rej) => {
-        tx.send({
+      // Get PromiEvent - either from KMS signing or regular signing
+      let promiEvent
+      if (this.isKMSWallet(address) && this.kmsWallet) {
+        // Sign transaction with KMS, then create PromiEvent synchronously
+        const signedTx = await this._signTransactionWithKMS(tx, address, {
+          gas,
+          gasPrice: gasPrice.toString(),
+          nonce,
+          chainId: this.networkIdMainnet
+        })
+        promiEvent = this.web3.eth.sendSignedTransaction(signedTx)
+      } else {
+        // Use traditional signing flow
+        promiEvent = tx.send({
           gas,
           gasPrice,
           nonce,
           from: address
         })
+      }
+
+      // Wrap PromiEvent with shared event handlers, but handle mainnet-specific retry logic
+      return new Promise((res, rej) => {
+        promiEvent
           .on('transactionHash', h => {
             release()
-
             log.debug('got tx hash mainnet:', { txhash: h, uuid })
 
             if (onTransactionHash) {
@@ -260,4 +277,8 @@ const options = {
   maxPriorityFeePerGas: (1e9).toFixed(0)
 }
 
-export default new AdminWallet('AdminWallet', conf, options)
+export const createAdminWallet = (useKMS = false) => {
+  return new AdminWallet('AdminWallet', conf, options, useKMS)
+}
+
+export default createAdminWallet()

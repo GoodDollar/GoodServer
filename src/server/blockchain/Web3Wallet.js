@@ -15,6 +15,7 @@ import ContractsAddress from '@gooddollar/goodprotocol/releases/deployment.json'
 import FaucetABI from '@gooddollar/goodprotocol/artifacts/contracts/fuseFaucet/FuseFaucetV2.sol/FuseFaucetV2.json'
 import BuyGDFactoryABI from '@gooddollar/goodprotocol/artifacts/abis/BuyGDCloneFactory.min.json'
 import BuyGDABI from '@gooddollar/goodprotocol/artifacts/abis/BuyGDClone.min.json'
+import { toChecksumAddress, sha3 } from 'web3-utils'
 
 import conf from '../server.config'
 import logger from '../../imports/logger'
@@ -24,10 +25,16 @@ import { type TransactionReceipt } from './blockchain-types'
 
 import { getManager } from '../utils/tx-manager'
 import { sendSlackAlert } from '../../imports/slack'
+import { KMSWallet } from './KMSWallet'
 // import { HttpProviderFactory, WebsocketProvider } from './transport'
 
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000'
 const FUSE_TX_TIMEOUT = 25000 // should be confirmed after max 5 blocks (25sec)
+
+// Force keccak module to load at import time by calling sha3
+// This ensures keccak is loaded synchronously before Jest can tear down
+// Using a dummy input to trigger the import without side effects
+void sha3('0x00')
 
 //extend admin abi with genericcallbatch
 const AdminWalletABI = [
@@ -90,7 +97,7 @@ export class Web3Wallet {
     return this.initialize()
   }
 
-  constructor(name, conf, options = null) {
+  constructor(name, conf, options = null, useKMS = false) {
     const {
       ethereum = null,
       network = null,
@@ -102,6 +109,7 @@ export class Web3Wallet {
     const ethOpts = ethereum || conf.fuse
     const { network_id: networkId } = ethOpts
 
+    this.useKMS = useKMS
     this.faucetTxCost = faucetTxCost
     this.name = name
     this.addresses = []
@@ -112,13 +120,18 @@ export class Web3Wallet {
     this.network = network || conf.network
     this.ethereum = ethOpts
     this.networkId = networkId
-    this.numberOfAdminWalletAccounts = conf.privateKey ? 1 : conf.numberOfAdminWalletAccounts
     this.maxFeePerGas = maxFeePerGas
     this.maxPriorityFeePerGas = maxPriorityFeePerGas
     this.gasPrice = gasPrice
     this.log = logger.child({ from: `${name}/${this.networkId}` })
+    this.kmsWallet = null // Will be initialized if KMS is used
+    this._supportsEIP1559 = null // Cached EIP-1559 support check result
 
-    this.initialize()
+    // Skip automatic initialization in test environment to prevent async operations
+    // from running after Jest tears down the test environment
+    if (this.conf.env !== 'test') {
+      this.initialize()
+    }
   }
 
   async initialize() {
@@ -164,45 +177,51 @@ export class Web3Wallet {
     return web3Provider
   }
 
-  // getWeb3TransportProvider(): HttpProvider | WebSocketProvider {
-  //   let provider
-  //   let web3Provider
-  //   const { web3Transport, websocketWeb3Provider, httpWeb3Provider } = this.ethereum
-  //   const { log } = this
-
-  //   switch (web3Transport) {
-  //     case 'WebSocket':
-  //       provider = websocketWeb3Provider
-  //       web3Provider = new WebsocketProvider(provider)
-  //       break
-
-  //     case 'HttpProvider':
-  //     default: {
-  //       provider = httpWeb3Provider
-  //       web3Provider = HttpProviderFactory.create(provider, {
-  //         timeout: FUSE_TX_TIMEOUT
-  //       })
-  //       break
-  //     }
-  //   }
-
-  //   log.debug({ conf: this.conf, web3Provider, provider, wallet: this.name, network: this.networkId })
-  //   return web3Provider
-  // }
-
   addWalletAccount(web3, account) {
     const { eth } = web3
 
     eth.accounts.wallet.add(account)
-    eth.defaultAccount = account.address
+    eth.defaultAccount = toChecksumAddress(account.address)
   }
 
   addWallet(account) {
     const { address } = account
+    const normalizedAddress = address.toLowerCase()
 
     this.addWalletAccount(this.web3, account)
     this.addresses.push(address)
-    this.wallets[address] = account
+    this.wallets[normalizedAddress] = account
+  }
+
+  addKMSWallet(address, kmsKeyId) {
+    // Store KMS wallet info without adding to Web3 accounts
+    const normalizedAddress = address.toLowerCase()
+    this.addresses.push(address)
+    this.wallets[normalizedAddress] = { address, kmsKeyId, isKMS: true }
+  }
+
+  async getKMSKeyIdsByTag() {
+    // If KMS_KEYS_TAG is set, discover keys by tag
+    if (this.conf.kmsKeysTag) {
+      try {
+        const kmsWallet = new KMSWallet(this.conf.kmsRegion)
+        const keyIds = await kmsWallet.discoverKeysByTag(this.conf.kmsKeysTag)
+        return keyIds.length > 0 ? keyIds : null
+      } catch (error) {
+        this.log.warn('Failed to discover KMS keys by tag', {
+          tag: this.conf.kmsKeysTag,
+          error: error.message
+        })
+        return null
+      }
+    }
+    return null
+  }
+
+  isKMSWallet(address) {
+    const normalizedAddress = address.toLowerCase()
+    const wallet = this.wallets[normalizedAddress]
+    return wallet && wallet.isKMS === true
   }
 
   async init() {
@@ -210,6 +229,7 @@ export class Web3Wallet {
 
     const adminWalletAddress = get(ContractsAddress, `${this.network}.AdminWallet`)
     log.debug('WalletInit: Initializing wallet:', { conf: this.ethereum, adminWalletAddress, name: this.name })
+
     if (!adminWalletAddress) {
       log.debug('WalletInit: missing adminwallet address skipping initialization', {
         conf: this.ethereum,
@@ -224,28 +244,127 @@ export class Web3Wallet {
 
     assign(this.web3.eth, web3Default)
 
-    if (this.conf.privateKey) {
-      let account = this.web3.eth.accounts.privateKeyToAccount(this.conf.privateKey)
+    // Check if provider supports EIP-1559 once on wallet creation and cache the result
+    // This avoids repeated RPC calls for the same network
+    this._supportsEIP1559 = await this.supportsEIP1559()
+    if (!this._supportsEIP1559) {
+      log.debug('Provider does not support EIP-1559, clearing maxFeePerGas and maxPriorityFeePerGas', {
+        network: this.network,
+        networkId: this.networkId
+      })
+      this.maxFeePerGas = undefined
+      this.maxPriorityFeePerGas = undefined
+    }
 
-      this.address = account.address
-      this.addWallet(account)
+    // Initialize wallet based on useKMS flag
+    if (this.useKMS) {
+      // If useKMS is true, only use KMS wallet initialization (no fallback)
+      let kmsKeyIds = null
+      let kmsKeySource = null
 
-      log.info('WalletInit: Initialized by private key:', { address: account.address })
-    } else if (this.mnemonic) {
-      let root = HDKey.fromMasterSeed(bip39.mnemonicToSeed(this.mnemonic, this.conf.adminWalletPassword))
-
-      for (let i = 0; i < this.numberOfAdminWalletAccounts; i++) {
-        const path = "m/44'/60'/0'/0/" + i
-        let addrNode = root.derive(path)
-        let account = this.web3.eth.accounts.privateKeyToAccount('0x' + addrNode._privateKey.toString('hex'))
-
-        this.addWallet(account)
+      // Try tag-based discovery first
+      if (this.conf.kmsKeysTag) {
+        try {
+          kmsKeyIds = await this.getKMSKeyIdsByTag()
+          if (kmsKeyIds && kmsKeyIds.length > 0) {
+            kmsKeySource = 'tag'
+            log.info('WalletInit: Discovered KMS keys by tag', {
+              tag: this.conf.kmsKeysTag,
+              keyCount: kmsKeyIds.length
+            })
+          }
+        } catch (error) {
+          log.warn('WalletInit: Failed to discover KMS keys by tag, trying direct key IDs', {
+            tag: this.conf.kmsKeysTag,
+            error: error.message
+          })
+        }
       }
 
-      this.address = this.addresses[0]
+      // If tag-based discovery didn't work, try direct key IDs
+      if (!kmsKeyIds || kmsKeyIds.length === 0) {
+        if (this.conf.kmsKeyIds) {
+          // Parse comma-separated key IDs
+          kmsKeyIds = this.conf.kmsKeyIds
+            .split(',')
+            .map(id => id.trim())
+            .filter(id => id.length > 0)
+          kmsKeySource = 'direct'
+          if (kmsKeyIds.length > 0) {
+            log.info('WalletInit: Using direct KMS key IDs', {
+              keyCount: kmsKeyIds.length
+            })
+          }
+        }
+      }
 
-      log.info('WalletInit: Initialized by mnemonic:', { address: this.addresses })
+      if (!kmsKeyIds || kmsKeyIds.length === 0) {
+        throw new Error('KMS wallet requested (useKMS=true) but no KMS keys found. Configure kmsKeysTag or kmsKeyIds.')
+      }
+
+      this.numberOfAdminWalletAccounts = kmsKeyIds.length
+
+      // Initialize KMS wallet
+      this.kmsWallet = new KMSWallet(this.conf.kmsRegion)
+
+      // Initialize with discovered/provided KMS key IDs - add timeout to prevent hanging in CI
+      const addresses = await Promise.race([
+        this.kmsWallet.initialize(kmsKeyIds),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('KMS initialization timeout')), 10000))
+      ])
+      addresses.forEach(address => {
+        const keyId = this.kmsWallet.getKeyId(address)
+        this.addKMSWallet(address, keyId)
+      })
+      this.address = addresses[0]
+      log.info('WalletInit: Initialized by KMS keys:', {
+        addresses,
+        keyIds: kmsKeyIds,
+        source: kmsKeySource,
+        tag: kmsKeySource === 'tag' ? this.conf.kmsKeysTag : undefined,
+        network: this.network
+      })
+    } else {
+      // If useKMS is false, skip KMS and use mnemonic or private key
+      this.numberOfAdminWalletAccounts = conf.privateKey ? 1 : conf.numberOfAdminWalletAccounts
+
+      // Try mnemonic first
+      if (this.mnemonic) {
+        let root = HDKey.fromMasterSeed(bip39.mnemonicToSeed(this.mnemonic, this.conf.adminWalletPassword))
+
+        for (let i = 0; i < this.numberOfAdminWalletAccounts; i++) {
+          const path = "m/44'/60'/0'/0/" + i
+          let addrNode = root.derive(path)
+          let account = this.web3.eth.accounts.privateKeyToAccount('0x' + addrNode._privateKey.toString('hex'))
+
+          this.addWallet(account)
+        }
+
+        this.address = this.addresses[0]
+
+        log.info('WalletInit: Initialized by mnemonic:', { address: this.addresses })
+      } else if (this.conf.privateKey) {
+        // Fallback to private key if mnemonic is not configured
+        let account = this.web3.eth.accounts.privateKeyToAccount(this.conf.privateKey)
+
+        this.address = account.address
+        this.addWallet(account)
+
+        log.info('WalletInit: Initialized by private key:', { address: account.address })
+      } else {
+        log.warn('WalletInit: No wallet configuration found (useKMS=false, no mnemonic, no privateKey)')
+      }
     }
+
+    // In test mode, if adminWalletAddress is missing, skip contract initialization but return success
+    if (!adminWalletAddress) {
+      log.debug('WalletInit: Test mode - skipping contract initialization', {
+        addresses: this.addresses,
+        network: this.network
+      })
+      return true
+    }
+
     try {
       log.info('WalletInit: Obtained AdminWallet address', { adminWalletAddress, network: this.network })
 
@@ -783,6 +902,14 @@ export class Web3Wallet {
 
   async topWalletFaucet(address, customLogger = null) {
     const logger = customLogger || this.log
+
+    // Check if faucet contract is properly initialized with a valid address
+    const faucetAddress = this.faucetContract?.options?.address
+    if (!faucetAddress || faucetAddress === ADDRESS_ZERO) {
+      logger.debug('topWalletFaucet: no valid faucet contract address', { wallet: this.name })
+      return false // fall back to admin wallet topping
+    }
+
     try {
       const canTop = await this.faucetContract.methods.canTop(address).call()
 
@@ -1064,6 +1191,359 @@ export class Web3Wallet {
   }
 
   /**
+   * Normalize gas pricing parameters - handles legacy gasPrice vs EIP-1559 fees
+   * Deduplicates gas pricing logic used in sendTransaction and sendNative
+   * @private
+   * @param {Object} params - Gas pricing parameters
+   * @param {string|undefined} params.gasPrice - Legacy gas price
+   * @param {string|undefined} params.maxFeePerGas - EIP-1559 max fee per gas
+   * @param {string|undefined} params.maxPriorityFeePerGas - EIP-1559 priority fee
+   * @param {Object} logger - Logger instance
+   * @returns {Promise<Object>} Normalized gas pricing with gasPrice, maxFeePerGas, maxPriorityFeePerGas
+   */
+  async normalizeGasPricing({ gasPrice, maxFeePerGas, maxPriorityFeePerGas }, logger) {
+    // Helper to convert value to number (handles string, number, null, undefined)
+    const toNumber = val => {
+      if (val === null || val === undefined) return 0
+      return typeof val === 'string' ? parseInt(val) || 0 : Number(val) || 0
+    }
+
+    // Check if network supports EIP-1559
+    const supportsEIP1559 = await this.supportsEIP1559()
+
+    if (!supportsEIP1559) {
+      // Network doesn't support EIP-1559, use legacy gasPrice only
+      gasPrice = gasPrice || this.gasPrice
+      logger.debug('Network does not support EIP-1559, using legacy gasPrice', {
+        network: this.network,
+        networkId: this.networkId
+      })
+      return { gasPrice, maxFeePerGas: undefined, maxPriorityFeePerGas: undefined }
+    } else {
+      // Network supports EIP-1559, process EIP-1559 fees
+      // Use instance defaults if not provided
+      maxFeePerGas = maxFeePerGas !== undefined ? maxFeePerGas : this.maxFeePerGas
+      maxPriorityFeePerGas = maxPriorityFeePerGas !== undefined ? maxPriorityFeePerGas : this.maxPriorityFeePerGas
+
+      // Convert to numbers for comparison
+      let maxFeeNum = toNumber(maxFeePerGas)
+      let maxPriorityNum = toNumber(maxPriorityFeePerGas)
+
+      // Fetch fee estimates if EIP-1559 fees are not provided or invalid
+      if (!maxFeeNum || !maxPriorityNum) {
+        const { baseFee, priorityFee } = await this.getFeeEstimates()
+        maxFeePerGas = maxFeeNum || baseFee
+        maxPriorityFeePerGas = maxPriorityNum || priorityFee
+        maxFeeNum = toNumber(maxFeePerGas)
+        maxPriorityNum = toNumber(maxPriorityFeePerGas)
+      }
+
+      // Ensure maxFeePerGas >= maxPriorityFeePerGas (EIP-1559 requirement)
+      if (maxPriorityNum > 0 && (maxFeeNum === 0 || maxFeeNum < maxPriorityNum)) {
+        logger.warn('maxFeePerGas < maxPriorityFeePerGas or is 0, adjusting maxFeePerGas', {
+          originalMaxFeePerGas: maxFeePerGas,
+          maxPriorityFeePerGas: maxPriorityFeePerGas,
+          adjustedMaxFeePerGas: maxPriorityFeePerGas
+        })
+        maxFeePerGas = maxPriorityFeePerGas
+      }
+
+      return { gasPrice: undefined, maxFeePerGas, maxPriorityFeePerGas }
+    }
+  }
+
+  /**
+   * Check if the RPC supports EIP-1559 using multiple methods:
+   * Check chain ID against known EIP-1559 supporting networks
+   * Result is cached after first call to avoid repeated RPC calls
+   * @returns Promise resolving to boolean indicating EIP-1559 support
+   */
+  async supportsEIP1559(): Promise<boolean> {
+    // Return cached result if available (set during wallet initialization)
+    if (this._supportsEIP1559 !== null) {
+      return this._supportsEIP1559
+    }
+
+    const { log } = this
+    try {
+      const web3 = this.web3
+      if (!web3) {
+        log.warn('No web3 instance available for EIP-1559 check')
+        this._supportsEIP1559 = false
+        return false
+      }
+
+      const chainId = await web3.eth.getChainId()
+      const knownEIP1559Chains = new Set([
+        1, // Ethereum Mainnet
+        11155111, // Ethereum Sepolia
+        8453, // Base
+        137, // Polygon
+        42161, // Arbitrum One
+        10, // Optimism
+        5, // Goerli
+        80001, // Mumbai (Polygon testnet)
+        122, // Fuse
+        42220 // Celo
+        // Note: XDC (50) will also become EIP-1559 soon and should be added when it's live
+      ])
+
+      if (knownEIP1559Chains.has(chainId)) {
+        // For known EIP-1559 chains, verify with block check
+        // Ethereum Mainnet requires block >= 12965000 (London fork)
+        if (chainId === 1) {
+          const latestBlock = await web3.eth.getBlock('latest')
+          const londonForkBlock = 12965000
+          if (latestBlock.number < londonForkBlock) {
+            log.debug('Ethereum Mainnet block number indicates pre-London fork', {
+              blockNumber: latestBlock.number,
+              londonForkBlock
+            })
+            this._supportsEIP1559 = false
+            return false
+          }
+        }
+        this._supportsEIP1559 = true
+        return true
+      }
+
+      this._supportsEIP1559 = false
+      return false
+    } catch (error) {
+      log.warn('Failed to check EIP-1559 support, assuming legacy network', {
+        error: error.message,
+        networkId: this.networkId
+      })
+      // If we can't check, assume it doesn't support EIP-1559 (safer fallback)
+      this._supportsEIP1559 = false
+      return false
+    }
+  }
+
+  /**
+   * Sign transaction with KMS and return the signed transaction string
+   * @private
+   */
+  async _signTransactionWithKMS(
+    tx: any,
+    address: string,
+    txParams: {
+      gas: number,
+      maxFeePerGas?: string,
+      maxPriorityFeePerGas?: string,
+      gasPrice?: string,
+      nonce: number,
+      chainId: number,
+      value?: string | number
+    }
+  ): Promise<string> {
+    const { gas, maxFeePerGas, maxPriorityFeePerGas, gasPrice, nonce, chainId } = txParams
+    const logger = this.log
+
+    // Extract transaction data from Web3 contract method
+    const txData = tx.encodeABI()
+    const to = tx._parent._address || tx._parent.options.address
+
+    // Extract value if present (for payable functions like WETH deposit)
+    // Value can be passed via txParams.value, tx.value, or tx._parent.options.value
+    const value = txParams.value || tx.value || tx._parent?.options?.value || '0'
+
+    // Build transaction parameters for KMS
+    const kmsTxParams = {
+      to,
+      data: txData,
+      nonce,
+      chainId,
+      gasLimit: gas.toString()
+    }
+
+    // Add value if non-zero (for payable functions)
+    // kms-ethereum-signing expects value as a decimal string
+    if (value && value !== '0' && value !== 0) {
+      kmsTxParams.value = value
+    }
+
+    // Normalize gas pricing (deduplicated logic)
+    const normalizedGas = await this.normalizeGasPricing({ gasPrice, maxFeePerGas, maxPriorityFeePerGas }, logger)
+
+    // Add gas pricing
+    if (normalizedGas.maxFeePerGas && normalizedGas.maxPriorityFeePerGas) {
+      kmsTxParams.maxFeePerGas = normalizedGas.maxFeePerGas.toString()
+      kmsTxParams.maxPriorityFeePerGas = normalizedGas.maxPriorityFeePerGas.toString()
+    } else if (normalizedGas.gasPrice) {
+      kmsTxParams.gasPrice = normalizedGas.gasPrice.toString()
+    }
+
+    // Sign transaction with KMS
+    const supportsEIP1559 = await this.supportsEIP1559()
+    logger.debug('Signing transaction with KMS', { address, chainId, supportsEIP1559 })
+    const signedTx = await this.kmsWallet.signTransaction(address, kmsTxParams)
+
+    return signedTx
+  }
+
+  /**
+   * Wrap a PromiEvent with shared event handlers
+   * @private
+   */
+  _wrapPromiEventWithHandlers(
+    promiEvent: PromiEvent,
+    txCallbacks: PromiEvents,
+    context: {
+      release: Function,
+      txuuid: string,
+      logger: any,
+      txHash?: string,
+      address?: string,
+      nonce?: number,
+      gas?: number,
+      maxFeePerGas?: string,
+      maxPriorityFeePerGas?: string
+    },
+    options: {
+      fail?: Function,
+      onSent?: Function
+    } = {}
+  ): Promise<TransactionReceipt> {
+    const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
+    const { release, txuuid, logger, address, nonce, gas, maxFeePerGas, maxPriorityFeePerGas } = context
+    const { fail, onSent } = options
+
+    return new Promise((res, rej) => {
+      // Verify promiEvent is actually a PromiEvent (has .on method)
+      if (!promiEvent || typeof promiEvent.on !== 'function') {
+        const error = new Error(
+          `Expected PromiEvent but got ${typeof promiEvent}${promiEvent?.constructor?.name ? ` (${promiEvent.constructor.name})` : ''}. This may indicate the PromiEvent was already resolved.`
+        )
+        logger.error('Invalid PromiEvent in _wrapPromiEventWithHandlers', {
+          type: typeof promiEvent,
+          hasOn: promiEvent && typeof promiEvent.on,
+          constructor: promiEvent?.constructor?.name,
+          keys: promiEvent ? Object.keys(promiEvent).slice(0, 10) : null,
+          txuuid
+        })
+        rej(error)
+        return
+      }
+
+      promiEvent
+        .on('transactionHash', h => {
+          context.txHash = h
+          logger.trace('got tx hash:', { txuuid, txHash: h, wallet: this.name })
+          release()
+
+          if (onTransactionHash) {
+            onTransactionHash(h)
+          }
+        })
+        .on('sent', payload => {
+          if (onSent) {
+            onSent(payload)
+          }
+          logger.debug('tx sent:', { txHash: context.txHash, payload, txuuid, wallet: this.name })
+        })
+        .on('receipt', r => {
+          logger.debug('got tx receipt:', { txuuid, txHash: r.transactionHash, wallet: this.name })
+
+          if (onReceipt) {
+            onReceipt(r)
+          }
+
+          res(r)
+        })
+        .on('confirmation', c => {
+          if (onConfirmation) {
+            onConfirmation(c)
+          }
+        })
+        .on('error', async e => {
+          // Check for funds error if requested (for non-KMS transactions)
+          if (isFundsError(e) && address) {
+            const balance = await this.web3.eth.getBalance(address)
+            logger.warn('sendTransaciton funds issue retry', {
+              errMessage: e.message,
+              nonce,
+              gas,
+              maxFeePerGas,
+              maxPriorityFeePerGas,
+              address,
+              balance,
+              wallet: this.name,
+              network: this.networkId
+            })
+          }
+
+          // Call fail callback if provided (for mainnet error handling)
+          if (fail) {
+            fail()
+          }
+
+          logger.error('Transaction error:', { txuuid, error: e.message, wallet: this.name })
+
+          if (onError) {
+            onError(e)
+          }
+
+          rej(e)
+        })
+    })
+  }
+
+  /**
+   * Send transaction using KMS signing (kept for backward compatibility)
+   * @private
+   * @param {Object} options - Additional options for mainnet transactions
+   * @param {Function} options.fail - Optional fail callback for error handling
+   */
+  async sendTransactionWithKMS(
+    tx: any,
+    address: string,
+    txParams: {
+      gas: number,
+      maxFeePerGas?: string,
+      maxPriorityFeePerGas?: string,
+      gasPrice?: string,
+      nonce: number,
+      chainId: number,
+      value?: string | number
+    },
+    txCallbacks: PromiEvents,
+    context: {
+      release: Function,
+      currentAddress: string,
+      txuuid: string,
+      logger: any
+    },
+    options: {
+      fail?: Function
+    } = {}
+  ) {
+    const { release, txuuid, logger } = context
+    const { fail } = options
+
+    try {
+      // Sign transaction with KMS, then create PromiEvent synchronously
+      const signedTx = await this._signTransactionWithKMS(tx, address, txParams)
+      const promiEvent = this.web3.eth.sendSignedTransaction(signedTx)
+
+      return this._wrapPromiEventWithHandlers(promiEvent, txCallbacks, { release, txuuid, logger }, { fail })
+    } catch (error) {
+      // Call fail callback if provided (for mainnet error handling)
+      if (fail) {
+        fail()
+      }
+      release()
+      logger.error('Failed to send transaction with KMS', {
+        txuuid,
+        address,
+        error: error.message,
+        wallet: this.name
+      })
+      throw error
+    }
+  }
+
+  /**
    * Helper function to handle a tx Send call
    * @param tx
    * @param {object} promiEvents
@@ -1093,8 +1573,6 @@ export class Web3Wallet {
     const logger = customLogger || this.log
 
     try {
-      const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
-
       gas =
         gas ||
         (await tx
@@ -1111,20 +1589,12 @@ export class Web3Wallet {
         gas = defaultGas
       }
 
-      gasPrice = gasPrice || this.gasPrice
-      maxFeePerGas = maxFeePerGas || this.maxFeePerGas
-      maxPriorityFeePerGas = maxPriorityFeePerGas || this.maxPriorityFeePerGas
+      // Normalize gas pricing (deduplicated logic)
+      const normalizedGas = await this.normalizeGasPricing({ gasPrice, maxFeePerGas, maxPriorityFeePerGas }, logger)
+      gasPrice = normalizedGas.gasPrice
+      maxFeePerGas = normalizedGas.maxFeePerGas
+      maxPriorityFeePerGas = normalizedGas.maxPriorityFeePerGas
 
-      if (gasPrice && !maxFeePerGas && !maxPriorityFeePerGas) {
-        logger.info('using legacy gasPrice tx')
-      } else {
-        gasPrice = undefined
-      }
-      if (!gasPrice && (!maxFeePerGas || !maxPriorityFeePerGas)) {
-        const { baseFee, priorityFee } = await this.getFeeEstimates()
-        maxFeePerGas = maxFeePerGas || baseFee
-        maxPriorityFeePerGas = maxPriorityFeePerGas || priorityFee
-      }
       logger.trace('getting tx lock:', { txuuid })
 
       const { nonce, release, address } = await this.txManager.lock(this.filledAddresses)
@@ -1147,64 +1617,64 @@ export class Web3Wallet {
         gas,
         maxFeePerGas,
         maxPriorityFeePerGas,
-        wallet: this.name
+        wallet: this.name,
+        isKMS: this.isKMSWallet(address)
       })
 
-      let txPromise = new Promise((res, rej) => {
-        tx.send({ gas, maxFeePerGas, maxPriorityFeePerGas, gasPrice, chainId: this.networkId, nonce, from: address })
-          .on('transactionHash', h => {
-            txHash = h
-            logger.trace('got tx hash:', { txuuid, txHash, wallet: this.name })
+      // Extract value if present (for payable functions)
+      const txValue = tx.value || tx._parent?.options?.value
 
-            if (onTransactionHash) {
-              onTransactionHash(h)
-            }
-          })
-          .on('sent', payload => {
-            release()
-            logger.debug('tx sent:', { txHash, payload, txuuid, wallet: this.name })
-          })
-          .on('receipt', r => {
-            logger.debug('got tx receipt:', { txuuid, txHash, wallet: this.name })
+      // Get PromiEvent - either from KMS signing or regular signing
+      let promiEvent
+      if (this.isKMSWallet(address) && this.kmsWallet) {
+        // Sign transaction with KMS, then create PromiEvent synchronously
+        const signedTx = await this._signTransactionWithKMS(tx, address, {
+          gas,
+          maxFeePerGas,
+          maxPriorityFeePerGas,
+          gasPrice,
+          nonce,
+          chainId: this.networkId,
+          value: txValue
+        })
+        promiEvent = this.web3.eth.sendSignedTransaction(signedTx)
+      } else {
+        // Use traditional signing flow
+        const sendParams = {
+          gas,
+          maxFeePerGas,
+          maxPriorityFeePerGas,
+          gasPrice,
+          chainId: this.networkId,
+          nonce,
+          from: address
+        }
+        if (txValue) {
+          sendParams.value = txValue
+        }
+        promiEvent = tx.send(sendParams)
+      }
 
-            if (onReceipt) {
-              onReceipt(r)
-            }
-
-            res(r)
-          })
-          .on('confirmation', c => {
-            if (onConfirmation) {
-              onConfirmation(c)
-            }
-          })
-          .on('error', async e => {
-            if (isFundsError(e)) {
-              balance = await this.web3.eth.getBalance(address)
-
-              logger.warn('sendTransaciton funds issue retry', {
-                errMessage: e.message,
-                nonce,
-                gas,
-                maxFeePerGas,
-                maxPriorityFeePerGas,
-                address,
-                balance,
-                wallet: this.name,
-                network: this.networkId
-              })
-            }
-
-            //we maually unlock in catch
-            //fail()
-
-            if (onError) {
-              onError(e)
-            }
-
-            rej(e)
-          })
-      })
+      // Wrap PromiEvent with shared event handlers
+      const txPromise = this._wrapPromiEventWithHandlers(
+        promiEvent,
+        txCallbacks,
+        {
+          release,
+          txuuid,
+          logger,
+          address,
+          nonce,
+          gas,
+          maxFeePerGas,
+          maxPriorityFeePerGas
+        },
+        {
+          onSent: payload => {
+            txHash = payload?.transactionHash || txHash
+          }
+        }
+      )
 
       const response = await withTimeout(txPromise, FUSE_TX_TIMEOUT, `${this.name} tx timeout`)
 
@@ -1363,19 +1833,13 @@ export class Web3Wallet {
       const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
 
       gas = gas || defaultGas
-      gasPrice = gasPrice || this.gasPrice
-      maxFeePerGas = maxFeePerGas || this.maxFeePerGas
-      maxPriorityFeePerGas = maxPriorityFeePerGas || this.maxPriorityFeePerGas
-      if (gasPrice && !maxFeePerGas && !maxPriorityFeePerGas) {
-        logger.info('using legacy gasPrice tx')
-      } else {
-        gasPrice = undefined
-      }
-      if (!gasPrice && (!maxFeePerGas || !maxPriorityFeePerGas)) {
-        const { baseFee, priorityFee } = await this.getFeeEstimates()
-        maxFeePerGas = maxFeePerGas || baseFee
-        maxPriorityFeePerGas = maxPriorityFeePerGas || priorityFee
-      }
+
+      // Normalize gas pricing (deduplicated logic)
+      const normalizedGas = await this.normalizeGasPricing({ gasPrice, maxFeePerGas, maxPriorityFeePerGas }, log)
+      gasPrice = normalizedGas.gasPrice
+      maxFeePerGas = normalizedGas.maxFeePerGas
+      maxPriorityFeePerGas = normalizedGas.maxPriorityFeePerGas
+
       const { nonce, release, fail, address } = await this.txManager.lock(this.filledAddresses)
 
       log.debug('sendNative', { nonce, gas, maxFeePerGas, maxPriorityFeePerGas })

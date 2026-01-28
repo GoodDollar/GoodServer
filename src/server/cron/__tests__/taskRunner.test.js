@@ -6,6 +6,20 @@ import getTaskRunner from '../TaskRunner'
 import { noopAsync } from '../../utils/async'
 import walletNonce from '../../db/mongo/models/wallet-nonce'
 
+// Mock AdminWallet before any imports that might use it
+jest.mock('../../blockchain/AdminWallet', () => {
+  const mockInstance = {
+    init: jest.fn().mockResolvedValue(undefined),
+    addWallet: jest.fn(),
+    addWalletAccount: jest.fn(),
+    ready: Promise.resolve(),
+    web3: {},
+    addresses: []
+  }
+  // Return the mock instance as default export (since AdminWallet exports an instance)
+  return mockInstance
+})
+
 const TaskRunner = getTaskRunner()
 
 describe('TaskRunner', () => {
