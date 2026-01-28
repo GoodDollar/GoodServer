@@ -1354,8 +1354,7 @@ export class Web3Wallet {
       data: txData,
       nonce,
       chainId,
-      gasLimit: gas.toString(),
-      rpcUrl: this.ethereum.httpWeb3Provider ? this.ethereum.httpWeb3Provider.split(',')[0] : undefined
+      gasLimit: gas.toString()
     }
 
     // Add value if non-zero (for payable functions)

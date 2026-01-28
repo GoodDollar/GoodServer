@@ -178,8 +178,7 @@ export class KMSWallet {
       gasPrice?: string,
       maxFeePerGas?: string,
       maxPriorityFeePerGas?: string,
-      chainId: number,
-      rpcUrl?: string
+      chainId: number
     }
   ): Promise<string> {
     const keyId = this.getKeyId(address)
