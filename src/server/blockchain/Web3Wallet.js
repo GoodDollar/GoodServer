@@ -1289,20 +1289,6 @@ export class Web3Wallet {
       ])
 
       if (knownEIP1559Chains.has(chainId)) {
-        // For known EIP-1559 chains, verify with block check
-        // Ethereum Mainnet requires block >= 12965000 (London fork)
-        if (chainId === 1) {
-          const latestBlock = await web3.eth.getBlock('latest')
-          const londonForkBlock = 12965000
-          if (latestBlock.number < londonForkBlock) {
-            log.debug('Ethereum Mainnet block number indicates pre-London fork', {
-              blockNumber: latestBlock.number,
-              londonForkBlock
-            })
-            this._supportsEIP1559 = false
-            return false
-          }
-        }
         this._supportsEIP1559 = true
         return true
       }
@@ -1375,8 +1361,7 @@ export class Web3Wallet {
     }
 
     // Sign transaction with KMS
-    const supportsEIP1559 = await this.supportsEIP1559()
-    logger.debug('Signing transaction with KMS', { address, chainId, supportsEIP1559 })
+    logger.debug('Signing transaction with KMS', { address, chainId, supportsEIP1559: await this.supportsEIP1559() })
     const signedTx = await this.kmsWallet.signTransaction(address, kmsTxParams)
 
     return signedTx
