@@ -210,8 +210,8 @@ class ZoomProvider implements IEnrollmentProvider {
     // next steps are performed only if face verification enabled
     // if already enrolled and already indexed then passed match-3d, no need to facesearch
     log.debug('Preparing enrollment to uniqueness index:', { enrollmentIdentifier, alreadyEnrolled, alreadyIndexed })
-    if (storeRecords && !alreadyIndexed) {
-      // for dev env settings will be not to store records
+    if (!alreadyIndexed) {
+      // for dev env settings will be to ignore duplicates
       // 3. checking for duplicates
       const { results, ...faceSearchResponse } = await api.faceSearch(
         enrollmentIdentifier,
@@ -227,18 +227,20 @@ class ZoomProvider implements IEnrollmentProvider {
           strcasecmp(matchId, enrollmentIdentifier) && Number(matchLevel) >= defaultMinimalMatchLevel
       )
 
-      // if there're at least one record left - we have a duplicate
-      const isDuplicate = !!duplicate
+      //for dev env this will usually be false so we wont notify about duplicates at all
+      if (storeRecords) {
+        // if there're at least one record left - we have a duplicate
+        const isDuplicate = !!duplicate
 
-      // notifying about duplicates found or not
-      await notifyProcessor({ isDuplicate })
+        // notifying about duplicates found or not
+        await notifyProcessor({ isDuplicate })
 
-      if (isDuplicate) {
-        // if duplicate found - throwing corresponding error
-        log.warn(duplicateFoundMessage, { duplicate, enrollmentIdentifier })
-        throwException(duplicateFoundMessage, { isDuplicate, duplicate }, faceSearchResponse)
+        if (isDuplicate) {
+          // if duplicate found - throwing corresponding error
+          log.warn(duplicateFoundMessage, { duplicate, enrollmentIdentifier })
+          throwException(duplicateFoundMessage, { isDuplicate, duplicate }, faceSearchResponse)
+        }
       }
-
       // 4. indexing uploaded & stored face scan to the 3D Database
       log.debug('Preparing enrollment to index:', { enrollmentIdentifier, alreadyEnrolled, alreadyIndexed })
 
