@@ -118,6 +118,9 @@ class MultiWallet {
   async isVerified(account) {
     return this.mainWallet.isVerified(account)
   }
+  async getReverifyStatus(account) {
+    return this.mainWallet.getReverifyStatus(account)
+  }
 
   async lastAuthenticated(account) {
     return this.mainWallet.getLastAuthenticated(account)
