@@ -649,7 +649,7 @@ export class Web3Wallet {
       .getWhitelistedRoot(address)
       .call()
       .catch(e => {
-        log.error('Error isVerified', e.message, e)
+        log.error('Error isConnected', e.message, e)
         throw e
       })
 
