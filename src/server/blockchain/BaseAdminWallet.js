@@ -39,7 +39,7 @@ export class BaseAdminWallet extends Web3Wallet {
   async topWallet(address, customLogger = null) {
     const logger = customLogger || this.log
     if (!this.faucetContract) return true
-    if (await this.celoWallet.isVerified(address)) {
+    if (await this.celoWallet.isConnected(address)) {
       const { baseFeePerGas = 1e7 } = await this.web3.eth.getBlock('latest')
       const canTop = await this.faucetContract.methods
         .canTop(address, baseFeePerGas)
