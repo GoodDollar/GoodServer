@@ -120,7 +120,10 @@ class MultiWallet {
   }
 
   async isConnected(account) {
-    return (await Promise.all(this.wallets.map(wallet => wallet.isConnected(account)))).find(_ => _)
+    const results = await Promise.all(
+      this.wallets.map(wallet => wallet.isConnected(account))
+    )
+    return results.some(Boolean)
   }
 
   async lastAuthenticated(account) {
