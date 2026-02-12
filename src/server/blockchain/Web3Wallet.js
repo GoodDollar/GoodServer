@@ -637,6 +637,24 @@ export class Web3Wallet {
     return tx
   }
 
+  /**
+   * verify if an account is connected or itself is a whitelisted identity in the `Identity` contract
+   * @param {string} address
+   * @returns {Promise<boolean>}
+   */
+  async isConnected(address: string): Promise<boolean> {
+    const { log } = this
+
+    const tx: string = await this.identityContract.methods
+      .getWhitelistedRoot(address)
+      .call()
+      .catch(e => {
+        log.error('Error isConnected', e.message, e)
+        throw e
+      })
+
+    return tx !== ADDRESS_ZERO
+  }
   async getDID(address: string): Promise<string> {
     const { log } = this
 

@@ -686,7 +686,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         if (
           !user.isEmailConfirmed &&
           !user.smsValidated &&
-          !(await AdminWallet.isVerified(user.gdAddress)) &&
+          !(await AdminWallet.isConnected(user.gdAddress)) &&
           !(gdContract && (await findGDTx(user.gdAddress, chainId, gdContract)))
         ) {
           log.warn('topwallet denied, not registered user nor whitelisted nor did gd tx lately', {
