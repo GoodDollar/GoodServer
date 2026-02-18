@@ -135,6 +135,12 @@ const conf = convict({
     env: 'AWS_REGION',
     default: undefined
   },
+  kmsEnabled: {
+    doc: 'Enable AWS KMS for wallet management',
+    format: Boolean,
+    env: 'ENABLE_KMS',
+    default: false
+  },
   infuraKey: {
     doc: 'Infura API Key',
     format: '*',

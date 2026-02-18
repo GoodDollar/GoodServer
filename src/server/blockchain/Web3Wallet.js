@@ -97,7 +97,7 @@ export class Web3Wallet {
     return this.initialize()
   }
 
-  constructor(name, conf, options = null, useKMS = false) {
+  constructor(name, conf, options = null, useKMS = conf.kmsEnabled) {
     const {
       ethereum = null,
       network = null,
