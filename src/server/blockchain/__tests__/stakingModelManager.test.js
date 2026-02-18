@@ -21,7 +21,7 @@ const nextBlock = () =>
     )
   )
 
-const next_interval = async function(interval = 5760) {
+const next_interval = async function (interval = 5760) {
   let blocks = interval
   let ps = []
   for (let i = 0; i < blocks; ++i) {
@@ -34,7 +34,7 @@ const next_interval = async function(interval = 5760) {
   return Promise.all(ps)
 }
 
-xdescribe('stakingModelManager', () => {
+describe.skip('stakingModelManager', () => {
   beforeAll(async () => {
     await AdminWallet.ready
 

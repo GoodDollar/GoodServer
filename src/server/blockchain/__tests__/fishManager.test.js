@@ -31,7 +31,7 @@ const setNextDay = async () => {
   )
 }
 
-xdescribe('fishManager', () => {
+describe.skip('fishManager', () => {
   beforeAll(async () => {
     await AdminWallet.ready
   })
