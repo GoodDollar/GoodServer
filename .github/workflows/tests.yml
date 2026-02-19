@@ -102,8 +102,8 @@ jobs:
           MNEMONIC: ${{ env.ADMIN_MNEMONIC }}
         run: |
           echo "using mnemonic for admin: ${MNEMONIC}"
-          # Verify blockchain is still running before starting tests
-          if contains(fromJson(env.BLOCKCHAIN_CHUNKS),matrix.chunk); then
+          # Verify blockchain is still running before starting tests (for blockchain chunks)
+          if echo "$BLOCKCHAIN_CHUNKS" | jq -e "index(${{ matrix.chunk }}) != null" > /dev/null 2>&1; then
             echo "Verifying blockchain node before tests..."
             curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' http://localhost:8545 || (echo "Blockchain node not responding before tests!" && exit 1)
           fi
