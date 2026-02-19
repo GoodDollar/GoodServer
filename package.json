@@ -10,7 +10,7 @@
   "scripts": {
     "build": "webpack --mode production --config webpack.server.config.js",
     "postbuild": "babel-node scripts/dbUpdates.js",
-    "postinstall": "patch-package",
+    "postinstall": "patch-package && node scripts/fix-minipass.js",
     "test": "jest --silent=false --forceExit --detectOpenHandles --maxWorkers=1",
     "test:staging": "jest --forceExit --detectOpenHandles",
     "test:setup": "./scripts/blockchainTestSetup.sh",
@@ -124,6 +124,7 @@
     "winston-transport": "^4.4.0"
   },
   "devDependencies": {
+    "@aashutoshrathi/word-wrap": "^1.2.6",
     "@babel/core": "^7.23.9",
     "@babel/eslint-parser": "^7.23.10",
     "@babel/node": "^7.23.9",
