@@ -51,7 +51,6 @@
   "homepage": "https://gooddollar.org",
   "dependencies": {
     "@ambire/signature-validator": "^1.5.0",
-    "@aws-sdk/client-lambda": "^3.992.0",
     "@aws-sdk/client-s3": "^3.552.0",
     "@aws-sdk/client-sso-oidc": "^3.992.0",
     "@axelar-network/axelarjs-sdk": "^0.13.6",
