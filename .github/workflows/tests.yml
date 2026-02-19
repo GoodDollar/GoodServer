@@ -48,7 +48,7 @@ jobs:
       AWS_REGION: ${{ secrets.AWS_REGION }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      KMS_KEYS_TAG: "Category=DevAdminWallet"
+      KMS_KEYS_TAG: "Environment=Test"
       ADMIN_PASS: test
       JWT_PASS: test
       TRAVIS: true
@@ -62,7 +62,7 @@ jobs:
       MAUTIC_TOKEN: ${{ secrets.MAUTIC_TOKEN }}
       MAUTIC_BASIC_TOKEN: ${{ secrets.MAUTIC_BASIC_TOKEN }}
       CI: false
-      LOG_LEVEL: debug
+      LOG_LEVEL: error
       CHUNKS: ${{ needs.setup.outputs['test-chunks'] }}
       BLOCKCHAIN_CHUNKS: ${{ needs.setup.outputs['wallet-chunk-id'] }}
       MONGO_DB_URI: ${{ secrets.MONGO_DB_URI }}
