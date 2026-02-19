@@ -19,9 +19,16 @@ module.exports = (_, argv) => {
   const { VERSION, NODE_ENV, TRAVIS } = process.env
   const externals = []
   const plugins = [new webpack.DefinePlugin({})]
+  
+  // Always use nodeExternals to exclude node_modules from bundling
+  // This is necessary for native modules like secp256k1 which cannot be bundled
+  externals.push(nodeExternals({
+    // Allow bundling of specific modules if needed, but exclude native modules
+    allowlist: []
+  }))
+  
   if(isProductionMode === false)
   {
-    externals.push(nodeExternals())
     plugins.push(new NodemonPlugin())
   }
   if (isProductionMode && TRAVIS !== 'true') {
