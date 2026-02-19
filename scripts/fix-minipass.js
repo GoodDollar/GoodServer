@@ -28,13 +28,25 @@ if (fs.existsSync(minipassPath)) {
 // Install minipass v2 in minizlib's node_modules
 console.log('Installing minipass@2.9.0 in minizlib/node_modules...');
 try {
+  // Remove existing minipass if it's the wrong version
+  if (fs.existsSync(minipassPath)) {
+    const packageJson = JSON.parse(fs.readFileSync(path.join(minipassPath, 'package.json'), 'utf8'));
+    if (!packageJson.version || !packageJson.version.startsWith('2.')) {
+      console.log(`Removing incorrect minipass version ${packageJson.version || 'unknown'}`);
+      fs.rmSync(minipassPath, { recursive: true, force: true });
+    }
+  }
+  
   execSync('npm install minipass@2.9.0 --no-save --legacy-peer-deps', {
     cwd: minizlibPath,
-    stdio: 'inherit'
+    stdio: 'inherit',
+    env: { ...process.env, npm_config_legacy_peer_deps: 'true' }
   });
   console.log('Successfully installed minipass@2.9.0 in minizlib');
 } catch (error) {
   console.error('Failed to install minipass@2.9.0 in minizlib:', error.message);
-  process.exit(1);
+  // Don't exit with error - allow build to continue if this fails
+  // The error will surface when Web3 is imported
+  console.warn('Warning: minipass fix failed, tests may fail with Web3 import errors');
 }
 
