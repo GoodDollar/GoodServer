@@ -53,7 +53,7 @@ jobs:
       JWT_PASS: test
       TRAVIS: true
       NETWORK: dapptest
-      # MNEMONIC: 'myth like bonus scare over problem client lizard pioneer submit female collect'
+      MNEMONIC: 'test test test test test test test test test test test junk'
       ADMIN_MNEMONIC: 'test test test test test test test test test test test junk'
       ALCHEMY_API: ${{ secrets.ALCHEMY_API }}
       AWS_SES_ACCESS_KEY: ${{ secrets.AWS_SES_ACCESS_KEY }}
