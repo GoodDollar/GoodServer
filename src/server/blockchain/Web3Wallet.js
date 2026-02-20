@@ -1836,6 +1836,9 @@ export class Web3Wallet {
       const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
 
       gas = gas || defaultGas
+      if (gas < defaultGas) {
+        gas = defaultGas
+      }
 
       // Normalize gas pricing (deduplicated logic)
       const normalizedGas = await this.normalizeGasPricing({ gasPrice, maxFeePerGas, maxPriorityFeePerGas }, log)
