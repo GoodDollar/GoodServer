@@ -10,7 +10,7 @@
   "scripts": {
     "build": "webpack --mode production --config webpack.server.config.js",
     "postbuild": "babel-node scripts/dbUpdates.js",
-    "postinstall": "patch-package",
+    "postinstall": "patch-package && node scripts/fix-minipass.js",
     "test": "jest --silent=false --forceExit --detectOpenHandles --maxWorkers=1",
     "test:staging": "jest --forceExit --detectOpenHandles",
     "test:setup": "./scripts/blockchainTestSetup.sh",
@@ -191,7 +191,7 @@
     ]
   },
   "overrides": {
-    "minizlib": {
+    "minizlib@1.3.3": {
       "minipass": "^2.9.0"
     },
     "ethereumjs-util": {
