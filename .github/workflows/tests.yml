@@ -84,19 +84,12 @@ jobs:
         if: contains(fromJson(env.BLOCKCHAIN_CHUNKS),matrix.chunk)
         env:
           MNEMONIC: ${{ env.ADMIN_MNEMONIC }}
-        run: |
-          npm run test:setup
-          # Verify blockchain is still running before tests
-          echo "Verifying blockchain node is ready for tests..."
-          sleep 3
-          curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' http://localhost:8545 || (echo "Blockchain node not responding!" && exit 1)
+        run: npm run test:setup
       - name: prepare blockchain for generic tests
         if: '!contains(fromJson(env.BLOCKCHAIN_CHUNKS) ,matrix.chunk)'
         run: |
           npx ganache-cli -p 8545 &
           sleep 30
-          # Verify ganache is ready
-          curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' http://localhost:8545 || (echo "Ganache not responding!" && exit 1)
       - name: run tests and code coverage
         env:
           MNEMONIC: ${{ env.ADMIN_MNEMONIC }}
