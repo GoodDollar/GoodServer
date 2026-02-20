@@ -1,6 +1,4 @@
 #!/bin/bash
-set -e  # Exit on error
-
 cp -R node_modules/@gooddollar/goodprotocol /tmp
 pushd /tmp/goodprotocol
 export CI=false
