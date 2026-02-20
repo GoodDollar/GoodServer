@@ -191,6 +191,9 @@
     ]
   },
   "overrides": {
+    "minizlib": {
+      "minipass": "^2.9.0"
+    },
     "ethereumjs-util": {
       "ethereum-cryptography": "^0.1.3"
     }
