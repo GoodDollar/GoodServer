@@ -17,11 +17,10 @@ module.exports = (_, argv) => {
   const isProductionMode = argv.mode === 'production'
   const SERVER_PATH = `./src/server/${isProductionMode ? 'index-prod' : 'index-dev'}.js`
   const { VERSION, NODE_ENV, TRAVIS } = process.env
-  const externals = []
+  const externals = [nodeExternals()]
   const plugins = [new webpack.DefinePlugin({})]
   if(isProductionMode === false)
   {
-    externals.push(nodeExternals())
     plugins.push(new NodemonPlugin())
   }
   if (isProductionMode && TRAVIS !== 'true') {
@@ -59,7 +58,7 @@ module.exports = (_, argv) => {
     optimization: {
       nodeEnv: false
     },
-    externals, // Need this for dev mode
+    externals, // Excludes node_modules from bundle (used in both dev and prod)
     plugins,
     module: {
       rules: [
