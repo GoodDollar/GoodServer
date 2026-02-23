@@ -183,5 +183,10 @@
       "eslint --fix",
       "git add"
     ]
+  },
+  "overrides": {
+    "minizlib": {
+      "minipass": "^2.9.0"
+    }
   }
 }
