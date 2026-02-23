@@ -185,8 +185,8 @@
     ]
   },
   "overrides": {
-    "minizlib@1.3.3": {
-      "minipass": "2.9.0"
+    "minizlib": {
+      "minipass": "^2.9.0"
     }
   }
 }
