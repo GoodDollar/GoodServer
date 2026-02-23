@@ -10,7 +10,7 @@
   "scripts": {
     "build": "webpack --mode production --config webpack.server.config.js",
     "postbuild": "babel-node scripts/dbUpdates.js",
-    "postinstall": "patch-package",
+    "postinstall": "patch-package && node scripts/fix-minipass.js",
     "test": "jest --silent=false --forceExit --detectOpenHandles --maxWorkers=1",
     "test:staging": "jest --forceExit --detectOpenHandles",
     "test:setup": "./scripts/blockchainTestSetup.sh",
@@ -72,6 +72,7 @@
     "@veramo/did-resolver": "^5.1.2",
     "@veramo/key-manager": "^5.1.2",
     "@veramo/kms-local": "^5.1.2",
+    "acorn-import-assertions": "^1.9.0",
     "await-mutex": "^1.0.2",
     "aws-sdk": "^2.1376.0",
     "axios": "^1.6.0",
@@ -183,10 +184,5 @@
       "eslint --fix",
       "git add"
     ]
-  },
-  "overrides": {
-    "minizlib": {
-      "minipass": "^2.9.0"
-    }
   }
 }
