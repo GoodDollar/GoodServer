@@ -18,7 +18,7 @@ module.exports = (_, argv) => {
   const SERVER_PATH = `./src/server/${isProductionMode ? 'index-prod' : 'index-dev'}.js`
   const { VERSION, NODE_ENV, TRAVIS } = process.env
   const externals = []
-  const plugins = [new webpack.DefinePlugin({})] 
+  const plugins = [new webpack.DefinePlugin({})]
   if(isProductionMode === false)
   {
     externals.push(nodeExternals())
