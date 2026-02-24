@@ -4,8 +4,8 @@
   "description": "GoodDollar Server",
   "main": "src/server/index.js",
   "engines": {
-    "node": "22.x",
-    "npm": "10.x"
+    "node": ">=20.x <25",
+    "npm": ">=9.x"
   },
   "scripts": {
     "build": "webpack --mode production --config webpack.server.config.js",
@@ -56,8 +56,8 @@
     "@babel/polyfill": "^7.11.5",
     "@babel/runtime": "^7.16.5",
     "@gooddollar/goodcontracts": "^2.6.1",
+    "@gooddollar/kms-ethereum-signing": "1.0.1",
     "@gooddollar/goodprotocol": "^2.1.4",
-    "@gooddollar/kms-ethereum-signing": "^1.0.1",
     "@openzeppelin/defender-autotask-client": "^1.50.0",
     "@openzeppelin/defender-relay-client": "^1.49.0",
     "@sentry/integrations": "^5.30.0",
@@ -72,7 +72,6 @@
     "@veramo/did-resolver": "^5.1.2",
     "@veramo/key-manager": "^5.1.2",
     "@veramo/kms-local": "^5.1.2",
-    "acorn-import-assertions": "^1.9.0",
     "await-mutex": "^1.0.2",
     "aws-sdk": "^2.1376.0",
     "axios": "^1.6.0",
@@ -184,10 +183,5 @@
       "eslint --fix",
       "git add"
     ]
-  },
-  "overrides": {
-    "minizlib@1.3.3": {
-      "minipass": "2.9.0"
-    }
   }
 }
