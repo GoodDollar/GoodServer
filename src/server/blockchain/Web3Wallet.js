@@ -1272,7 +1272,6 @@ export class Web3Wallet {
       }
 
       const chainId = await web3.eth.getChainId()
-      console.log('Test chainId', chainId)
       const knownEIP1559Chains = new Set([
         1, // Ethereum Mainnet
         11155111, // Ethereum Sepolia
