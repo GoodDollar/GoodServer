@@ -48,7 +48,7 @@ jobs:
       AWS_REGION: ${{ secrets.AWS_REGION }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      KMS_KEYS_TAG: "Environment=Test"
+      KMS_KEYS_TAG: 'Environment=Test'
       ADMIN_PASS: test
       JWT_PASS: test
       TRAVIS: true
@@ -97,16 +97,21 @@ jobs:
           # npm run test -- src/server/send/__tests__/sendAPI.js
           # npm run coverage -- --silent
           # npm run coveralls
-          npm run build
           pkill -f ganache || true
 
-      - name: Coveralls
-        uses: coverallsapp/github-action@master
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          parallel: true
-          flag-name: run-${{ matrix.chunk }}
+      # - name: Coveralls
+      #   uses: coverallsapp/github-action@master
+      #   with:
+      #     github-token: ${{ secrets.GITHUB_TOKEN }}
+      #     parallel: true
+      #     flag-name: run-${{ matrix.chunk }}
 
+  test-build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build
+        run: npm run build
   # coverage:
   #   needs: test
   #   runs-on: ubuntu-latest
