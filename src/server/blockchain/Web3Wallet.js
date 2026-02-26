@@ -506,31 +506,11 @@ export class Web3Wallet {
     const { log } = this
 
     try {
-      const { nonce, release, fail, address } = await this.txManager.lock(this.addresses[0], 500) // timeout of 1 sec, so all "workers" fail except for the first
-
-      try {
-        log.debug('topAdmins:', { numAdmins, address, nonce })
-        for (let i = 0; i < numAdmins; i += 50) {
-          log.debug('topAdmins sending tx', { address, nonce, adminIdx: i })
-          const tx = this.proxyContract.methods.topAdmins(i, i + 50)
-          const gas = await tx
-            .estimateGas()
-            .then(gas => parseInt(gas) + 200000) //buffer for proxy contract, reimburseGas?
-            .catch(() => 1000000)
-          await this.proxyContract.methods.topAdmins(i, i + 50).send({
-            gas,
-            maxFeePerGas: this.maxFeePerGas,
-            maxPriorityFeePerGas: this.maxPriorityFeePerGas,
-            from: address,
-            nonce
-          })
-          log.debug('topAdmins success', { adminIdx: i })
-        }
-
-        release()
-      } catch (e) {
-        log.error('topAdmins failed', e)
-        fail()
+      log.debug('topAdmins:', { numAdmins, addresses: this.addresses })
+      for (let i = 0; i < numAdmins; i += 50) {
+        log.debug('topAdmins sending tx', { adminIdx: i })
+        await this.sendTransaction(this.proxyContract.methods.topAdmins(i, i + 50), {}, undefined, true, log)
+        log.debug('topAdmins success', { adminIdx: i })
       }
     } catch (e) {
       log.error('topAdmins failed', e)
@@ -1292,6 +1272,7 @@ export class Web3Wallet {
       }
 
       const chainId = await web3.eth.getChainId()
+      console.log('Test chainId', chainId)
       const knownEIP1559Chains = new Set([
         1, // Ethereum Mainnet
         11155111, // Ethereum Sepolia
@@ -1302,7 +1283,8 @@ export class Web3Wallet {
         5, // Goerli
         80001, // Mumbai (Polygon testnet)
         122, // Fuse
-        42220 // Celo
+        42220, // Celo
+        4447 // Local Testnet
         // Note: XDC (50) will also become EIP-1559 soon and should be added when it's live
       ])
 

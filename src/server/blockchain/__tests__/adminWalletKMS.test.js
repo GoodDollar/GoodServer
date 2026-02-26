@@ -45,7 +45,7 @@ describe('AdminWallet KMS Transaction Submission', () => {
   describe('KMS Configuration', () => {
     test('should detect if KMS is configured', () => {
       const configured = isKMSConfigured()
-      console.log('KMS is configured with key IDs:', conf.kmsKeysTag)
+      console.log('KMS is configured with key tag:', conf.kmsKeysTag)
       expect(configured).toBe(true)
     })
 
