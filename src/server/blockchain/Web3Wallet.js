@@ -509,7 +509,13 @@ export class Web3Wallet {
       log.debug('topAdmins:', { numAdmins, addresses: this.addresses })
       for (let i = 0; i < numAdmins; i += 50) {
         log.debug('topAdmins sending tx', { adminIdx: i })
-        await this.sendTransaction(this.proxyContract.methods.topAdmins(i, i + 50), {}, undefined, true, log)
+        await this.sendTransaction(
+          this.proxyContract.methods.topAdmins(i, i + 50),
+          {},
+          { from: this.addresses[0] },
+          true,
+          log
+        )
         log.debug('topAdmins success', { adminIdx: i })
       }
     } catch (e) {
@@ -1539,15 +1545,17 @@ export class Web3Wallet {
    * @param {number} gasValues.gas
    * @param {number} gasValues.maxFeePerGas
    * @param {number} gasValues.maxPriorityFeePerGas
+   * @param {string} [gasValues.from] - If set, lock and send from this address only; otherwise use this.filledAddresses
    * @returns {Promise<Promise|Q.Promise<any>|Promise<*>|Promise<*>|Promise<*>|*>}
    */
   async sendTransaction(
     tx: any,
     txCallbacks: PromiEvents = {},
-    { gas, maxPriorityFeePerGas, maxFeePerGas, gasPrice }: GasValues = {
+    { gas, maxPriorityFeePerGas, maxFeePerGas, gasPrice, from }: GasValues = {
       gas: undefined,
       maxFeePerGas: undefined,
-      maxPriorityFeePerGas: undefined
+      maxPriorityFeePerGas: undefined,
+      from: undefined
     },
     retry = true,
     customLogger = null
@@ -1579,9 +1587,10 @@ export class Web3Wallet {
       maxFeePerGas = normalizedGas.maxFeePerGas
       maxPriorityFeePerGas = normalizedGas.maxPriorityFeePerGas
 
-      logger.trace('getting tx lock:', { txuuid })
+      logger.trace('getting tx lock:', { txuuid, fromOption: from })
 
-      const { nonce, release, address } = await this.txManager.lock(this.filledAddresses)
+      const addressesToLock = from != null ? [from] : this.filledAddresses
+      const { nonce, release, address } = await this.txManager.lock(addressesToLock)
 
       logger.trace('got tx lock:', { txuuid, address })
 
