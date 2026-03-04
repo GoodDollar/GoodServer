@@ -506,31 +506,17 @@ export class Web3Wallet {
     const { log } = this
 
     try {
-      const { nonce, release, fail, address } = await this.txManager.lock(this.addresses[0], 500) // timeout of 1 sec, so all "workers" fail except for the first
-
-      try {
-        log.debug('topAdmins:', { numAdmins, address, nonce })
-        for (let i = 0; i < numAdmins; i += 50) {
-          log.debug('topAdmins sending tx', { address, nonce, adminIdx: i })
-          const tx = this.proxyContract.methods.topAdmins(i, i + 50)
-          const gas = await tx
-            .estimateGas()
-            .then(gas => parseInt(gas) + 200000) //buffer for proxy contract, reimburseGas?
-            .catch(() => 1000000)
-          await this.proxyContract.methods.topAdmins(i, i + 50).send({
-            gas,
-            maxFeePerGas: this.maxFeePerGas,
-            maxPriorityFeePerGas: this.maxPriorityFeePerGas,
-            from: address,
-            nonce
-          })
-          log.debug('topAdmins success', { adminIdx: i })
-        }
-
-        release()
-      } catch (e) {
-        log.error('topAdmins failed', e)
-        fail()
+      log.debug('topAdmins:', { numAdmins, addresses: this.addresses })
+      for (let i = 0; i < numAdmins; i += 50) {
+        log.debug('topAdmins sending tx', { adminIdx: i })
+        await this.sendTransaction(
+          this.proxyContract.methods.topAdmins(i, i + 50),
+          {},
+          { from: this.addresses[0] },
+          true,
+          log
+        )
+        log.debug('topAdmins success', { adminIdx: i })
       }
     } catch (e) {
       log.error('topAdmins failed', e)
@@ -1302,7 +1288,8 @@ export class Web3Wallet {
         5, // Goerli
         80001, // Mumbai (Polygon testnet)
         122, // Fuse
-        42220 // Celo
+        42220, // Celo
+        4447 // Local Testnet
         // Note: XDC (50) will also become EIP-1559 soon and should be added when it's live
       ])
 
@@ -1558,15 +1545,17 @@ export class Web3Wallet {
    * @param {number} gasValues.gas
    * @param {number} gasValues.maxFeePerGas
    * @param {number} gasValues.maxPriorityFeePerGas
+   * @param {string} [gasValues.from] - If set, lock and send from this address only; otherwise use this.filledAddresses
    * @returns {Promise<Promise|Q.Promise<any>|Promise<*>|Promise<*>|Promise<*>|*>}
    */
   async sendTransaction(
     tx: any,
     txCallbacks: PromiEvents = {},
-    { gas, maxPriorityFeePerGas, maxFeePerGas, gasPrice }: GasValues = {
+    { gas, maxPriorityFeePerGas, maxFeePerGas, gasPrice, from }: GasValues = {
       gas: undefined,
       maxFeePerGas: undefined,
-      maxPriorityFeePerGas: undefined
+      maxPriorityFeePerGas: undefined,
+      from: undefined
     },
     retry = true,
     customLogger = null
@@ -1598,9 +1587,10 @@ export class Web3Wallet {
       maxFeePerGas = normalizedGas.maxFeePerGas
       maxPriorityFeePerGas = normalizedGas.maxPriorityFeePerGas
 
-      logger.trace('getting tx lock:', { txuuid })
+      logger.trace('getting tx lock:', { txuuid, fromOption: from })
 
-      const { nonce, release, address } = await this.txManager.lock(this.filledAddresses)
+      const addressesToLock = from != null ? [from] : this.filledAddresses
+      const { nonce, release, address } = await this.txManager.lock(addressesToLock)
 
       logger.trace('got tx lock:', { txuuid, address })
 
