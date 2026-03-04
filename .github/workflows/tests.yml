@@ -109,6 +109,9 @@ jobs:
   test-build:
     needs: test
     runs-on: ubuntu-latest
+    env:
+      # avoids using sentry in build
+      TRAVIS: true
     steps:
       - run: corepack enable
       - uses: actions/checkout@v3
