@@ -630,11 +630,38 @@ const setup = (app: Router, storage: StorageAPI) => {
     '/admin/user/delete',
     adminAuthenticate,
     wrapAsync(async (req, res) => {
-      const { body } = req
-      let result = {}
-      if (body.identifier) result = await storage.deleteUser(body)
+      const { body, log } = req
+      let user = {}
+      if (body.email)
+        user = await storage.getUsersByEmail(body.email.startsWith('0x') === false ? sha3(body.email) : body.email)
+      if (body.mobile)
+        user = await storage.getUsersByMobile(body.mobile.startsWith('0x') === false ? sha3(body.mobile) : body.mobile)
+      if (body.identifier) user = await storage.getUser(body.identifier)
+      if (body.identifierHash) user = await storage.getByIdentifierHash(body.identifierHash)
 
-      res.json({ ok: 1, result })
+      const crmCount = user.crmId
+        ? await storage.getCountCRMId(user.crmId).catch(e => {
+            log.warn('getCountCRMId failed:', e.message, e)
+            return 1
+          })
+        : 0
+
+      log.info('delete user', { user, crmCount })
+
+      const results = await Promise.all([
+        (user.identifier ? storage.deleteUser(user) : Promise.reject())
+          .then(() => ({ mongodb: 'ok' }))
+          .catch(() => ({ mongodb: 'failed' })),
+        crmCount === 0
+          ? Promise.resolve({ crm: 'missingId' })
+          : OnGage.deleteContact(user.crmId, log)
+              .then(() => ({ crm: 'ok' }))
+              .catch(() => ({ crm: 'failed' })),
+        ...deleteFromAnalytics(user.identifier, user.gdAddress)
+      ])
+
+      log.info('delete user results', { user, results })
+      res.json({ ok: 1, results })
     })
   )
 
