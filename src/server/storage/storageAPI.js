@@ -29,8 +29,8 @@ const deleteFromAnalytics = (userId, walletAddress, log) => {
 
     body: JSON.stringify({
       user_ids: [toChecksumAddress(userId.toLowerCase())], //amplitude id is case sensitive and is the original address form from user wallet
-      delete_from_org: 'True',
-      ignore_invalid_id: 'True'
+      delete_from_org: 'true',
+      ignore_invalid_id: 'true'
     })
   })
     .then(_ => _.text())
@@ -40,7 +40,12 @@ const deleteFromAnalytics = (userId, walletAddress, log) => {
         amplitude: 'ok'
       }
     })
-    .catch(() => ({ amplitude: 'failed' }))
+    .catch(e => {
+      log.warn('amplitude delete user failed', e.message, e, { userId, walletAddress })
+      return {
+        amplitude: 'failed'
+      }
+    })
 
   return [amplitudePromise]
 }
