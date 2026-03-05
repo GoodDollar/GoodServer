@@ -643,7 +643,7 @@ const setup = (app: Router, storage: StorageAPI) => {
         user = await storage.getUsersByMobile(body.mobile.startsWith('0x') === false ? sha3(body.mobile) : body.mobile)
       if (body.identifier) user = await storage.getUser(body.identifier)
       if (body.identifierHash) user = await storage.getByIdentifierHash(body.identifierHash)
-      if (!user) return res.json({ ok: 0, error: 'User not found' })
+      if (!user?.length) return res.json({ ok: 0, error: 'User not found' })
       user = user[0]
       const crmCount = user.crmId
         ? await storage.getCountCRMId(user.crmId).catch(e => {
