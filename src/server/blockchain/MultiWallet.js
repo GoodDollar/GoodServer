@@ -118,6 +118,9 @@ class MultiWallet {
   async isVerified(account) {
     return this.mainWallet.isVerified(account)
   }
+  async getReverifyStatus(account) {
+    return this.mainWallet.getReverifyStatus(account)
+  }
 
   async isConnected(account) {
     const results = await Promise.all(this.wallets.map(wallet => wallet.isConnected(account)))

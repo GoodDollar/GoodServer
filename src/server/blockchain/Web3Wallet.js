@@ -687,6 +687,41 @@ export class Web3Wallet {
     }
   }
 
+  async getIdentity(address) {
+    const { log } = this
+
+    try {
+      const result = await this.identityContract.methods.identities(address).call()
+      return result
+    } catch (exception) {
+      const { message } = exception
+
+      log.warn('Error getIdentity', message, exception)
+      throw exception
+    }
+  }
+
+  async getReverifyStatus(account) {
+    const { log } = this
+
+    try {
+      const identityRecord = await this.getIdentity(account)
+      const authCount = parseInt(identityRecord.authCount)
+      const nextReverify = await this.identityContract.methods.reverifyDaysOptions(authCount).call()
+      const isLastReverify = await this.identityContract.methods
+        .reverifyDaysOptions(authCount + 1)
+        .call()
+        .then(() => false)
+        .catch(() => true)
+      return { nextReverify, isLastReverify, identityRecord }
+    } catch (exception) {
+      const { message } = exception
+
+      log.warn('Error getReverifyStatus', message, exception)
+      throw exception
+    }
+  }
+
   /**
    * blacklist an user in the `Identity` contract
    * @param {string} address
