@@ -368,7 +368,8 @@ export class Web3Wallet {
       const adminWalletContractBalance = await this.web3.eth.getBalance(adminWalletAddress)
       log.info(`WalletInit: AdminWallet contract balance`, { adminWalletContractBalance, adminWalletAddress })
 
-      this.proxyContract = new this.web3.eth.Contract(AdminWalletABI, adminWalletAddress, { from: this.address })
+      // Initialize without `from` first, then re-bind after selecting a valid admin wallet.
+      this.proxyContract = new this.web3.eth.Contract(AdminWalletABI, adminWalletAddress)
 
       const maxAdminBalance = await this.proxyContract.methods.adminToppingAmount().call()
       const minAdminBalance = parseInt(web3Utils.fromWei(maxAdminBalance, 'gwei')) / 2
@@ -386,13 +387,6 @@ export class Web3Wallet {
       await this.txManager.createListIfNotExists(this.addresses)
 
       log.info('WalletInit: Initialized wallet queue manager')
-
-      if (this.conf.topAdminsOnStartup) {
-        log.info('WalletInit: calling topAdmins...')
-        await this.topAdmins(this.conf.numberOfAdminWalletAccounts).catch(e => {
-          log.warn('WalletInit: topAdmins failed', { e, errMessage: e.message })
-        })
-      }
 
       log.info('Initializing adminwallet addresses', { addresses: this.addresses })
 
@@ -421,6 +415,14 @@ export class Web3Wallet {
       }
 
       this.address = this.filledAddresses[0]
+      this.proxyContract = new this.web3.eth.Contract(AdminWalletABI, adminWalletAddress, { from: this.address })
+
+      if (this.conf.topAdminsOnStartup) {
+        log.info('WalletInit: calling topAdmins...')
+        await this.topAdmins(this.conf.numberOfAdminWalletAccounts).catch(e => {
+          log.warn('WalletInit: topAdmins failed', { e, errMessage: e.message })
+        })
+      }
 
       this.identityContract = new this.web3.eth.Contract(
         IdentityABI.abi,
