@@ -316,7 +316,6 @@ export class Web3Wallet {
         const keyId = this.kmsWallet.getKeyId(address)
         this.addKMSWallet(address, keyId)
       })
-      this.address = addresses[0]
       log.info('WalletInit: Initialized by KMS keys:', {
         addresses,
         keyIds: kmsKeyIds,
@@ -339,8 +338,6 @@ export class Web3Wallet {
 
           this.addWallet(account)
         }
-
-        this.address = this.addresses[0]
 
         log.info('WalletInit: Initialized by mnemonic:', { address: this.addresses })
       } else if (this.conf.privateKey) {
