@@ -300,8 +300,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         log.debug('FV identifier verification success', { enrollmentIdentifier, gdAddress, chainId })
         const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
         const enrollmentProcessor = createEnrollmentProcessor(storage, log)
-        log.debug('checking if user is already enqueued for disposal before enrolling:', { v2Identifier, v1Identifier })
-        // here we check if wallet was registered using v1 of v2 identifier
+        log.debug('checking if user was previously registered with a v1 identifier before enrolling:', {
+          v2Identifier,
+          v1Identifier
+        })
+        // here we check if wallet was registered using a v1 identifier
         const isV1 = !!v1Identifier && (await enrollmentProcessor.isIdentifierExists(v1Identifier))
 
         try {
