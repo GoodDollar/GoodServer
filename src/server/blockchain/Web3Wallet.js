@@ -390,6 +390,26 @@ export class Web3Wallet {
 
       log.info('Initializing adminwallet addresses', { addresses: this.addresses })
 
+      for (const addr of this.addresses) {
+        const balance = await this.web3.eth.getBalance(addr)
+        const isAdminWallet = await this.isVerifiedAdmin(addr)
+
+        if (isAdminWallet && parseFloat(web3Utils.fromWei(balance, 'gwei')) > minAdminBalance) {
+          log.info(`WalletInit: set default wallet to ${addr} with balance ${balance}`)
+          this.address = addr
+          break
+        }
+      }
+      // this.address = this.filledAddresses[0]
+      this.proxyContract = new this.web3.eth.Contract(AdminWalletABI, adminWalletAddress, { from: this.address })
+
+      if (this.conf.topAdminsOnStartup) {
+        log.info('WalletInit: calling topAdmins...')
+        await this.topAdmins(this.conf.numberOfAdminWalletAccounts).catch(e => {
+          log.warn('WalletInit: topAdmins failed', { e, errMessage: e.message })
+        })
+      }
+
       await Promise.all(
         this.addresses.map(async addr => {
           const balance = await this.web3.eth.getBalance(addr)
@@ -411,16 +431,6 @@ export class Web3Wallet {
 
         await sendSlackAlert({
           msg: `critical: no fuse admin wallet with funds ${this.name}`
-        })
-      }
-
-      this.address = this.filledAddresses[0]
-      this.proxyContract = new this.web3.eth.Contract(AdminWalletABI, adminWalletAddress, { from: this.address })
-
-      if (this.conf.topAdminsOnStartup) {
-        log.info('WalletInit: calling topAdmins...')
-        await this.topAdmins(this.conf.numberOfAdminWalletAccounts).catch(e => {
-          log.warn('WalletInit: topAdmins failed', { e, errMessage: e.message })
         })
       }
 
