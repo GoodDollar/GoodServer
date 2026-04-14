@@ -296,7 +296,18 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       try {
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
         // for v1 this will do nothing
-        await verifyIdentifier(enrollmentIdentifier, gdAddress, chainId)
+        try {
+          await verifyIdentifier(enrollmentIdentifier, gdAddress, chainId)
+        } catch (e) {
+          log.warn('verifyIdentifier failed:', e.message, e, {
+            enrollmentIdentifier,
+            fvSigner,
+            gdAddress,
+            chainId: e.chainId,
+            rpc: e.rpc
+          })
+          throw e
+        }
         log.debug('FV identifier verification success', { enrollmentIdentifier, gdAddress, chainId })
         const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
         const enrollmentProcessor = createEnrollmentProcessor(storage, log)

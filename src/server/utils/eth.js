@@ -74,11 +74,16 @@ export const verifyIdentifier = async (fvsig, gdAddress, chainId = 42220) => {
     })
     if (!verifyResult) {
       // returns 0 if equals
-      throw new Error(`FV identifier signature verification failed`)
+      const error = new Error('FV identifier signature verification failed')
+      error.rpc = rpc
+      error.chainId = chainId
+      throw error
     }
     return verifyResult
   } catch (e) {
-    throw new Error(`FV identifier signature verification faild: ${e.message} ${rpc} ${chainId}`)
+    e.rpc = rpc
+    e.chainId = chainId
+    throw e
   }
 }
 
