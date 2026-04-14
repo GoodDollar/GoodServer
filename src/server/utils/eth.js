@@ -4,6 +4,7 @@ import { toChecksumAddress } from 'web3-utils'
 import { verifyMessage } from '@ambire/signature-validator'
 import { messageContains } from './exception'
 import { mustache } from '../utils/string'
+import getNetworks from '../networks'
 
 export const FV_IDENTIFIER_MSG2 =
   mustache(`Sign this message to request verifying your account {account} and to create your own secret unique identifier for your anonymized record.
@@ -47,42 +48,43 @@ export const verifySignature = async (message, signature) => {
 }
 
 export const verifyIdentifier = async (fvsig, gdAddress, chainId = 42220) => {
+  const networks = getNetworks()
+
   // check v2, v2 identifier is expected to be the whole signature
   if (fvsig.length < 42) {
     return
   }
 
-  const fuseProvider = new ethers.providers.JsonRpcProvider('https://rpc.fuse.io')
-  const celoProvider = new ethers.providers.JsonRpcProvider('https://forno.celo.org')
-  const xdcProvider = new ethers.providers.JsonRpcProvider('https://rpc.xdc.network')
+  // const fuseProvider = new ethers.providers.JsonRpcProvider('https://rpc.fuse.io')
+  // const celoProvider = new ethers.providers.JsonRpcProvider('https://forno.celo.org')
+  // const xdcProvider = new ethers.providers.JsonRpcProvider('https://rpc.ankr.com/')
 
-  let provider = celoProvider
-  switch (String(chainId)) {
-    case '42220':
-      provider = celoProvider
-      break
-    case '122':
-      provider = fuseProvider
-      break
-    case '50':
-      provider = xdcProvider
-      break
-    default:
-      break
-    // log.warn('verifyIdentifier unsupported chainId defaulting to Celo', chainId)
+  const rpc = networks[chainId]?.httpWeb3Provider?.split(',')[0]
+  const provider = rpc ? new ethers.providers.JsonRpcProvider(rpc) : null
+  if (!provider) {
+    throw new Error(`verifyIdentifier: no RPC for chainId ${chainId} for FV identifier verification`)
   }
-  const verifyResult = await verifyMessage({
-    provider,
-    signer: toChecksumAddress(gdAddress),
-    signature: fvsig,
-    message: FV_IDENTIFIER_MSG2({ account: toChecksumAddress(gdAddress) })
-  })
 
-  if (!verifyResult) {
-    // returns 0 if equals
-    throw new Error(`FV identifier signature verification faild`)
+  try {
+    const verifyResult = await verifyMessage({
+      provider,
+      signer: toChecksumAddress(gdAddress),
+      signature: fvsig,
+      message: FV_IDENTIFIER_MSG2({ account: toChecksumAddress(gdAddress) })
+    })
+    if (!verifyResult) {
+      // returns 0 if equals
+      const error = new Error('FV identifier signature verification failed')
+      error.rpc = rpc
+      error.chainId = chainId
+      throw error
+    }
+    return verifyResult
+  } catch (e) {
+    e.rpc = rpc
+    e.chainId = chainId
+    throw e
   }
-  return verifyResult
 }
 
 /**

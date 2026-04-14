@@ -296,12 +296,26 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       try {
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
         // for v1 this will do nothing
-        await verifyIdentifier(enrollmentIdentifier, gdAddress, chainId)
-
+        try {
+          await verifyIdentifier(enrollmentIdentifier, gdAddress, chainId)
+        } catch (e) {
+          log.warn('verifyIdentifier failed:', e.message, e, {
+            enrollmentIdentifier,
+            fvSigner,
+            gdAddress,
+            chainId: e.chainId,
+            rpc: e.rpc
+          })
+          throw e
+        }
+        log.debug('FV identifier verification success', { enrollmentIdentifier, gdAddress, chainId })
         const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
         const enrollmentProcessor = createEnrollmentProcessor(storage, log)
-
-        // here we check if wallet was registered using v1 of v2 identifier
+        log.debug('checking if user was previously registered with a v1 identifier before enrolling:', {
+          v2Identifier,
+          v1Identifier
+        })
+        // here we check if wallet was registered using a v1 identifier
         const isV1 = !!v1Identifier && (await enrollmentProcessor.isIdentifierExists(v1Identifier))
 
         try {
@@ -315,8 +329,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
               cancelDisposalTask(storage, v1Identifier)
             ])
           }
+          log.debug('starting enrollment process:', { v2Identifier, v1Identifier, isV1 })
           await enrollmentProcessor.validate(user, v2Identifier, payload)
+          log.debug('enrollment validation success:', { v2Identifier, v1Identifier, isV1 })
           const wasWhitelisted = await AdminWallet.lastAuthenticated(gdAddress)
+          log.debug('user last authenticated:', { wasWhitelisted, gdAddress })
           const enrollmentResult = await enrollmentProcessor.enroll(user, v2Identifier, payload, log)
 
           // fetch duplicate expiration
