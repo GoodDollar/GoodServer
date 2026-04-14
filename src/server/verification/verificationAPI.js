@@ -297,10 +297,10 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
         // for v1 this will do nothing
         await verifyIdentifier(enrollmentIdentifier, gdAddress, chainId)
-
+        log.debug('FV identifier verification success', { enrollmentIdentifier, gdAddress, chainId })
         const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
         const enrollmentProcessor = createEnrollmentProcessor(storage, log)
-
+        log.debug('checking if user is already enqueued for disposal before enrolling:', { v2Identifier, v1Identifier })
         // here we check if wallet was registered using v1 of v2 identifier
         const isV1 = !!v1Identifier && (await enrollmentProcessor.isIdentifierExists(v1Identifier))
 
@@ -315,8 +315,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
               cancelDisposalTask(storage, v1Identifier)
             ])
           }
+          log.debug('starting enrollment process:', { v2Identifier, v1Identifier, isV1 })
           await enrollmentProcessor.validate(user, v2Identifier, payload)
+          log.debug('enrollment validation success:', { v2Identifier, v1Identifier, isV1 })
           const wasWhitelisted = await AdminWallet.lastAuthenticated(gdAddress)
+          log.debug('user last authenticated:', { wasWhitelisted, gdAddress })
           const enrollmentResult = await enrollmentProcessor.enroll(user, v2Identifier, payload, log)
 
           // fetch duplicate expiration
