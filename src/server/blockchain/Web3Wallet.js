@@ -316,7 +316,6 @@ export class Web3Wallet {
         const keyId = this.kmsWallet.getKeyId(address)
         this.addKMSWallet(address, keyId)
       })
-      this.address = addresses[0]
       log.info('WalletInit: Initialized by KMS keys:', {
         addresses,
         keyIds: kmsKeyIds,
@@ -339,8 +338,6 @@ export class Web3Wallet {
 
           this.addWallet(account)
         }
-
-        this.address = this.addresses[0]
 
         log.info('WalletInit: Initialized by mnemonic:', { address: this.addresses })
       } else if (this.conf.privateKey) {
@@ -371,7 +368,8 @@ export class Web3Wallet {
       const adminWalletContractBalance = await this.web3.eth.getBalance(adminWalletAddress)
       log.info(`WalletInit: AdminWallet contract balance`, { adminWalletContractBalance, adminWalletAddress })
 
-      this.proxyContract = new this.web3.eth.Contract(AdminWalletABI, adminWalletAddress, { from: this.address })
+      // Initialize without `from` first, then re-bind after selecting a valid admin wallet.
+      this.proxyContract = new this.web3.eth.Contract(AdminWalletABI, adminWalletAddress)
 
       const maxAdminBalance = await this.proxyContract.methods.adminToppingAmount().call()
       const minAdminBalance = parseInt(web3Utils.fromWei(maxAdminBalance, 'gwei')) / 2
@@ -390,14 +388,27 @@ export class Web3Wallet {
 
       log.info('WalletInit: Initialized wallet queue manager')
 
+      log.info('Initializing adminwallet addresses', { addresses: this.addresses })
+
+      for (const addr of this.addresses) {
+        const balance = await this.web3.eth.getBalance(addr)
+        const isAdminWallet = await this.isVerifiedAdmin(addr)
+
+        if (isAdminWallet && parseFloat(web3Utils.fromWei(balance, 'gwei')) > minAdminBalance) {
+          log.info(`WalletInit: set default wallet to ${addr} with balance ${balance}`)
+          this.address = addr
+          break
+        }
+      }
+      // this.address = this.filledAddresses[0]
+      this.proxyContract = new this.web3.eth.Contract(AdminWalletABI, adminWalletAddress, { from: this.address })
+
       if (this.conf.topAdminsOnStartup) {
         log.info('WalletInit: calling topAdmins...')
         await this.topAdmins(this.conf.numberOfAdminWalletAccounts).catch(e => {
           log.warn('WalletInit: topAdmins failed', { e, errMessage: e.message })
         })
       }
-
-      log.info('Initializing adminwallet addresses', { addresses: this.addresses })
 
       await Promise.all(
         this.addresses.map(async addr => {
@@ -422,8 +433,6 @@ export class Web3Wallet {
           msg: `critical: no fuse admin wallet with funds ${this.name}`
         })
       }
-
-      this.address = this.filledAddresses[0]
 
       this.identityContract = new this.web3.eth.Contract(
         IdentityABI.abi,
