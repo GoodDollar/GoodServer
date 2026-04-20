@@ -1191,6 +1191,8 @@ export class Web3Wallet {
   async getFeeEstimates() {
     const result = await this.web3.eth.getFeeHistory('0x5', 'latest', [10])
 
+    console.log('Fee history result:', result)
+
     const baseFees = result.baseFeePerGas.map(hex => parseInt(hex, 16))
     const rewards = result.reward.map(r => parseInt(r[0], 16)) // 10th percentile
 
@@ -1237,6 +1239,8 @@ export class Web3Wallet {
       // Use instance defaults if not provided
       maxFeePerGas = maxFeePerGas !== undefined ? maxFeePerGas : this.maxFeePerGas
       maxPriorityFeePerGas = maxPriorityFeePerGas !== undefined ? maxPriorityFeePerGas : this.maxPriorityFeePerGas
+
+      console.log('normalizeGasPricing initial values:', { maxFeePerGas, maxPriorityFeePerGas })
 
       // Convert to numbers for comparison
       let maxFeeNum = toNumber(maxFeePerGas)
