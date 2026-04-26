@@ -118,6 +118,9 @@ class MultiWallet {
   async isVerified(account) {
     return this.mainWallet.isVerified(account)
   }
+  async getReverifyStatus(account) {
+    return this.mainWallet.getReverifyStatus(account)
+  }
 
   async isConnected(account) {
     // Base has no Identity contract; isConnected would fail there. Only run on wallets that have Identity.
