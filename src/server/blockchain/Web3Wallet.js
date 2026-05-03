@@ -1711,7 +1711,7 @@ export class Web3Wallet {
               network: this.networkId
             })
             if (receipt) {
-              await this.txManager.unlock(currentAddress, currentNonce + 1)
+              await this.txManager.unlock(currentAddress, Math.max(netNonce, currentNonce + 1))
               logger.info('receipt found for timedout tx attempts', {
                 currentAddress,
                 currentNonce,
@@ -1746,7 +1746,12 @@ export class Web3Wallet {
         })
         // return assuming tx will mine
         return
-      } else if (retry && (e.message.includes('FeeTooLowToCompete') || e.message.includes('underpriced'))) {
+      } else if (
+        retry &&
+        (e.message.toLowerCase().includes('nonce') ||
+          e.message.includes('FeeTooLowToCompete') ||
+          e.message.includes('underpriced'))
+      ) {
         logger.warn('sendTransaction assuming duplicate nonce:', {
           error: e.message,
           maxFeePerGas,
@@ -1760,7 +1765,7 @@ export class Web3Wallet {
           network: this.networkId
         })
         // increase nonce, since we assume therre's a tx pending with same nonce
-        await this.txManager.unlock(currentAddress, currentNonce + 1)
+        await this.txManager.unlock(currentAddress, Math.max(netNonce, currentNonce + 1))
 
         return this.sendTransaction(
           tx,
