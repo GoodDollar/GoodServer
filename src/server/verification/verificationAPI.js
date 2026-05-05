@@ -812,6 +812,29 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     })
   )
 
+  app.post(
+    '/verify/onramper/sign',
+    requestRateLimiter(20, 1),
+    passport.authenticate(['jwt', 'anonymous'], { session: false }),
+    wrapAsync(async (req, res) => {
+      const { log, body = {} } = req
+      const { signContent } = body
+
+      if (!signContent || typeof signContent !== 'string') {
+        return res.status(400).json({ ok: -1, error: 'missing signContent' })
+      }
+
+      if (!conf.onramperUrlSigningSecret) {
+        log.error('onramper sign request failed, missing ONRAMPER_URL_SIGNING_SECRET')
+        return res.status(500).json({ ok: -1, error: 'Onramper signing secret is not configured' })
+      }
+
+      const signature = crypto.createHmac('sha256', conf.onramperUrlSigningSecret).update(signContent).digest('hex')
+
+      return res.json({ ok: 1, signContent, signature })
+    })
+  )
+
   /**
    * @api {post} /verify/email Send verification email endpoint
    * @apiName Send Email

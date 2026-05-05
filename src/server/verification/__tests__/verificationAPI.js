@@ -1,5 +1,6 @@
 import request from 'supertest'
 import MockAdapter from 'axios-mock-adapter'
+import crypto from 'crypto'
 
 import { assign, omit } from 'lodash'
 import moment from 'moment'
@@ -25,7 +26,7 @@ GoodIDUtils.ageGenderCheck = jest.fn().mockResolvedValue({ age: { min: 15 } })
 
 describe('verificationAPI', () => {
   let server
-  const { skipEmailVerification, zoomProductionMode, defaultWhitelistChainId } = Config
+  const { skipEmailVerification, zoomProductionMode, defaultWhitelistChainId, onramperUrlSigningSecret } = Config
   const userIdentifier = '0x7ac080f6607405705aed79675789701a48c76f55'
 
   beforeAll(async () => {
@@ -45,7 +46,7 @@ describe('verificationAPI', () => {
 
   afterAll(async () => {
     // restore original config
-    Object.assign(Config, { skipEmailVerification, zoomProductionMode })
+    Object.assign(Config, { skipEmailVerification, zoomProductionMode, onramperUrlSigningSecret })
     await storage.model.deleteMany({ fullName: new RegExp('test_user_sendemail', 'i') })
 
     await new Promise(res =>
@@ -527,6 +528,41 @@ describe('verificationAPI', () => {
       await request(server).delete(enrollmentUri).query({ signature }).set('Authorization', `Bearer ${token}`)
 
       await testDisposalState(true)
+    })
+  })
+
+  describe('onramper signing', () => {
+    beforeEach(() => {
+      Config.onramperUrlSigningSecret = onramperUrlSigningSecret || 'test-onramper-secret'
+    })
+
+    test('POST /verify/onramper/sign signs already-normalized signContent as-is', async () => {
+      const signContent =
+        'networkWallets=bitcoin:1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2,ethereum:1BvBMSEYstWetqTFn5wrwrhGFryetusJaNVN2&walletAddressTags=btc:1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2,eth:1BvBMSEYstWetqTFn5wrwrhGFryetusJaNVN2&wallets=btc:1Lbcfr7sAHTD9CgdQo3HTMTkV8LK4ZnX71,eth:1Lbcfr7sAUTEFCgdQo3HTMTkV8LK4ZnX71'
+      const payload = { signContent }
+      const signature = crypto.createHmac('sha256', Config.onramperUrlSigningSecret).update(signContent).digest('hex')
+
+      await request(server).post('/verify/onramper/sign').send(payload).expect(200, {
+        ok: 1,
+        signContent,
+        signature
+      })
+    })
+
+    test('POST /verify/onramper/sign returns 400 for missing signContent', async () => {
+      await request(server).post('/verify/onramper/sign').send({}).expect(400, {
+        ok: -1,
+        error: 'missing signContent'
+      })
+    })
+
+    test('POST /verify/onramper/sign returns 500 when secret is not configured', async () => {
+      Config.onramperUrlSigningSecret = ''
+
+      await request(server).post('/verify/onramper/sign').send({ signContent: 'wallets=btc:abc' }).expect(500, {
+        ok: -1,
+        error: 'Onramper signing secret is not configured'
+      })
     })
   })
 })
