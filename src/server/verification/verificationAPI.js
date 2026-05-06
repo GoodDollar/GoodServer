@@ -9,7 +9,10 @@ import requestIp from 'request-ip'
 import moment from 'moment'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import { default as AdminWallet } from '../blockchain/MultiWallet'
-import { findFaucetAbuse, findGDTx } from '../blockchain/explorer'
+import {
+  findFaucetAbuse
+  // findGDTx
+} from '../blockchain/explorer'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
 import requestRateLimiter, { userRateLimiter } from '../utils/requestRateLimiter'
 import OTP from '../../imports/otp'
@@ -703,8 +706,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         if (
           !user.isEmailConfirmed &&
           !user.smsValidated &&
-          !(await AdminWallet.isConnected(user.gdAddress)) &&
-          !(gdContract && (await findGDTx(user.gdAddress, chainId, gdContract)))
+          !(await AdminWallet.isConnected(user.gdAddress))
+          // && // !(gdContract && (await findGDTx(user.gdAddress, chainId, gdContract)))
         ) {
           log.warn('topwallet denied, not registered user nor whitelisted nor did gd tx lately', {
             address: user.gdAddress,
