@@ -1,7 +1,6 @@
 import { once } from 'lodash'
 
 export default once(() => {
-  const alchemyKey = process.env.ALCHEMY_API
   const fuseRpc = process.env.FUSE_RPC
   const celoRpc = process.env.CELO_RPC
   const mainnetRpc = process.env.MAINNET_RPC
@@ -16,7 +15,7 @@ export default once(() => {
     1: {
       network_id: 1,
       web3Transport: 'HttpProvider',
-      httpWeb3Provider: `https://rpc.flashbots.net,https://eth-rpc.gateway.pokt.network,https://cloudflare-eth.com,https://eth-mainnet.g.alchemyapi.com/v2/${alchemyKey}`,
+      httpWeb3Provider: `https://mainnet.gateway.tenderly.co,https://eth.drpc.org`,
       websocketWeb3Provider: 'wss://mainnet.infura.io/ws',
       explorer: ''
     },
