@@ -70,26 +70,6 @@ export const createCRMRecord = async (userRecord: UserRecord, utmString: string,
   return crmId
 }
 
-export const topUserWallet = async (userRecord: UserRecord, logger: any) => {
-  let user = await UserDBPrivate.getUser(userRecord.identifier)
-  const topWallet = get(user, 'isCompleted.topWallet', false)
-  if (!topWallet) {
-    return AdminWallet.topWallet(userRecord.gdAddress)
-      .then(() => {
-        UserDBPrivate.completeStep(userRecord.identifier, 'topWallet')
-        logger.debug('topUserWallet success', { address: userRecord.gdAddress })
-        return true
-      })
-      .catch(e => {
-        logger.error('New user topping failed', e.message, e, { userRecord })
-        return false
-      })
-  }
-
-  logger.debug('topUserWallet user wallet already topped', { address: userRecord.gdAddress })
-  return true
-}
-
 export const syncUserEmail = async (user, email, utmString, log) => {
   const { crmId, loggedInAs } = user
   const { model } = UserDBPrivate

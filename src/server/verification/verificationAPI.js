@@ -703,13 +703,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       if (conf.env === 'production') {
-        if (
-          !user.isEmailConfirmed &&
-          !user.smsValidated &&
-          !(await AdminWallet.isConnected(user.gdAddress))
-          // && // !(gdContract && (await findGDTx(user.gdAddress, chainId, gdContract)))
-        ) {
-          log.warn('topwallet denied, not registered user nor whitelisted nor did gd tx lately', {
+        if (!(await AdminWallet.isConnected(user.gdAddress))) {
+          log.warn('topwallet denied user not whitelisted', {
             address: user.gdAddress,
             origin,
             chainId,
