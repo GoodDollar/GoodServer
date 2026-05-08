@@ -718,6 +718,12 @@ const conf = convict({
     format: String,
     env: 'OFFERWALL_SECRET',
     default: ''
+  },
+  onramperUrlSigningSecret: {
+    doc: 'Onramper URL signing secret',
+    format: String,
+    env: 'ONRAMPER_URL_SIGNING_SECRET',
+    default: ''
   }
 })
 
