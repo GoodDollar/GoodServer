@@ -808,13 +808,15 @@ export class Web3Wallet {
    */
   async topWallet(address: string, customLogger = null): PromiEvent<TransactionReceipt> {
     const logger = customLogger || this.log
+
+    // try to call regular faucet if possible, if it fails (eg user is not eligible) then we will try to topwallet from admin wallet
     const faucetRes = await this.topWalletFaucet(address, logger).catch(() => false)
 
     if (faucetRes) {
       return faucetRes
     }
 
-    // if we reached here, either we used the faucet or user should call faucet on its own.
+    // if we reached here, we use the admin wallet to topwallet, but first we simulate the call to check if it will revert (eg if user is not whitelisted) so we don't waste admin funds on tx that will fail
     let txHash = ''
 
     // simulate tx to detect revert
@@ -1771,7 +1773,7 @@ export class Web3Wallet {
           tx,
           txCallbacks,
           { gas, gasPrice, maxFeePerGas, maxPriorityFeePerGas },
-          false,
+          true,
           logger
         )
       } else if (retry && e.message.toLowerCase().includes('revert') === false) {
