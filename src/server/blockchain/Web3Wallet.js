@@ -626,7 +626,7 @@ export class Web3Wallet {
       )
 
       const transaction = await this.proxyContract.methods.genericCall(this.identityContract._address, encodedCall, 0)
-      const tx = await this.sendTransaction(transaction, {})
+      const tx = await this.sendTransaction(transaction, {}, undefined, true, log)
 
       log.info('authenticating user success:', { address, tx, wallet: this.name })
       return tx
@@ -1483,7 +1483,8 @@ export class Web3Wallet {
             fail()
           }
 
-          logger.error('Transaction error:', { txuuid, error: e.message, wallet: this.name })
+          // just warn here, error is also propagated via promise rejection in sendTransaction, and we don't want to log twice for the same error
+          logger.warn('Transaction error:', { txuuid, error: e.message, wallet: this.name })
 
           if (onError) {
             onError(e)
