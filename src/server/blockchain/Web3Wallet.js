@@ -1242,7 +1242,11 @@ export class Web3Wallet {
       maxFeePerGas = maxFeePerGas !== undefined ? maxFeePerGas : this.maxFeePerGas
       maxPriorityFeePerGas = maxPriorityFeePerGas !== undefined ? maxPriorityFeePerGas : this.maxPriorityFeePerGas
 
-      console.log('normalizeGasPricing initial values:', { maxFeePerGas, maxPriorityFeePerGas })
+      logger.debug('normalizeGasPricing initial values:', {
+        chainId: this.networkId,
+        maxFeePerGas,
+        maxPriorityFeePerGas
+      })
 
       // Convert to numbers for comparison
       let maxFeeNum = toNumber(maxFeePerGas)
@@ -1266,6 +1270,11 @@ export class Web3Wallet {
         })
         maxFeePerGas = maxPriorityFeePerGas
       }
+      logger.debug('normalizeGasPricing final values:', {
+        chainId: this.networkId,
+        maxFeePerGas,
+        maxPriorityFeePerGas
+      })
 
       return { gasPrice: undefined, maxFeePerGas, maxPriorityFeePerGas }
     }
@@ -1304,8 +1313,9 @@ export class Web3Wallet {
         80001, // Mumbai (Polygon testnet)
         122, // Fuse
         42220, // Celo
-        4447 // Local Testnet
-        // Note: XDC (50) will also become EIP-1559 soon and should be added when it's live
+        4447, // Local Testnet
+        50,
+        122
       ])
 
       if (knownEIP1559Chains.has(chainId)) {
@@ -1434,18 +1444,25 @@ export class Web3Wallet {
       promiEvent
         .on('transactionHash', h => {
           context.txHash = h
-          logger.trace('got tx hash:', { txuuid, txHash: h, wallet: this.name })
-          release()
+          logger.debug('got tx hash:', { txuuid, txHash: h, wallet: this.name })
 
           if (onTransactionHash) {
             onTransactionHash(h)
           }
         })
         .on('sent', payload => {
+          release()
+
           if (onSent) {
             onSent(payload)
           }
-          logger.debug('tx sent:', { txHash: context.txHash, payload, txuuid, wallet: this.name })
+          logger.debug('tx sent:', {
+            txHash: context.txHash,
+            payload,
+            calcTxHash: web3Utils.keccak256(payload.params[0]),
+            txuuid,
+            wallet: this.name
+          })
         })
         .on('receipt', r => {
           logger.debug('got tx receipt:', { txuuid, txHash: r.transactionHash, wallet: this.name })
@@ -1679,8 +1696,8 @@ export class Web3Wallet {
           maxPriorityFeePerGas
         },
         {
-          onSent: payload => {
-            txHash = payload?.transactionHash || txHash
+          onTransactionHash: hash => {
+            txHash = hash || txHash
           }
         }
       )
