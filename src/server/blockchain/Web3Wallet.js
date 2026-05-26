@@ -1454,7 +1454,7 @@ export class Web3Wallet {
           release()
 
           if (onSent) {
-            onSent(payload)
+            onSent(context.txHash || web3Utils.keccak256(payload.params[0]))
           }
           logger.debug('tx sent:', {
             txHash: context.txHash,
@@ -1696,7 +1696,7 @@ export class Web3Wallet {
           maxPriorityFeePerGas
         },
         {
-          onTransactionHash: hash => {
+          onSent: hash => {
             txHash = hash || txHash
           }
         }
