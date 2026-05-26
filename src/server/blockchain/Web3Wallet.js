@@ -1256,7 +1256,7 @@ export class Web3Wallet {
       if (!maxFeeNum || !maxPriorityNum) {
         const { baseFee, priorityFee } = await this.getFeeEstimates()
         maxFeePerGas = maxFeeNum || baseFee
-        maxPriorityFeePerGas = maxPriorityNum || priorityFee
+        maxPriorityFeePerGas = Math.max(maxPriorityNum || priorityFee, 1e8) // ensure a minimum priority fee of 0.1 gwei to avoid getting stuck
         maxFeeNum = toNumber(maxFeePerGas)
         maxPriorityNum = toNumber(maxPriorityFeePerGas)
       }
