@@ -8,6 +8,7 @@ import {
   duplicateFoundMessage,
   successfullyEnrolledMessage,
   alreadyEnrolledMessage,
+  enrollmentNotFoundMessage,
   ZoomLicenseType
 } from '../../utils/constants'
 
@@ -17,7 +18,7 @@ import ServerConfig from '../../../server.config'
 
 import { type IEnrollmentProvider } from '../typings'
 import { strcasecmp } from '../../../utils/string'
-import GoodIDUtils from '../../../goodid/utils'
+import { default as GoodIDUtils } from '../../../goodid/utils'
 
 class ZoomProvider implements IEnrollmentProvider {
   api = null
@@ -209,8 +210,8 @@ class ZoomProvider implements IEnrollmentProvider {
     // next steps are performed only if face verification enabled
     // if already enrolled and already indexed then passed match-3d, no need to facesearch
     log.debug('Preparing enrollment to uniqueness index:', { enrollmentIdentifier, alreadyEnrolled, alreadyIndexed })
-    if (storeRecords && !alreadyIndexed) {
-      // for dev env settings will be not to store records
+    if (!alreadyIndexed) {
+      // for dev env settings will be to ignore duplicates
       // 3. checking for duplicates
       const { results, ...faceSearchResponse } = await api.faceSearch(
         enrollmentIdentifier,
@@ -226,18 +227,20 @@ class ZoomProvider implements IEnrollmentProvider {
           strcasecmp(matchId, enrollmentIdentifier) && Number(matchLevel) >= defaultMinimalMatchLevel
       )
 
-      // if there're at least one record left - we have a duplicate
-      const isDuplicate = !!duplicate
+      //for dev env this will usually be false so we wont notify about duplicates at all
+      if (storeRecords) {
+        // if there're at least one record left - we have a duplicate
+        const isDuplicate = !!duplicate
 
-      // notifying about duplicates found or not
-      await notifyProcessor({ isDuplicate })
+        // notifying about duplicates found or not
+        await notifyProcessor({ isDuplicate })
 
-      if (isDuplicate) {
-        // if duplicate found - throwing corresponding error
-        log.warn(duplicateFoundMessage, { duplicate, enrollmentIdentifier })
-        throwException(duplicateFoundMessage, { isDuplicate, duplicate }, faceSearchResponse)
+        if (isDuplicate) {
+          // if duplicate found - throwing corresponding error
+          log.warn(duplicateFoundMessage, { duplicate, enrollmentIdentifier })
+          throwException(duplicateFoundMessage, { isDuplicate, duplicate }, faceSearchResponse)
+        }
       }
-
       // 4. indexing uploaded & stored face scan to the 3D Database
       log.debug('Preparing enrollment to index:', { enrollmentIdentifier, alreadyEnrolled, alreadyIndexed })
 
@@ -270,6 +273,108 @@ class ZoomProvider implements IEnrollmentProvider {
 
     // returning successfull result
     return { isVerified: true, alreadyEnrolled, alreadyIndexed, resultBlob, message: enrollmentStatus }
+  }
+
+  async enroll2d(
+    enrollmentIdentifier: string,
+    payload: any,
+    onEnrollmentProcessing: (payload: IEnrollmentEventPayload) => void | Promise<void>,
+    minMatchLevel: ?number = null,
+    customLogger = null
+  ): Promise<any> {
+    const { api, logger } = this
+    const log = customLogger || logger
+
+    const { LivenessCheckFailed, FacemapDoesNotMatch } = ZoomAPIError
+
+    // send event to onEnrollmentProcessing
+    const notifyProcessor = async eventPayload => onEnrollmentProcessing(eventPayload)
+    const isLargeTextField = field => ['Base64', 'Blob'].some(suffix => field.endsWith(suffix))
+    const redactedFields = ['callData', 'additionalSessionData', 'serverInfo']
+
+    const throwException = (errorOrMessage, customResponse, originalResponse = {}) => {
+      let exception = errorOrMessage
+      let { response } = exception || {}
+
+      if (!isError(errorOrMessage)) {
+        exception = new Error(errorOrMessage)
+        response = originalResponse
+      }
+
+      const redactedResponse = omitBy(response, (_, field) => redactedFields.includes(field) || isLargeTextField(field))
+
+      exception.response = {
+        ...redactedResponse,
+        ...customResponse,
+        isVerified: false
+      }
+
+      throw exception
+    }
+    // 1. ensure enrollment exists (we need a 3D FaceMap to match against)
+    const alreadyEnrolled = await this.isEnrollmentExists(enrollmentIdentifier, customLogger)
+    // check if enrollment is indexed
+    const alreadyIndexed = await this.isEnrollmentIndexed(enrollmentIdentifier, customLogger)
+    if (!alreadyEnrolled || !alreadyIndexed) {
+      log.warn('No existing enrollment found for 3D FaceMap, cannot perform 2D->3D matching', { enrollmentIdentifier })
+      throwException(enrollmentNotFoundMessage || 'Enrollment not found', { isEnrolled: false }, {})
+    }
+
+    // ensure photo2d present
+    if (!payload || !payload.photo2d) {
+      throwException('Missing 2D photo (photo2d) required for 2D liveness and 3D-2D matching', { missingPhoto2d: true })
+    }
+    // 2. perform 2D liveness check
+    try {
+      const livenessResp = await api.liveness2d(payload.photo2d, customLogger)
+      log.debug('enroll2d 2D liveness success', { enrollmentIdentifier, livenessResp })
+    } catch (exception) {
+      const { name, message, response } = exception
+
+      log.warn('enroll2d2D liveness failed:', { enrollmentIdentifier, name, message })
+      if (LivenessCheckFailed === name) {
+        await notifyProcessor({ isLive: false })
+        throwException(message, { isLive: false }, response)
+      }
+      if (response) {
+        throwException(exception)
+      }
+
+      throw exception
+    }
+
+    await notifyProcessor({ isLive: true })
+
+    // 3. perform 3D-2D matching against existing FaceMap
+    try {
+      const matchResp = await api.match3d2dFacePortrait(
+        payload.photo2d,
+        enrollmentIdentifier,
+        minMatchLevel,
+        customLogger
+      )
+      log.debug('3D-2D match success', { enrollmentIdentifier, matchResp })
+    } catch (exception) {
+      const { name, message, response } = exception
+
+      log.warn('3D-2D match failed:', { enrollmentIdentifier, name, message })
+
+      if (FacemapDoesNotMatch === name) {
+        await notifyProcessor({ isNotMatch: true })
+        throwException(message, { isNotMatch: true }, response)
+      }
+
+      if (response) {
+        throwException(exception)
+      }
+
+      throw exception
+    }
+
+    await notifyProcessor({ isNotMatch: false })
+
+    // returning success
+    return { isVerified: true, alreadyEnrolled: true, alreadyIndexed, message: successfullyEnrolledMessage }
   }
 
   // eslint-disable-next-line require-await

@@ -32,7 +32,7 @@ export default class EnrollmentSession {
   }
 
   async enroll(payload: any): Promise<any> {
-    const { log, user, provider, enrollmentIdentifier, onEnrollmentProcessing } = this
+    const { log, user, provider, enrollmentIdentifier, onEnrollmentProcessing, adminApi } = this
     let result = { success: true }
 
     log.info('Enrollment session started', {
@@ -45,13 +45,35 @@ export default class EnrollmentSession {
     try {
       await this.onEnrollmentStarted()
 
-      const enrollmentResult = await provider.enroll(
-        enrollmentIdentifier,
-        payload,
-        onEnrollmentProcessing,
-        user.ageVerified,
-        log
-      )
+      // Decide whether to run the alternative 2D liveness + 3D-2D match flow.
+      // This is used for re-verification of already-whitelisted users whose authCount
+      // is less than the configured reverify periods - 1.
+      let enrollmentResult
+      const account = user.gdAddress
+
+      // read identity record from on-chain contract
+      const { nextReverify, isLastReverify, identityRecord } = await adminApi.getReverifyStatus(account)
+      const status = parseInt(identityRecord.status || '0')
+      log.info('Enrollment session reverify status:', { account, nextReverify, isLastReverify, status })
+
+      if (status === 1 && !isLastReverify && payload.photo2d) {
+        // require photo2d in payload; provider.enroll2d will validate
+        enrollmentResult = await provider.enroll2d(
+          enrollmentIdentifier,
+          payload,
+          onEnrollmentProcessing,
+          provider.api.defaultMinimalMatchLevel,
+          log
+        )
+      } else {
+        enrollmentResult = await provider.enroll(
+          enrollmentIdentifier,
+          payload,
+          onEnrollmentProcessing,
+          user.ageVerified,
+          log
+        )
+      }
 
       log.info('Enrollment session completed with result:', enrollmentResult)
 
