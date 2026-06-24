@@ -11,7 +11,11 @@ class IpAccountsCache {
   async updateAndGet(ip, address) {
     try {
       return this.model
-        .findOneAndUpdate({ ip }, { $addToSet: { accounts: [address] } }, { upsert: true, returnOriginal: false })
+        .findOneAndUpdate(
+          { ip },
+          { $addToSet: { accounts: [address] }, timestamp: Date.now() },
+          { upsert: true, returnOriginal: false }
+        )
         .lean()
     } catch (ex) {
       logger.error('Update ip accounts in ipcache failed:', ex.message, ex, { ip, address })
