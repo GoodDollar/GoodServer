@@ -237,10 +237,20 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { log, user } = req
+      const clientIp = requestIp.getClientIp(req)
 
       log.debug('session face request:', { user })
 
       try {
+        const foundMultiIpAccounts = await checkMultiIpAccounts(user.gdAddress, clientIp, log)
+        if (foundMultiIpAccounts) {
+          log.warn('session token denied:', foundMultiIpAccounts.length, new Error('session token denied'), {
+            foundMultiIpAccounts,
+            clientIp,
+            account: user.gdAddress
+          })
+          throw new Error('session token denied')
+        }
         const processor = createEnrollmentProcessor(storage, log)
         const sessionToken = await processor.issueSessionToken(log)
 
@@ -272,6 +282,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { enrollmentIdentifier } = params
       const { chainId, fvSigner = '', ...payload } = body || {} // payload is the facetec data
       const { gdAddress } = user
+      const clientIp = requestIp.getClientIp(req)
 
       log.debug('enroll face request:', { fvSigner, enrollmentIdentifier, chainId, user })
 
@@ -297,6 +308,16 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       try {
+        const foundMultiIpAccounts = await checkMultiIpAccounts(user.gdAddress, clientIp, log)
+        if (foundMultiIpAccounts) {
+          log.warn('fv session denied:', foundMultiIpAccounts.length, new Error('fv session denied'), {
+            foundMultiIpAccounts,
+            clientIp,
+            account: user.gdAddress
+          })
+          throw new Error('fv session denied')
+        }
+
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
         // for v1 this will do nothing
         try {
