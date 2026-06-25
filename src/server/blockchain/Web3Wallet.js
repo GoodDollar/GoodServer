@@ -1417,12 +1417,12 @@ export class Web3Wallet {
     },
     options: {
       fail?: Function,
-      onSent?: Function
+      onTxHash?: Function
     } = {}
   ): Promise<TransactionReceipt> {
     const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
     const { release, txuuid, logger, address, nonce, gas, maxFeePerGas, maxPriorityFeePerGas } = context
-    const { fail, onSent } = options
+    const { fail, onTxHash } = options
 
     return new Promise((res, rej) => {
       // Verify promiEvent is actually a PromiEvent (has .on method)
@@ -1449,17 +1449,20 @@ export class Web3Wallet {
           if (onTransactionHash) {
             onTransactionHash(h)
           }
+          if (onTxHash) {
+            onTxHash(h)
+          }
         })
         .on('sent', payload => {
           release()
 
-          if (onSent) {
-            onSent(context.txHash || web3Utils.keccak256(payload.params[0]))
+          if (onTxHash && (typeof context.txHash === 'string' || typeof payload?.params?.[0] === 'string')) {
+            onTxHash(context.txHash || web3Utils.keccak256(payload.params[0]))
           }
           logger.debug('tx sent:', {
             txHash: context.txHash,
             payload,
-            calcTxHash: web3Utils.keccak256(payload.params[0]),
+            calcTxHash: typeof payload?.params?.[0] === 'string' && web3Utils.keccak256(payload.params[0]),
             txuuid,
             wallet: this.name
           })
@@ -1696,7 +1699,7 @@ export class Web3Wallet {
           maxPriorityFeePerGas
         },
         {
-          onSent: hash => {
+          onTxHash: hash => {
             txHash = hash || txHash
           }
         }
