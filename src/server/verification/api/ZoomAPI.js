@@ -1,6 +1,6 @@
 // @flow
 
-import Axios from 'axios'
+import { default as Axios } from 'axios'
 import { URL } from 'url'
 import { assign, get, pick, omit, isPlainObject, isArray, mapValues, once, lowerFirst, toLower, findKey } from 'lodash'
 
@@ -198,6 +198,57 @@ export class ZoomAPI {
     return this.http.post(`/match-3d-2d-idscan`, payloadData, { customLogger })
   }
 
+  async liveness2d(image, customLogger = null) {
+    const payload = { image }
+
+    let response
+    try {
+      response = await this.http.post(`/liveness-2d`, payload, { customLogger })
+    } catch (exception) {
+      this._logUnexpectedExecption(exception)
+      throw exception
+    }
+
+    const { success, isLikelyRealPerson } = response
+
+    if (!success || !isLikelyRealPerson) {
+      const exception = new Error(failedLivenessMessage)
+      assign(exception, { response, name: ZoomAPIError.LivenessCheckFailed })
+      throw exception
+    }
+
+    return response
+  }
+
+  async match3d2dFacePortrait(image, externalDatabaseRefID, minMatchLevel = null, customLogger = null) {
+    const minMatch = null === minMatchLevel ? this.defaultMinimalMatchLevel : minMatchLevel
+
+    const payload = {
+      image,
+      externalDatabaseRefID,
+      minMatchLevel: minMatch
+    }
+
+    let response
+    try {
+      response = await this.http.post(`/match-3d-2d-face-portrait`, payload, { customLogger })
+    } catch (exception) {
+      this._logUnexpectedExecption(exception)
+      throw exception
+    }
+
+    // normalize response checks: require processed and sufficient matchLevel
+    const { success, matchLevel, imageProcessingStatusEnumInt } = response
+
+    if (!success || imageProcessingStatusEnumInt !== 0 || Number(matchLevel) < Number(minMatch)) {
+      const exception = new Error(failedMatchMessage)
+      assign(exception, { response, name: ZoomAPIError.FacemapDoesNotMatch })
+      throw exception
+    }
+
+    return response
+  }
+
   _configureClient(Config, logger) {
     const { zoomLicenseKey, zoomServerBaseUrl } = Config
     const serverURL = new URL(zoomServerBaseUrl)
@@ -326,7 +377,7 @@ export class ZoomAPI {
 
   _logResponse(logMessage, response) {
     const { data, config } = response
-    const logger = config.customLogger || this.logger
+    const logger = config?.customLogger || this.logger
 
     logger.debug(logMessage, this._createLoggingSafeCopy(data))
   }
@@ -337,7 +388,7 @@ export class ZoomAPI {
 
     if (response) {
       const { data, status, statusText, config } = response
-      const log = config.customLogger || logger
+      const log = config?.customLogger || logger
 
       exception.name = ZoomAPIError.HttpException
       log.debug('HTTP exception during Zoom API call:', { data, status, statusText })
