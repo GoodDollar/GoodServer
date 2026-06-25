@@ -443,7 +443,7 @@ const setup = (app: Router, storage: StorageAPI) => {
             : OnGage.deleteContact(user.crmId, log)
                 .then(() => ({ crm: 'ok' }))
                 .catch(() => ({ crm: 'failed' })),
-        ...deleteFromAnalytics(user.identifier, user.gdAddress)
+        ...deleteFromAnalytics(user.identifier, user.gdAddress, log)
       ])
 
       log.info('delete user results', { user, results })
