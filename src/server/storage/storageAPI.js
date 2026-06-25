@@ -23,6 +23,7 @@ import Logger from '../../imports/logger'
 const { fishManager } = stakingModelTasks
 
 const deleteFromAnalytics = (userId, walletAddress, log) => {
+  log.info('deleting user from analytics', { userId, walletAddress })
   const amplitudePromise = fetch(`https://amplitude.com/api/2/deletions/users`, {
     headers: { Authorization: `Basic ${conf.amplitudeBasicAuth}`, 'Content-Type': 'application/json' },
     method: 'POST',
@@ -47,7 +48,7 @@ const deleteFromAnalytics = (userId, walletAddress, log) => {
       }
     })
 
-  return [amplitudePromise]
+  return amplitudePromise
 }
 
 const adminAuthenticate = (req, res, next) => {
@@ -443,9 +444,10 @@ const setup = (app: Router, storage: StorageAPI) => {
             : OnGage.deleteContact(user.crmId, log)
                 .then(() => ({ crm: 'ok' }))
                 .catch(() => ({ crm: 'failed' })),
-        ...deleteFromAnalytics(user.identifier, user.gdAddress, log)
+        deleteFromAnalytics(user.identifier, user.gdAddress, log)
+          .then(() => ({ analytics: 'ok' }))
+          .catch(() => ({ analytics: 'failed' }))
       ])
-
       log.info('delete user results', { user, results })
       res.json({ ok: 1, results })
     })
@@ -663,7 +665,9 @@ const setup = (app: Router, storage: StorageAPI) => {
           : OnGage.deleteContact(user.crmId, log)
               .then(() => ({ crm: 'ok' }))
               .catch(() => ({ crm: 'failed' })),
-        ...deleteFromAnalytics(user.identifier, user.gdAddress)
+        deleteFromAnalytics(user.identifier, user.gdAddress, log)
+          .then(() => ({ analytics: 'ok' }))
+          .catch(() => ({ analytics: 'failed' }))
       ])
 
       log.info('delete user results', { user, results })
