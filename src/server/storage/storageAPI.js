@@ -645,7 +645,25 @@ const setup = (app: Router, storage: StorageAPI) => {
         user = await storage.getUsersByMobile(body.mobile.startsWith('0x') === false ? sha3(body.mobile) : body.mobile)
       if (body.identifier) user = await storage.getUser(body.identifier)
       if (body.identifierHash) user = await storage.getByIdentifierHash(body.identifierHash)
-      if (!user?.length) return res.json({ ok: 0, error: 'User not found' })
+      if (!user?.length) {
+        let crmResult = 'missing'
+        if (body.email?.includes('@')) {
+          const contactId = await OnGage.getContactIdByEmail(body.email, log)
+          if (contactId) {
+            log.info('user not in db. found user email in CRM', { email: body.email, contactId })
+            crmResult = await OnGage.deleteContact(contactId, log)
+              .then(() => 'ok')
+              .catch(() => 'failed')
+          } else {
+            log.info('user not in db. user email not found in CRM', { email: body.email })
+          }
+        }
+        return res.json({
+          ok: 0,
+          error: 'User not found',
+          results: { mongodb: 'missing', crm: crmResult, analytics: 'missing' }
+        })
+      }
       user = user[0]
       const crmCount = user.crmId
         ? await storage.getCountCRMId(user.crmId).catch(e => {
