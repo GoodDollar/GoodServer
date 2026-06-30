@@ -86,9 +86,9 @@ const checkMultiIpAccounts = async (account, ip, logger) => {
     return accounts
   }
   if (faucetAddressBlocked[account]) {
-    return true
+    return accounts
   }
-  return false
+  return undefined
 }
 
 if (conf.env !== 'test')
