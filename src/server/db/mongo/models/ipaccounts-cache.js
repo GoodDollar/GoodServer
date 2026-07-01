@@ -19,6 +19,6 @@ export const IpAccountsCacheSchema = new Schema(
   },
   { minimize: false }
 )
-IpAccountsCacheSchema.index({ timestamp: 1 }, { expireAfterSeconds: 48 * 60 * 60 }) //48 hours
+IpAccountsCacheSchema.index({ timestamp: 1 }, { expireAfterSeconds: 30 * 24 * 60 * 60 }) //1 month
 
 export default mongoose.model(MODEL_IPCACHE, IpAccountsCacheSchema)
