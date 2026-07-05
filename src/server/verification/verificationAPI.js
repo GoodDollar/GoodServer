@@ -249,7 +249,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
             clientIp,
             account: user.gdAddress
           })
-          throw new Error('session token denied')
+          return res.status(400).json({ success: false, error: 'session token denied' })
         }
         const processor = createEnrollmentProcessor(storage, log)
         const sessionToken = await processor.issueSessionToken(log)
