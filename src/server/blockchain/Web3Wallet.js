@@ -14,7 +14,7 @@ import ProxyContractABI from '@gooddollar/goodprotocol/artifacts/contracts/utils
 import ContractsAddress from '@gooddollar/goodprotocol/releases/deployment.json'
 import FaucetABI from '@gooddollar/goodprotocol/artifacts/contracts/fuseFaucet/FuseFaucetV2.sol/FuseFaucetV2.json'
 import BuyGDFactoryABI from '@gooddollar/goodprotocol/artifacts/abis/BuyGDCloneFactory.min.json'
-import BuyGDABI from '@gooddollar/goodprotocol/artifacts/abis/BuyGDClone.min.json'
+import BuyGDABI from '@gooddollar/goodprotocol/artifacts/abis/BuyGDCloneV2.min.json'
 import { toChecksumAddress, sha3 } from 'web3-utils'
 
 import conf from '../server.config'
@@ -474,8 +474,8 @@ export class Web3Wallet {
 
       const buygdAddress = get(
         ContractsAddress,
-        `${this.network}.BuyGDFactoryV2`,
-        get(ContractsAddress, `${this.network}.BuyGDFactory`)
+        `${this.network}.BUYGDFactoryV3`,
+        get(ContractsAddress, `${this.network}.BuyGDFactoryV2`, get(ContractsAddress, `${this.network}.BuyGDFactory`))
       )
       if (buygdAddress) {
         this.buygdFactoryContract = new this.web3.eth.Contract(BuyGDFactoryABI.abi, buygdAddress, {
