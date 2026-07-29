@@ -108,8 +108,8 @@ export class KMSWallet {
       } catch (error) {
         // Skip keys that are pending import or not ready
         // This allows tests to continue with available keys
-        if (error.message && error.message.includes('pending import')) {
-          log.warn('Skipping KMS key - pending import', { keyId, error: error.message })
+        if (error.message && error.message.includes('pending')) {
+          log.warn('Skipping KMS key - pending', { keyId, error: error.message })
           continue
         }
         log.error('Failed to initialize KMS key', { keyId, error: error.message })

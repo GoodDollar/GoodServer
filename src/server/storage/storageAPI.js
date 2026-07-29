@@ -23,14 +23,15 @@ import Logger from '../../imports/logger'
 const { fishManager } = stakingModelTasks
 
 const deleteFromAnalytics = (userId, walletAddress, log) => {
+  log.info('deleting user from analytics', { userId, walletAddress })
   const amplitudePromise = fetch(`https://amplitude.com/api/2/deletions/users`, {
     headers: { Authorization: `Basic ${conf.amplitudeBasicAuth}`, 'Content-Type': 'application/json' },
     method: 'POST',
 
     body: JSON.stringify({
       user_ids: [toChecksumAddress(userId.toLowerCase())], //amplitude id is case sensitive and is the original address form from user wallet
-      delete_from_org: 'True',
-      ignore_invalid_id: 'True'
+      delete_from_org: 'true',
+      ignore_invalid_id: 'true'
     })
   })
     .then(_ => _.text())
@@ -40,9 +41,14 @@ const deleteFromAnalytics = (userId, walletAddress, log) => {
         amplitude: 'ok'
       }
     })
-    .catch(() => ({ amplitude: 'failed' }))
+    .catch(e => {
+      log.warn('amplitude delete user failed', e.message, e, { userId, walletAddress })
+      return {
+        amplitude: 'failed'
+      }
+    })
 
-  return [amplitudePromise]
+  return amplitudePromise
 }
 
 const adminAuthenticate = (req, res, next) => {
@@ -438,9 +444,10 @@ const setup = (app: Router, storage: StorageAPI) => {
             : OnGage.deleteContact(user.crmId, log)
                 .then(() => ({ crm: 'ok' }))
                 .catch(() => ({ crm: 'failed' })),
-        ...deleteFromAnalytics(user.identifier, user.gdAddress)
+        deleteFromAnalytics(user.identifier, user.gdAddress, log)
+          .then(() => ({ analytics: 'ok' }))
+          .catch(() => ({ analytics: 'failed' }))
       ])
-
       log.info('delete user results', { user, results })
       res.json({ ok: 1, results })
     })
@@ -630,11 +637,59 @@ const setup = (app: Router, storage: StorageAPI) => {
     '/admin/user/delete',
     adminAuthenticate,
     wrapAsync(async (req, res) => {
-      const { body } = req
-      let result = {}
-      if (body.identifier) result = await storage.deleteUser(body)
+      const { body, log } = req
+      let user = {}
+      if (body.email)
+        user = await storage.getUsersByEmail(body.email.startsWith('0x') === false ? sha3(body.email) : body.email)
+      if (body.mobile)
+        user = await storage.getUsersByMobile(body.mobile.startsWith('0x') === false ? sha3(body.mobile) : body.mobile)
+      if (body.identifier) user = await storage.getUser(body.identifier)
+      if (body.identifierHash) user = await storage.getByIdentifierHash(body.identifierHash)
+      if (!user?.length) {
+        let crmResult = 'missing'
+        if (body.email?.includes('@')) {
+          const contactId = await OnGage.getContactIdByEmail(body.email, log)
+          if (contactId) {
+            log.info('user not in db. found user email in CRM', { email: body.email, contactId })
+            crmResult = await OnGage.deleteContact(contactId, log)
+              .then(() => 'ok')
+              .catch(() => 'failed')
+          } else {
+            log.info('user not in db. user email not found in CRM', { email: body.email })
+          }
+        }
+        return res.json({
+          ok: 0,
+          error: 'User not found',
+          results: { mongodb: 'missing', crm: crmResult, analytics: 'missing' }
+        })
+      }
+      user = user[0]
+      const crmCount = user.crmId
+        ? await storage.getCountCRMId(user.crmId).catch(e => {
+            log.warn('getCountCRMId failed:', e.message, e)
+            return 1
+          })
+        : 0
 
-      res.json({ ok: 1, result })
+      log.info('delete user', { user, crmCount })
+
+      const results = await Promise.all([
+        (user.identifier ? storage.deleteUser(user) : Promise.reject())
+          .then(() => ({ mongodb: 'ok' }))
+          .catch(() => ({ mongodb: 'failed' })),
+        crmCount === 0
+          ? Promise.resolve({ crm: 'missingId' })
+          : OnGage.deleteContact(user.crmId, log)
+              .then(() => ({ crm: 'ok' }))
+              .catch(() => ({ crm: 'failed' })),
+        deleteFromAnalytics(user.identifier, user.gdAddress, log)
+          .then(() => ({ analytics: 'ok' }))
+          .catch(() => ({ analytics: 'failed' }))
+      ])
+
+      log.info('delete user results', { user, results })
+      res.json({ ok: 1, results })
     })
   )
 

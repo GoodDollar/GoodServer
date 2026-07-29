@@ -262,7 +262,7 @@ const setup = (app: Router) => {
 
       const { fvsig, account, chainId = '42220' } = body
 
-      log.debug('/auth/fv2', { account, fvsig })
+      log.debug('/auth/fv2', { account, fvsig, chainId })
 
       try {
         await verifyIdentifier(fvsig, account, chainId)

@@ -120,7 +120,9 @@ class MultiWallet {
   }
 
   async isConnected(account) {
-    const results = await Promise.all(this.wallets.map(wallet => wallet.isConnected(account)))
+    // Base has no Identity contract; isConnected would fail there. Only run on wallets that have Identity.
+    const walletsWithIdentity = this.wallets.filter(w => !(w instanceof BaseAdminWallet))
+    const results = await Promise.all(walletsWithIdentity.map(wallet => wallet.isConnected(account)))
     return results.some(Boolean)
   }
 

@@ -9,7 +9,10 @@ import requestIp from 'request-ip'
 import moment from 'moment'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import { default as AdminWallet } from '../blockchain/MultiWallet'
-import { findFaucetAbuse, findGDTx } from '../blockchain/explorer'
+import {
+  findFaucetAbuse
+  // findGDTx
+} from '../blockchain/explorer'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
 import requestRateLimiter, { userRateLimiter } from '../utils/requestRateLimiter'
 import OTP from '../../imports/otp'
@@ -83,9 +86,9 @@ const checkMultiIpAccounts = async (account, ip, logger) => {
     return accounts
   }
   if (faucetAddressBlocked[account]) {
-    return true
+    return accounts
   }
-  return false
+  return undefined
 }
 
 if (conf.env !== 'test')
@@ -234,10 +237,20 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { log, user } = req
+      const clientIp = requestIp.getClientIp(req)
 
       log.debug('session face request:', { user })
 
       try {
+        const foundMultiIpAccounts = await checkMultiIpAccounts(user.gdAddress, clientIp, log)
+        if (foundMultiIpAccounts) {
+          log.warn('session token denied:', foundMultiIpAccounts.length, new Error('session token denied'), {
+            foundMultiIpAccounts,
+            clientIp,
+            account: user.gdAddress
+          })
+          return res.status(400).json({ success: false, error: 'session token denied' })
+        }
         const processor = createEnrollmentProcessor(storage, log)
         const sessionToken = await processor.issueSessionToken(log)
 
@@ -269,6 +282,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { enrollmentIdentifier } = params
       const { chainId, fvSigner = '', ...payload } = body || {} // payload is the facetec data
       const { gdAddress } = user
+      const clientIp = requestIp.getClientIp(req)
 
       log.debug('enroll face request:', { fvSigner, enrollmentIdentifier, chainId, user })
 
@@ -294,14 +308,38 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       try {
+        const foundMultiIpAccounts = await checkMultiIpAccounts(user.gdAddress, clientIp, log)
+        if (foundMultiIpAccounts) {
+          log.warn('fv session denied:', foundMultiIpAccounts.length, new Error('fv session denied'), {
+            foundMultiIpAccounts,
+            clientIp,
+            account: user.gdAddress
+          })
+          throw new Error('fv session denied')
+        }
+
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
         // for v1 this will do nothing
-        await verifyIdentifier(enrollmentIdentifier, gdAddress, chainId)
-
+        try {
+          await verifyIdentifier(enrollmentIdentifier, gdAddress, chainId)
+        } catch (e) {
+          log.warn('verifyIdentifier failed:', e.message, e, {
+            enrollmentIdentifier,
+            fvSigner,
+            gdAddress,
+            chainId: e.chainId,
+            rpc: e.rpc
+          })
+          throw e
+        }
+        log.debug('FV identifier verification success', { enrollmentIdentifier, gdAddress, chainId })
         const { v2Identifier, v1Identifier } = normalizeIdentifiers(enrollmentIdentifier, fvSigner)
         const enrollmentProcessor = createEnrollmentProcessor(storage, log)
-
-        // here we check if wallet was registered using v1 of v2 identifier
+        log.debug('checking if user was previously registered with a v1 identifier before enrolling:', {
+          v2Identifier,
+          v1Identifier
+        })
+        // here we check if wallet was registered using a v1 identifier
         const isV1 = !!v1Identifier && (await enrollmentProcessor.isIdentifierExists(v1Identifier))
 
         try {
@@ -315,8 +353,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
               cancelDisposalTask(storage, v1Identifier)
             ])
           }
+          log.debug('starting enrollment process:', { v2Identifier, v1Identifier, isV1 })
           await enrollmentProcessor.validate(user, v2Identifier, payload)
+          log.debug('enrollment validation success:', { v2Identifier, v1Identifier, isV1 })
           const wasWhitelisted = await AdminWallet.lastAuthenticated(gdAddress)
+          log.debug('user last authenticated:', { wasWhitelisted, gdAddress })
           const enrollmentResult = await enrollmentProcessor.enroll(user, v2Identifier, payload, log)
 
           // fetch duplicate expiration
@@ -683,13 +724,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       if (conf.env === 'production') {
-        if (
-          !user.isEmailConfirmed &&
-          !user.smsValidated &&
-          !(await AdminWallet.isConnected(user.gdAddress)) &&
-          !(gdContract && (await findGDTx(user.gdAddress, chainId, gdContract)))
-        ) {
-          log.warn('topwallet denied, not registered user nor whitelisted nor did gd tx lately', {
+        if (!(await AdminWallet.isConnected(user.gdAddress))) {
+          log.warn('topwallet denied user not whitelisted', {
             address: user.gdAddress,
             origin,
             chainId,

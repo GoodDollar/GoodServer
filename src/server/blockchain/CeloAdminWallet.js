@@ -5,7 +5,7 @@ const { celo, env } = conf
 const options = {
   ethereum: celo,
   network: `${env}-celo`,
-  maxFeePerGas: (30e9).toFixed(0),
+  maxFeePerGas: undefined, // will force use of estimatefees
   maxPriorityFeePerGas: (2e8).toFixed(0),
   fetchGasPrice: false,
   faucetTxCost: 250000
