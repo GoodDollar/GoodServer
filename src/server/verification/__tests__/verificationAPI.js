@@ -556,6 +556,16 @@ describe('verificationAPI', () => {
       })
     })
 
+    test('POST /verify/onramper/sign returns 400 for non-string signContent', async () => {
+      await request(server)
+        .post('/verify/onramper/sign')
+        .send({ signContent: { foo: 'bar' } })
+        .expect(400, {
+          ok: -1,
+          error: 'missing signContent'
+        })
+    })
+
     test('POST /verify/onramper/sign returns 500 when secret is not configured', async () => {
       Config.onramperUrlSigningSecret = ''
 
