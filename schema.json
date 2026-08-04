@@ -1,0 +1,56 @@
+{
+  "columns": {
+    "email": {
+      "type": "email",
+      "required": true
+    },
+    "country": {
+      "type": "string",
+      "required": false
+    },
+    "first_name": {
+      "type": "string",
+      "required": false
+    },
+    "last_name": {
+      "type": "string",
+      "required": false
+    },
+    "language": {
+      "type": "string",
+      "required": false
+    },
+    "os": {
+      "type": "string",
+      "required": false
+    },
+    "regmethod": {
+      "type": "string",
+      "required": false
+    },
+    "torusprovider": {
+      "type": "string",
+      "required": false
+    },
+    "mobile": {
+      "type": "string",
+      "required": false
+    },
+    "whitelisted": {
+      "type": "boolean",
+      "required": false
+    },
+    "claim_counter": {
+      "type": "integer",
+      "required": false
+    },
+    "ocx_created_date": {
+      "type": "date",
+      "required": false
+    },
+    "ongage_status": {
+      "type": "string",
+      "required": false
+    }
+  }
+}
