@@ -48,10 +48,18 @@ export default async (app: Router) => {
     origin: true,
     credentials: false
   }
+  const walletCorsConfig = {
+    credentials: true,
+    origin: /(\.?goodd(ollar|app)\.org$)|localhost|localhost:3000|good-wallet-v2\.vercel\.app|goodwallet\.xyz/
+  }
   const openCorsPaths = new Set(['/verify/topwallet'])
+  const walletCorsPaths = new Set(['/verify/onramper/sign'])
   const corsDelegate = (req, callback) => {
     if (openCorsPaths.has(req.path)) {
       return callback(null, openCorsConfig)
+    }
+    if (walletCorsPaths.has(req.path)) {
+      return callback(null, walletCorsConfig)
     }
     return callback(null, corsConfig)
   }
