@@ -147,18 +147,19 @@ describe('adminwallet', () => {
     const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {})
     const isVerifiedAdminSpy = jest.spyOn(AdminWallet, 'isVerifiedAdmin').mockResolvedValue(false)
 
-    // init() appends to filledAddresses instead of resetting it, so clear out whatever
-    // the real (unmocked) init from beforeAll already populated before re-running it here.
-    AdminWallet.filledAddresses = []
-    AdminWallet.address = undefined
+    try {
+      // init() only sets this.address when a wallet qualifies, so clear the address the
+      // real (unmocked) init from beforeAll already found before re-running it here.
+      AdminWallet.address = undefined
 
-    await AdminWallet.init()
+      await AdminWallet.init()
 
-    expect(AdminWallet.address).toBe(AdminWallet.addresses[0])
-    expect(AdminWallet.filledAddresses).toEqual([])
-    expect(exitSpy).not.toHaveBeenCalled()
-
-    isVerifiedAdminSpy.mockRestore()
-    exitSpy.mockRestore()
+      expect(AdminWallet.address).toBe(AdminWallet.addresses[0])
+      expect(AdminWallet.filledAddresses).toEqual([])
+      expect(exitSpy).not.toHaveBeenCalled()
+    } finally {
+      isVerifiedAdminSpy.mockRestore()
+      exitSpy.mockRestore()
+    }
   })
 })
