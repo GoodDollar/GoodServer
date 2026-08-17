@@ -365,6 +365,9 @@ export class Web3Wallet {
     try {
       log.info('WalletInit: Obtained AdminWallet address', { adminWalletAddress, network: this.network })
 
+      // Reset per-run so re-running init() doesn't keep stacking addresses found by a previous run.
+      this.filledAddresses = []
+
       const adminWalletContractBalance = await this.web3.eth.getBalance(adminWalletAddress)
       log.info(`WalletInit: AdminWallet contract balance`, { adminWalletContractBalance, adminWalletAddress })
 
@@ -405,8 +408,14 @@ export class Web3Wallet {
       // configured address instead of leaving `this.address` undefined, otherwise the
       // getBalance/getTransactionCount calls below crash the process on an invalid
       // (undefined) address even though the low-funds condition is already alerted on
-      // via Slack a few lines down.
+      // via Slack a few lines down. If there is no configured address at all, that's a
+      // genuine misconfiguration (no mnemonic/privateKey/KMS wallets set up) - fail loudly
+      // through the existing catch below instead of silently continuing with no address.
       if (!this.address) {
+        if (this.addresses.length === 0) {
+          throw new Error('WalletInit: no admin wallet addresses configured (missing mnemonic/privateKey/KMS wallets)')
+        }
+
         this.address = this.addresses[0]
       }
 
