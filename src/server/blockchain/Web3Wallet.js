@@ -516,9 +516,11 @@ export class Web3Wallet {
     } catch (e) {
       log.error('WalletInit: Error initializing wallet', e.message, e)
 
-      if (this.conf.env !== 'test' && this.conf.env !== 'development') {
-        process.exit(-1)
-      }
+      await sendSlackAlert({
+        msg: `CRITICAL: AdminWallet init failed - ${e.message} ${this.name}`
+      })
+
+      return false
     }
 
     return true
