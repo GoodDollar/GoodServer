@@ -400,7 +400,16 @@ export class Web3Wallet {
           break
         }
       }
-      // this.address = this.filledAddresses[0]
+
+      // No configured wallet met the funding threshold above. Fall back to the first
+      // configured address instead of leaving `this.address` undefined, otherwise the
+      // getBalance/getTransactionCount calls below crash the process on an invalid
+      // (undefined) address even though the low-funds condition is already alerted on
+      // via Slack a few lines down.
+      if (!this.address) {
+        this.address = this.addresses[0]
+      }
+
       this.proxyContract = new this.web3.eth.Contract(AdminWalletABI, adminWalletAddress, { from: this.address })
 
       if (this.conf.topAdminsOnStartup) {
