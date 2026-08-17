@@ -109,7 +109,12 @@ export class MultipleHttpProvider extends HttpProvider {
       const { message, error, code } = exception
       const errorMessage = exception?.error ? JSON.stringify(exception?.error) : exception.message
       const txError = isTxError(errorMessage)
-      const conError = isConnectionError(error)
+      // Web3 reports malformed/empty provider responses as the exception
+      // itself (for example: "Invalid JSON RPC response"). RPC errors,
+      // however, are exposed through the nested `error` property. Check both
+      // so a failing provider does not prevent the remaining endpoints from
+      // being tried.
+      const conError = isConnectionError(error || exception)
 
       // retry if not tx issue and network error or if rpc responded with error (error.error)
       const willFallback = !txError && !!(code || error || !message || conError)
