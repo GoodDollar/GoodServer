@@ -365,6 +365,9 @@ export class Web3Wallet {
     try {
       log.info('WalletInit: Obtained AdminWallet address', { adminWalletAddress, network: this.network })
 
+      // Reset per-run so re-running init() doesn't keep stacking addresses found by a previous run.
+      this.filledAddresses = []
+
       const adminWalletContractBalance = await this.web3.eth.getBalance(adminWalletAddress)
       log.info(`WalletInit: AdminWallet contract balance`, { adminWalletContractBalance, adminWalletAddress })
 
@@ -400,7 +403,22 @@ export class Web3Wallet {
           break
         }
       }
-      // this.address = this.filledAddresses[0]
+
+      // No configured wallet met the funding threshold above. Fall back to the first
+      // configured address instead of leaving `this.address` undefined, otherwise the
+      // getBalance/getTransactionCount calls below crash the process on an invalid
+      // (undefined) address even though the low-funds condition is already alerted on
+      // via Slack a few lines down. If there is no configured address at all, that's a
+      // genuine misconfiguration (no mnemonic/privateKey/KMS wallets set up) - fail loudly
+      // through the existing catch below instead of silently continuing with no address.
+      if (!this.address) {
+        if (this.addresses.length === 0) {
+          throw new Error('WalletInit: no admin wallet addresses configured (missing mnemonic/privateKey/KMS wallets)')
+        }
+
+        this.address = this.addresses[0]
+      }
+
       this.proxyContract = new this.web3.eth.Contract(AdminWalletABI, adminWalletAddress, { from: this.address })
 
       if (this.conf.topAdminsOnStartup) {
@@ -498,9 +516,11 @@ export class Web3Wallet {
     } catch (e) {
       log.error('WalletInit: Error initializing wallet', e.message, e)
 
-      if (this.conf.env !== 'test' && this.conf.env !== 'development') {
-        process.exit(-1)
-      }
+      await sendSlackAlert({
+        msg: `CRITICAL: AdminWallet init failed - ${e.message} ${this.name}`
+      })
+
+      return false
     }
 
     return true
