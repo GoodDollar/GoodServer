@@ -430,7 +430,7 @@ export class Web3Wallet {
         log.error('WalletInit: no admin wallet with funds')
 
         await sendSlackAlert({
-          msg: `critical: no fuse admin wallet with funds ${this.name}`
+          msg: `critical: no admin wallet with funds ${this.name}`
         })
       }
 

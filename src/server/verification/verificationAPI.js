@@ -242,14 +242,16 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       log.debug('session face request:', { user })
 
       try {
-        const foundMultiIpAccounts = await checkMultiIpAccounts(user.gdAddress, clientIp, log)
-        if (foundMultiIpAccounts) {
-          log.warn('session token denied:', foundMultiIpAccounts.length, new Error('session token denied'), {
-            foundMultiIpAccounts,
-            clientIp,
-            account: user.gdAddress
-          })
-          return res.status(400).json({ success: false, error: 'session token denied' })
+        if (conf.fvIpCheckEnabled) {
+          const foundMultiIpAccounts = await checkMultiIpAccounts(user.gdAddress, clientIp, log)
+          if (foundMultiIpAccounts) {
+            log.warn('session token denied:', foundMultiIpAccounts.length, new Error('session token denied'), {
+              foundMultiIpAccounts,
+              clientIp,
+              account: user.gdAddress
+            })
+            return res.status(400).json({ success: false, error: 'session token denied' })
+          }
         }
         const processor = createEnrollmentProcessor(storage, log)
         const sessionToken = await processor.issueSessionToken(log)
@@ -308,14 +310,16 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       }
 
       try {
-        const foundMultiIpAccounts = await checkMultiIpAccounts(user.gdAddress, clientIp, log)
-        if (foundMultiIpAccounts) {
-          log.warn('fv session denied:', foundMultiIpAccounts.length, new Error('fv session denied'), {
-            foundMultiIpAccounts,
-            clientIp,
-            account: user.gdAddress
-          })
-          throw new Error('fv session denied')
+        if (conf.fvIpCheckEnabled) {
+          const foundMultiIpAccounts = await checkMultiIpAccounts(user.gdAddress, clientIp, log)
+          if (foundMultiIpAccounts) {
+            log.warn('fv session denied:', foundMultiIpAccounts.length, new Error('fv session denied'), {
+              foundMultiIpAccounts,
+              clientIp,
+              account: user.gdAddress
+            })
+            throw new Error('fv session denied')
+          }
         }
 
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
