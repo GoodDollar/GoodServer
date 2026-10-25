@@ -61,7 +61,7 @@ export default once(() => {
       network_id: 50,
       web3Transport: 'HttpProvider',
       // eslint-disable-next-line prettier/prettier
-      httpWeb3Provider: xdcRpc ? xdcRpc : 'https://rpc.xdc.org/',
+      httpWeb3Provider: xdcRpc ? xdcRpc : 'https://rpc.xdc.org/,https://erpc.xinfin.network',
       websocketWeb3Provider: '',
       explorer: xdcExplorers
     },
