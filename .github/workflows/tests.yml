@@ -66,6 +66,7 @@ jobs:
       CHUNKS: ${{ needs.setup.outputs['test-chunks'] }}
       BLOCKCHAIN_CHUNKS: ${{ needs.setup.outputs['wallet-chunk-id'] }}
       MONGO_DB_URI: ${{ secrets.MONGO_DB_URI }}
+      XDC_RPC: http://localhost:8545/
 
     runs-on: ubuntu-latest
     steps:
