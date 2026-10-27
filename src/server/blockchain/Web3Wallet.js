@@ -447,9 +447,12 @@ export class Web3Wallet {
       if (this.filledAddresses.length === 0) {
         log.error('WalletInit: no admin wallet with funds')
 
-        await sendSlackAlert({
-          msg: `critical: no fuse admin wallet with funds ${this.name}`
-        })
+        // dont send alert for base network on dev env
+        if (this.network === 'production' || this.name !== 'BaseAdminWallet') {
+          await sendSlackAlert({
+            msg: `critical: no admin wallet with funds ${this.name}`
+          })
+        }
       }
 
       this.identityContract = new this.web3.eth.Contract(

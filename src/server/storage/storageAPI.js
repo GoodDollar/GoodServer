@@ -658,10 +658,16 @@ const setup = (app: Router, storage: StorageAPI) => {
             log.info('user not in db. user email not found in CRM', { email: body.email })
           }
         }
+        let analytics = 'missing'
+        if (body.identifierHash) {
+          analytics = await deleteFromAnalytics(body.identifierHash, body.identifierHash, log)
+            .then(() => ({ analytics: 'ok' }))
+            .catch(() => ({ analytics: 'failed' }))
+        }
         return res.json({
           ok: 0,
           error: 'User not found',
-          results: { mongodb: 'missing', crm: crmResult, analytics: 'missing' }
+          results: { mongodb: 'missing', crm: crmResult, analytics }
         })
       }
       user = user[0]

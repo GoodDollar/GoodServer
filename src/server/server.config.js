@@ -724,6 +724,12 @@ const conf = convict({
     format: String,
     env: 'ONRAMPER_URL_SIGNING_SECRET',
     default: ''
+  },
+  fvIpCheckEnabled: {
+    doc: 'Enable IP check for face verification',
+    format: Boolean,
+    env: 'FV_IP_CHECK_ENABLED',
+    default: false
   }
 })
 
