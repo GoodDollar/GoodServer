@@ -59,11 +59,18 @@ export const verifyIdentifier = async (fvsig, gdAddress, chainId = 42220) => {
   // const celoProvider = new ethers.providers.JsonRpcProvider('https://forno.celo.org')
   // const xdcProvider = new ethers.providers.JsonRpcProvider('https://rpc.ankr.com/')
 
-  const rpc = networks[chainId]?.httpWeb3Provider?.split(',')[0]
-  const provider = rpc ? new ethers.providers.JsonRpcProvider(rpc) : null
-  if (!provider) {
+  const rpcs = networks[chainId]?.httpWeb3Provider?.split(',') || []
+  const rpc = rpcs[0]
+  if (!rpc) {
     throw new Error(`verifyIdentifier: no RPC for chainId ${chainId} for FV identifier verification`)
   }
+  const provider =
+    rpcs.length > 1
+      ? new ethers.providers.FallbackProvider(
+          rpcs.map(endpoint => new ethers.providers.JsonRpcProvider(endpoint, chainId)),
+          1
+        )
+      : new ethers.providers.JsonRpcProvider(rpc)
 
   try {
     const verifyResult = await verifyMessage({
