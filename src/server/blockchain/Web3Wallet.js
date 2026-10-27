@@ -782,6 +782,16 @@ export class Web3Wallet {
   async isConnected(address: string): Promise<boolean> {
     const { log } = this
 
+    // wallet failed (or not yet finished) initialization - it can't confirm the account, so never count it as verified
+    if (!this.identityContract) {
+      log.warn('isConnected: identity contract unavailable, wallet not initialized', {
+        address,
+        wallet: this.name,
+        networkId: this.networkId
+      })
+      return false
+    }
+
     const tx: string = await this.identityContract.methods
       .getWhitelistedRoot(address)
       .call()
