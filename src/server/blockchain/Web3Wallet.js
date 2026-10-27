@@ -295,6 +295,9 @@ export class Web3Wallet {
   async init() {
     const { log } = this
 
+    // Do not expose an identity contract from a previous or incomplete initialization.
+    this.identityContract = undefined
+
     const adminWalletAddress = get(ContractsAddress, `${this.network}.AdminWallet`)
     log.debug('WalletInit: Initializing wallet:', { conf: this.ethereum, adminWalletAddress, name: this.name })
 
@@ -526,7 +529,7 @@ export class Web3Wallet {
         }
       }
 
-      this.identityContract = new this.web3.eth.Contract(
+      const identityContract = new this.web3.eth.Contract(
         IdentityABI.abi,
         get(ContractsAddress, `${this.network}.Identity`, ADDRESS_ZERO),
         { from: this.address }
@@ -577,6 +580,7 @@ export class Web3Wallet {
 
       let nativebalance = await this.web3.eth.getBalance(this.address)
       this.nonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
+      this.identityContract = identityContract
 
       log.debug('WalletInit: AdminWallet Ready:', {
         activeWallets: this.filledAddresses.length,
