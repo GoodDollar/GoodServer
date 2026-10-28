@@ -1,6 +1,6 @@
 import { BaseAdminWallet } from '../BaseAdminWallet'
 describe('BaseAdminWallet', () => {
-  const wallet = new BaseAdminWallet({ network: 'development-base' })
+  const wallet = new BaseAdminWallet({ network: 'dapptest' })
   test('should always return true for whitelisting', async () => {
     expect(await wallet.isVerified('asdasd')).toEqual(false)
     expect(await wallet.whitelistUser('asdasd')).toEqual(true)
