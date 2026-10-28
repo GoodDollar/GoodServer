@@ -1,10 +1,9 @@
-import Web3 from 'web3'
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import AdminWallet from '../AdminWallet'
 
 import txManager from '../../utils/tx-manager'
 
-const web3 = new Web3()
-const generateWalletAddress = () => web3.eth.accounts.create().address
+const generateWalletAddress = () => privateKeyToAccount(generatePrivateKey()).address
 
 describe('adminwallet', () => {
   beforeAll(async () => {
@@ -15,7 +14,9 @@ describe('adminwallet', () => {
     const unverifiedAddress = generateWalletAddress()
     const tx = await AdminWallet.topWallet(unverifiedAddress).catch(() => false)
     expect(tx).toBeTruthy()
-    const balance = await AdminWallet.web3.eth.getBalance(unverifiedAddress)
+    const balance = await AdminWallet.publicClient
+      .getBalance({ address: unverifiedAddress })
+      .then(balance => balance.toString())
     expect(balance).toEqual('6000000000000000')
   })
 
@@ -35,26 +36,18 @@ describe('adminwallet', () => {
     const unverifiedAddress = generateWalletAddress()
     await AdminWallet.whitelistUser(unverifiedAddress, 'did:gd' + Math.random(), 123)
     const isVerified = await AdminWallet.isVerified(unverifiedAddress)
-    const registeredChainId = await AdminWallet.identityContract.methods
-      .getWhitelistedOnChainId(unverifiedAddress)
-      .call()
+    const registeredChainId = await AdminWallet.identityContract.read.getWhitelistedOnChainId([unverifiedAddress])
     expect(isVerified).toBeTruthy()
-    expect(registeredChainId).toBe('123')
+    expect(registeredChainId).toBe(123n)
   })
 
   test('adminWallet can authenticate user', async () => {
     const unverifiedAddress = generateWalletAddress()
     await AdminWallet.whitelistUser(unverifiedAddress, 'did:gd' + Math.random())
-    const lastAuth = await AdminWallet.identityContract.methods
-      .lastAuthenticated(unverifiedAddress)
-      .call()
-      .then(parseInt)
+    const lastAuth = await AdminWallet.identityContract.read.lastAuthenticated([unverifiedAddress]).then(parseInt)
 
     await AdminWallet.authenticateUser(unverifiedAddress)
-    const lastAuth2 = await AdminWallet.identityContract.methods
-      .lastAuthenticated(unverifiedAddress)
-      .call()
-      .then(parseInt)
+    const lastAuth2 = await AdminWallet.identityContract.read.lastAuthenticated([unverifiedAddress]).then(parseInt)
 
     expect(lastAuth2).toBeGreaterThan(lastAuth)
   })

@@ -24,12 +24,9 @@ export class BaseAdminWallet extends Web3Wallet {
     const ready = super.initialize()
     return ready.then(r => {
       if (r) {
-        this.faucetContract = new this.web3.eth.Contract(
+        this.faucetContract = this.getContract(
           SuperfluidFaucetABI.abi,
-          get(ContractsAddress, `${this.network}.SuperfluidFaucet`),
-          {
-            from: this.address
-          }
+          get(ContractsAddress, `${this.network}.SuperfluidFaucet`)
         )
       }
       return r
@@ -40,11 +37,8 @@ export class BaseAdminWallet extends Web3Wallet {
     const logger = customLogger || this.log
     if (!this.faucetContract) return true
     if (await this.celoWallet.isConnected(address)) {
-      const { baseFeePerGas = 1e7 } = await this.web3.eth.getBlock('latest')
-      const canTop = await this.faucetContract.methods
-        .canTop(address, baseFeePerGas)
-        .call()
-        .catch(() => true)
+      const { baseFeePerGas = 1e7 } = await this.publicClient.getBlock({ blockTag: 'latest' })
+      const canTop = await this.faucetContract.read.canTop([address, baseFeePerGas]).catch(() => true)
       if (canTop) {
         return this.topWalletFaucet(address, logger).catch(() => false)
       }

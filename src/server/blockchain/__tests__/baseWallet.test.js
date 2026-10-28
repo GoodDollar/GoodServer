@@ -9,7 +9,7 @@ describe('BaseAdminWallet', () => {
 
   test('should contracts addresses set', async () => {
     await wallet.ready
-    expect(wallet.faucetContract._address).not.toBeEmpty()
-    expect(wallet.proxyContract._address).not.toBeEmpty()
+    expect(wallet.faucetContract.address).not.toBeEmpty()
+    expect(wallet.proxyContract.address).not.toBeEmpty()
   })
 })
