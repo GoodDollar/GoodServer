@@ -166,6 +166,16 @@ describe('viem wallet', () => {
       expect(wallet.txManager.unlock).toHaveBeenCalledWith(address, 5)
     })
 
+    test('classifies viem errors by details instead of nonce fields in request arguments', async () => {
+      const error = Object.assign(new Error('Missing or invalid parameters.\nRequest Arguments:\n  nonce: 3'), {
+        details: 'execution reverted: transfer not allowed'
+      })
+      wallet._sendViemTransaction.mockRejectedValueOnce(error)
+      await expect(wallet.sendTransaction(tx, {}, { gas: 21000 })).rejects.toThrow(error.details)
+      expect(wallet._sendViemTransaction).toHaveBeenCalledTimes(1)
+      expect(wallet.txManager.unlock).toHaveBeenCalledWith(address, 5)
+    })
+
     test('routes native sends through the same queue with wei values intact', async () => {
       await wallet.sendNative({ from: address, to: address, value: '12' }, {}, { gas: 21000 })
       expect(wallet.txManager.lock).toHaveBeenCalledWith([address])
@@ -254,6 +264,31 @@ describe('viem wallet', () => {
       )
       expect(context.release).not.toHaveBeenCalled()
       expect(callbacks.onError).toHaveBeenCalledTimes(1)
+    })
+
+    test.each(['local', 'KMS'])('reports only viem details for failed %s broadcasts', async signer => {
+      const error = Object.assign(new Error('Missing or invalid parameters.\nRequest Arguments:\n  nonce: 163'), {
+        details: 'Transaction requires at least 21000 gas but got 10',
+        code: -32602
+      })
+      if (signer === 'KMS') {
+        wallet.addKMSWallet(account.address, 'test-key-id')
+        wallet._signTransactionWithKMS = jest.fn().mockResolvedValue('0xsigned')
+        publicClient.sendRawTransaction.mockRejectedValue(error)
+      } else {
+        walletClient.sendTransaction.mockRejectedValue(error)
+      }
+
+      const rejection = await wallet
+        ._sendViemTransaction(tx, account.address, { gas: 10 }, callbacks, context)
+        .catch(error => error)
+
+      expect(rejection).toBeInstanceOf(Error)
+      expect(rejection.message).toBe(error.details)
+      expect(rejection.cause).toBe(error)
+      expect(rejection.code).toBe(error.code)
+      expect(callbacks.onError).toHaveBeenCalledWith(rejection)
+      expect(context.release).not.toHaveBeenCalled()
     })
   })
 })

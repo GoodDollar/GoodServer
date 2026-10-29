@@ -177,6 +177,16 @@ export class Web3Wallet {
     return { to: contract.address, data: encodeFunctionData({ abi: contract.abi, functionName, args }) }
   }
 
+  _normalizeTransactionError(error) {
+    if (typeof error.details !== 'string' || !error.details) return error
+
+    const normalizedError = new Error(error.details, { cause: error })
+    for (const key of ['code', 'data', 'receipt', 'transactionHash']) {
+      if (error[key] !== undefined) normalizedError[key] = error[key]
+    }
+    return normalizedError
+  }
+
   async _sendViemTransaction(tx, address, txParams, txCallbacks = {}, context = {}, clients = this) {
     const { publicClient, walletClient } = clients
     const { release = () => {}, onTxHash = () => {}, timeout = FUSE_TX_TIMEOUT } = context
@@ -217,8 +227,9 @@ export class Web3Wallet {
       if (txCallbacks.onConfirmation) txCallbacks.onConfirmation(1, receipt)
       return receipt
     } catch (error) {
-      if (txCallbacks.onError) txCallbacks.onError(error)
-      throw error
+      const transactionError = this._normalizeTransactionError(error)
+      if (txCallbacks.onError) txCallbacks.onError(transactionError)
+      throw transactionError
     }
   }
 
@@ -1534,7 +1545,6 @@ export class Web3Wallet {
       if (gas > 8000000) {
         gas = defaultGas
       }
-
       // Normalize gas pricing (deduplicated logic)
       const normalizedGas = await this.normalizeGasPricing({ gasPrice, maxFeePerGas, maxPriorityFeePerGas }, logger)
       gasPrice = normalizedGas.gasPrice
@@ -1584,7 +1594,8 @@ export class Web3Wallet {
       const response = await withTimeout(txPromise, FUSE_TX_TIMEOUT, `${this.name} tx timeout`)
 
       return response
-    } catch (e) {
+    } catch (error) {
+      const e = this._normalizeTransactionError(error)
       // error before executing a tx
       if (!currentAddress) {
         throw e
