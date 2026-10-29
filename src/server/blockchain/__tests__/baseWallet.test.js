@@ -1,4 +1,9 @@
 import { BaseAdminWallet } from '../BaseAdminWallet'
+import ContractsAddress from '@gooddollar/goodprotocol/releases/deployment.json'
+
+// make sure faucet is not empty for base
+ContractsAddress.dapptest.SuperfluidFaucet = '0x0c86C82eb8d6a8E991bbc37C58e23344b20520a2'
+
 describe('BaseAdminWallet', () => {
   const wallet = new BaseAdminWallet({ network: 'dapptest' })
   test('should always return true for whitelisting', async () => {
