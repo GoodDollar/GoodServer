@@ -11,7 +11,7 @@ import createMockingHelper from '../../api/__tests__/__util__'
 import { createTaskSubject, DisposeAt, DISPOSE_ENROLLMENTS_TASK, forEnrollment } from '../../cron/taskUtil'
 import { noopAsync } from '../../../utils/async'
 
-import GoodIDUtils from '../../../goodid/utils'
+import { default as GoodIDUtils } from '../../../goodid/utils'
 // make sure age test fails
 GoodIDUtils.ageGenderCheck = jest.fn().mockResolvedValue({ age: { min: 15 } })
 
@@ -49,6 +49,7 @@ const storageMock = {
   cancelTasksQueued: cancelTasksQueuedMock
 }
 
+let getReverifyStatusMock = jest.fn()
 const fakeTask = { _id: 'fake-task-id' }
 const enrollmentIdentifier = 'f0D7A688489Ab3079491d407A03BF16e5B027b2c'
 const licenseKey = 'fake-license'
@@ -85,6 +86,11 @@ describe('EnrollmentProcessor', () => {
 
     zoomServiceMock = new MockAdapter(enrollmentProcessor.provider.api.http)
     helper = createMockingHelper(zoomServiceMock)
+    getReverifyStatusMock = jest.spyOn(AdminWallet, 'getReverifyStatus').mockResolvedValue({
+      nextReverify: 0,
+      isLastReverify: false,
+      identityRecord: { status: '0', authCount: '0' }
+    })
   })
 
   beforeEach(() => {
@@ -141,7 +147,7 @@ describe('EnrollmentProcessor', () => {
 
     restoreWalletMethods.forEach(method => (AdminWallet[method] = AdminWallet.constructor.prototype[method]))
     OnGage.setWhitelisted = OnGage.constructor.prototype.setWhitelisted
-
+    getReverifyStatusMock.mockRestore()
     zoomServiceMock.restore()
     zoomServiceMock = null
     helper = null
@@ -388,5 +394,80 @@ describe('EnrollmentProcessor', () => {
     await wrappedResponse.toBeDefined()
     await wrappedResponse.toHaveProperty('success', true)
     await wrappedResponse.toHaveProperty('enrollmentResult.isVerified', true)
+  })
+
+  test('enroll() uses enroll2d when identity status is whitelisted and authCount requires 2D reverify', async () => {
+    const enrollmentProcessor = createEnrollmentProcessor(storageMock)
+
+    // prepare provider spies
+    const enroll2dSpy = jest.spyOn(enrollmentProcessor.provider, 'enroll2d').mockResolvedValue({ isVerified: true })
+    const enrollSpy = jest.spyOn(enrollmentProcessor.provider, 'enroll')
+
+    const getReverifyStatusMock = jest.spyOn(AdminWallet, 'getReverifyStatus').mockResolvedValue({
+      nextReverify: 0,
+      isLastReverify: false,
+      identityRecord: { status: '1', authCount: '0' }
+    })
+
+    await expect(
+      enrollmentProcessor.enroll(user, enrollmentIdentifier, { ...payload, photo2d: 'data:image/png;fakebase64==' })
+    ).resolves.toBeDefined()
+
+    expect(enroll2dSpy).toHaveBeenCalled()
+    expect(enrollSpy).not.toHaveBeenCalled()
+
+    enroll2dSpy.mockRestore()
+    enrollSpy.mockRestore()
+    getReverifyStatusMock.mockRestore()
+  })
+
+  test('enroll() falls back to enroll when  authCount (lastreverify=true) exceeds reverify', async () => {
+    const enrollmentProcessor = createEnrollmentProcessor(storageMock)
+
+    const enroll2dSpy = jest.spyOn(enrollmentProcessor.provider, 'enroll2d')
+    const enrollSpy = jest.spyOn(enrollmentProcessor.provider, 'enroll').mockResolvedValue({ isVerified: true })
+
+    // mock on-chain identity: status=0 (not whitelisted)
+    const getReverifyStatusMock = jest.spyOn(AdminWallet, 'getReverifyStatus').mockResolvedValue({
+      nextReverify: 0,
+      isLastReverify: true,
+      identityRecord: { status: '1', authCount: '0' }
+    })
+
+    await expect(
+      enrollmentProcessor.enroll(user, enrollmentIdentifier, { ...payload, photo2d: 'data:image/png;fakebase64==' })
+    ).resolves.toBeDefined()
+
+    expect(enrollSpy).toHaveBeenCalled()
+    expect(enroll2dSpy).not.toHaveBeenCalled()
+
+    enroll2dSpy.mockRestore()
+    enrollSpy.mockRestore()
+    getReverifyStatusMock.mockRestore()
+  })
+
+  test('enroll() falls back to enroll when identity status not whitelisted', async () => {
+    const enrollmentProcessor = createEnrollmentProcessor(storageMock)
+
+    const enroll2dSpy = jest.spyOn(enrollmentProcessor.provider, 'enroll2d')
+    const enrollSpy = jest.spyOn(enrollmentProcessor.provider, 'enroll').mockResolvedValue({ isVerified: true })
+
+    // mock on-chain identity: status=0 (not whitelisted)
+    const getReverifyStatusMock = jest.spyOn(AdminWallet, 'getReverifyStatus').mockResolvedValue({
+      nextReverify: 0,
+      isLastReverify: false,
+      identityRecord: { status: '0', authCount: '0' }
+    })
+
+    await expect(
+      enrollmentProcessor.enroll(user, enrollmentIdentifier, { ...payload, photo2d: 'data:image/png;fakebase64==' })
+    ).resolves.toBeDefined()
+
+    expect(enrollSpy).toHaveBeenCalled()
+    expect(enroll2dSpy).not.toHaveBeenCalled()
+
+    enroll2dSpy.mockRestore()
+    enrollSpy.mockRestore()
+    getReverifyStatusMock.mockRestore()
   })
 })
