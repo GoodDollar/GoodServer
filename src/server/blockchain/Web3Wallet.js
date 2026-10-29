@@ -20,16 +20,30 @@ import { toChecksumAddress, sha3 } from 'web3-utils'
 import conf from '../server.config'
 import logger from '../../imports/logger'
 import { isNonceError, isFundsError } from '../utils/eth'
-import { retry as retryAsync, withTimeout } from '../utils/async'
+import { retry as retryAsync, withTimeout, delay } from '../utils/async'
 import { type TransactionReceipt } from './blockchain-types'
 
 import { getManager } from '../utils/tx-manager'
 import { sendSlackAlert } from '../../imports/slack'
 import { KMSWallet } from './KMSWallet'
-// import { HttpProviderFactory, WebsocketProvider } from './transport'
+import { HttpProviderFactory } from './transport'
 
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000'
 const FUSE_TX_TIMEOUT = 25000 // should be confirmed after max 5 blocks (25sec)
+const INIT_ATTEMPTS = 3 // initial attempt + 2 retries
+const INIT_RETRY_DELAY = 5000 // base backoff delay between init attempts (5s, 10s)
+
+// strip credentials/api keys (userinfo, path, query) from any url in error messages before alerting
+export const sanitizeErrorMessage = error =>
+  String(error?.message ?? error).replace(/\b(?:https?|wss?):\/\/[^\s'",]+/gi, url => {
+    try {
+      const { protocol, hostname } = new URL(url)
+
+      return `${protocol}//${hostname}`
+    } catch {
+      return '[redacted url]'
+    }
+  })
 
 // Force keccak module to load at import time by calling sha3
 // This ensures keccak is loaded synchronously before Jest can tear down
@@ -104,7 +118,8 @@ export class Web3Wallet {
       maxFeePerGas = undefined,
       maxPriorityFeePerGas = undefined,
       faucetTxCost = 150000,
-      gasPrice = undefined
+      gasPrice = undefined,
+      initRetryDelay = INIT_RETRY_DELAY
     } = options || {}
     const ethOpts = ethereum || conf.fuse
     const { network_id: networkId } = ethOpts
@@ -122,7 +137,10 @@ export class Web3Wallet {
     this.networkId = networkId
     this.maxFeePerGas = maxFeePerGas
     this.maxPriorityFeePerGas = maxPriorityFeePerGas
+    this.feeOptions = { maxFeePerGas, maxPriorityFeePerGas }
     this.gasPrice = gasPrice
+    this.initRetryDelay = initRetryDelay
+    this.initAlertSent = false
     this.log = logger.child({ from: `${name}/${this.networkId}` })
     this.kmsWallet = null // Will be initialized if KMS is used
     this._supportsEIP1559 = null // Cached EIP-1559 support check result
@@ -138,11 +156,61 @@ export class Web3Wallet {
     let { _readyPromise } = this
 
     if (!_readyPromise) {
-      _readyPromise = this.init()
+      _readyPromise = this.initWithRetry()
       assign(this, { _readyPromise })
     }
 
     return _readyPromise
+  }
+
+  /**
+   * runs init() up to INIT_ATTEMPTS times with backoff. concurrent callers share the in-flight attempt via _readyPromise.
+   * after the last failure a single slack alert is sent and the wallet is left unavailable (resolves false),
+   * the failed promise is not cached so a later initialize() can start a new bounded cycle
+   * @private
+   */
+  async initWithRetry() {
+    const { log, name, networkId, network, initRetryDelay } = this
+    let lastError
+
+    for (let attempt = 1; attempt <= INIT_ATTEMPTS; attempt++) {
+      try {
+        const ready = await this.init()
+
+        this.initAlertSent = false
+        return ready
+      } catch (e) {
+        lastError = e
+
+        if (attempt < INIT_ATTEMPTS) {
+          const retryIn = initRetryDelay * 2 ** (attempt - 1)
+
+          log.warn('WalletInit: init attempt failed, retrying', { attempt, retryIn, name, networkId, error: e.message })
+          await delay(retryIn)
+        }
+      }
+    }
+
+    this._readyPromise = null
+    log.error('WalletInit: wallet unavailable, all init attempts failed', lastError?.message, lastError, {
+      attempts: INIT_ATTEMPTS,
+      name,
+      networkId
+    })
+
+    if (!this.initAlertSent) {
+      this.initAlertSent = true
+
+      await sendSlackAlert({
+        msg: `CRITICAL: AdminWallet init failed after ${INIT_ATTEMPTS} attempts - ${name}`,
+        wallet: name,
+        networkId,
+        network,
+        error: sanitizeErrorMessage(lastError)
+      })
+    }
+
+    return false
   }
 
   getWeb3TransportProvider(): HttpProvider | WebSocketProvider {
@@ -158,8 +226,8 @@ export class Web3Wallet {
 
       case 'HttpProvider':
       default:
-        provider = this.ethereum.httpWeb3Provider.split(',')[0]
-        web3Provider = new Web3.providers.HttpProvider(provider, {
+        provider = this.ethereum.httpWeb3Provider
+        web3Provider = HttpProviderFactory.create(provider, {
           timeout: FUSE_TX_TIMEOUT
         })
         break
@@ -227,6 +295,9 @@ export class Web3Wallet {
   async init() {
     const { log } = this
 
+    // Do not expose an identity contract from a previous or incomplete initialization.
+    this.identityContract = undefined
+
     const adminWalletAddress = get(ContractsAddress, `${this.network}.AdminWallet`)
     log.debug('WalletInit: Initializing wallet:', { conf: this.ethereum, adminWalletAddress, name: this.name })
 
@@ -238,6 +309,9 @@ export class Web3Wallet {
       })
       return false
     }
+
+    // reset per-attempt state so a retried init() doesn't duplicate accounts or reuse a stale EIP-1559 check
+    assign(this, { addresses: [], wallets: {}, _supportsEIP1559: null, ...this.feeOptions })
 
     this.txManager = getManager(this.ethereum.network_id)
     this.web3 = new Web3(this.getWeb3TransportProvider(), null, web3Default)
@@ -455,7 +529,7 @@ export class Web3Wallet {
         }
       }
 
-      this.identityContract = new this.web3.eth.Contract(
+      const identityContract = new this.web3.eth.Contract(
         IdentityABI.abi,
         get(ContractsAddress, `${this.network}.Identity`, ADDRESS_ZERO),
         { from: this.address }
@@ -506,6 +580,7 @@ export class Web3Wallet {
 
       let nativebalance = await this.web3.eth.getBalance(this.address)
       this.nonce = parseInt(await this.web3.eth.getTransactionCount(this.address))
+      this.identityContract = identityContract
 
       log.debug('WalletInit: AdminWallet Ready:', {
         activeWallets: this.filledAddresses.length,
@@ -519,11 +594,8 @@ export class Web3Wallet {
     } catch (e) {
       log.error('WalletInit: Error initializing wallet', e.message, e)
 
-      await sendSlackAlert({
-        msg: `CRITICAL: AdminWallet init failed - ${e.message} ${this.name}`
-      })
-
-      return false
+      // failure is retried and alerted on by initWithRetry()
+      throw e
     }
 
     return true
@@ -781,6 +853,16 @@ export class Web3Wallet {
    */
   async isConnected(address: string): Promise<boolean> {
     const { log } = this
+
+    // wallet failed (or not yet finished) initialization - it can't confirm the account, so never count it as verified
+    if (!this.identityContract) {
+      log.warn('isConnected: identity contract unavailable, wallet not initialized', {
+        address,
+        wallet: this.name,
+        networkId: this.networkId
+      })
+      return false
+    }
 
     const tx: string = await this.identityContract.methods
       .getWhitelistedRoot(address)
