@@ -163,8 +163,9 @@ export class Web3Wallet {
       }
     )
 
-    const publicClient = await clientFactory.createPublicClient({ chain, fallbackRpcs: rpcUrls })
-    const walletClient = await clientFactory.createWalletClient({ chain, fallbackRpcs: rpcUrls })
+    const clientOptions = { chain, fallbackRpcs: rpcUrls }
+    const publicClient = await clientFactory.createPublicClient(clientOptions)
+    const walletClient = await clientFactory.createWalletClient(clientOptions)
     return { publicClient, walletClient }
   }
 

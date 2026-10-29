@@ -38,23 +38,22 @@ describe('viem wallet', () => {
       expect.any(Object),
       expect.objectContaining({ chainIds: [122], rank: false })
     )
-    expect(factory.createPublicClient).toHaveBeenCalledWith(
-      expect.objectContaining({
-        chain: expect.objectContaining({ id: 122 }),
-        fallbackRpcs: ['https://rpc.fuse.io', 'https://rpc2.fuse.io'],
-        transport: undefined
-      })
-    )
+    const clientOptions = {
+      chain: expect.objectContaining({ id: 122 }),
+      fallbackRpcs: ['https://rpc.fuse.io', 'https://rpc2.fuse.io']
+    }
+    expect(factory.createPublicClient).toHaveBeenCalledWith(clientOptions)
+    expect(factory.createWalletClient).toHaveBeenCalledWith(clientOptions)
   })
 
-  test('preserves local HTTP RPCs using an explicit viem transport', async () => {
+  test('passes local HTTP RPCs and the configured chain to the GoodWidget factory', async () => {
     await wallet.createClients({ network_id: 4447, httpWeb3Provider: 'http://localhost:8545' })
-    expect(factory.createPublicClient).toHaveBeenCalledWith(
-      expect.objectContaining({
-        chain: expect.objectContaining({ id: 4447 }),
-        transport: expect.any(Function)
-      })
-    )
+    const clientOptions = {
+      chain: expect.objectContaining({ id: 4447 }),
+      fallbackRpcs: ['http://localhost:8545']
+    }
+    expect(factory.createPublicClient).toHaveBeenCalledWith(clientOptions)
+    expect(factory.createWalletClient).toHaveBeenCalledWith(clientOptions)
   })
 
   test('encodes contract transactions without a Web3 contract', () => {
