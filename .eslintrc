@@ -28,6 +28,18 @@
     "node/no-unsupported-features/es-syntax": "off",
     "prettier/prettier": "error",
     "import/no-cycle": "error",
-    "import/no-named-as-default": "off"
+    "import/no-named-as-default": "off",
+    "import/no-unresolved": [
+      "error",
+      {
+        "ignore": ["^@goodwidget/core/viemFallbackClient$"]
+      }
+    ],
+    "node/no-missing-import": [
+      "error",
+      {
+        "allowModules": ["@goodwidget/core"]
+      }
+    ]
   }
 }

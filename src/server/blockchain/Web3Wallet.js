@@ -1,6 +1,7 @@
 // @flow
 import Crypto from 'crypto'
-import { createViemFallbackClient } from '@goodwidget/core'
+// import viemFallbackClient directly to prevent other packages from being imported inadvertently
+import { createViemFallbackClient } from '@goodwidget/core/viemFallbackClient'
 import { defineChain, encodeFunctionData, formatEther, formatUnits, getContract } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import * as chains from 'viem/chains'

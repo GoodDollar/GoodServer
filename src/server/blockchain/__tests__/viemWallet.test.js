@@ -1,4 +1,5 @@
-import { createViemFallbackClient } from '@goodwidget/core'
+// import viemFallbackClient directly to prevent other packages from being imported inadvertently
+import { createViemFallbackClient } from '@goodwidget/core/viemFallbackClient'
 import { Web3Wallet } from '../Web3Wallet'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { encodeFunctionData, parseAbi } from 'viem'
