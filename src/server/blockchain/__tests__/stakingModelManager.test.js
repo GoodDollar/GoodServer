@@ -8,18 +8,7 @@ import ContractsAddress from '@gooddollar/goodprotocol/releases/deployment.json'
 
 let fundManager = stakingModelTasks.fundManager
 
-const nextBlock = () =>
-  new Promise((res, rej) =>
-    AdminWallet.web3.currentProvider.send(
-      {
-        jsonrpc: '2.0',
-        method: 'evm_mine',
-        params: [],
-        id: new Date().getTime()
-      },
-      (err, result) => (err ? rej(err) : res(result))
-    )
-  )
+const nextBlock = () => AdminWallet.publicClient.request({ method: 'evm_mine', params: [] })
 
 const next_interval = async function (interval = 5760) {
   let blocks = interval
@@ -39,10 +28,9 @@ describe.skip('stakingModelManager', () => {
     await AdminWallet.ready
 
     //in test mode the bridge simply mock by transfering the mainnet token
-    AdminWallet.tokenContract = new AdminWallet.web3.eth.Contract(
+    AdminWallet.tokenContract = AdminWallet.getContract(
       GoodDollarABI.abi,
-      get(ContractsAddress, `${AdminWallet.network}-mainnet.GoodDollar`),
-      { from: AdminWallet.address }
+      get(ContractsAddress, `${AdminWallet.network}-mainnet.GoodDollar`)
     )
   })
 
@@ -64,7 +52,7 @@ describe.skip('stakingModelManager', () => {
   test(`stakingModelManager should succeed to transfer interest`, async () => {
     const event = await fundManager.transferInterest()
     transferBlock = event.blockNumber
-    ubiAmount = parseInt(event.returnValues.gdUBI)
+    ubiAmount = parseInt(event.args.gdUBI)
     expect(ubiAmount).toBeGreaterThan(0)
   })
 
@@ -74,10 +62,10 @@ describe.skip('stakingModelManager', () => {
   })
 
   test(`stakingModelManager should wait for bridge transfer event`, async () => {
-    const ubiRecipient = await fundManager.nameService.methods.getAddress('UBI_RECIPIENT').call()
+    const ubiRecipient = await fundManager.nameService.read.getAddress(['UBI_RECIPIENT'])
     const bridgeLog = await fundManager.waitForBridgeTransfer(transferBlock, Date.now())
-    expect(bridgeLog).toMatchObject({ returnValues: { from: expect.any(String), to: ubiRecipient } })
-    expect(parseInt(bridgeLog.returnValues.value)).toEqual(ubiAmount)
+    expect(bridgeLog).toMatchObject({ args: { from: expect.any(String), to: ubiRecipient } })
+    expect(parseInt(bridgeLog.args.value)).toEqual(ubiAmount)
   })
 
   test(`stakingModelManager should return next cronTime`, async () => {

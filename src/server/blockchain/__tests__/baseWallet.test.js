@@ -14,7 +14,7 @@ describe('BaseAdminWallet', () => {
     ContractsAddress.dapptest.SuperfluidFaucet = '0x0c86C82eb8d6a8E991bbc37C58e23344b20520a2'
 
     await wallet.ready
-    expect(wallet.faucetContract._address).not.toBeEmpty()
-    expect(wallet.proxyContract._address).not.toBeEmpty()
+    expect(wallet.faucetContract.address).not.toBeEmpty()
+    expect(wallet.proxyContract.address).not.toBeEmpty()
   })
 })

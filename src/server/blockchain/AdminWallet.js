@@ -1,17 +1,15 @@
 // @flow
 
 import Crypto from 'crypto'
-import Web3 from 'web3'
 import { assign } from 'lodash'
-import * as web3Utils from 'web3-utils'
+import { formatUnits, parseGwei } from 'viem'
 
-import { Web3Wallet, web3Default, defaultGas, adminMinBalance } from './Web3Wallet'
+import { Web3Wallet, defaultGas, adminMinBalance } from './Web3Wallet'
 import conf from '../server.config'
 import { isNonceError, isFundsError } from '../utils/eth'
 import { getManager } from '../utils/tx-manager'
-import { HttpProviderFactory, WebsocketProvider } from './transport'
 
-const defaultRopstenGasPrice = web3Utils.toWei('5', 'gwei')
+const defaultRopstenGasPrice = parseGwei('5')
 
 class AdminWallet extends Web3Wallet {
   constructor(name, conf, options, useKMS = false) {
@@ -21,62 +19,33 @@ class AdminWallet extends Web3Wallet {
     this.maxMainnetGasPrice = conf.maxGasPrice * 1000000000 // maxGasPrice is in gwei, convert to wei
   }
 
-  addWallet(account) {
-    super.addWallet(account)
-    this.addWalletAccount(this.mainnetWeb3, account)
-  }
-
-  getMainnetWeb3TransportProvider(): HttpProvider | WebSocketProvider {
-    let provider
-    let web3Provider
-    const { web3Transport, websocketWeb3Provider, httpWeb3Provider } = this.conf.ethereumMainnet
-    const { log } = this
-
-    switch (web3Transport) {
-      case 'WebSocket':
-        provider = websocketWeb3Provider
-        web3Provider = new WebsocketProvider(provider)
-        break
-
-      default:
-      case 'HttpProvider': {
-        provider = httpWeb3Provider
-        web3Provider = HttpProviderFactory.create(provider)
-        break
-      }
-    }
-
-    log.debug('mainnet', { web3Provider, provider })
-    return web3Provider
-  }
-
   async init() {
     const { log, conf } = this
     const { ethereumMainnet, env } = conf
 
     log.debug('Initializing wallet mainnet:', { mainnet: ethereumMainnet })
 
-    const mainnetWeb3 = new Web3(this.getMainnetWeb3TransportProvider(), null, web3Default)
+    const { publicClient: mainnetPublicClient, walletClient: mainnetWalletClient } =
+      await this.createClients(ethereumMainnet)
     const mainnetTxManager = getManager(ethereumMainnet.network_id)
-    const { eth } = mainnetWeb3
     const mainnetAddresses = []
 
-    assign(mainnetTxManager, { getTransactionCount: eth.getTransactionCount })
-    assign(eth, web3Default, { transactionPollingTimeout: 600 }) // slow ropsten
-    assign(this, { mainnetWeb3, mainnetTxManager, mainnetAddresses })
+    mainnetTxManager.getTransactionCount = address => mainnetPublicClient.getTransactionCount({ address })
+    assign(this, { mainnetPublicClient, mainnetWalletClient, mainnetTxManager, mainnetAddresses })
 
-    await super.init()
+    const ready = await super.init()
+    if (!ready) return false
 
-    if (env !== 'production' && this.mainnetWeb3) {
+    if (env !== 'production' && this.mainnetPublicClient) {
       log.info('Initializing adminwallet mainnet addresses', { addresses: this.addresses })
 
       await Promise.all(
         this.addresses.map(async addr => {
-          const mainnetBalance = await this.mainnetWeb3.eth.getBalance(addr)
+          const mainnetBalance = await this.mainnetPublicClient.getBalance({ address: addr })
 
           log.info(`try mainnnet address ${addr}:`, { mainnetBalance, adminMinBalance })
 
-          if (parseFloat(web3Utils.fromWei(mainnetBalance, 'gwei')) > adminMinBalance * 100) {
+          if (parseFloat(formatUnits(mainnetBalance, 9)) > adminMinBalance * 100) {
             log.info(`admin wallet ${addr} mainnet balance ${mainnetBalance}`)
             this.mainnetAddresses.push(addr)
           }
@@ -117,13 +86,11 @@ class AdminWallet extends Web3Wallet {
     const { log } = this
 
     try {
-      const { onTransactionHash, onReceipt, onConfirmation, onError } = txCallbacks
-
       gas =
         gas ||
-        (await tx
-          .estimateGas()
-          .then(gas => gas + 200000) // buffer for proxy contract, reimburseGas?, and low gas unexpected failures
+        (await this.mainnetPublicClient
+          .estimateGas({ ...tx, account: forceAddress || this.address })
+          .then(gas => Number(gas) + 200000)
           .catch(e => {
             log.warn('Failed to estimate gas for tx mainnet', e.message, e)
             return defaultGas
@@ -140,14 +107,14 @@ class AdminWallet extends Web3Wallet {
 
       log.debug('getting tx lock mainnet:', { uuid, forceAddress })
 
-      const { nonce, release, fail, address } = await this.mainnetTxManager.lock(forceAddress || this.mainnetAddresses)
+      const { nonce, release, address } = await this.mainnetTxManager.lock(forceAddress || this.mainnetAddresses)
 
       log.debug('got tx lock mainnet:', { uuid, address, forceAddress })
 
       let balance = NaN
 
       if (this.conf.env === 'development') {
-        balance = await this.mainnetWeb3.eth.getBalance(address)
+        balance = await this.mainnetPublicClient.getBalance({ address })
       }
 
       currentAddress = address
@@ -161,112 +128,23 @@ class AdminWallet extends Web3Wallet {
         isKMS: this.isKMSWallet(address)
       })
 
-      // Get PromiEvent - either from KMS signing or regular signing
-      let promiEvent
-      if (this.isKMSWallet(address) && this.kmsWallet) {
-        // Sign transaction with KMS, then create PromiEvent synchronously
-        const signedTx = await this._signTransactionWithKMS(tx, address, {
-          gas,
-          gasPrice: gasPrice.toString(),
-          nonce,
-          chainId: this.networkIdMainnet
-        })
-        promiEvent = this.web3.eth.sendSignedTransaction(signedTx)
-      } else {
-        // Use traditional signing flow
-        promiEvent = tx.send({
-          gas,
-          gasPrice,
-          nonce,
-          from: address
-        })
-      }
-
-      // Wrap PromiEvent with shared event handlers, but handle mainnet-specific retry logic
-      return new Promise((res, rej) => {
-        promiEvent
-          .on('transactionHash', h => {
-            release()
-            log.debug('got tx hash mainnet:', { txhash: h, uuid })
-
-            if (onTransactionHash) {
-              onTransactionHash(h)
-            }
-          })
-          .on('receipt', r => {
-            log.debug('got tx receipt mainnet:', { uuid })
-
-            if (onReceipt) {
-              onReceipt(r)
-            }
-
-            res(r)
-          })
-          .on('confirmation', c => {
-            if (onConfirmation) {
-              onConfirmation(c)
-            }
-          })
-          .on('error', async exception => {
-            const { message } = exception
-
-            if (isFundsError(exception)) {
-              balance = await this.mainnetWeb3.eth.getBalance(address)
-
-              log.warn('sendTransaciton funds issue retry mainnet', {
-                errMessage: message,
-                nonce,
-                gas,
-                gasPrice,
-                address,
-                balance,
-                uuid
-              })
-
-              await this.mainnetTxManager.unlock(address)
-
-              try {
-                await this.sendTransaction(tx, txCallbacks, { gas, gasPrice }).then(res)
-              } catch (e) {
-                await this.mainnetTxManager.unlock(address)
-                rej(e)
-              }
-            } else if (isNonceError(exception)) {
-              let netNonce = parseInt(await this.mainnetWeb3.eth.getTransactionCount(address))
-
-              log.warn('sendTransaciton nonce failure retry mainnet', {
-                errMessage: message,
-                nonce,
-                gas,
-                gasPrice,
-                address,
-                newNonce: netNonce,
-                uuid
-              })
-
-              await this.mainnetTxManager.unlock(address, netNonce)
-
-              try {
-                await this.sendTransactionMainnet(tx, txCallbacks, { gas, gasPrice }, forceAddress).then(res)
-              } catch (e) {
-                await this.mainnetTxManager.unlock(address)
-                rej(e)
-              }
-            } else {
-              fail()
-
-              if (onError) {
-                onError(exception)
-              }
-
-              log.error('sendTransaction error mainnet:', message, exception, { from: address, uuid })
-              rej(exception)
-            }
-          })
-      })
+      return await this._sendViemTransaction(
+        tx,
+        address,
+        { gas, gasPrice, nonce },
+        txCallbacks,
+        { release, timeout: 600000 },
+        { publicClient: this.mainnetPublicClient, walletClient: this.mainnetWalletClient }
+      )
     } catch (e) {
-      await this.mainnetTxManager.unlock(currentAddress)
-      throw new Error(e)
+      if (currentAddress) {
+        const netNonce = await this.mainnetPublicClient.getTransactionCount({ address: currentAddress })
+        await this.mainnetTxManager.unlock(currentAddress, netNonce)
+        if (isNonceError(e) || isFundsError(e)) {
+          return this.sendTransactionMainnet(tx, txCallbacks, { gas, gasPrice }, forceAddress)
+        }
+      }
+      throw e
     }
   }
 }

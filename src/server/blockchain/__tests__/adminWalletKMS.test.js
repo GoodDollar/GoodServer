@@ -4,12 +4,12 @@
 // Uses the shared mock from src/server/db/__mocks__/mongo-db.js
 jest.mock('../../db/mongo-db')
 
-import Web3 from 'web3'
+import { encodeFunctionData, parseEther } from 'viem'
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { createAdminWallet } from '../AdminWallet'
 import conf from '../../server.config'
 
-const web3 = new Web3()
-const generateWalletAddress = () => web3.eth.accounts.create().address
+const generateWalletAddress = () => privateKeyToAccount(generatePrivateKey()).address
 
 /**
  * Test suite for AdminWallet KMS (AWS Key Management Service) transaction submission
@@ -106,7 +106,9 @@ describe('AdminWallet KMS Transaction Submission', () => {
       expect(receipt.status).toBe(true)
 
       // Verify the transaction was sent from a KMS address
-      const tx = await AdminWallet.web3.eth.getTransaction(receipt.transactionHash)
+      const tx = await AdminWallet.publicClient
+        .getTransaction({ hash: receipt.transactionHash })
+        .then(transaction => ({ ...transaction, value: transaction.value.toString() }))
       const usedKMSAddress = tx.from.toLowerCase()
 
       expect(AdminWallet.isKMSWallet(usedKMSAddress)).toBe(true)
@@ -132,7 +134,9 @@ describe('AdminWallet KMS Transaction Submission', () => {
         txHash = receipt.transactionHash
 
         // Verify the transaction was sent from a KMS address
-        const tx = await AdminWallet.web3.eth.getTransaction(txHash)
+        const tx = await AdminWallet.publicClient
+          .getTransaction({ hash: txHash })
+          .then(transaction => ({ ...transaction, value: transaction.value.toString() }))
         const fromAddress = tx.from.toLowerCase()
 
         expect(AdminWallet.isKMSWallet(fromAddress)).toBe(true)
@@ -156,51 +160,22 @@ describe('AdminWallet KMS Transaction Submission', () => {
 
       // Encode WETH deposit() function call
       // deposit() is a payable function with no parameters
-      const encodedDeposit = AdminWallet.web3.eth.abi.encodeFunctionCall(
-        {
-          name: 'deposit',
-          type: 'function',
-          inputs: []
-        },
-        []
-      )
-
-      // Create a transaction object that mimics a contract method call
-      const transaction = {
-        encodeABI: () => encodedDeposit,
-        estimateGas: async () => {
-          // Estimate gas for WETH deposit (typically around 50,000)
-          try {
-            return await AdminWallet.web3.eth.estimateGas({
-              to: wethAddress,
-              data: encodedDeposit,
-              value: depositAmount
-            })
-          } catch (e) {
-            // Fallback to a reasonable estimate if estimation fails
-            return 50000
+      const encodedDeposit = encodeFunctionData({
+        abi: [
+          {
+            name: 'deposit',
+            type: 'function',
+            inputs: []
           }
-        },
-        send: params => {
-          // This won't be used for KMS, but required for the interface
-          return AdminWallet.web3.eth.sendTransaction({
-            from: params.from,
-            to: wethAddress,
-            data: encodedDeposit,
-            value: depositAmount,
-            gas: params.gas,
-            gasPrice: params.gasPrice,
-            maxFeePerGas: undefined,
-            maxPriorityFeePerGas: params.maxPriorityFeePerGas,
-            nonce: params.nonce,
-            chainId: params.chainId
-          })
-        },
-        _parent: {
-          _address: wethAddress,
-          options: { address: wethAddress }
-        },
-        value: depositAmount
+        ],
+        functionName: 'deposit',
+        args: []
+      })
+
+      const transaction = {
+        to: wethAddress,
+        data: encodedDeposit,
+        value: parseEther(depositAmount)
       }
 
       const receipt = await AdminWallet.sendTransaction(
@@ -221,7 +196,9 @@ describe('AdminWallet KMS Transaction Submission', () => {
       expect(txHash).toBe(receipt.transactionHash)
 
       // Verify the transaction was sent from a KMS address
-      const tx = await AdminWallet.web3.eth.getTransaction(receipt.transactionHash)
+      const tx = await AdminWallet.publicClient
+        .getTransaction({ hash: receipt.transactionHash })
+        .then(transaction => ({ ...transaction, value: transaction.value.toString() }))
       const fromAddress = tx.from.toLowerCase()
 
       expect(AdminWallet.isKMSWallet(fromAddress)).toBe(true)
@@ -230,7 +207,7 @@ describe('AdminWallet KMS Transaction Submission', () => {
       expect(tx.to.toLowerCase()).toBe(wethAddress.toLowerCase())
 
       // Verify the transaction included the value (ETH sent for wrapping)
-      expect(tx.value).toBe(AdminWallet.web3.utils.toWei(depositAmount, 'ether'))
+      expect(tx.value).toBe(parseEther(depositAmount).toString())
 
       // Verify it's a WETH deposit call (has encoded function data)
       expect(tx.input).toBe(encodedDeposit)
@@ -259,7 +236,9 @@ describe('AdminWallet KMS Transaction Submission', () => {
 
       // Verify all transactions were from KMS addresses
       for (const receipt of receipts) {
-        const tx = await AdminWallet.web3.eth.getTransaction(receipt.transactionHash)
+        const tx = await AdminWallet.publicClient
+          .getTransaction({ hash: receipt.transactionHash })
+          .then(transaction => ({ ...transaction, value: transaction.value.toString() }))
         const fromAddress = tx.from.toLowerCase()
         expect(AdminWallet.isKMSWallet(fromAddress)).toBe(true)
       }
