@@ -156,7 +156,7 @@ describe('AdminWallet KMS Transaction Submission', () => {
       let txHash = null
 
       // Amount of ETH to wrap (0.001 ETH)
-      const depositAmount = '0.001'
+      const depositAmount = '0.000001'
 
       // Encode WETH deposit() function call
       // deposit() is a payable function with no parameters
