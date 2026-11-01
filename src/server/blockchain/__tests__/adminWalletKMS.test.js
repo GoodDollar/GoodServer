@@ -186,7 +186,7 @@ describe('AdminWallet KMS Transaction Submission', () => {
             console.log('Transaction hash received:', hash)
           }
         },
-        undefined, // use default gas estimation
+        { gas: 50000 }, // skip gas estimation as WETH contract doesnt exists and it would fail otherwise
         true, // retry on error
         null // use default logger
       )
