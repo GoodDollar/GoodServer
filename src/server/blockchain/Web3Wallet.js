@@ -20,7 +20,7 @@ import { toChecksumAddress, sha3 } from 'web3-utils'
 import conf from '../server.config'
 import logger from '../../imports/logger'
 import { isNonceError, isFundsError } from '../utils/eth'
-import { retry as retryAsync, withTimeout } from '../utils/async'
+import { retry as retryAsync, withTimeout, delay } from '../utils/async'
 import { type TransactionReceipt } from './blockchain-types'
 
 import { getManager } from '../utils/tx-manager'
@@ -428,19 +428,8 @@ export class Web3Wallet {
         })
       }
 
-      await Promise.all(
-        this.addresses.map(async addr => {
-          const balance = await this.web3.eth.getBalance(addr)
-          const isAdminWallet = await this.isVerifiedAdmin(addr)
-
-          log.info(`WalletInit: try address ${addr}:`, { balance, isAdminWallet, minAdminBalance })
-
-          if (isAdminWallet && parseFloat(web3Utils.fromWei(balance, 'gwei')) > minAdminBalance) {
-            log.info(`WalletInit: admin wallet ${addr} balance ${balance}`)
-            this.filledAddresses.push(addr)
-          }
-        })
-      )
+      this.minAdminBalance = minAdminBalance
+      await this.scanFilledAddressesWithRetry()
 
       log.info('WalletInit: Initialized adminwallet addresses', { filled: this.filledAddresses })
 
@@ -527,6 +516,95 @@ export class Web3Wallet {
     }
 
     return true
+  }
+
+  /**
+   * scan admin wallets and return those verified and funded above the minimum balance
+   * @returns {Promise<Array<string>>}
+   */
+  async scanFilledAddresses(): Promise<Array<string>> {
+    const { log } = this
+    const filled = []
+
+    await Promise.all(
+      this.addresses.map(async addr => {
+        const balance = await this.web3.eth.getBalance(addr)
+        const isAdminWallet = await this.isVerifiedAdmin(addr)
+
+        log.info(`WalletInit: try address ${addr}:`, { balance, isAdminWallet, minAdminBalance: this.minAdminBalance })
+
+        if (isAdminWallet && parseFloat(web3Utils.fromWei(balance, 'gwei')) > this.minAdminBalance) {
+          log.info(`WalletInit: admin wallet ${addr} balance ${balance}`)
+          filled.push(addr)
+        }
+      })
+    )
+
+    return filled
+  }
+
+  /**
+   * scan balances with bounded exponential backoff, to tolerate lagging RPC reads right after a top up.
+   * Only reads balances, never sends top up transactions.
+   * @returns {Promise<Array<string>>} the filled addresses (also stored in this.filledAddresses)
+   */
+  async scanFilledAddressesWithRetry(): Promise<Array<string>> {
+    const { log } = this
+    const maxAttempts = this.conf.balanceScanMaxAttempts || 4
+    const baseDelayMs = this.conf.balanceScanRetryDelayMs ?? 1000
+    let filled = []
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        filled = await this.scanFilledAddresses()
+      } catch (e) {
+        log.warn('WalletInit: balance scan failed', { attempt, maxAttempts, errMessage: e.message })
+        filled = []
+      }
+
+      if (filled.length > 0) break
+
+      if (attempt < maxAttempts) {
+        await delay(baseDelayMs * 2 ** (attempt - 1))
+      }
+    }
+
+    this.filledAddresses = filled
+    return filled
+  }
+
+  /**
+   * re-evaluate an empty filled wallets list. Concurrent callers share one refresh, with a cooldown between refreshes.
+   * @returns {Promise<Array<string>>}
+   */
+  async refreshEmptyFilledAddresses(): Promise<Array<string>> {
+    if (this.filledAddresses.length > 0) return this.filledAddresses
+
+    const cooldownMs = this.conf.balanceRefreshCooldownMs ?? 30000
+    if (!this.pendingFilledRefresh) {
+      if (this.lastFilledRefreshAt && Date.now() - this.lastFilledRefreshAt < cooldownMs) {
+        return this.filledAddresses
+      }
+
+      this.pendingFilledRefresh = this.scanFilledAddressesWithRetry().finally(() => {
+        this.lastFilledRefreshAt = Date.now()
+        this.pendingFilledRefresh = null
+      })
+    }
+
+    await this.pendingFilledRefresh
+    return this.filledAddresses
+  }
+
+  /**
+   * ensure there are funded admin wallets available, otherwise throw a clear error
+   */
+  async ensureFilledAddresses(): Promise<Array<string>> {
+    const filled = await this.refreshEmptyFilledAddresses()
+    if (filled.length === 0) {
+      throw new Error(`${this.name}: no admin wallet with funds available after balance rescan`)
+    }
+    return filled
   }
 
   /**
@@ -1648,7 +1726,7 @@ export class Web3Wallet {
 
       logger.trace('getting tx lock:', { txuuid, fromOption: from })
 
-      const addressesToLock = from != null ? [from] : this.filledAddresses
+      const addressesToLock = from != null ? [from] : await this.ensureFilledAddresses()
       const { nonce, release, address } = await this.txManager.lock(addressesToLock)
 
       logger.trace('got tx lock:', { txuuid, address })
@@ -1897,7 +1975,7 @@ export class Web3Wallet {
       maxFeePerGas = normalizedGas.maxFeePerGas
       maxPriorityFeePerGas = normalizedGas.maxPriorityFeePerGas
 
-      const { nonce, release, fail, address } = await this.txManager.lock(this.filledAddresses)
+      const { nonce, release, fail, address } = await this.txManager.lock(await this.ensureFilledAddresses())
 
       log.debug('sendNative', { nonce, gas, maxFeePerGas, maxPriorityFeePerGas })
       currentAddress = address
