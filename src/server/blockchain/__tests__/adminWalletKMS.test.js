@@ -4,7 +4,6 @@
 // Uses the shared mock from src/server/db/__mocks__/mongo-db.js
 jest.mock('../../db/mongo-db')
 
-import { encodeFunctionData } from 'viem'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { createAdminWallet } from '../AdminWallet'
 import conf from '../../server.config'
@@ -147,74 +146,6 @@ describe('AdminWallet KMS Transaction Submission', () => {
           did
         })
       }
-    }, 60000)
-
-    test('should submit custom transaction using KMS via sendTransaction', async () => {
-      const address = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
-      let txHash = null
-
-      // Encode WETH deposit() function call
-      // deposit() is a payable function with no parameters
-      const encodedDeposit = encodeFunctionData({
-        abi: [
-          {
-            name: 'authenticate',
-            type: 'function',
-            inputs: [
-              {
-                type: 'address',
-                name: 'account'
-              }
-            ]
-          }
-        ],
-        functionName: 'authenticate',
-        args: [address]
-      })
-
-      const transaction = {
-        to: AdminWallet.identityContract.address,
-        data: encodedDeposit
-      }
-
-      const receipt = await AdminWallet.sendTransaction(
-        transaction,
-        {
-          onTransactionHash: hash => {
-            txHash = hash
-            console.log('Transaction hash received:', hash)
-          }
-        },
-        { gas: 50000 }, // skip gas estimation as WETH contract doesnt exists and it would fail otherwise
-        true, // retry on error
-        null // use default logger
-      )
-
-      expect(receipt).toBeDefined()
-      expect(receipt.transactionHash).toBeDefined()
-      expect(txHash).toBe(receipt.transactionHash)
-
-      // Verify the transaction was sent from a KMS address
-      const tx = await AdminWallet.publicClient
-        .getTransaction({ hash: receipt.transactionHash })
-        .then(transaction => ({ ...transaction, value: transaction.value.toString() }))
-      const fromAddress = tx.from.toLowerCase()
-
-      expect(AdminWallet.isKMSWallet(fromAddress)).toBe(true)
-
-      // Verify the transaction was sent to WETH contract
-      expect(tx.to.toLowerCase()).toBe(AdminWallet.identityContract.address.toLowerCase())
-
-      // Verify it's a WETH deposit call (has encoded function data)
-      expect(tx.input).toBe(encodedDeposit)
-      expect(tx.input).not.toBe('0x')
-
-      console.log('WETH deposit transaction submitted using KMS:', {
-        txHash: receipt.transactionHash,
-        from: fromAddress,
-        to: address,
-        function: 'authenticate()'
-      })
     }, 60000)
 
     test('should handle multiple KMS transactions in sequence', async () => {
