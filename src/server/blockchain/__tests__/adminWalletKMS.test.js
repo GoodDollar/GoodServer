@@ -4,7 +4,7 @@
 // Uses the shared mock from src/server/db/__mocks__/mongo-db.js
 jest.mock('../../db/mongo-db')
 
-import { encodeFunctionData, parseEther } from 'viem'
+import { encodeFunctionData } from 'viem'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { createAdminWallet } from '../AdminWallet'
 import conf from '../../server.config'
@@ -150,32 +150,31 @@ describe('AdminWallet KMS Transaction Submission', () => {
     }, 60000)
 
     test('should submit custom transaction using KMS via sendTransaction', async () => {
-      // WETH contract address (mainnet: 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2)
-      // Update this address based on your network
-      const wethAddress = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
+      const address = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
       let txHash = null
-
-      // Amount of ETH to wrap (0.001 ETH)
-      const depositAmount = '0.000001'
 
       // Encode WETH deposit() function call
       // deposit() is a payable function with no parameters
       const encodedDeposit = encodeFunctionData({
         abi: [
           {
-            name: 'deposit',
+            name: 'authenticate',
             type: 'function',
-            inputs: []
+            inputs: [
+              {
+                type: 'address',
+                name: 'account'
+              }
+            ]
           }
         ],
-        functionName: 'deposit',
-        args: []
+        functionName: 'authenticate',
+        args: [address]
       })
 
       const transaction = {
-        to: wethAddress,
-        data: encodedDeposit,
-        value: parseEther(depositAmount)
+        to: AdminWallet.identityContract.address,
+        data: encodedDeposit
       }
 
       const receipt = await AdminWallet.sendTransaction(
@@ -204,10 +203,7 @@ describe('AdminWallet KMS Transaction Submission', () => {
       expect(AdminWallet.isKMSWallet(fromAddress)).toBe(true)
 
       // Verify the transaction was sent to WETH contract
-      expect(tx.to.toLowerCase()).toBe(wethAddress.toLowerCase())
-
-      // Verify the transaction included the value (ETH sent for wrapping)
-      expect(tx.value).toBe(parseEther(depositAmount).toString())
+      expect(tx.to.toLowerCase()).toBe(AdminWallet.identityContract.address.toLowerCase())
 
       // Verify it's a WETH deposit call (has encoded function data)
       expect(tx.input).toBe(encodedDeposit)
@@ -216,10 +212,8 @@ describe('AdminWallet KMS Transaction Submission', () => {
       console.log('WETH deposit transaction submitted using KMS:', {
         txHash: receipt.transactionHash,
         from: fromAddress,
-        to: wethAddress,
-        value: depositAmount,
-        valueInEth: depositAmount,
-        function: 'deposit()'
+        to: address,
+        function: 'authenticate()'
       })
     }, 60000)
 
