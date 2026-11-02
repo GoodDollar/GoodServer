@@ -1,6 +1,8 @@
 import { BaseAdminWallet } from '../BaseAdminWallet'
+import ContractsAddress from '@gooddollar/goodprotocol/releases/deployment.json'
+
 describe('BaseAdminWallet', () => {
-  const wallet = new BaseAdminWallet({ network: 'development-base' })
+  const wallet = new BaseAdminWallet({ network: 'dapptest' })
   test('should always return true for whitelisting', async () => {
     expect(await wallet.isVerified('asdasd')).toEqual(false)
     expect(await wallet.whitelistUser('asdasd')).toEqual(true)
@@ -8,6 +10,9 @@ describe('BaseAdminWallet', () => {
   })
 
   test('should contracts addresses set', async () => {
+    // make sure faucet is not empty for base
+    ContractsAddress.dapptest.SuperfluidFaucet = '0x0c86C82eb8d6a8E991bbc37C58e23344b20520a2'
+
     await wallet.ready
     expect(wallet.faucetContract._address).not.toBeEmpty()
     expect(wallet.proxyContract._address).not.toBeEmpty()

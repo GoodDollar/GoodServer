@@ -142,4 +142,24 @@ describe('adminwallet', () => {
     const { release } = await txManager.lock(unverifiedAddresses)
     await release()
   })
+
+  test('adminWallet init falls back to a default address instead of crashing when no wallet is funded', async () => {
+    const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {})
+    const isVerifiedAdminSpy = jest.spyOn(AdminWallet, 'isVerifiedAdmin').mockResolvedValue(false)
+
+    try {
+      // init() only sets this.address when a wallet qualifies, so clear the address the
+      // real (unmocked) init from beforeAll already found before re-running it here.
+      AdminWallet.address = undefined
+
+      await AdminWallet.init()
+
+      expect(AdminWallet.address).toBe(AdminWallet.addresses[0])
+      expect(AdminWallet.filledAddresses).toEqual([])
+      expect(exitSpy).not.toHaveBeenCalled()
+    } finally {
+      isVerifiedAdminSpy.mockRestore()
+      exitSpy.mockRestore()
+    }
+  })
 })
