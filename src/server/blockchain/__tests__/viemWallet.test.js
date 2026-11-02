@@ -77,6 +77,28 @@ describe('viem wallet', () => {
     expect(client.transport.transports[0].value.url).toBe('https://rpc2.fuse.io')
   })
 
+  test('web3 wallets query fuse, celo and xdc with bad fallback RPC input by using Chainlist RPCs', async () => {
+    const actual = jest.requireActual('@goodwidget/core/viemFallbackClient')
+    const badRpc = 'http://127.0.0.1:1'
+    const chainsToTest = [
+      { id: 122, name: 'fuse' },
+      { id: 42220, name: 'celo' },
+      { id: 50, name: 'xdc' }
+    ]
+    createViemFallbackClient.mockImplementation(actual.createViemFallbackClient)
+
+    for (const { id, name } of chainsToTest) {
+      const chainWallet = new Web3Wallet(
+        `${name}TestWallet`,
+        { env: 'test', network: 'test', fuse: { network_id: id, httpWeb3Provider: badRpc } },
+        { ethereum: { network_id: id, httpWeb3Provider: badRpc } }
+      )
+      const { publicClient: chainClient } = await chainWallet.createClients()
+      const blockNumber = await chainClient.getBlockNumber()
+      expect(blockNumber).toBeGreaterThan(0n)
+    }
+  }, 60000)
+
   test('handles viem bigint fee history without interpreting decimal values as hex', async () => {
     wallet.publicClient = {
       getFeeHistory: jest.fn().mockResolvedValue({ baseFeePerGas: [100n, 110n], reward: [[4n], [7n]] })
