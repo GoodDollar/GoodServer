@@ -164,7 +164,7 @@ const conf = convict({
   xdc: {
     network_id: 50,
     web3Transport: 'HttpProvider',
-    httpWeb3Provider: 'https://rpc.xdc.org',
+    httpWeb3Provider: 'https://rpc.xdc.network',
     websocketWeb3Provider: '',
     explorer: ''
   },
