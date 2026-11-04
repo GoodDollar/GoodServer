@@ -1671,7 +1671,7 @@ export class Web3Wallet {
         )
       }
 
-      await this.txManager.unlock(currentAddress, netNonce)
+      if (!lockReleased) await this.txManager.unlock(currentAddress, netNonce)
       logger.error('sendTransaction error:', e.message, e, {
         from: currentAddress,
         currentNonce,

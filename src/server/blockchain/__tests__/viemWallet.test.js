@@ -199,6 +199,21 @@ describe('viem wallet', () => {
       expect(wallet.txManager.unlock).not.toHaveBeenCalled()
     })
 
+    test.each(['nonce too low', 'receipt lookup failed'])(
+      'preserves retry behavior after release without unlocking again for %s',
+      async message => {
+        wallet._sendViemTransaction.mockImplementationOnce(async (_tx, _address, _params, _callbacks, context) => {
+          context.release()
+          throw new Error(message)
+        })
+
+        await expect(wallet.sendTransaction(tx, {}, { gas: 21000, from: address })).resolves.toEqual({ status: true })
+        expect(wallet._sendViemTransaction).toHaveBeenCalledTimes(2)
+        expect(wallet.txManager.lock).toHaveBeenNthCalledWith(2, [address])
+        expect(wallet.txManager.unlock).not.toHaveBeenCalled()
+      }
+    )
+
     test('classifies viem errors by details instead of nonce fields in request arguments', async () => {
       const error = Object.assign(new Error('Missing or invalid parameters.\nRequest Arguments:\n  nonce: 3'), {
         details: 'execution reverted: transfer not allowed'
