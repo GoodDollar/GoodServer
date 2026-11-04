@@ -1480,6 +1480,7 @@ export class Web3Wallet {
     customLogger = null
   ) {
     let currentAddress, txHash, currentNonce
+    let lockReleased = false
     const txuuid = Crypto.randomBytes(5).toString('base64')
     const logger = customLogger || this.log
 
@@ -1542,7 +1543,10 @@ export class Web3Wallet {
         { gas, maxFeePerGas, maxPriorityFeePerGas, gasPrice, nonce },
         txCallbacks,
         {
-          release,
+          release: () => {
+            release()
+            lockReleased = true
+          },
           onTxHash: hash => {
             txHash = hash || txHash
           }
@@ -1582,7 +1586,7 @@ export class Web3Wallet {
               network: this.networkId
             })
             if (receipt) {
-              await this.txManager.unlock(currentAddress, Math.max(netNonce, currentNonce + 1))
+              if (!lockReleased) await this.txManager.unlock(currentAddress, Math.max(netNonce, currentNonce + 1))
               logger.info('receipt found for timedout tx attempts', {
                 currentAddress,
                 currentNonce,
@@ -1595,7 +1599,7 @@ export class Web3Wallet {
               })
             } else if (attempt === 4) {
               //increase nonce assuming tx went through
-              await this.txManager.unlock(currentAddress, currentNonce + 1)
+              if (!lockReleased) await this.txManager.unlock(currentAddress, currentNonce + 1)
               logger.info('stopped retrying for timedout tx attempts', {
                 currentAddress,
                 currentNonce,
@@ -1612,7 +1616,7 @@ export class Web3Wallet {
           3,
           10000
         ).catch(e => {
-          this.txManager.unlock(currentAddress, netNonce)
+          if (!lockReleased) this.txManager.unlock(currentAddress, netNonce)
           logger.error('retryAsync for timeout tx failed', e.message, e, { txHash })
         })
         // return assuming tx will mine
@@ -1636,7 +1640,7 @@ export class Web3Wallet {
           network: this.networkId
         })
         // increase nonce, since we assume therre's a tx pending with same nonce
-        await this.txManager.unlock(currentAddress, Math.max(netNonce, currentNonce + 1))
+        if (!lockReleased) await this.txManager.unlock(currentAddress, Math.max(netNonce, currentNonce + 1))
 
         return this.sendTransaction(
           tx,
@@ -1657,7 +1661,7 @@ export class Web3Wallet {
           network: this.networkId
         })
 
-        await this.txManager.unlock(currentAddress, netNonce)
+        if (!lockReleased) await this.txManager.unlock(currentAddress, netNonce)
         return this.sendTransaction(
           tx,
           txCallbacks,
