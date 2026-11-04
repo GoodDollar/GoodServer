@@ -211,7 +211,7 @@ export class Web3Wallet {
       if (txCallbacks.onTransactionHash) txCallbacks.onTransactionHash(hash)
       const result = await publicClient.waitForTransactionReceipt({ hash, timeout })
       const receipt = {
-        ...result,
+        ...JSON.parse(JSON.stringify(result, (_key, value) => (typeof value === 'bigint' ? value.toString() : value))),
         status: result.status === 'success',
         blockNumber: Number(result.blockNumber),
         gasUsed: Number(result.gasUsed),
