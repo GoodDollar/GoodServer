@@ -280,13 +280,24 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     '/verify/face/:enrollmentIdentifier',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
-      const { user, log, params, body } = req
+      const { user, log, params, body, headers } = req
+      const { origin, host, referer } = headers
+
       const { enrollmentIdentifier } = params
       const { chainId, fvSigner = '', ...payload } = body || {} // payload is the facetec data
       const { gdAddress } = user
       const clientIp = requestIp.getClientIp(req)
 
-      log.debug('enroll face request:', { fvSigner, enrollmentIdentifier, chainId, user })
+      log.debug('enroll face request:', {
+        fvSigner,
+        enrollmentIdentifier,
+        chainId,
+        user,
+        origin,
+        host,
+        referer,
+        clientIp
+      })
 
       // checking if request aborted to handle cases when connection is slow
       // and facemap / images were uploaded more that 30sec causing timeout
@@ -704,13 +715,13 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate(['jwt', 'anonymous'], { session: false }),
     wrapAsync(async (req, res) => {
       const log = req.log
-      const { origin, host } = req.headers
+      const { origin, host, referer } = req.headers
       const { account, chainId = 42220 } = req.body || {}
       const user: LoggedUser = req.user || { gdAddress: account }
       const clientIp = requestIp.getClientIp(req)
 
-      const gdContract = AdminWallet.walletsMap[chainId]?.tokenContract?._address
-      const faucetContract = AdminWallet.walletsMap[chainId]?.faucetContract?._address
+      const gdContract = AdminWallet.walletsMap[chainId]?.tokenContract?.address
+      const faucetContract = AdminWallet.walletsMap[chainId]?.faucetContract?.address
       log.debug('topwallet tx request:', {
         address: user.gdAddress,
         chainId,
@@ -719,6 +730,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         user: req.user,
         origin,
         host,
+        referer,
         clientIp
       })
 

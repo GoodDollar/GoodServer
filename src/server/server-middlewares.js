@@ -3,7 +3,6 @@ import express, { Router } from 'express'
 import bodyParser from 'body-parser'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
-import { version as contractsVersion } from '@gooddollar/goodcontracts/package.json'
 
 import addLoginMiddlewares from './login/login-middleware'
 import UserDBPrivate from './db/mongo/user-privat-provider'
@@ -15,26 +14,12 @@ import logger, { addRequestLogger } from '../imports/logger'
 import VerificationAPI from './verification/verification'
 import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
 import createCleanupAbandonedSignupsTask from './storage/cron/CleanupAbandonedSignups'
-import StakingModelTasks from './blockchain/stakingModelTasks'
 import { MessageStrings } from './db/mongo/models/props'
 import Config from './server.config'
 import { wrapAsync } from './utils/helpers'
 import GoodIDUtils from './goodid/utils'
-
-const { FishInactiveTask, CollectFundsTask } = StakingModelTasks
 const rootLogger = logger.child({ from: 'Server' })
-const { env, fishTaskDisabled, stakeTaskDisabled } = Config
-
-const stakingModelTasks = [
-  {
-    task: CollectFundsTask,
-    disabled: stakeTaskDisabled
-  },
-  {
-    task: FishInactiveTask,
-    disabled: fishTaskDisabled
-  }
-]
+const { env } = Config
 
 export default async (app: Router) => {
   const corsConfig = {
@@ -127,16 +112,6 @@ export default async (app: Router) => {
     const task = taskFactory(UserDBPrivate)
 
     CronTasksRunner.registerTask(task)
-  }
-
-  if (contractsVersion >= '2.0.0') {
-    for (let { task, disabled } of stakingModelTasks) {
-      if (disabled) {
-        continue
-      }
-
-      CronTasksRunner.registerTask(new task())
-    }
   }
 
   CronTasksRunner.startTasks()

@@ -149,30 +149,22 @@ const conf = convict({
   },
   celo: {
     network_id: 42220,
-    web3Transport: 'HttpProvider',
     httpWeb3Provider: 'https://forno.celo.org',
-    websocketWeb3Provider: '',
     explorer: ''
   },
   base: {
     network_id: 8453,
-    web3Transport: 'HttpProvider',
     httpWeb3Provider: 'https://mainnet.base.org',
-    websocketWeb3Provider: '',
     explorer: ''
   },
   xdc: {
     network_id: 50,
-    web3Transport: 'HttpProvider',
     httpWeb3Provider: 'https://rpc.xdc.network',
-    websocketWeb3Provider: '',
     explorer: ''
   },
   ethereumMainnet: {
     network_id: 42,
     httpWeb3Provider: 'https://kovan.infura.io/v3/',
-    websocketWeb3Provider: 'wss://kovan.infura.io/ws',
-    web3Transport: 'HttpProvider',
     explorer: ''
   },
   network: {
@@ -427,16 +419,12 @@ const conf = convict({
   // network configurations (populated later from ./networks)
   fuse: {
     network_id: 122,
-    web3Transport: 'HttpProvider',
     httpWeb3Provider: 'https://rpc.fuse.io',
-    websocketWeb3Provider: 'wss://rpc.fuse.io/ws',
     explorer: ''
   },
   ethereum: {
     network_id: 1,
-    web3Transport: 'HttpProvider',
     httpWeb3Provider: 'https://mainnet.infura.io/v3/',
-    websocketWeb3Provider: 'wss://mainnet.infura.io/ws',
     explorer: ''
   },
   rateLimitMinutes: {
@@ -468,30 +456,6 @@ const conf = convict({
     format: '*',
     env: 'FACEBOOK_GRAPH_API_URL',
     default: 'https://graph.facebook.com'
-  },
-  fishTaskDisabled: {
-    doc: 'Disables fishing cron task (default true)',
-    format: Boolean,
-    env: 'FISH_TASK_DISABLED',
-    default: false
-  },
-  fishTaskCron: {
-    doc: 'cron string for fishing task',
-    format: String,
-    env: 'FISH_TASK_CRON',
-    default: '0 0 * * * *'
-  },
-  stakeTaskDisabled: {
-    doc: 'Disables staking model cron task (default true)',
-    format: Boolean,
-    env: 'STAKE_TASK_DISABLED',
-    default: true
-  },
-  stakeTaskCron: {
-    doc: 'cron string for staking model task',
-    format: String,
-    env: 'STAKE_TASK_CRON',
-    default: '0 0 * * * *'
   },
   dbUpdateTaskCron: {
     doc: 'cron string for db updates task',
