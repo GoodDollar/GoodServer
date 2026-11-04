@@ -13,14 +13,11 @@ import OnGage from '../crm/ongage'
 import conf from '../server.config'
 import { addUserToWhiteList, createCRMRecord } from './addUserSteps'
 import createUserVerifier from './verifier'
-import stakingModelTasks from '../blockchain/stakingModelTasks'
 import { cancelDisposalTask, getDisposalTask } from '../verification/cron/taskUtil'
 import createEnrollmentProcessor from '../verification/processor/EnrollmentProcessor'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import { default as AdminWallet } from '../blockchain/MultiWallet'
 import Logger from '../../imports/logger'
-
-const { fishManager } = stakingModelTasks
 
 const deleteFromAnalytics = (userId, walletAddress, log) => {
   log.info('deleting user from analytics', { userId, walletAddress })
@@ -696,23 +693,6 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       log.info('delete user results', { user, results })
       res.json({ ok: 1, results })
-    })
-  )
-
-  app.post(
-    '/admin/model/fish',
-    adminAuthenticate,
-    wrapAsync(async (req, res) => {
-      const { body, log } = req
-      const { daysAgo } = body
-      if (!daysAgo) return res.json({ ok: 0, error: 'missing daysAgo' })
-      log.debug('fishing request', { daysAgo })
-      fishManager
-        .run(daysAgo)
-        .then(fishResult => log.info('fishing request result:', { fishResult }))
-        .catch(e => log.error('fish request failed', e.message, e, { daysAgo }))
-
-      res.json({ ok: 1 })
     })
   )
 

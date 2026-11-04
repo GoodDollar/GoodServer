@@ -1052,46 +1052,6 @@ export class Web3Wallet {
     }
   }
 
-  async fishMulti(toFish: Array<string>, customLogger = null): Promise<TransactionReceipt> {
-    const logger = customLogger || this.log
-
-    try {
-      let encodedCall = encodeFunctionData({
-        abi: [
-          {
-            name: 'fishMulti',
-            type: 'function',
-            inputs: [
-              {
-                type: 'address[]',
-                name: '_accounts'
-              }
-            ]
-          }
-        ],
-        functionName: 'fishMulti',
-        args: [toFish]
-      })
-
-      logger.info('fishMulti sending tx', { encodedCall, toFish, ubischeme: this.UBIContract.address })
-
-      const transaction = await this.contractTransaction(this.proxyContract, 'genericCall', [
-        this.UBIContract.address,
-        encodedCall,
-        0
-      ])
-      const tx = await this.sendTransaction(transaction, {}, { gas: 2000000 }, false, logger)
-
-      logger.info('fishMulti success', { toFish, tx: tx.transactionHash })
-      return tx
-    } catch (exception) {
-      const { message } = exception
-
-      logger.error('fishMulti failed', message, exception, { toFish })
-      throw exception
-    }
-  }
-
   async swaphelper(address, customLogger = null) {
     const logger = customLogger || this.log
     const predictedAddress = await this.buygdFactoryContract.read.predict([address])
