@@ -191,5 +191,3 @@ export class HttpProviderFactory {
     ]
   }
 }
-
-export const { WebsocketProvider } = providers

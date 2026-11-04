@@ -27,8 +27,6 @@ import { type TransactionReceipt } from './blockchain-types'
 import { getManager } from '../utils/tx-manager'
 import { sendSlackAlert } from '../../imports/slack'
 import { KMSWallet } from './KMSWallet'
-// import { HttpProviderFactory, WebsocketProvider } from './transport'
-
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000'
 const FUSE_TX_TIMEOUT = 25000 // should be confirmed after max 5 blocks (25sec)
 const rpcCache = new Map()

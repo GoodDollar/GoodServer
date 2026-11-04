@@ -149,30 +149,22 @@ const conf = convict({
   },
   celo: {
     network_id: 42220,
-    web3Transport: 'HttpProvider',
     httpWeb3Provider: 'https://forno.celo.org',
-    websocketWeb3Provider: '',
     explorer: ''
   },
   base: {
     network_id: 8453,
-    web3Transport: 'HttpProvider',
     httpWeb3Provider: 'https://mainnet.base.org',
-    websocketWeb3Provider: '',
     explorer: ''
   },
   xdc: {
     network_id: 50,
-    web3Transport: 'HttpProvider',
     httpWeb3Provider: 'https://rpc.xdc.network',
-    websocketWeb3Provider: '',
     explorer: ''
   },
   ethereumMainnet: {
     network_id: 42,
     httpWeb3Provider: 'https://kovan.infura.io/v3/',
-    websocketWeb3Provider: 'wss://kovan.infura.io/ws',
-    web3Transport: 'HttpProvider',
     explorer: ''
   },
   network: {
@@ -427,16 +419,12 @@ const conf = convict({
   // network configurations (populated later from ./networks)
   fuse: {
     network_id: 122,
-    web3Transport: 'HttpProvider',
     httpWeb3Provider: 'https://rpc.fuse.io',
-    websocketWeb3Provider: 'wss://rpc.fuse.io/ws',
     explorer: ''
   },
   ethereum: {
     network_id: 1,
-    web3Transport: 'HttpProvider',
     httpWeb3Provider: 'https://mainnet.infura.io/v3/',
-    websocketWeb3Provider: 'wss://mainnet.infura.io/ws',
     explorer: ''
   },
   rateLimitMinutes: {

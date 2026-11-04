@@ -16,7 +16,6 @@ We use
 
 - Admin wallets use viem clients from `@goodwidget/core/viemFallbackClient`.
 - Configured comma-separated HTTP RPCs are tried first, followed by Chainlist RPCs. RPC discovery is cached in memory; background endpoint ranking is disabled.
-- Local HTTP nodes and configured WebSocket connections use explicit viem transports.
 - Use `wallet.publicClient` for RPC reads, `contract.read.method([args])` for contract reads, and `wallet.contractTransaction(contract, 'method', [args])` with `wallet.sendTransaction(...)` for queued writes. KMS signing remains supported.
 - Wallet transaction receipts retain boolean `status` and numeric `blockNumber`; direct viem results use bigint quantities and `success`/`reverted` statuses.
 - Run isolated wallet tests with `npx jest src/server/blockchain/__tests__/viemWallet.test.js --runInBand --config '{"testEnvironment":"node","transform":{"^.+\\.js$":"babel-jest"}}'`.
