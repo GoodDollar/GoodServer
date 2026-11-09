@@ -23,7 +23,7 @@ jobs:
       wallet-chunk-id: ${{ steps['set-test-chunk-ids'].outputs['wallet-chunk-id'] }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - id: set-test-chunks
         name: Set Chunks
         run: echo "test-chunks=$(find ./src -path \*/__tests__/*.js | sort | jq -R -s -c 'split("\n")[:-1] | map(select(contains("__util") == false))' | jq -cM '[_nwise(length / 5 | floor)]')" >> $GITHUB_OUTPUT
@@ -70,7 +70,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: corepack enable
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v3
         with:
           node-version: 18
@@ -114,7 +114,7 @@ jobs:
       TRAVIS: true
     steps:
       - run: corepack enable
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v3
         with:
           node-version: 18
