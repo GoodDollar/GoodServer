@@ -71,7 +71,7 @@ jobs:
     steps:
       - run: corepack enable
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v7
         with:
           node-version: 18
           cache: 'npm'
@@ -115,7 +115,7 @@ jobs:
     steps:
       - run: corepack enable
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v7
         with:
           node-version: 18
           cache: 'npm'
