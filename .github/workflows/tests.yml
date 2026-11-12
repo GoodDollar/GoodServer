@@ -19,22 +19,20 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       test-chunks: ${{ steps['set-test-chunks'].outputs['test-chunks'] }}
-      test-chunk-ids: ${{ steps['set-test-chunk-ids'].outputs['test-chunk-ids'] }}
-      wallet-chunk-id: ${{ steps['set-test-chunk-ids'].outputs['wallet-chunk-id'] }}
+      test-chunk-ids: ${{ steps['set-test-chunks'].outputs['test-chunk-ids'] }}
+      wallet-chunk-id: ${{ steps['set-test-chunks'].outputs['wallet-chunk-id'] }}
 
     steps:
       - uses: actions/checkout@v7
       - id: set-test-chunks
         name: Set Chunks
-        run: echo "test-chunks=$(find ./src -path \*/__tests__/*.js | sort | jq -R -s -c 'split("\n")[:-1] | map(select(contains("__util") == false))' | jq -cM '[_nwise(length / 5 | floor)]')" >> $GITHUB_OUTPUT
-      - id: set-test-chunk-ids
-        name: Set Chunk IDs
         run: |
-          echo "test-chunk-ids=$(echo $CHUNKS | jq -cM 'to_entries | map(.key)')" >> $GITHUB_OUTPUT
-          echo "wallet-chunk-id=$(echo $CHUNKS | jq -cM 'to_entries | map(select(.value | .[] | index("blockchain"))) | map(.key) | unique')" >> $GITHUB_OUTPUT
-
-        env:
-          CHUNKS: ${{ steps['set-test-chunks'].outputs['test-chunks'] }}
+          test_chunks="$(find ./src -path '*/__tests__/*.js' | sort | jq -R -s -c 'split("\n")[:-1] | map(select(contains("__util") == false))' | jq -cM '[_nwise(length / 5 | floor)]')"
+          test_chunk_ids="$(jq -cM 'to_entries | map(.key)' <<< "$test_chunks")"
+          wallet_chunk_id="$(jq -cM 'to_entries | map(select(.value | .[] | index("blockchain"))) | map(.key) | unique' <<< "$test_chunks")"
+          printf 'test-chunks=%s\n' "$test_chunks" >> "$GITHUB_OUTPUT"
+          printf 'test-chunk-ids=%s\n' "$test_chunk_ids" >> "$GITHUB_OUTPUT"
+          printf 'wallet-chunk-id=%s\n' "$wallet_chunk_id" >> "$GITHUB_OUTPUT"
 
   test:
     name: Unit Tests
