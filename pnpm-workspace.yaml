@@ -1,0 +1,17 @@
+allowBuilds:
+  '@axelar-network/axelarjs-sdk': true
+  '@sentry/cli': true
+  aws-sdk: true
+  bufferutil: true
+  core-js: true
+  es5-ext: true
+  esbuild: true
+  husky: true
+  keccak: true
+  protobufjs: true
+  secp256k1: true
+  utf-8-validate: true
+  web3: true
+  web3-bzz: true
+  web3-shh: true
+blockExoticSubdeps: false
