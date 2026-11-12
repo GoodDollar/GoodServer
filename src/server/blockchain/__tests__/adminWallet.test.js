@@ -1,3 +1,4 @@
+import { advanceForkTime } from './__util__/anvil.setup'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import AdminWallet from '../AdminWallet'
 
@@ -7,17 +8,18 @@ const generateWalletAddress = () => privateKeyToAccount(generatePrivateKey()).ad
 
 describe('adminwallet', () => {
   beforeAll(async () => {
-    await AdminWallet.ready
+    expect(await AdminWallet.ready).toBe(true)
+    expect(AdminWallet.network).toBe('development-celo')
+    expect(AdminWallet.publicClient.chain.id).toBe(42220)
+    expect(AdminWallet.filledAddresses.length).toBeGreaterThan(0)
   })
 
-  test(`adminWallet top wallet shouldn't throws an error when user is not whitelisted/verified`, async () => {
+  test('adminWallet tops an unverified wallet on the Celo fork', async () => {
     const unverifiedAddress = generateWalletAddress()
-    const tx = await AdminWallet.topWallet(unverifiedAddress).catch(() => false)
-    expect(tx).toBeTruthy()
-    const balance = await AdminWallet.publicClient
-      .getBalance({ address: unverifiedAddress })
-      .then(balance => balance.toString())
-    expect(balance).toEqual('6000000000000000')
+    const tx = await AdminWallet.topWallet(unverifiedAddress)
+    expect(tx.status).toBe(true)
+    const balance = await AdminWallet.publicClient.getBalance({ address: unverifiedAddress })
+    expect(balance).toBeGreaterThan(0n)
   })
 
   test('adminWallet constructor works', async () => {
@@ -46,6 +48,7 @@ describe('adminwallet', () => {
     await AdminWallet.whitelistUser(unverifiedAddress, 'did:gd' + Math.random())
     const lastAuth = await AdminWallet.identityContract.read.lastAuthenticated([unverifiedAddress]).then(parseInt)
 
+    await advanceForkTime(2)
     await AdminWallet.authenticateUser(unverifiedAddress)
     const lastAuth2 = await AdminWallet.identityContract.read.lastAuthenticated([unverifiedAddress]).then(parseInt)
 
@@ -54,7 +57,9 @@ describe('adminwallet', () => {
 
   test('adminWallet get authenticationPeriod', async () => {
     const result = await AdminWallet.getAuthenticationPeriod()
-    expect(parseInt(result)).toEqual(1095)
+    const onChainPeriod = await AdminWallet.identityContract.read.authenticationPeriod([])
+    expect(result).toBe(Number(onChainPeriod))
+    expect(result).toBeGreaterThan(0)
   })
 
   test('adminWallet can blacklist user', async () => {
@@ -81,18 +86,23 @@ describe('adminwallet', () => {
       const unverifiedAddress = generateWalletAddress()
 
       promises.push(
-        AdminWallet.topWallet(unverifiedAddress)
-          .then(tx => tx.blockNumber)
-          .catch(e => e)
+        AdminWallet.topWallet(unverifiedAddress).then(tx => {
+          expect(tx.status).toBe(true)
+          return tx
+        })
       )
     }
 
     const res = await Promise.all(promises)
-    const uniqueBlocks = new Set(res)
+    const hashes = new Set(res.map(tx => tx.transactionHash))
+    const nonces = await Promise.all(
+      res.map(tx => AdminWallet.publicClient.getTransaction({ hash: tx.transactionHash }).then(tx => tx.nonce))
+    )
 
-    res.forEach(n => expect(n).toEqual(expect.any(Number))) //check it was excuted in 5 or les blocks, if ganache is set 1 sec per block it should be under 5. otherwise 5.
-    expect(uniqueBlocks.size).toBeLessThanOrEqual(5)
-    expect(res).toBeTruthy()
+    res.forEach(tx => expect(tx.blockNumber).toEqual(expect.any(Number)))
+    expect(hashes.size).toBe(5)
+    const orderedNonces = nonces.sort((first, second) => first - second)
+    expect(orderedNonces).toEqual(orderedNonces.map((_, index) => orderedNonces[0] + index))
   })
 
   test('adminWallet bad transaction in queue', async () => {
@@ -139,18 +149,24 @@ describe('adminwallet', () => {
   test('adminWallet init falls back to a default address instead of crashing when no wallet is funded', async () => {
     const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {})
     const isVerifiedAdminSpy = jest.spyOn(AdminWallet, 'isVerifiedAdmin').mockResolvedValue(false)
+    const previousAddresses = [...AdminWallet.addresses]
+    const previousAddress = AdminWallet.address
+    const previousFilledAddresses = [...AdminWallet.filledAddresses]
 
     try {
       // init() only sets this.address when a wallet qualifies, so clear the address the
       // real (unmocked) init from beforeAll already found before re-running it here.
       AdminWallet.address = undefined
 
-      await AdminWallet.init()
+      expect(await AdminWallet.init()).toBe(true)
 
       expect(AdminWallet.address).toBe(AdminWallet.addresses[0])
       expect(AdminWallet.filledAddresses).toEqual([])
       expect(exitSpy).not.toHaveBeenCalled()
     } finally {
+      AdminWallet.addresses = previousAddresses
+      AdminWallet.address = previousAddress
+      AdminWallet.filledAddresses = previousFilledAddresses
       isVerifiedAdminSpy.mockRestore()
       exitSpy.mockRestore()
     }

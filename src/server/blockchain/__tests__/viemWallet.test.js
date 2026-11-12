@@ -2,8 +2,10 @@
 import { createViemFallbackClient } from '@goodwidget/core/viemFallbackClient'
 import { Web3Wallet } from '../Web3Wallet'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
-import { encodeFunctionData, parseAbi } from 'viem'
+import { encodeFunctionData, parseAbi, zeroHash } from 'viem'
 import { fuse } from 'viem/chains'
+import { createAnvilFork, developmentOwner } from './__util__/anvil'
+import { validateForkConfig, validateLocalRpcUrl } from './__util__/anvil.node.cjs'
 
 jest.mock('@goodwidget/core/viemFallbackClient', () => ({ createViemFallbackClient: jest.fn() }))
 jest.mock('../../server.config', () => ({ env: 'test', fuse: { network_id: 122 } }))
@@ -14,6 +16,190 @@ jest.mock('../../../imports/logger', () => {
 jest.mock('../../utils/tx-manager', () => ({ getManager: jest.fn() }))
 jest.mock('../../../imports/slack', () => ({ sendSlackAlert: jest.fn() }))
 jest.mock('../KMSWallet', () => ({ KMSWallet: jest.fn() }))
+
+describe('Anvil fork configuration', () => {
+  test.each([undefined, 'http://127.0.0.1:18545'])(
+    'provisions wallets and manages node ownership with external RPC %s',
+    async rpcUrl => {
+      let setupHook, teardownHook, setup, ForkWallet
+      const previousRpcUrl = process.env.CELO_FORK_RPC_URL
+      if (rpcUrl) process.env.CELO_FORK_RPC_URL = rpcUrl
+      else delete process.env.CELO_FORK_RPC_URL
+      const fork = {
+        initialize: jest.fn().mockResolvedValue(),
+        prepareAccounts: jest.fn().mockResolvedValue(),
+        restore: jest.fn().mockResolvedValue(),
+        publicClient: {
+          request: jest.fn().mockResolvedValue(),
+          estimateFeesPerGas: jest
+            .fn()
+            .mockResolvedValue({ maxFeePerGas: 401000000000n, maxPriorityFeePerGas: 1000000000n })
+        },
+        walletClient: {}
+      }
+      const beforeAllSpy = jest.spyOn(global, 'beforeAll').mockImplementation(callback => {
+        setupHook = callback
+      })
+      const afterAllSpy = jest.spyOn(global, 'afterAll').mockImplementation(callback => {
+        teardownHook = callback
+      })
+      jest.doMock('./__util__/anvil', () => ({ createAnvilFork: () => fork }))
+      const stopAnvil = jest.fn().mockResolvedValue()
+      jest.doMock('./__util__/anvil.node.cjs', () => ({
+        ...jest.requireActual('./__util__/anvil.node.cjs'),
+        startAnvil: jest.fn().mockResolvedValue({ rpcUrl: 'http://127.0.0.1:8545', stop: stopAnvil })
+      }))
+
+      try {
+        jest.isolateModules(() => {
+          setup = require('./__util__/anvil.setup')
+          ForkWallet = require('../Web3Wallet').Web3Wallet
+        })
+        await setupHook()
+        const localWallet = new ForkWallet('local', { env: 'test', fuse: { network_id: 42220 } })
+        const kmsWallet = new ForkWallet('kms', { env: 'test', fuse: { network_id: 42220 } })
+        localWallet.addWallet(privateKeyToAccount(generatePrivateKey()))
+        kmsWallet.addKMSWallet(privateKeyToAccount(generatePrivateKey()).address, 'test-key-id')
+
+        for (const wallet of [localWallet, kmsWallet]) {
+          const readAdmin = jest.fn().mockResolvedValue(true)
+          wallet.proxyContract = { read: { isAdmin: readAdmin } }
+          await expect(wallet.createClients({ network_id: 1 })).resolves.toEqual({
+            publicClient: fork.publicClient,
+            walletClient: fork.walletClient
+          })
+          expect(wallet.maxFeePerGas).toBe(401000000000n)
+          expect(wallet.maxPriorityFeePerGas).toBe(1000000000n)
+          await expect(wallet.isVerifiedAdmin(wallet.addresses[0])).resolves.toBe(true)
+          await expect(wallet.isVerifiedAdmin(wallet.addresses[0])).resolves.toBe(true)
+          expect(fork.prepareAccounts).toHaveBeenLastCalledWith(wallet.addresses)
+          expect(fork.prepareAccounts.mock.invocationCallOrder.slice(-1)[0]).toBeLessThan(
+            readAdmin.mock.invocationCallOrder[0]
+          )
+          expect(readAdmin).toHaveBeenCalledWith([wallet.addresses[0]])
+        }
+        expect(fork.prepareAccounts).toHaveBeenCalledTimes(2)
+        await setup.advanceForkTime(2)
+        expect(fork.publicClient.request).toHaveBeenCalledWith({ method: 'evm_increaseTime', params: [2] })
+        expect(fork.publicClient.request).toHaveBeenLastCalledWith({ method: 'evm_mine', params: [] })
+      } finally {
+        if (teardownHook) await teardownHook()
+        beforeAllSpy.mockRestore()
+        afterAllSpy.mockRestore()
+        jest.dontMock('./__util__/anvil')
+        jest.dontMock('./__util__/anvil.node.cjs')
+        if (previousRpcUrl === undefined) delete process.env.CELO_FORK_RPC_URL
+        else process.env.CELO_FORK_RPC_URL = previousRpcUrl
+      }
+      expect(fork.restore).toHaveBeenCalledTimes(1)
+      expect(stopAnvil).toHaveBeenCalledTimes(rpcUrl ? 0 : 1)
+    }
+  )
+
+  test('funds fork accounts, impersonates the admin and restores the snapshot', async () => {
+    const address = privateKeyToAccount(generatePrivateKey()).address
+    const deployment = { AdminWallet: address, Identity: address, GoodDollar: address, Faucet: address }
+    const fork = createAnvilFork({ rpcUrl: 'http://127.0.0.1:8545', deployment })
+    fork.publicClient.getChainId = jest.fn().mockResolvedValue(42220)
+    fork.publicClient.getBytecode = jest.fn().mockResolvedValue('0x1234')
+    fork.publicClient.readContract = jest.fn().mockResolvedValue(true)
+    fork.publicClient.request = jest.fn().mockResolvedValue(true).mockResolvedValueOnce('0xsnapshot')
+    fork.publicClient.estimateFeesPerGas = jest
+      .fn()
+      .mockResolvedValue({ maxFeePerGas: 401000000000n, maxPriorityFeePerGas: 1000000000n })
+    fork.publicClient.waitForTransactionReceipt = jest.fn().mockResolvedValue({ status: 'success' })
+    fork.walletClient.writeContract = jest.fn().mockResolvedValue('0xhash')
+
+    await fork.initialize()
+    await fork.prepareAccounts([address])
+
+    expect(fork.publicClient.request).toHaveBeenNthCalledWith(1, { method: 'evm_snapshot', params: [] })
+    expect(fork.publicClient.request).toHaveBeenNthCalledWith(2, {
+      method: 'anvil_setBalance',
+      params: [developmentOwner, '0x56bc75e2d63100000']
+    })
+    expect(fork.publicClient.request).toHaveBeenCalledWith({
+      method: 'anvil_impersonateAccount',
+      params: [developmentOwner]
+    })
+    expect(fork.walletClient.writeContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        account: developmentOwner,
+        functionName: 'addAdmins',
+        args: [[address]],
+        maxFeePerGas: 401000000000n
+      })
+    )
+    expect(fork.publicClient.request).toHaveBeenCalledWith({ method: 'evm_mine', params: [] })
+    expect(fork.publicClient.waitForTransactionReceipt).toHaveBeenCalledWith({ hash: '0xhash', timeout: 30000 })
+    expect(fork.publicClient.request).toHaveBeenLastCalledWith({
+      method: 'anvil_stopImpersonatingAccount',
+      params: [developmentOwner]
+    })
+    fork.walletClient.writeContract.mockRejectedValueOnce(new Error('permission setup failed'))
+    await expect(fork.prepareAccounts([address])).rejects.toThrow('permission setup failed')
+    expect(fork.publicClient.request).toHaveBeenLastCalledWith({
+      method: 'anvil_stopImpersonatingAccount',
+      params: [developmentOwner]
+    })
+    await fork.restore()
+    expect(fork.publicClient.request).toHaveBeenLastCalledWith({ method: 'evm_revert', params: ['0xsnapshot'] })
+  })
+
+  test('checks the owner role before taking a snapshot or modifying state', async () => {
+    const address = privateKeyToAccount(generatePrivateKey()).address
+    const fork = createAnvilFork({
+      rpcUrl: 'http://127.0.0.1:8545',
+      deployment: { AdminWallet: address, Identity: address, GoodDollar: address, Faucet: address }
+    })
+    fork.publicClient.getChainId = jest.fn().mockResolvedValue(42220)
+    fork.publicClient.getBytecode = jest.fn().mockResolvedValue('0x1234')
+    fork.publicClient.readContract = jest.fn().mockResolvedValue(false)
+    fork.publicClient.request = jest.fn()
+
+    await expect(fork.initialize()).rejects.toThrow('DEFAULT_ADMIN_ROLE')
+    expect(fork.publicClient.readContract).toHaveBeenCalledWith(
+      expect.objectContaining({ functionName: 'hasRole', args: [zeroHash, developmentOwner] })
+    )
+    expect(fork.publicClient.request).not.toHaveBeenCalled()
+  })
+
+  test.each([
+    undefined,
+    'https://forno.celo.org',
+    'http://169.254.169.254',
+    'http://127.0.0.1.example.com',
+    'file:///etc/passwd'
+  ])('rejects nonlocal RPC URLs: %s', url => expect(() => createAnvilFork({ rpcUrl: url, deployment: {} })).toThrow())
+
+  test.each(['http://127.0.0.1:8545', 'http://localhost:18545'])('pins both clients to the Anvil RPC: %s', rpcUrl => {
+    expect(validateLocalRpcUrl(rpcUrl)).toBe(rpcUrl)
+    const { publicClient, walletClient } = createAnvilFork({ rpcUrl, deployment: {} })
+    expect(publicClient.transport.type).toBe('http')
+    expect(walletClient.transport.type).toBe('http')
+    expect(publicClient.transport.url).toBe(rpcUrl)
+    expect(walletClient.transport.url).toBe(rpcUrl)
+    expect(publicClient.chain.id).toBe(42220)
+    expect(publicClient.chain.fees.baseFeeMultiplier).toBe(2)
+  })
+
+  test.each([undefined, '', 'latest', '-1', '1.2', '1e3', '9007199254740992'])(
+    'requires an explicit valid fork block: %s',
+    blockNumber => {
+      expect(() => validateForkConfig({ archiveRpcUrl: 'https://archive.example.com', blockNumber })).toThrow(
+        'CELO_FORK_BLOCK_NUMBER'
+      )
+    }
+  )
+
+  test('requires an archive RPC and preserves the exact fork block', () => {
+    expect(() => validateForkConfig({ blockNumber: '12345' })).toThrow('CELO_ARCHIVE_RPC_URL')
+    expect(validateForkConfig({ archiveRpcUrl: 'https://archive.example.com', blockNumber: '12345' })).toEqual({
+      archiveRpcUrl: 'https://archive.example.com',
+      blockNumber: 12345
+    })
+  })
+})
 
 describe('viem wallet', () => {
   let wallet, publicClient, walletClient, factory

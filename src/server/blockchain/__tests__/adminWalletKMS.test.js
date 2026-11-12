@@ -2,13 +2,37 @@
 // This must be done before any imports that might trigger MongoDB connection
 // Even when enableMongoLock is false, queueMongo is still imported, which triggers MongoDB connection
 // Uses the shared mock from src/server/db/__mocks__/mongo-db.js
-jest.mock('../../db/mongo-db')
-
-import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
-import { createAdminWallet } from '../AdminWallet'
 import conf from '../../server.config'
 
+jest.mock('../../db/mongo-db')
+
+jest.mock('@gooddollar/kms-ethereum-signing', () => {
+  if (process.env.CELO_FORK_REAL_KMS === 'true') return jest.requireActual('@gooddollar/kms-ethereum-signing')
+  const { generatePrivateKey, privateKeyToAccount } = require('viem/accounts')
+  const account = privateKeyToAccount(generatePrivateKey())
+  return {
+    getEthereumAddress: jest.fn(async () => account.address),
+    signTransaction: jest.fn(async (_keyId, transaction) => {
+      const { gasLimit, gasPrice, maxFeePerGas, maxPriorityFeePerGas, value, ...params } = transaction
+      return account.signTransaction({
+        ...params,
+        gas: BigInt(gasLimit),
+        value: BigInt(value ?? 0),
+        ...(gasPrice !== undefined ? { gasPrice: BigInt(gasPrice) } : {}),
+        ...(maxFeePerGas !== undefined ? { maxFeePerGas: BigInt(maxFeePerGas) } : {}),
+        ...(maxPriorityFeePerGas !== undefined ? { maxPriorityFeePerGas: BigInt(maxPriorityFeePerGas) } : {})
+      })
+    })
+  }
+})
+
+import './__util__/anvil.setup'
+import { signTransaction } from '@gooddollar/kms-ethereum-signing'
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
+import { createAdminWallet } from '../AdminWallet'
+
 const generateWalletAddress = () => privateKeyToAccount(generatePrivateKey()).address
+const useRealKMS = process.env.AWS_SECRET_ACCESS_KEY !== undefined ? true : false
 
 /**
  * Test suite for AdminWallet KMS (AWS Key Management Service) transaction submission
@@ -22,29 +46,35 @@ const generateWalletAddress = () => privateKeyToAccount(generatePrivateKey()).ad
  * 2. Set AWS_REGION environment variable (e.g., 'us-east-1')
  * 3. Ensure AWS credentials are configured (via AWS CLI, IAM role, or env vars)
  *
- * IMPORTANT: All tests will FAIL if KMS is not configured. This ensures that
- * KMS functionality is properly tested and not silently skipped.
+ * Regular runs mock the AWS signing boundary with an ephemeral local signer.
+ * Set CELO_FORK_REAL_KMS=true to require real AWS KMS signing and credentials.
  */
-describe('AdminWallet KMS Transaction Submission', () => {
+describe(`AdminWallet KMS Transaction Submission (${useRealKMS ? 'AWS' : 'local signer'})`, () => {
   const AdminWallet = createAdminWallet(true) // Use KMS
 
   const isKMSConfigured = () => {
-    const kmsKeysTag = conf.kmsKeysTag
-    return kmsKeysTag !== undefined && kmsKeysTag !== null
+    return Boolean(conf.kmsKeysTag || conf.kmsKeyIds)
   }
 
   beforeAll(async () => {
-    // Fail all tests if KMS is not configured
-    if (!isKMSConfigured()) {
-      throw new Error('KMS is not configured. Set KMS_KEY_IDS env var to enable KMS tests. All tests will fail.')
+    if (!useRealKMS) {
+      conf.kmsKeyIds = 'fork-test-key'
+      conf.kmsKeysTag = undefined
+      conf.kmsRegion = 'test'
     }
-    await AdminWallet.ready
+    if (!isKMSConfigured()) {
+      throw new Error('KMS is not configured. Set KMS_KEY_IDS or KMS_KEYS_TAG to enable KMS tests.')
+    }
+    expect(await AdminWallet.ready).toBe(true)
+    expect(AdminWallet.network).toBe('development-celo')
+    expect(AdminWallet.publicClient.chain.id).toBe(42220)
+    expect(AdminWallet.filledAddresses.length).toBeGreaterThan(0)
   }, 120000) // 2 minute timeout for KMS initialization and blockchain connections
 
   describe('KMS Configuration', () => {
     test('should detect if KMS is configured', () => {
       const configured = isKMSConfigured()
-      console.log('KMS is configured with key tag:', conf.kmsKeysTag)
+      console.log('KMS signing mode:', useRealKMS ? 'AWS' : 'ephemeral local signer')
       expect(configured).toBe(true)
     })
 
@@ -91,13 +121,6 @@ describe('AdminWallet KMS Transaction Submission', () => {
       // (e.g., if address already has sufficient balance)
       const receipt = await AdminWallet.topWallet(recipientAddress)
 
-      // If receipt is false, the transaction would revert (address may already have enough balance)
-      // This is a valid response from topWallet, so we skip further verification
-      if (receipt === false) {
-        console.log('topWallet returned false - transaction would revert (address may already have sufficient balance)')
-        return
-      }
-
       // Verify receipt is valid
       expect(receipt).toBeDefined()
       expect(receipt.transactionHash).toBeDefined()
@@ -111,6 +134,7 @@ describe('AdminWallet KMS Transaction Submission', () => {
       const usedKMSAddress = tx.from.toLowerCase()
 
       expect(AdminWallet.isKMSWallet(usedKMSAddress)).toBe(true)
+      if (!useRealKMS) expect(signTransaction).toHaveBeenCalled()
 
       console.log('Transaction submitted using KMS:', {
         txHash: receipt.transactionHash,
@@ -129,6 +153,9 @@ describe('AdminWallet KMS Transaction Submission', () => {
       const receipt = await AdminWallet.whitelistUser(userAddress, did)
 
       expect(receipt).toBeDefined()
+      expect(receipt.status).toBe(true)
+      expect(receipt.transactionHash).toBeDefined()
+      expect(await AdminWallet.isVerified(userAddress)).toBe(true)
       if (receipt.transactionHash) {
         txHash = receipt.transactionHash
 
