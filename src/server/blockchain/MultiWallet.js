@@ -7,7 +7,6 @@ import { XdcAdminWallet } from './XdcAdminWallet'
 
 import conf from '../server.config'
 import logger from '../../imports/logger'
-import { DefenderRelayer } from './DefenderRelayer'
 const multiLogger = logger.child({ from: 'MultiWallet' })
 
 class MultiWallet {
@@ -16,7 +15,6 @@ class MultiWallet {
   wallets = []
   walletsMap = {}
   defaultChainId = null
-  signer: DefenderRelayer = null
 
   get ready() {
     return Promise.all(map(this.wallets, 'ready')).then(() => this.mainWallet.addresses)
@@ -25,7 +23,6 @@ class MultiWallet {
   constructor(walletsMap) {
     let mainWallet
     let defaultChainId
-    this.signer = DefenderRelayer.getInstance()
 
     forOwn(walletsMap, (wallet, chainId) => {
       this.wallets.push(wallet)
@@ -48,7 +45,7 @@ class MultiWallet {
   }
 
   signMessage(message: string) {
-    return this.signer.signMessage(message)
+    return this.mainWallet.signMessage(message)
   }
 
   async banInFaucet(account, chainId = 'all', log = multiLogger) {

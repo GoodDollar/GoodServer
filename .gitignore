@@ -19,3 +19,5 @@ uploads/*
 .idea/
 
 .yalc/
+src/server/goodid/__tests__/*.jpg
+src/server/goodid/__tests__/age.js

@@ -1,5 +1,4 @@
 import { get } from 'lodash'
-import { keccak256 as sha3 } from 'viem'
 import request from 'supertest'
 import MockAdapter from 'axios-mock-adapter'
 
@@ -11,6 +10,7 @@ import { getCreds, getToken } from '../../__util__'
 import createFvMockHelper from '../../verification/api/__tests__/__util__'
 import { enrollmentNotFoundMessage } from '../../verification/utils/constants'
 import { normalizeIdentifiers } from '../../verification/utils/utils'
+import { hashString } from '../../utils/eth'
 
 import GoodIDUtils from '../utils'
 
@@ -61,7 +61,7 @@ describe.skip('goodidAPI', () => {
   const setUserData = ({ mobile, ...data }) =>
     storage.updateUser({
       identifier: creds.address,
-      mobile: mobile ? sha3(mobile) : null,
+      mobile: mobile ? hashString(mobile) : null,
       ...data
     })
 

@@ -659,18 +659,6 @@ const conf = convict({
     env: 'REDISCLOUD_URL',
     default: ''
   },
-  defenderApiKey: {
-    doc: 'defender relayer api key',
-    format: String,
-    env: 'DEFENDER_APIKEY',
-    default: ''
-  },
-  defenderApiSecret: {
-    doc: 'defender relayer api secret',
-    format: String,
-    env: 'DEFENDER_APISECRET',
-    default: ''
-  },
   redtentPools: {
     doc: 'ubi pool by country',
     format: Object,

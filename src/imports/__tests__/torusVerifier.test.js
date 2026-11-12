@@ -76,7 +76,7 @@ describe('Test torus email/mobile to address', () => {
       email: 'x@d.com',
       mobile: '+972507319093'
     })
-    const signedPublicKey = recoverPublickey(signature, identifier, nonce)
+    const signedPublicKey = await recoverPublickey(signature, identifier, nonce)
 
     expect(signedPublicKey).toEqual('0xD97b62EC3266EbA1F8F90Ba264174c138b5d4C38'.toLowerCase())
   })

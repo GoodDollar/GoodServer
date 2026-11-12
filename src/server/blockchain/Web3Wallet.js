@@ -185,6 +185,11 @@ export class Web3Wallet {
     return normalizedError
   }
 
+  async signMessage(message) {
+    void message
+    throw new Error('signMessage not implemented for Web3Wallet:')
+  }
+
   async _sendViemTransaction(tx, address, txParams, txCallbacks = {}, context = {}, clients = this) {
     const { publicClient, walletClient } = clients
     const { release = () => {}, onTxHash = () => {}, timeout = FUSE_TX_TIMEOUT } = context

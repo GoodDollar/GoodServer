@@ -1,6 +1,5 @@
-import Accounts from 'web3-eth-accounts'
 import * as ethers from 'ethers'
-import { toChecksumAddress } from 'web3-utils'
+import { getAddress, hexToBytes, isHex, keccak256, recoverMessageAddress, toHex } from 'viem'
 import { verifyMessage } from '@ambire/signature-validator'
 import { messageContains } from './exception'
 import { mustache } from '../utils/string'
@@ -11,7 +10,10 @@ export const FV_IDENTIFIER_MSG2 =
 You can use this identifier in the future to delete this anonymized record.
 WARNING: do not sign this message unless you trust the website/application requesting this signature.`)
 
-const accounts = new Accounts()
+export const hashString = value => {
+  if (!value) return null
+  return keccak256(toHex(String(value)))
+}
 
 const is6492Sig = signature => {
   return signature.endsWith('6492649264926492649264926492649264926492649264926492649264926492')
@@ -25,16 +27,17 @@ export const extractSignature = signature => {
   return signature
 }
 
-export const recoverPublickey = (signature, msg, nonce = '') => {
-  const publicKey = accounts.recover(String(msg) + String(nonce), signature).toLowerCase()
-
-  return publicKey
+export const recoverPublickey = async (signature, msg, nonce = '') => {
+  const message = String(msg) + String(nonce)
+  const messageToRecover = isHex(message) ? { raw: hexToBytes(message) } : message
+  const publicKey = await recoverMessageAddress({ message: messageToRecover, signature })
+  return publicKey.toLowerCase()
 }
 
 export const verifySignature = async (message, signature) => {
   try {
     // recoverPublickey() also could throw so we're wrapping its call to try block
-    const recovered = recoverPublickey(signature, message, '')
+    const recovered = await recoverPublickey(signature, message, '')
 
     if (recovered.substr(2) !== message.toLowerCase()) {
       throw new Error("Public key doesn't matches")
@@ -65,12 +68,14 @@ export const verifyIdentifier = async (fvsig, gdAddress, chainId = 42220) => {
     throw new Error(`verifyIdentifier: no RPC for chainId ${chainId} for FV identifier verification`)
   }
 
+  const signer = getAddress(gdAddress)
+
   try {
     const verifyResult = await verifyMessage({
       provider,
-      signer: toChecksumAddress(gdAddress),
+      signer,
       signature: fvsig,
-      message: FV_IDENTIFIER_MSG2({ account: toChecksumAddress(gdAddress) })
+      message: FV_IDENTIFIER_MSG2({ account: signer })
     })
     if (!verifyResult) {
       // returns 0 if equals

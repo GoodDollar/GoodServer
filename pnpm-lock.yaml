@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@ambire/signature-validator':
         specifier: ^1.5.0
-        version: 1.5.0(bufferutil@4.2.0)(utf-8-validate@5.0.10)(viem@2.57.18(bufferutil@4.2.0)(typescript@7.0.2)(utf-8-validate@5.0.10))
+        version: 1.5.0(bufferutil@4.2.0)(utf-8-validate@5.0.10)(viem@2.57.18(bufferutil@4.2.0)(typescript@7.0.2)(utf-8-validate@5.0.10)(zod@3.25.76))
       '@aws-sdk/client-s3':
         specifier: ^3.552.0
         version: 3.1166.0
@@ -34,7 +34,7 @@ importers:
         version: 1.0.4(bufferutil@4.2.0)(encoding@0.1.14)(supports-color@9.4.0)(utf-8-validate@5.0.10)
       '@goodwidget/core':
         specifier: ^0.1.5
-        version: 0.1.5(bufferutil@4.2.0)(react-dom@19.3.1(react@19.3.1))(react-native-svg@15.16.1(react-native@0.88.1(@babel/core@7.29.13(supports-color@9.4.0))(bufferutil@4.2.0)(react@19.3.1)(supports-color@9.4.0)(utf-8-validate@5.0.10))(react@19.3.1))(react-native@0.88.1(@babel/core@7.29.13(supports-color@9.4.0))(bufferutil@4.2.0)(react@19.3.1)(supports-color@9.4.0)(utf-8-validate@5.0.10))(react@19.3.1)(typescript@7.0.2)(utf-8-validate@5.0.10)
+        version: 0.1.5(bufferutil@4.2.0)(react-dom@19.3.1(react@19.3.1))(react-native-svg@15.16.1(react-native@0.88.1(@babel/core@7.29.13(supports-color@9.4.0))(bufferutil@4.2.0)(react@19.3.1)(supports-color@9.4.0)(utf-8-validate@5.0.10))(react@19.3.1))(react-native@0.88.1(@babel/core@7.29.13(supports-color@9.4.0))(bufferutil@4.2.0)(react@19.3.1)(supports-color@9.4.0)(utf-8-validate@5.0.10))(react@19.3.1)(typescript@7.0.2)(utf-8-validate@5.0.10)(zod@3.25.76)
       '@openzeppelin/defender-autotask-client':
         specifier: ^1.50.0
         version: 1.54.6(debug@4.4.3(supports-color@9.4.0))(encoding@0.1.14)(supports-color@9.4.0)
@@ -202,10 +202,8 @@ importers:
         version: 8.3.2
       viem:
         specifier: ^2.0.0
-        version: 2.57.18(bufferutil@4.2.0)(typescript@7.0.2)(utf-8-validate@5.0.10)
-      web3:
-        specifier: ^1.10.0
-        version: 1.10.4(bufferutil@4.2.0)(encoding@0.1.14)(supports-color@9.4.0)(utf-8-validate@5.0.10)
+        version: 2.57.18(bufferutil@4.2.0)(typescript@7.0.2)(utf-8-validate@5.0.10)(zod@3.25.76)
+
       webpack-cli:
         specifier: ^5.1.1
         version: 5.1.4(webpack-dev-server@4.15.2)(webpack@5.112.2)
@@ -11315,6 +11313,10 @@ packages:
     resolution: {integrity: sha512-B6elffYm81MYZDTrat7aEhnhdtVE3lDBUZft16Z8awYMZYJDbnykEbJVS+l3mnA7AQTnSDr/1MjWofGDLBJPww==}
     engines: {node: '>=8.0.0'}
 
+  web3-errors@1.3.1:
+    resolution: {integrity: sha512-w3NMJujH+ZSW4ltIZZKtdbkbyQEvBzyp3JRn59Ckli0Nz4VMsVq8aF1bLWM7A2kuQ+yVEm3ySeNU+7mSRwx7RQ==}
+    engines: {node: '>=14', npm: '>=6.12.0'}
+
   web3-eth-abi@1.10.4:
     resolution: {integrity: sha512-cZ0q65eJIkd/jyOlQPDjr8X4fU6CRL1eWgdLwbWEpo++MPU/2P4PFk5ZLAdye9T5Sdp+MomePPJ/gHjLMj2VfQ==}
     engines: {node: '>=8.0.0'}
@@ -11367,9 +11369,21 @@ packages:
     resolution: {integrity: sha512-cOH6iFFM71lCNwSQrC3niqDXagMqrdfFW85hC9PFUrAr3PUrIem8TNstTc3xna2bwZeWG6OBy99xSIhBvyIACw==}
     engines: {node: '>=8.0.0'}
 
+  web3-types@1.10.0:
+    resolution: {integrity: sha512-0IXoaAFtFc8Yin7cCdQfB9ZmjafrbP6BO0f0KT/khMhXKUpoJ6yShrVhiNpyRBo8QQjuOagsWzwSK2H49I7sbw==}
+    engines: {node: '>=14', npm: '>=6.12.0'}
+
   web3-utils@1.10.4:
     resolution: {integrity: sha512-tsu8FiKJLk2PzhDl9fXbGUWTkkVXYhtTA+SmEFkKft+9BgwLxfCRpU96sWv7ICC8zixBNd3JURVoiR3dUXgP8A==}
     engines: {node: '>=8.0.0'}
+
+  web3-utils@4.3.3:
+    resolution: {integrity: sha512-kZUeCwaQm+RNc2Bf1V3BYbF29lQQKz28L0y+FA4G0lS8IxtJVGi5SeDTUkpwqqkdHHC7JcapPDnyyzJ1lfWlOw==}
+    engines: {node: '>=14', npm: '>=6.12.0'}
+
+  web3-validator@2.0.6:
+    resolution: {integrity: sha512-qn9id0/l1bWmvH4XfnG/JtGKKwut2Vokl6YXP5Kfg424npysmtRLe9DgiNBM9Op7QL/aSiaA0TVXibuIuWcizg==}
+    engines: {node: '>=14', npm: '>=6.12.0'}
 
   web3@0.16.0:
     resolution: {integrity: sha512-8vET/GI2qDtShXNtPkuWByWvPNou9ecuYI9OJswBdA+NUwe5WZKirHUWakS0y4mK6lGmOhv7mLN7cHCBhmQRyA==}
@@ -11822,6 +11836,9 @@ packages:
     engines: {node: '>=16.0.0'}
     hasBin: true
 
+  zod@3.25.76:
+    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
+
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
@@ -11834,12 +11851,12 @@ snapshots:
 
   '@adraffy/ens-normalize@1.11.1': {}
 
-  '@ambire/signature-validator@1.5.0(bufferutil@4.2.0)(utf-8-validate@5.0.10)(viem@2.57.18(bufferutil@4.2.0)(typescript@7.0.2)(utf-8-validate@5.0.10))':
+  '@ambire/signature-validator@1.5.0(bufferutil@4.2.0)(utf-8-validate@5.0.10)(viem@2.57.18(bufferutil@4.2.0)(typescript@7.0.2)(utf-8-validate@5.0.10)(zod@3.25.76))':
     dependencies:
       ethers: 5.8.0(bufferutil@4.2.0)(utf-8-validate@5.0.10)
       tap-spec: 5.0.0
       tape: 5.10.3
-      viem: 2.57.18(bufferutil@4.2.0)(typescript@7.0.2)(utf-8-validate@5.0.10)
+      viem: 2.57.18(bufferutil@4.2.0)(typescript@7.0.2)(utf-8-validate@5.0.10)(zod@3.25.76)
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -14183,12 +14200,12 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@goodwidget/core@0.1.5(bufferutil@4.2.0)(react-dom@19.3.1(react@19.3.1))(react-native-svg@15.16.1(react-native@0.88.1(@babel/core@7.29.13(supports-color@9.4.0))(bufferutil@4.2.0)(react@19.3.1)(supports-color@9.4.0)(utf-8-validate@5.0.10))(react@19.3.1))(react-native@0.88.1(@babel/core@7.29.13(supports-color@9.4.0))(bufferutil@4.2.0)(react@19.3.1)(supports-color@9.4.0)(utf-8-validate@5.0.10))(react@19.3.1)(typescript@7.0.2)(utf-8-validate@5.0.10)':
+  '@goodwidget/core@0.1.5(bufferutil@4.2.0)(react-dom@19.3.1(react@19.3.1))(react-native-svg@15.16.1(react-native@0.88.1(@babel/core@7.29.13(supports-color@9.4.0))(bufferutil@4.2.0)(react@19.3.1)(supports-color@9.4.0)(utf-8-validate@5.0.10))(react@19.3.1))(react-native@0.88.1(@babel/core@7.29.13(supports-color@9.4.0))(bufferutil@4.2.0)(react@19.3.1)(supports-color@9.4.0)(utf-8-validate@5.0.10))(react@19.3.1)(typescript@7.0.2)(utf-8-validate@5.0.10)(zod@3.25.76)':
     dependencies:
       '@goodwidget/ui': 0.1.5(react-dom@19.3.1(react@19.3.1))(react-native-svg@15.16.1(react-native@0.88.1(@babel/core@7.29.13(supports-color@9.4.0))(bufferutil@4.2.0)(react@19.3.1)(supports-color@9.4.0)(utf-8-validate@5.0.10))(react@19.3.1))(react-native@0.88.1(@babel/core@7.29.13(supports-color@9.4.0))(bufferutil@4.2.0)(react@19.3.1)(supports-color@9.4.0)(utf-8-validate@5.0.10))(react@19.3.1)
       react: 19.3.1
       tamagui: 1.121.0(react-dom@19.3.1(react@19.3.1))(react-native@0.88.1(@babel/core@7.29.13(supports-color@9.4.0))(bufferutil@4.2.0)(react@19.3.1)(supports-color@9.4.0)(utf-8-validate@5.0.10))(react@19.3.1)
-      viem: 2.57.18(bufferutil@4.2.0)(typescript@7.0.2)(utf-8-validate@5.0.10)
+      viem: 2.57.18(bufferutil@4.2.0)(typescript@7.0.2)(utf-8-validate@5.0.10)(zod@3.25.76)
     optionalDependencies:
       react-native: 0.88.1(@babel/core@7.29.13(supports-color@9.4.0))(bufferutil@4.2.0)(react@19.3.1)(supports-color@9.4.0)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
@@ -16960,9 +16977,10 @@ snapshots:
   '@zxing/text-encoding@0.9.0':
     optional: true
 
-  abitype@1.2.3(typescript@7.0.2):
+  abitype@1.2.3(typescript@7.0.2)(zod@3.25.76):
     optionalDependencies:
       typescript: 7.0.2
+      zod: 3.25.76
 
   abort-controller@3.0.0:
     dependencies:
@@ -23945,7 +23963,7 @@ snapshots:
       object-keys: 1.1.1
       safe-push-apply: 1.0.0
 
-  ox@0.14.65(typescript@7.0.2):
+  ox@0.14.65(typescript@7.0.2)(zod@3.25.76):
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
       '@noble/ciphers': 1.3.0
@@ -23953,7 +23971,7 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.2.3(typescript@7.0.2)
+      abitype: 1.2.3(typescript@7.0.2)(zod@3.25.76)
       eventemitter3: 5.0.1
     optionalDependencies:
       typescript: 7.0.2
@@ -26500,15 +26518,15 @@ snapshots:
       unist-util-stringify-position: 3.0.3
       vfile-message: 3.1.4
 
-  viem@2.57.18(bufferutil@4.2.0)(typescript@7.0.2)(utf-8-validate@5.0.10):
+  viem@2.57.18(bufferutil@4.2.0)(typescript@7.0.2)(utf-8-validate@5.0.10)(zod@3.25.76):
     dependencies:
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.2.3(typescript@7.0.2)
+      abitype: 1.2.3(typescript@7.0.2)(zod@3.25.76)
       isows: 1.0.7(ws@8.21.0(bufferutil@4.2.0)(utf-8-validate@5.0.10))
-      ox: 0.14.65(typescript@7.0.2)
+      ox: 0.14.65(typescript@7.0.2)(zod@3.25.76)
       ws: 8.21.0(bufferutil@4.2.0)(utf-8-validate@5.0.10)
     optionalDependencies:
       typescript: 7.0.2
@@ -26610,6 +26628,10 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - supports-color
+
+  web3-errors@1.3.1:
+    dependencies:
+      web3-types: 1.10.0
 
   web3-eth-abi@1.10.4:
     dependencies:
@@ -26753,6 +26775,8 @@ snapshots:
       - encoding
       - supports-color
 
+  web3-types@1.10.0: {}
+
   web3-utils@1.10.4:
     dependencies:
       '@ethereumjs/util': 8.1.0
@@ -26763,6 +26787,22 @@ snapshots:
       number-to-bn: 1.7.0
       randombytes: 2.1.0
       utf8: 3.0.0
+
+  web3-utils@4.3.3:
+    dependencies:
+      ethereum-cryptography: 2.2.1
+      eventemitter3: 5.0.4
+      web3-errors: 1.3.1
+      web3-types: 1.10.0
+      web3-validator: 2.0.6
+
+  web3-validator@2.0.6:
+    dependencies:
+      ethereum-cryptography: 2.2.1
+      util: 0.12.5
+      web3-errors: 1.3.1
+      web3-types: 1.10.0
+      zod: 3.25.76
 
   web3@0.16.0:
     dependencies:
@@ -27369,5 +27409,7 @@ snapshots:
       validator: 13.15.35
     optionalDependencies:
       commander: 11.1.0
+
+  zod@3.25.76: {}
 
   zwitch@2.0.4: {}
