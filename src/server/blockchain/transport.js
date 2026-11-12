@@ -83,8 +83,13 @@ export class MultipleHttpProvider extends HttpProvider {
           log.error('MultiHttpProvider:', errorMessage, exception, { error, provider, payload })
         } else if (isRateLimitError(exception)) {
           log.warn('MultiHttpProvider rate limit error', exception.message, exception, { error, provider })
-          endpoints.splice(endpoints.indexOf(item, 1))
-          setTimeout(() => endpoints.push(item), 60000)
+          const index = endpoints.indexOf(item)
+
+          // temporarily remove only the rate-limited endpoint, but never the last remaining one
+          if (index >= 0 && endpoints.length > 1) {
+            endpoints.splice(index, 1)
+            setTimeout(() => endpoints.push(item), 60000)
+          }
         } else if (notTxError) {
           log.warn('MultiHttpProvider failed to send:', error, exception, { provider })
         }
