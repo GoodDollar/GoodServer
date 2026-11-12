@@ -45,8 +45,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: corepack enable
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: 'npm'
@@ -69,8 +69,8 @@ jobs:
       TRAVIS: true
     steps:
       - run: corepack enable
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: 'npm'
