@@ -133,6 +133,16 @@ describe('ZoomProvider', () => {
     await testSuccessfullEnrollment(false)
   })
 
+  test('enroll() accepts age estimates whose midpoint meets the minimum age', async () => {
+    GoodIDUtils.ageGenderCheck.mockResolvedValueOnce({ age: { min: 15, max: 17 } })
+    helper.mockEnrollmentNotFound(enrollmentIdentifier)
+    helper.mockSuccessEnrollmentUnderAge(enrollmentIdentifier)
+    helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
+    helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
+
+    await testSuccessfullEnrollment(false)
+  })
+
   test('enroll() returns resultBlob on successfull response', async () => {
     helper.mockEnrollmentNotFound(enrollmentIdentifier)
     helper.mockSuccessEnrollment(enrollmentIdentifier, enrollmentResultBlob)
