@@ -18,6 +18,7 @@ jobs:
   test:
     name: Unit Tests (${{ matrix.shard }}/4)
     strategy:
+      fail-fast: false
       matrix:
         shard: [1, 2, 3, 4]
     if: "github.event_name != 'workflow_dispatch' && !contains(github.event.head_commit.message,'skip ci') && !contains(github.event.head_commit.message,'skip build')"
