@@ -46,13 +46,15 @@ jobs:
     steps:
       - run: corepack enable
       - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 8.15.5
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-          cache: 'npm'
-      - run: npm i -g patch-package
-      - name: Install npm dependencies
-        uses: bahmutov/npm-install@v1
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
       - uses: foundry-rs/foundry-toolchain@v1
         with:
           version: stable
@@ -70,15 +72,17 @@ jobs:
     steps:
       - run: corepack enable
       - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 8.15.5
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-          cache: 'npm'
-      - run: npm i -g patch-package
-      - name: Install npm dependencies
-        uses: bahmutov/npm-install@v1
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
       - name: Build
-        run: npm run build
+        run: pnpm run build
   # coverage:
   #   needs: test
   #   runs-on: ubuntu-latest
