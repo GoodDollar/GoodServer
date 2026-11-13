@@ -1,8 +1,8 @@
 //@flow
-import { sha3 } from 'web3-utils'
 import logger from '../src/imports/logger'
 
 import conf from '../src/server/server.config'
+import { hashString } from '../src/server/utils/eth'
 
 console.log(conf, process.env.NODE_ENV, process.env.TRAVIS)
 if (process.env.NODE_ENV === 'test' || process.env.TRAVIS === 'true') process.exit(0)
@@ -99,7 +99,11 @@ class DBUpdates {
         const res = {
           updateOne: {
             filter: { _id: doc._id },
-            update: { mobile: doc.mobile && sha3(doc.mobile), email: doc.email && sha3(doc.email), otp: null }
+            update: {
+              mobile: doc.mobile && hashString(doc.mobile),
+              email: doc.email && hashString(doc.email),
+              otp: null
+            }
           }
         }
         return res

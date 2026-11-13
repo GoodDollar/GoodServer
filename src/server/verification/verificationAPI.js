@@ -3,8 +3,7 @@ import crypto from 'crypto'
 import { Router } from 'express'
 import passport from 'passport'
 import { get, defaults, memoize, omit } from 'lodash'
-import { sha3, keccak256, toWei } from 'web3-utils'
-import web3Abi from 'web3-eth-abi'
+import { encodeFunctionData, parseEther } from 'viem'
 import requestIp from 'request-ip'
 import moment from 'moment'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
@@ -24,7 +23,7 @@ import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 import createIdScanProcessor from './processor/IdScanProcessor'
 
 import { cancelDisposalTask, getDisposalTask } from './cron/taskUtil'
-import { recoverPublickey, verifyIdentifier } from '../utils/eth'
+import { hashString, recoverPublickey, verifyIdentifier } from '../utils/eth'
 import { shouldLogVerificaitonError } from './utils/logger'
 import { syncUserEmail } from '../storage/addUserSteps'
 import { normalizeIdentifiers } from './utils/utils.js'
@@ -507,22 +506,25 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       try {
         const { signature, ...signed } = scanResult
         const { gdAddress } = signed
-        const mHash = keccak256(JSON.stringify(signed))
+        const mHash = hashString(JSON.stringify(signed))
         log.debug('idscan submit verifying...:', { mHash, signature })
-        const publicKey = recoverPublickey(signature, mHash, '')
-        const data = web3Abi.encodeFunctionCall(
-          {
-            name: 'addMember',
-            type: 'function',
-            inputs: [
-              {
-                type: 'address',
-                name: 'member'
-              }
-            ]
-          },
-          [gdAddress]
-        )
+        const publicKey = await recoverPublickey(signature, mHash, '')
+        const data = encodeFunctionData({
+          abi: [
+            {
+              name: 'addMember',
+              type: 'function',
+              inputs: [
+                {
+                  type: 'address',
+                  name: 'member'
+                }
+              ]
+            }
+          ],
+          functionName: 'addMember',
+          args: [gdAddress]
+        })
         const relayer = await AdminWallet.signer.relayer.getRelayer()
 
         log.debug('idscan submit verified...:', { publicKey, relayer })
@@ -572,7 +574,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const onlyCheckAlreadyVerified = body.onlyCheckAlreadyVerified
 
       const mobile = decodeURIComponent(body.user.mobile || user.otp.mobile) //fix in case input is %2B instead of +
-      const hashedMobile = sha3(mobile)
+      const hashedMobile = hashString(mobile)
       let userRec: UserRecord = defaults(body.user, user, { identifier: user.loggedInAs })
 
       const savedMobile = user.mobile
@@ -636,7 +638,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         return res.status(400).json({ ok: 0, error: 'MOBILE MISSING' })
       }
 
-      const hashedNewMobile = mobile && sha3(mobile)
+      const hashedNewMobile = mobile && hashString(mobile)
       const currentMobile = user.mobile
 
       log.debug('mobile verified', { user, verificationData, hashedNewMobile })
@@ -900,7 +902,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       //merge user details
       const { email: currentEmail } = user
       let userRec: UserRecord = defaults(body.user, user)
-      const isEmailChanged = currentEmail && currentEmail !== sha3(email)
+      const isEmailChanged = currentEmail && currentEmail !== hashString(email)
 
       let code
       log.debug('email verification request:', { email, currentEmail, isEmailChanged, body, user })
@@ -977,7 +979,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       let { email } = user.otp || {}
       email = email && email.toLowerCase()
 
-      const hashedNewEmail = email ? sha3(email) : null
+      const hashedNewEmail = email ? hashString(email) : null
       const currentEmail = user.email
 
       log.debug('email verification request', {
@@ -1173,7 +1175,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         if (payouts.has(token)) {
           throw new Error('Already paid')
         }
-        const tx = await AdminWallet.walletsMap[42220].transferWalletGoodDollars(user_id, toWei(String(value)), log)
+        const tx = await AdminWallet.walletsMap[42220].transferWalletGoodDollars(
+          user_id,
+          parseEther(String(value)).toString(),
+          log
+        )
         payouts.add(token)
         log.info('offerwall payout success:', { user_id, value, token, tx: tx.transactionHash })
         res.json({ success: true })
