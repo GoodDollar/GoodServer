@@ -96,7 +96,7 @@ importers:
         specifier: ^1.0.7
         version: 1.0.7
       body-parser:
-        specifier: ^1.19.0
+        specifier: ^1.20.6
         version: 1.20.9
       convict:
         specifier: ^6.2.5
@@ -126,7 +126,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.0(bufferutil@4.2.0)(utf-8-validate@6.0.6)
       express:
-        specifier: ^4.17.1
+        specifier: ^4.22.2
         version: 4.22.3
       express-pino-logger:
         specifier: ^4.0.0
@@ -21831,7 +21831,7 @@ snapshots:
       depd: 1.1.2
       inherits: 2.0.3
       setprototypeof: 1.1.0
-      statuses: 1.4.0
+      statuses: 1.5.0
 
   http-errors@1.8.1:
     dependencies:
