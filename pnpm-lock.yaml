@@ -243,9 +243,6 @@ importers:
       babel-loader:
         specifier: ^8.1.0
         version: 8.4.1(@babel/core@8.1.2)(webpack@5.112.2)
-      clean-webpack-plugin:
-        specifier: ^0.1.19
-        version: 0.1.19
       concurrently:
         specifier: ^4.1.2
         version: 4.1.2
@@ -4846,9 +4843,6 @@ packages:
 
   class-is@1.1.0:
     resolution: {integrity: sha512-rhjH9AG1fvabIDoGRVH587413LPjTZgmDF9fOFCbFJQV4yuocX1mHxxvXI4g3cGwbVY9wAYIoKlg1N79frJKQw==}
-
-  clean-webpack-plugin@0.1.19:
-    resolution: {integrity: sha512-M1Li5yLHECcN2MahoreuODul5LkjohJGFxLPTjl3j1ttKrF5rgjZET1SJduuqxLAuT1gAPOdkhg03qcaaU1KeA==}
 
   cli-boxes@3.0.0:
     resolution: {integrity: sha512-/lzGpEWL/8PfI0BmBOPRwp0c/wFNX1RdUML3jK/RcSBA9T8mZDdQpqYBKtCFTOfQbwPqWEOpjqW+Fnayc0969g==}
@@ -18629,10 +18623,6 @@ snapshots:
   cjs-module-lexer@1.4.3: {}
 
   class-is@1.1.0: {}
-
-  clean-webpack-plugin@0.1.19:
-    dependencies:
-      rimraf: 2.7.1
 
   cli-boxes@3.0.0: {}
 

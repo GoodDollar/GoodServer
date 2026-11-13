@@ -129,7 +129,6 @@
     "axios-mock-adapter": "^1.20.0",
     "babel-jest": "^30.4.1",
     "babel-loader": "^8.1.0",
-    "clean-webpack-plugin": "^0.1.19",
     "concurrently": "^4.1.2",
     "coveralls": "^3.1.0",
     "documentation": "14.0.1",
