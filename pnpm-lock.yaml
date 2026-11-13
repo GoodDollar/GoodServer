@@ -12,7 +12,7 @@ importers:
         specifier: ^1.5.0
         version: 1.5.0(bufferutil@4.2.0)(utf-8-validate@6.0.6)(viem@2.57.18(bufferutil@4.2.0)(typescript@7.0.2)(utf-8-validate@6.0.6))
       '@aws-sdk/client-s3':
-        specifier: ^3.552.0
+        specifier: ^3.1102.0
         version: 3.1166.0
       '@axelar-network/axelarjs-sdk':
         specifier: ^0.21.0
