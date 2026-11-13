@@ -165,7 +165,7 @@ importers:
         specifier: ^2.29.2
         version: 2.31.0
       mongoose:
-        specifier: ^8.1.0
+        specifier: ^8.24.1
         version: 8.24.8
       passport:
         specifier: ^0.6.0
