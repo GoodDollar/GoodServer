@@ -85,7 +85,6 @@
     "dotenv": "^6.2.0",
     "ethers": "^5.7.2",
     "express": "^4.22.2",
-    "express-pino-logger": "^4.0.0",
     "express-rate-limit": "^6.7.0",
     "google-libphonenumber": "^3.2.39",
     "hdkey": "^2.1.0",
