@@ -361,7 +361,7 @@ importers:
         specifier: ^3.4.2
         version: 3.4.2
       webpack:
-        specifier: ^5.84.1
+        specifier: ^5.109.2
         version: 5.112.2(webpack-cli@5.1.4)
       webpack-dev-middleware:
         specifier: ^3.7.2
@@ -14715,7 +14715,7 @@ snapshots:
   '@jest/source-map@24.9.0':
     dependencies:
       callsites: 3.1.0
-      graceful-fs: 4.2.11
+      graceful-fs: 4.2.12
       source-map: 0.6.1
 
   '@jest/source-map@29.6.3':
@@ -19582,7 +19582,7 @@ snapshots:
 
   enhanced-resolve@5.26.1:
     dependencies:
-      graceful-fs: 4.2.11
+      graceful-fs: 4.2.12
       tapable: 2.3.3
 
   entities@2.1.0: {}
@@ -20927,7 +20927,7 @@ snapshots:
 
   fs-extra@0.30.0:
     dependencies:
-      graceful-fs: 4.2.11
+      graceful-fs: 4.2.12
       jsonfile: 2.4.0
       klaw: 1.3.1
       path-is-absolute: 1.0.1
@@ -20954,7 +20954,7 @@ snapshots:
   fs-extra@9.1.0:
     dependencies:
       at-least-node: 1.0.0
-      graceful-fs: 4.2.11
+      graceful-fs: 4.2.12
       jsonfile: 6.2.1
       universalify: 2.0.1
     optional: true
@@ -21184,8 +21184,7 @@ snapshots:
 
   graceful-fs@4.2.11: {}
 
-  graceful-fs@4.2.12:
-    optional: true
+  graceful-fs@4.2.12: {}
 
   graphemer@1.4.0: {}
 
@@ -22512,11 +22511,11 @@ snapshots:
 
   jsonfile@2.4.0:
     optionalDependencies:
-      graceful-fs: 4.2.11
+      graceful-fs: 4.2.12
 
   jsonfile@4.0.0:
     optionalDependencies:
-      graceful-fs: 4.2.11
+      graceful-fs: 4.2.12
 
   jsonfile@6.2.1:
     dependencies:
@@ -22651,7 +22650,7 @@ snapshots:
 
   klaw@1.3.1:
     optionalDependencies:
-      graceful-fs: 4.2.11
+      graceful-fs: 4.2.12
 
   kleur@3.0.3: {}
 
@@ -22858,7 +22857,7 @@ snapshots:
 
   load-json-file@1.1.0:
     dependencies:
-      graceful-fs: 4.2.11
+      graceful-fs: 4.2.12
       parse-json: 2.2.0
       pify: 2.3.0
       pinkie-promise: 2.0.1
@@ -24683,7 +24682,7 @@ snapshots:
 
   path-type@1.1.0:
     dependencies:
-      graceful-fs: 4.2.11
+      graceful-fs: 4.2.12
       pify: 2.3.0
       pinkie-promise: 2.0.1
 
@@ -27084,7 +27083,7 @@ snapshots:
 
   watchpack@2.6.4:
     dependencies:
-      graceful-fs: 4.2.11
+      graceful-fs: 4.2.12
 
   wbuf@1.7.3:
     dependencies:
@@ -27495,7 +27494,7 @@ snapshots:
       enhanced-resolve: 5.26.1
       es-module-lexer: 2.3.2
       events: 3.3.0
-      graceful-fs: 4.2.11
+      graceful-fs: 4.2.12
       mime-db: 1.54.0
       minimizer-webpack-plugin: 5.14.0(webpack@5.112.2)
       schema-utils: 4.8.3(webpack@5.112.2)
@@ -27534,7 +27533,7 @@ snapshots:
       enhanced-resolve: 5.26.1
       es-module-lexer: 2.3.2
       events: 3.3.0
-      graceful-fs: 4.2.11
+      graceful-fs: 4.2.12
       mime-db: 1.54.0
       minimizer-webpack-plugin: 5.14.0(webpack@5.112.2)
       schema-utils: 4.8.3(webpack@5.112.2)
