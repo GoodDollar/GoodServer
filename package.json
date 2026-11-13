@@ -96,7 +96,7 @@
     "hdkey": "^2.1.0",
     "ioredis": "^5.3.2",
     "is-base64": "^1.1.0",
-    "jsonwebtoken": "^9.0.0",
+    "jsonwebtoken": "^9.0.1",
     "key-did-resolver": "4.0.0",
     "lodash": "^4.18.1",
     "math-random": "^1.0.4",
