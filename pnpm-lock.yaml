@@ -99,7 +99,7 @@ importers:
         specifier: ^1.19.0
         version: 1.20.9
       convict:
-        specifier: ^6.2.4
+        specifier: ^6.2.5
         version: 6.2.5
       convict-format-with-validator:
         specifier: ^6.2.0
