@@ -150,7 +150,7 @@
     "pino-pretty": "^2.6.1",
     "prettier": "^3.2.5",
     "promise.allsettled": "^1.0.2",
-    "supertest": "^3.4.2",
+    "supertest": "^7.3.2",
     "webpack": "^5.112.2",
     "webpack-hot-middleware": "^2.25.0",
     "webpack-node-externals": "^1.7.2"
