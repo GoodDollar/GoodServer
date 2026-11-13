@@ -1,6 +1,6 @@
 // @flow
 
-import REK from 'aws-sdk/clients/rekognition'
+import { Rekognition } from '@aws-sdk/client-rekognition'
 import { S3Client, HeadObjectCommand } from '@aws-sdk/client-s3'
 import { once } from 'lodash'
 
@@ -27,8 +27,7 @@ const getConfig = (service: 'ses' | 's3' | 'rek') => {
   }
 
   return {
-    accessKeyId: awsSesAccessKey,
-    secretAccessKey: awsSesSecretAccessKey,
+    credentials: { accessKeyId: awsSesAccessKey, secretAccessKey: awsSesSecretAccessKey },
     region
   }
 }
@@ -36,12 +35,10 @@ const getConfig = (service: 'ses' | 's3' | 'rek') => {
 export const REDTENT_BUCKET = 'redtent'
 
 export const getS3Client = once(() => {
-  const { region, ...credentials } = getConfig('s3')
-
-  return new S3Client({ region, credentials })
+  return new S3Client(getConfig('s3'))
 })
 
-export const getRecognitionClient = once(() => new REK(getConfig('rek')))
+export const getRecognitionClient = once(() => new Rekognition(getConfig('rek')))
 
 export const detectFaces = async imageBase64 => {
   const rekognition = getRecognitionClient()
@@ -53,7 +50,7 @@ export const detectFaces = async imageBase64 => {
     }
   }
 
-  return rekognition.detectFaces(payload).promise()
+  return rekognition.detectFaces(payload)
 }
 
 export const getS3Metadata = async (filename, bucket) => {
