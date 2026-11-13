@@ -20,9 +20,6 @@ importers:
       '@babel/polyfill':
         specifier: ^7.11.5
         version: 7.12.1
-      '@babel/runtime':
-        specifier: ^7.16.5
-        version: 7.29.14
       '@gooddollar/goodcontracts':
         specifier: ^2.6.1
         version: 2.6.6
