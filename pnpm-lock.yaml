@@ -279,9 +279,6 @@ importers:
       jest:
         specifier: ^29.7.0
         version: 29.7.0(@types/node@26.6.6)
-      jest-environment-node:
-        specifier: ^29.7.0
-        version: 29.7.0
       jest-extended:
         specifier: ^7.0.0
         version: 7.0.0(jest@29.7.0(@types/node@26.6.6))(typescript@6.0.3)
