@@ -73,7 +73,6 @@
     "aws-sdk": "^2.1376.0",
     "axios": "^1.19.0",
     "axios-retry": "^3.2.5",
-    "big-number": "^2.0.0",
     "bip39-light": "^1.0.7",
     "body-parser": "^1.20.6",
     "convict": "^6.2.5",

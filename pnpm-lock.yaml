@@ -80,9 +80,6 @@ importers:
       axios-retry:
         specifier: ^3.2.5
         version: 3.9.1
-      big-number:
-        specifier: ^2.0.0
-        version: 2.0.0
       bip39-light:
         specifier: ^1.0.7
         version: 1.0.7
@@ -4542,9 +4539,6 @@ packages:
   big-integer@1.6.52:
     resolution: {integrity: sha512-QxD8cf2eVqJOOz63z6JIN9BzvVs/dlySa5HGSBH5xtR8dPteIRQnBxxKqkNTiT6jbDTF6jAfrd4oMcND9RGbQg==}
     engines: {node: '>=0.6'}
-
-  big-number@2.0.0:
-    resolution: {integrity: sha512-C67Su0g+XsmXADX/UM9L/+xSbqqwq0D/qGJs2ky6Noy2FDuCZnC38ZSXODiaBvqWma2VYRZEXgm4H74PS6tCDg==}
 
   big.js@5.2.2:
     resolution: {integrity: sha512-vyL2OymJxmarO8gxMr0mhChsO9QGwhynfuu4+MHTAW6czfq9humCB7rKpUjDd9YUiDPU4mzpyupFSvOClAwbmQ==}
@@ -18335,8 +18329,6 @@ snapshots:
 
   big-integer@1.6.52:
     optional: true
-
-  big-number@2.0.0: {}
 
   big.js@5.2.2: {}
 
