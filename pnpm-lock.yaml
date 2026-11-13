@@ -361,7 +361,7 @@ importers:
         specifier: ^3.4.2
         version: 3.4.2
       webpack:
-        specifier: ^5.109.2
+        specifier: ^5.112.2
         version: 5.112.2(webpack-cli@5.1.4)
       webpack-dev-middleware:
         specifier: ^3.7.2
@@ -14925,7 +14925,7 @@ snapshots:
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       callsites: 3.1.0
-      graceful-fs: 4.2.11
+      graceful-fs: 4.2.12
 
   '@jest/test-result@24.9.0':
     dependencies:
@@ -14943,7 +14943,7 @@ snapshots:
   '@jest/test-sequencer@29.7.0':
     dependencies:
       '@jest/test-result': 29.7.0
-      graceful-fs: 4.2.11
+      graceful-fs: 4.2.12
       jest-haste-map: 29.7.0
       slash: 3.0.0
 
@@ -18443,7 +18443,7 @@ snapshots:
       babel-plugin-istanbul: 6.1.1
       babel-preset-jest: 29.6.3(@babel/core@7.29.13)
       chalk: 4.1.2
-      graceful-fs: 4.2.11
+      graceful-fs: 4.2.12
       slash: 3.0.0
     transitivePeerDependencies:
       - supports-color
@@ -19283,7 +19283,7 @@ snapshots:
       commander: 2.20.3
       detective: 4.7.1
       glob: 5.0.15
-      graceful-fs: 4.2.11
+      graceful-fs: 4.2.12
       iconv-lite: 0.4.24
       mkdirp: 0.5.6
       private: 0.1.8
@@ -21350,7 +21350,7 @@ snapshots:
 
   fs-extra@4.0.3:
     dependencies:
-      graceful-fs: 4.2.11
+      graceful-fs: 4.2.12
       jsonfile: 4.0.0
       universalify: 0.1.2
 
