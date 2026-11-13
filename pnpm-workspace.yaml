@@ -1,5 +1,6 @@
 allowBuilds:
   '@axelar-network/axelarjs-sdk': true
+  '@parcel/watcher': false
   '@sentry/cli': true
   aws-sdk: true
   bufferutil: true
@@ -15,3 +16,4 @@ allowBuilds:
   web3-bzz: true
   web3-shh: true
 blockExoticSubdeps: false
+minimumReleaseAge: 4500
