@@ -188,9 +188,6 @@ importers:
       webpack-cli:
         specifier: ^5.1.1
         version: 5.1.4(webpack-dev-server@6.1.0)(webpack@5.112.2)
-      websocket:
-        specifier: ^1.0.32
-        version: 1.0.35
       winston:
         specifier: ^3.3.3
         version: 3.19.0
