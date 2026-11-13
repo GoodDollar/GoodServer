@@ -27,33 +27,40 @@ jobs:
     if: "github.event_name == 'workflow_dispatch'"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
           fetch-depth: 0
           ref: ${{ github.event.inputs.release == 'qa' && 'master' || 'staging' }}
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: setup git
         run: |
           git config --local user.email "techadmin@gooddollar.org"
           git config --local user.name "Techadmin"
-          npm install -g auto-changelog
 
       - name: update version qa
         if: "github.event.inputs.release == 'qa'"
         run: |
-          npm version prerelease -m "chore: release qa version %s [skip build]"
+          pnpm exec npm version prerelease -m "chore: release qa version %s [skip build]"
           git push https://x-access-token:${{ secrets.PAT }}@github.com/GoodDollar/GoodServer master:${{ github.event.inputs.targetbranch }} --force --follow-tags
           git push https://x-access-token:${{ secrets.PAT }}@github.com/GoodDollar/GoodServer master --follow-tags
 
       - name: update version prod
         if: "github.event.inputs.release != 'qa'"
         run: |
-          npm version minor -m "chore: release prod version %s [skip build]"
+          pnpm exec npm version minor -m "chore: release prod version %s [skip build]"
           git push https://x-access-token:${{ secrets.PAT }}@github.com/GoodDollar/GoodServer staging:${{ github.event.inputs.targetbranch }} --force --follow-tags
           git checkout master
           git merge staging

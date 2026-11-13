@@ -4,23 +4,21 @@ import { Router } from 'express'
 import passport from 'passport'
 import fetch from 'cross-fetch'
 import { first, get, toLower, values } from 'lodash'
-import { sha3, toChecksumAddress } from 'web3-utils'
+import { getAddress } from 'viem'
 
 import { type StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync, onlyInEnv } from '../utils/helpers'
 import { withTimeout } from '../utils/async'
 import OnGage from '../crm/ongage'
 import conf from '../server.config'
+import { hashString } from '../utils/eth'
 import { addUserToWhiteList, createCRMRecord } from './addUserSteps'
 import createUserVerifier from './verifier'
-import stakingModelTasks from '../blockchain/stakingModelTasks'
 import { cancelDisposalTask, getDisposalTask } from '../verification/cron/taskUtil'
 import createEnrollmentProcessor from '../verification/processor/EnrollmentProcessor'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import { default as AdminWallet } from '../blockchain/MultiWallet'
 import Logger from '../../imports/logger'
-
-const { fishManager } = stakingModelTasks
 
 const deleteFromAnalytics = (userId, walletAddress, log) => {
   log.info('deleting user from analytics', { userId, walletAddress })
@@ -29,7 +27,7 @@ const deleteFromAnalytics = (userId, walletAddress, log) => {
     method: 'POST',
 
     body: JSON.stringify({
-      user_ids: [toChecksumAddress(userId.toLowerCase())], //amplitude id is case sensitive and is the original address form from user wallet
+      user_ids: [getAddress(userId.toLowerCase())], //amplitude id is case sensitive and is the original address form from user wallet
       delete_from_org: 'true',
       ignore_invalid_id: 'true'
     })
@@ -114,10 +112,10 @@ const setup = (app: Router, storage: StorageAPI) => {
         const { emailVerified, mobileVerified } = await verifier.verifySignInIdentifiers()
 
         const isEmailTorusVerified = email && emailVerified
-        const isEmailManuallyVerified = email && userRecord.isEmailConfirmed && userRecord.email === sha3(email)
+        const isEmailManuallyVerified = email && userRecord.isEmailConfirmed && userRecord.email === hashString(email)
         const isEmailConfirmed = !!('development' === env || isEmailTorusVerified || isEmailManuallyVerified)
         const isMobileTorusVerified = mobile && mobileVerified
-        const isMobileManuallyVerified = mobile && userRecord.smsValidated && userRecord.mobile === sha3(mobile)
+        const isMobileManuallyVerified = mobile && userRecord.smsValidated && userRecord.mobile === hashString(mobile)
         const isMobileConfirmed = !!('development' === env || isMobileTorusVerified || isMobileManuallyVerified)
 
         logger.debug('new user verification result:', {
@@ -155,11 +153,11 @@ const setup = (app: Router, storage: StorageAPI) => {
           identifier: userRecord.loggedInAs,
           regMethod,
           torusProvider,
-          email: email ? sha3(email) : userRecord.email,
-          mobile: mobile ? sha3(mobile) : userRecord.mobile,
+          email: email ? hashString(email) : userRecord.email,
+          mobile: mobile ? hashString(mobile) : userRecord.mobile,
           fullName,
           profilePublickey: userRecord.profilePublickey,
-          walletAddress: sha3(userRecord.gdAddress.toLowerCase()),
+          walletAddress: hashString(userRecord.gdAddress.toLowerCase()),
           isCompleted: userRecord.isCompleted
             ? userRecord.isCompleted
             : {
@@ -281,7 +279,7 @@ const setup = (app: Router, storage: StorageAPI) => {
           const toCRM = {
             identifier: userRecord.loggedInAs,
             fullName,
-            walletAddress: sha3(userRecord.gdAddress.toLowerCase()),
+            walletAddress: hashString(userRecord.gdAddress.toLowerCase()),
             email
           }
 
@@ -290,21 +288,25 @@ const setup = (app: Router, storage: StorageAPI) => {
           // this line is a patch to handle that case
 
           if (
-            (sha3(email) === userRecord.email ||
-              sha3(emailLC) === userRecord.email ||
-              sha3(emailLC.charAt(0).toUpperCase() + emailLC.slice(1)) === userRecord.email) === false
+            (hashString(email) === userRecord.email ||
+              hashString(emailLC) === userRecord.email ||
+              hashString(emailLC.charAt(0).toUpperCase() + emailLC.slice(1)) === userRecord.email) === false
           ) {
-            logger.error('unable to verify user email', { email, hash: sha3(email), recordHash: userRecord.email })
+            logger.error('unable to verify user email', {
+              email,
+              hash: hashString(email),
+              recordHash: userRecord.email
+            })
           }
 
-          if (mobile && sha3(mobile) === userRecord.mobile) {
+          if (mobile && hashString(mobile) === userRecord.mobile) {
             toCRM.mobile = mobile
           }
 
           const crmId = await createCRMRecord(toCRM, '', logger)
 
           await storage.updateUser({
-            email: sha3(email),
+            email: hashString(email),
             identifier: userRecord.loggedInAs,
             crmId
           })
@@ -489,7 +491,7 @@ const setup = (app: Router, storage: StorageAPI) => {
     '/userExists',
     wrapAsync(async (req, res) => {
       const { log, body } = req
-      const toHash = value => (value ? sha3(value) : null)
+      const toHash = value => (value ? hashString(value) : null)
       const sendNotExists = () => res.json({ ok: 1, exists: false })
 
       let { identifier = '', email, mobile } = body
@@ -617,9 +619,13 @@ const setup = (app: Router, storage: StorageAPI) => {
       const { body } = req
       let user = {}
       if (body.email)
-        user = await storage.getUsersByEmail(body.email.startsWith('0x') === false ? sha3(body.email) : body.email)
+        user = await storage.getUsersByEmail(
+          body.email.startsWith('0x') === false ? hashString(body.email) : body.email
+        )
       if (body.mobile)
-        user = await storage.getUsersByMobile(body.mobile.startsWith('0x') === false ? sha3(body.mobile) : body.mobile)
+        user = await storage.getUsersByMobile(
+          body.mobile.startsWith('0x') === false ? hashString(body.mobile) : body.mobile
+        )
       if (body.identifier) user = await storage.getUser(body.identifier)
       if (body.identifierHash) user = await storage.getByIdentifierHash(body.identifierHash)
 
@@ -640,9 +646,13 @@ const setup = (app: Router, storage: StorageAPI) => {
       const { body, log } = req
       let user = {}
       if (body.email)
-        user = await storage.getUsersByEmail(body.email.startsWith('0x') === false ? sha3(body.email) : body.email)
+        user = await storage.getUsersByEmail(
+          body.email.startsWith('0x') === false ? hashString(body.email) : body.email
+        )
       if (body.mobile)
-        user = await storage.getUsersByMobile(body.mobile.startsWith('0x') === false ? sha3(body.mobile) : body.mobile)
+        user = await storage.getUsersByMobile(
+          body.mobile.startsWith('0x') === false ? hashString(body.mobile) : body.mobile
+        )
       if (body.identifier) user = await storage.getUser(body.identifier)
       if (body.identifierHash) user = await storage.getByIdentifierHash(body.identifierHash)
       if (!user?.length) {
@@ -696,23 +706,6 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       log.info('delete user results', { user, results })
       res.json({ ok: 1, results })
-    })
-  )
-
-  app.post(
-    '/admin/model/fish',
-    adminAuthenticate,
-    wrapAsync(async (req, res) => {
-      const { body, log } = req
-      const { daysAgo } = body
-      if (!daysAgo) return res.json({ ok: 0, error: 'missing daysAgo' })
-      log.debug('fishing request', { daysAgo })
-      fishManager
-        .run(daysAgo)
-        .then(fishResult => log.info('fishing request result:', { fishResult }))
-        .catch(e => log.error('fish request failed', e.message, e, { daysAgo }))
-
-      res.json({ ok: 1 })
     })
   )
 
@@ -772,7 +765,7 @@ const setup = (app: Router, storage: StorageAPI) => {
     wrapAsync(async (req, res) => {
       const { body, log } = req
       let result = {}
-      const identifier = body.identifier || sha3(toChecksumAddress(body.account))
+      const identifier = body.identifier || hashString(getAddress(body.account))
       if (identifier) result = await storage.updateUser({ identifier, ageVerified: true })
       log.info('admin age verify', body, result)
       res.json({ ok: 1, result })

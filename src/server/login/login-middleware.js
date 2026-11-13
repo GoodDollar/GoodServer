@@ -8,7 +8,6 @@ import { defaults } from 'lodash'
 import { PublicKey } from '@textile/crypto'
 import { TextEncoder } from 'util'
 import isBase64 from 'is-base64'
-import { sha3 } from 'web3-utils'
 import { AxelarQueryAPI } from '@axelar-network/axelarjs-sdk'
 import * as ethers from 'ethers'
 
@@ -16,7 +15,7 @@ import logger from '../../imports/logger'
 import { wrapAsync } from '../utils/helpers'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
 import Config from '../server.config.js'
-import { recoverPublickey, verifyIdentifier } from '../utils/eth'
+import { hashString, recoverPublickey, verifyIdentifier } from '../utils/eth'
 import { strcasecmp } from '../utils/string'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import clientSettings from '../clients.config.js'
@@ -91,7 +90,7 @@ export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
 
 const generateJWT = async (recovered, identifier = null, payload = {}) => {
   const { env, jwtPassword, jwtExpiration } = Config
-  const userId = identifier || sha3(recovered)
+  const userId = identifier || hashString(recovered)
   const userRecord = await UserDBPrivate.getUser(userId)
   const { smsValidated, isEmailConfirmed, createdDate } = userRecord || {}
   const hasVerified = smsValidated || isEmailConfirmed
@@ -168,8 +167,8 @@ const setup = (app: Router) => {
       //   throw new Error(`Network ID mismatch client: ${networkId} ours: ${configNetworkId}`)
       // }
 
-      const recovered = recoverPublickey(signature, MSG, nonce)
-      const gdPublicAddress = recoverPublickey(gdSignature, MSG, nonce)
+      const recovered = await recoverPublickey(signature, MSG, nonce)
+      const gdPublicAddress = await recoverPublickey(gdSignature, MSG, nonce)
       let profileVerified = true
 
       // ignore profile signature check if public key is null or signature was sent from the old wallet version using GUN
@@ -225,8 +224,8 @@ const setup = (app: Router) => {
         throw new Error('invalid nonce for fv login')
       }
 
-      const recovered = recoverPublickey(signature, FV_LOGIN_MSG, nonce)
-      const fvrecovered = recoverPublickey(fvsig, FV_IDENTIFIER_MSG, '')
+      const recovered = await recoverPublickey(signature, FV_LOGIN_MSG, nonce)
+      const fvrecovered = await recoverPublickey(fvsig, FV_IDENTIFIER_MSG, '')
 
       log.debug('/auth/fv', {
         message: 'Recovered public key',

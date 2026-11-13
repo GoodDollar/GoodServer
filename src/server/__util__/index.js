@@ -1,8 +1,6 @@
 import request from 'supertest'
-import Web3 from 'web3'
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { FV_IDENTIFIER_MSG2 } from '../utils/eth.js'
-
-const web3 = new Web3()
 
 const networkId = 4447
 
@@ -25,10 +23,11 @@ export const getCreds = async (random = false) => {
     networkId
   }
   if (random) {
-    let account = web3.eth.accounts.create()
-    web3.eth.accounts.wallet.add(account)
-    const signature = await web3.eth.sign('Login to GoodDAPP' + creds.nonce, account.address)
-    const fvV2Identifier = await web3.eth.sign(FV_IDENTIFIER_MSG2({ account: account.address }), account.address)
+    const account = privateKeyToAccount(generatePrivateKey())
+    const signature = await account.signMessage({ message: 'Login to GoodDAPP' + creds.nonce })
+    const fvV2Identifier = await account.signMessage({
+      message: FV_IDENTIFIER_MSG2({ account: account.address })
+    })
     const gdSignature = signature
     randomCreds = {
       signature,

@@ -70,7 +70,7 @@ export const getAgent = once(async () => {
 
   await MultiWallet.ready
 
-  const { wallet } = MultiWallet.mainWallet.web3.eth.accounts
+  const wallet = MultiWallet.mainWallet.addresses.map(address => MultiWallet.mainWallet.wallets[address.toLowerCase()])
 
   const privateKeyHex = Array(2)
     .fill(null)
