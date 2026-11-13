@@ -127,7 +127,6 @@
     "apidoc-markdown": "^7.2.5",
     "auto-changelog": "^1.16.4",
     "axios-mock-adapter": "^1.20.0",
-    "babel-core": "^7.0.0-bridge.0",
     "babel-jest": "^30.4.1",
     "babel-loader": "^8.1.0",
     "clean-webpack-plugin": "^0.1.19",

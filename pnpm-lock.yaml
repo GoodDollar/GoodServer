@@ -237,9 +237,6 @@ importers:
       axios-mock-adapter:
         specifier: ^1.20.0
         version: 1.22.0(axios@1.21.1)
-      babel-core:
-        specifier: ^7.0.0-bridge.0
-        version: 7.0.0-bridge.0(@babel/core@8.1.2)
       babel-jest:
         specifier: ^30.4.1
         version: 30.5.2(@babel/core@8.1.2)
@@ -4267,11 +4264,6 @@ packages:
 
   babel-core@5.8.38:
     resolution: {integrity: sha512-aVoPuaEiJJ/vqFpYuGp3kHOrKeKciCkjDE/e9va3VoSPAe37Qc0+9AZ+gBgIMTu8V8reCt2lW809e8k1KJQdaQ==}
-
-  babel-core@7.0.0-bridge.0:
-    resolution: {integrity: sha512-poPX9mZH/5CSanm50Q+1toVci6pv5KSRv/5TWCwtzQS5XEwn40BcCrgIeMFWP9CKKIniKXNxoIOnOq4VVlGXhg==}
-    peerDependencies:
-      '@babel/core': ^7.0.0-0
 
   babel-jest@29.7.0:
     resolution: {integrity: sha512-BrvGY3xZSwEcCzKvKsCi2GgHqDqsYkOP4/by5xCgIwGXQxIEh+8ew3gmrE1y7XRR6LHZIj6yLYnUi/mm2KXKBg==}
@@ -17931,10 +17923,6 @@ snapshots:
       try-resolve: 1.0.1
     transitivePeerDependencies:
       - supports-color
-
-  babel-core@7.0.0-bridge.0(@babel/core@8.1.2):
-    dependencies:
-      '@babel/core': 8.1.2
 
   babel-jest@29.7.0(@babel/core@7.29.13):
     dependencies:
