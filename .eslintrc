@@ -9,10 +9,7 @@
     "prettier"
   ],
   "parserOptions": {
-    "ecmaVersion": 2020,
-    "babelOptions": {
-      "plugins": [["@babel/plugin-syntax-import-attributes", { "deprecatedAssertSyntax": true }]]
-    }
+    "ecmaVersion": 2020
   },
   "plugins": ["flowtype", "import", "prettier", "jest"],
   "settings": {},
