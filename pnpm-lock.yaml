@@ -32,9 +32,6 @@ importers:
       '@goodwidget/core':
         specifier: ^0.1.5
         version: 0.1.5(bufferutil@4.2.0)(react-dom@19.3.1(react@19.3.1))(react-native-svg@15.16.1(react-native@0.88.1(@babel/core@8.1.2)(bufferutil@4.2.0)(react@19.3.1)(utf-8-validate@6.0.6))(react@19.3.1))(react-native@0.88.1(@babel/core@8.1.2)(bufferutil@4.2.0)(react@19.3.1)(utf-8-validate@6.0.6))(react@19.3.1)(typescript@6.0.3)(utf-8-validate@6.0.6)(zod@3.25.76)
-      '@openzeppelin/defender-relay-client':
-        specifier: ^1.49.0
-        version: 1.54.6(@ethersproject/abstract-provider@5.8.0)(@ethersproject/abstract-signer@5.8.0)(@ethersproject/hash@5.8.0)(@ethersproject/providers@5.8.0(bufferutil@4.2.0)(utf-8-validate@6.0.6))(@ethersproject/transactions@5.8.0)(encoding@0.1.14)(web3-core-helpers@1.10.4)(web3-core@1.10.4(encoding@0.1.14))
       '@sentry/integrations':
         specifier: ^5.30.0
         version: 5.30.0
@@ -397,12 +394,6 @@ packages:
     peerDependencies:
       viem: '>=2'
 
-  '@aws-crypto/sha256-js@1.2.2':
-    resolution: {integrity: sha512-Nr1QJIbW/afYYGzYvrF70LtaHrIRtd4TNAglX8BvlfxJLZ45SAmueIKYl5tWoNBPzp65ymXGFK0Bb1vZUpuc9g==}
-
-  '@aws-crypto/util@1.2.2':
-    resolution: {integrity: sha512-H8PjG5WJ4wz0UXAFXeJjWCW1vkvIJ3qUUD+rGRwJ2/hj+xT58Qle2MTql/2MGzkU+1JLAFuR6aJpLAjHwhmwwg==}
-
   '@aws-sdk/checksums@3.1002.5':
     resolution: {integrity: sha512-OHlfkNzDFjYnwNPABhwAkDTUi0HPjfsKUHJDR0bSMORpCXNzRpInPCNCIT08xKDhjaPlcLJ+2Av+Sk7hHnuC8A==}
     engines: {node: '>=20.0.0'}
@@ -470,9 +461,6 @@ packages:
   '@aws-sdk/types@3.975.1':
     resolution: {integrity: sha512-7rGxUkCB2QPoQOeJmonmAICTN2zrH+fpmi1p4Iwu72lnxNaMhOgqcbpyddifnM1DBb19TWQ1u6z/XjkaFNEDWw==}
     engines: {node: '>=20.0.0'}
-
-  '@aws-sdk/util-utf8-browser@3.259.0':
-    resolution: {integrity: sha512-UvFa/vR+e19XookZF8RzFZBrw2EUkQWxiBW0yYQAhvk3C+QVGl0H3ouca8LDBlBfQKXwmW3huo/59H8rwb1wJw==}
 
   '@aws-sdk/xml-builder@3.972.43':
     resolution: {integrity: sha512-rG8QVx4DOrJWptsogu1Aq+CDsnPKaBrAlJpKLxrJrIDXAq1ElnW0yQjjBnlWSXll0cDakCG6UDvaqwz0A9d9Og==}
@@ -2398,22 +2386,6 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@openzeppelin/defender-base-client@1.54.6':
-    resolution: {integrity: sha512-PTef+rMxkM5VQ7sLwLKSjp2DBakYQd661ZJiSRywx+q/nIpm3B/HYGcz5wPZCA5O/QcEP6TatXXDoeMwimbcnw==}
-    deprecated: This package has been deprecated and will no longer be maintained, please use @openzeppelin/defender-sdk package instead.
-
-  '@openzeppelin/defender-relay-client@1.54.6':
-    resolution: {integrity: sha512-eLmR8RPqkwo8TIFVLdyi0GhHZAF+5pDHR1iI2uP4YVyknUl6s5yIz+OsGCX539WA2HgJtp6ct2ufBaEQ4tIaCA==}
-    deprecated: This package has been deprecated and will no longer be maintained, please use @openzeppelin/defender-sdk package instead.
-    peerDependencies:
-      '@ethersproject/abstract-provider': ^5.6.1
-      '@ethersproject/abstract-signer': ^5.6.2
-      '@ethersproject/hash': ^5.6.1
-      '@ethersproject/providers': ^5.6.8
-      '@ethersproject/transactions': ^5.6.2
-      web3-core: ^1.8.2
-      web3-core-helpers: ^1.8.2
-
   '@oxc-project/types@0.154.0':
     resolution: {integrity: sha512-KYOUGQFlLWR+s4QMV2Q9ko38TZm7EdO87Qm7rvZLqk/webse/cDjtyxKhg/47l0byCbs/k46LT8qc4PKjAikzA==}
 
@@ -4033,9 +4005,6 @@ packages:
   alter@0.2.0:
     resolution: {integrity: sha512-Wuss6JIZ6h4j2+NgU2t+9mSwS7gBSZJbU4Dg8xETguAD2veJUSuCrvTIiC78QgZE7/zX7h6OnXw2PiiCBirEGw==}
 
-  amazon-cognito-identity-js@6.3.22:
-    resolution: {integrity: sha512-FcBgh4QS2OIusMak+YVgOQTvdhBDgz7uOkblRN5W8d8teWvCLdJ9uNVgwQ5ivDdlmUqR259JvKLido1X3J2Qiw==}
-
   amdefine@1.0.1:
     resolution: {integrity: sha512-S2Hw0TtNkMJhIabBwIojKL9YHO5T0n5eNqWJ7Lrlel/zDbftQpxpapi8tZs3X1HWa+u+QeydGmzzNU0m09+Rcg==}
     engines: {node: '>=0.4.2'}
@@ -4249,9 +4218,6 @@ packages:
 
   async-limiter@1.0.1:
     resolution: {integrity: sha512-csOlWGAcRFJaI6m+F2WKdnMKr4HhdhFVBk0H/QbJFMCr+uO2kwohwXQPxw/9OCxp05r5ghVBFSyioixx3gfkNQ==}
-
-  async-retry@1.3.3:
-    resolution: {integrity: sha512-wfr/jstw9xNi/0teMHrRW7dsz3Lt5ARhYNZ2ewpadnhaIp5mbALhOAP+EAdsC7t4Z6wqsDVv9+W6gm1Dk9mEyw==}
 
   async@1.5.2:
     resolution: {integrity: sha512-nSVgobk4rv61R9PUSDtYt7mPVB2olxNR5RWJcAsH676/ef11bUZwvu7+RGYrYauVdDPcO519v68wRhXQtxsV9w==}
@@ -6323,9 +6289,6 @@ packages:
   fake-merkle-patricia-tree@1.0.1:
     resolution: {integrity: sha512-Tgq37lkc9pUIgIKw5uitNUKcgcYL3R6JvXtKQbOf/ZSavXbidsksgp/pAY6p//uhw0I4yoMsvTSovvVIsk/qxA==}
 
-  fast-base64-decode@1.0.0:
-    resolution: {integrity: sha512-qwaScUgUGBYeDNRnbc/KyllVU88Jk1pRHPStuF/lO7B0/RTRLj7U0lkdTAutlBblY08rwZDff6tNU9cjv6j//Q==}
-
   fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
 
@@ -7438,9 +7401,6 @@ packages:
   isomorphic-fetch@2.2.1:
     resolution: {integrity: sha512-9c4TNAKYXM5PRyVcwUZrF3W09nQ+sO7+jydgs4ZGW9dhsLG2VOlISJABombdQqQRXCwuYG3sYV/puGf5rp0qmA==}
 
-  isomorphic-unfetch@3.1.0:
-    resolution: {integrity: sha512-geDJjpoZ8N0kWexiwkX8F9NkTsXhetLPVbZFQ+JTW239QNOwvB0gniuR1Wc6f0AMTn7/mFGyXvHTifrCp/GH8Q==}
-
   isomorphic-webcrypto@2.3.8:
     resolution: {integrity: sha512-XddQSI0WYlSCjxtm1AI8kWQOulf7hAN3k3DclF1sxDJZqOe0pcsOt675zvWW91cZH9hYs3nlA3Ev8QK5i80SxQ==}
 
@@ -7695,9 +7655,6 @@ packages:
 
   jquery@3.7.1:
     resolution: {integrity: sha512-m4avr8yL8kmFN8psrbFFFmB/If14iN5o9nw/NgnnM+kybDJpRsAynV2BsfpTYrTRysYUdADVD7CkUUizgkpLfg==}
-
-  js-cookie@3.0.8:
-    resolution: {integrity: sha512-yeJd4aNAdYZQjaon2bpD/Gb0B/omw7HQOsynXXcOiWVCacbBcPlgn8S/d1X6blFSaHao7ozqtW7NZW19xpCtIw==}
 
   js-sha3@0.5.7:
     resolution: {integrity: sha512-GII20kjaPX0zJ8wzkTbNDYMY7msuZcTWk8S5UOh6806Jq/wz1J8/bnr8uGU0DAUmYDjj2Mr4X1cW8v/GLYnR+g==}
@@ -10119,10 +10076,6 @@ packages:
     resolution: {integrity: sha512-TTlYpa+OL+vMMNG24xSlQGEJ3B/RzEfUlLct7b5G/ytav+wPrplCpVMFuwzXbkecJrb6IYo1iFb0S9v37754mg==}
     engines: {node: '>=0.12'}
 
-  retry@0.13.1:
-    resolution: {integrity: sha512-XQBQ3I8W1Cge0Seh+6gjj03LbmRFWuoszgK9ooCpwYIrhhoO80pfq4cUkU5DkknwfOfFteRwlZ56PYOGYyFWdg==}
-    engines: {node: '>= 4'}
-
   reusify@1.1.0:
     resolution: {integrity: sha512-g6QUff04oZpHs0eG5p83rFLhHeV00ug/Yf9nZM6fLeUrPguBTkTQOdpAWWspMh55TZfVQDPaN3NQJfbVRAxdIw==}
     engines: {iojs: '>=1.0.0', node: '>=0.10.0'}
@@ -11146,9 +11099,6 @@ packages:
     resolution: {integrity: sha512-mLyPQnHwUxaM/rideoK/+KL8DaAJLRl4aBCfmX444aCSLnIaomqPLtNRe2jdCYcsk5wZzXrDIQC8ZeYNRAYyIA==}
     engines: {node: '>=20.18.1'}
 
-  unfetch@4.2.0:
-    resolution: {integrity: sha512-F9p7yYCn6cIW9El1zi0HI6vqpeIvBsr3dSuRO6Xuppb1u5rXpCPmMvLSyECLhybr9isec8Ohl0hPekMVrEinDA==}
-
   unicode-canonical-property-names-ecmascript@2.0.1:
     resolution: {integrity: sha512-dA8WbNeb2a6oQzAQ55YlT5vQAWGV9WXOsi3SskE3bcCdM0P4SDd+24zS/OCacdRq5BkdsRj9q3Pg6YyQoxIGqg==}
     engines: {node: '>=4'}
@@ -11975,18 +11925,6 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@aws-crypto/sha256-js@1.2.2':
-    dependencies:
-      '@aws-crypto/util': 1.2.2
-      '@aws-sdk/types': 3.975.1
-      tslib: 1.14.1
-
-  '@aws-crypto/util@1.2.2':
-    dependencies:
-      '@aws-sdk/types': 3.975.1
-      '@aws-sdk/util-utf8-browser': 3.259.0
-      tslib: 1.14.1
-
   '@aws-sdk/checksums@3.1002.5':
     dependencies:
       '@aws-sdk/core': 3.981.0
@@ -12154,10 +12092,6 @@ snapshots:
   '@aws-sdk/types@3.975.1':
     dependencies:
       '@smithy/types': 4.20.0
-      tslib: 2.9.1
-
-  '@aws-sdk/util-utf8-browser@3.259.0':
-    dependencies:
       tslib: 2.9.1
 
   '@aws-sdk/xml-builder@3.972.43':
@@ -15062,37 +14996,6 @@ snapshots:
   '@noxcturnal/noxcturnal-win32-x64-msvc@0.1.13':
     optional: true
 
-  '@openzeppelin/defender-base-client@1.54.6(encoding@0.1.14)':
-    dependencies:
-      amazon-cognito-identity-js: 6.3.22(encoding@0.1.14)
-      async-retry: 1.3.3
-      axios: 1.21.1
-      lodash: 4.18.1
-      node-fetch: 2.7.0(encoding@0.1.14)
-    transitivePeerDependencies:
-      - debug
-      - encoding
-      - supports-color
-
-  '@openzeppelin/defender-relay-client@1.54.6(@ethersproject/abstract-provider@5.8.0)(@ethersproject/abstract-signer@5.8.0)(@ethersproject/hash@5.8.0)(@ethersproject/providers@5.8.0(bufferutil@4.2.0)(utf-8-validate@6.0.6))(@ethersproject/transactions@5.8.0)(encoding@0.1.14)(web3-core-helpers@1.10.4)(web3-core@1.10.4(encoding@0.1.14))':
-    dependencies:
-      '@ethersproject/abstract-provider': 5.8.0
-      '@ethersproject/abstract-signer': 5.8.0
-      '@ethersproject/hash': 5.8.0
-      '@ethersproject/providers': 5.8.0(bufferutil@4.2.0)(utf-8-validate@6.0.6)
-      '@ethersproject/transactions': 5.8.0
-      '@openzeppelin/defender-base-client': 1.54.6(encoding@0.1.14)
-      amazon-cognito-identity-js: 6.3.22(encoding@0.1.14)
-      axios: 1.21.1
-      lodash: 4.18.1
-      node-fetch: 2.7.0(encoding@0.1.14)
-      web3-core: 1.10.4(encoding@0.1.14)
-      web3-core-helpers: 1.10.4
-    transitivePeerDependencies:
-      - debug
-      - encoding
-      - supports-color
-
   '@oxc-project/types@0.154.0':
     optional: true
 
@@ -17669,16 +17572,6 @@ snapshots:
     dependencies:
       stable: 0.1.8
 
-  amazon-cognito-identity-js@6.3.22(encoding@0.1.14):
-    dependencies:
-      '@aws-crypto/sha256-js': 1.2.2
-      buffer: 4.9.2
-      fast-base64-decode: 1.0.0
-      isomorphic-unfetch: 3.1.0(encoding@0.1.14)
-      js-cookie: 3.0.8
-    transitivePeerDependencies:
-      - encoding
-
   amdefine@1.0.1: {}
 
   anser@1.4.10: {}
@@ -17967,10 +17860,6 @@ snapshots:
   async-function@1.0.0: {}
 
   async-limiter@1.0.1: {}
-
-  async-retry@1.3.3:
-    dependencies:
-      retry: 0.13.1
 
   async@1.5.2: {}
 
@@ -20708,8 +20597,6 @@ snapshots:
     dependencies:
       checkpoint-store: 1.1.0
 
-  fast-base64-decode@1.0.0: {}
-
   fast-deep-equal@3.1.3: {}
 
   fast-diff@1.3.0: {}
@@ -21890,13 +21777,6 @@ snapshots:
       node-fetch: 1.7.3
       whatwg-fetch: 3.6.20
 
-  isomorphic-unfetch@3.1.0(encoding@0.1.14):
-    dependencies:
-      node-fetch: 2.7.0(encoding@0.1.14)
-      unfetch: 4.2.0
-    transitivePeerDependencies:
-      - encoding
-
   isomorphic-webcrypto@2.3.8(expo@58.0.23)(react-native@0.88.1(@babel/core@8.1.2)(bufferutil@4.2.0)(react@19.3.1)(utf-8-validate@6.0.6)):
     dependencies:
       '@peculiar/webcrypto': 1.7.2
@@ -22396,8 +22276,6 @@ snapshots:
   joycon@3.1.1: {}
 
   jquery@3.7.1: {}
-
-  js-cookie@3.0.8: {}
 
   js-sha3@0.5.7: {}
 
@@ -25374,8 +25252,6 @@ snapshots:
 
   ret@0.1.15: {}
 
-  retry@0.13.1: {}
-
   reusify@1.1.0: {}
 
   rfdc@1.4.1: {}
@@ -26619,8 +26495,6 @@ snapshots:
     optional: true
 
   undici@7.30.2: {}
-
-  unfetch@4.2.0: {}
 
   unicode-canonical-property-names-ecmascript@2.0.1: {}
 
