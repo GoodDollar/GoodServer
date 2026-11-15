@@ -50,12 +50,13 @@ const ses = new SES(SES_CONFIG)
 export const sendTemplateEmail = async (recipientEmail: string, templateData: Object) => {
   const templateDataStr = JSON.stringify(templateData)
 
-  if (
-    !templateData.firstname ||
-    !typeof templateData.firstname === 'string' ||
-    !templateData.code ||
-    typeof !templateData.code === 'number'
-  ) {
+  const { firstname, code } = templateData
+
+  // firstname must be a non-empty string, code a non-empty string or a number
+  const isValidFirstname = typeof firstname === 'string' && firstname !== ''
+  const isValidCode = (typeof code === 'string' && code !== '') || (typeof code === 'number' && code !== 0)
+
+  if (!isValidFirstname || !isValidCode) {
     throw new Error(`Invalid templateData ${templateDataStr}`)
   }
 

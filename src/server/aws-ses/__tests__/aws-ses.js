@@ -71,4 +71,26 @@ describe('sendTemplateEmail', () => {
     expect(mSes.sendTemplatedEmail).toBeCalledTimes(0)
     expect(error.message).toEqual(`Invalid templateData ${JSON.stringify(templateData)}`)
   })
+  it('should accept a numeric code', async () => {
+    const mSes = new MockSES()
+    mSes.sendTemplatedEmail.mockResolvedValue({ MessageId: 'id' })
+
+    await sendTemplateEmail('some@email.com', { firstname: 'MyName', code: 123456 })
+
+    expect(mSes.sendTemplatedEmail).toBeCalledTimes(1)
+  })
+
+  it.each([
+    ['non-string firstname', { firstname: 42, code: '12345' }],
+    ['object firstname', { firstname: { a: 1 }, code: '12345' }],
+    ['object code', { firstname: 'MyName', code: { a: 1 } }],
+    ['boolean code', { firstname: 'MyName', code: true }],
+    ['empty firstname', { firstname: '', code: '12345' }]
+  ])('should throw on %s', async (_, templateData) => {
+    const mSes = new MockSES()
+    const error = await sendTemplateEmail('some@email.com', templateData).catch(error => error)
+
+    expect(mSes.sendTemplatedEmail).toBeCalledTimes(0)
+    expect(error.message).toEqual(`Invalid templateData ${JSON.stringify(templateData)}`)
+  })
 })
