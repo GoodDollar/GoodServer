@@ -3,7 +3,7 @@ import config from '../server.config'
 import * as Redis from 'ioredis'
 import RedisStore from 'rate-limit-redis'
 import logger from '../../imports/logger'
-import requestIp from 'request-ip'
+import { getClientIp } from './clientIp'
 
 const log = logger.child({ from: 'requestRateLimiter' })
 
@@ -61,7 +61,7 @@ const makeUserKey = (bucketKey, byUserId) => request => {
   const { loggedInAs } = user || {}
 
   const bucket = bucketKey || request.route.path
-  const identifier = byUserId ? loggedInAs || requestIp.getClientIp(request) : requestIp.getClientIp(request)
+  const identifier = byUserId ? loggedInAs || getClientIp(request) : getClientIp(request)
 
   return `${bucket}_${identifier}`
 }

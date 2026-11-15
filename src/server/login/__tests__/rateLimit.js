@@ -34,4 +34,17 @@ describe('login routes rate limiting', () => {
     expect(statuses).toContain(429)
     expect(statuses.slice(0, 5)).not.toContain(429)
   })
+  test('rotating X-Forwarded-For does not evade the limit', async () => {
+    const statuses = []
+
+    for (let i = 0; i < 35; i++) {
+      const res = await request(app)
+        .post('/auth/fv2')
+        .set('X-Forwarded-For', `10.0.0.${i + 1}`)
+        .send({})
+      statuses.push(res.status)
+    }
+
+    expect(statuses).toContain(429)
+  })
 })

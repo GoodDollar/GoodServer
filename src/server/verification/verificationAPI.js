@@ -4,7 +4,7 @@ import { Router } from 'express'
 import passport from 'passport'
 import { get, defaults, memoize, omit } from 'lodash'
 import { encodeFunctionData } from 'viem'
-import requestIp from 'request-ip'
+import { getClientIp } from '../utils/clientIp'
 import moment from 'moment'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import { default as AdminWallet } from '../blockchain/MultiWallet'
@@ -236,7 +236,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { log, user } = req
-      const clientIp = requestIp.getClientIp(req)
+      const clientIp = getClientIp(req)
 
       log.debug('session face request:', { user })
 
@@ -285,7 +285,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { enrollmentIdentifier } = params
       const { chainId, fvSigner = '', ...payload } = body || {} // payload is the facetec data
       const { gdAddress } = user
-      const clientIp = requestIp.getClientIp(req)
+      const clientIp = getClientIp(req)
 
       log.debug('enroll face request:', {
         fvSigner,
@@ -587,7 +587,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         if (!onlyCheckAlreadyVerified) {
           log.debug('sending otp:', user.loggedInAs)
           if (['production', 'staging'].includes(conf.env)) {
-            const clientIp = requestIp.getClientIp(req)
+            const clientIp = getClientIp(req)
             const sendResult = await OTP.sendOTP(mobile, get(body, 'user.otpChannel', 'sms'), clientIp)
 
             log.info('otp sent:', mobile, { user: user.loggedInAs, sendResult })
@@ -645,7 +645,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       if (!user.smsValidated || currentMobile !== hashedNewMobile) {
         try {
-          const clientIp = requestIp.getClientIp(req)
+          const clientIp = getClientIp(req)
           await verifier.verifyMobile({ identifier: user.loggedInAs, mobile }, verificationData, clientIp)
         } catch (e) {
           log.warn('mobile verification failed:', e.message, { user, mobile, verificationData })
@@ -720,7 +720,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const { origin, host, referer } = req.headers
       const { account, chainId = 42220 } = req.body || {}
       const user: LoggedUser = req.user || { gdAddress: account }
-      const clientIp = requestIp.getClientIp(req)
+      const clientIp = getClientIp(req)
 
       const gdContract = AdminWallet.walletsMap[chainId]?.tokenContract?.address
       const faucetContract = AdminWallet.walletsMap[chainId]?.faucetContract?.address
@@ -1070,7 +1070,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     wrapAsync(async (req, res) => {
       const log = req.log
       const { payload: token = '', ipv6 = '', captchaType = '', fingerprint = {} } = req.body
-      const clientIp = requestIp.getClientIp(req)
+      const clientIp = getClientIp(req)
       const xForwardedFor = (req.headers || {})['x-forwarded-for']
       const { visitorId } = fingerprint
       let kvStorageIpKey = clientIp

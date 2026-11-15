@@ -653,6 +653,12 @@ const conf = convict({
     env: 'FORCE_FAUCET_CALL',
     default: false // turn on when gooddapp supports faucet txs
   },
+  trustProxyHops: {
+    doc: 'Number of reverse proxies in front of the server (express "trust proxy"), used to resolve the client IP',
+    format: 'nat',
+    env: 'TRUST_PROXY_HOPS',
+    default: 1
+  },
   redisUrl: {
     doc: 'Redis cloud server url',
     format: String,
