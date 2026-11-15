@@ -638,7 +638,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         return res.status(400).json({ ok: 0, error: 'MOBILE MISSING' })
       }
 
-      const hashedNewMobile = mobile && hashString(mobile)
+      const hashedNewMobile = hashString(mobile)
       const currentMobile = user.mobile
 
       log.debug('mobile verified', { user, verificationData, hashedNewMobile })
