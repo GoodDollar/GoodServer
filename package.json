@@ -47,10 +47,10 @@
   },
   "homepage": "https://gooddollar.org",
   "dependencies": {
-    "@aws-sdk/client-kms": "^3.1168.0",
-    "@aws-sdk/client-rekognition": "^3.1168.0",
+    "@aws-sdk/client-kms": "~3.1167.0",
+    "@aws-sdk/client-rekognition": "~3.1167.0",
     "@aws-sdk/client-s3": "^3.1102.0",
-    "@aws-sdk/client-ses": "^3.1168.0",
+    "@aws-sdk/client-ses": "~3.1167.0",
     "@axelar-network/axelarjs-sdk": "^0.21.0",
     "@gooddollar/goodprotocol": "^2.3.4",
     "@gooddollar/kms-ethereum-signing": "^1.0.4",
@@ -92,7 +92,7 @@
     "lodash": "^4.18.1",
     "math-random": "^1.0.4",
     "moment": "^2.29.2",
-    "mongoose": "^8.24.1",
+    "mongoose": "8.24.8",
     "passport": "^0.6.0",
     "passport-anonymous": "^1.0.1",
     "passport-jwt": "^4.0.0",
@@ -161,5 +161,5 @@
       "git add"
     ]
   },
-  "packageManager": "pnpm@8.15.5+sha1.a58c038faac410c947dbdb93eb30994037d0fce2"
+  "packageManager": "pnpm@12.18.0"
 }
