@@ -32,6 +32,18 @@ Alerts will auto-close on GitHub as this branch reaches the default branch and t
 | `@axelar-network/axelarjs-sdk` | Not done in this branch |
 | `@sentry/node` upgrade | Dropped |
 
+Follow-ups from the Sourcery review of #602 (also done on this branch):
+
+| Finding | Result |
+|---|---|
+| Rate limit keyed on spoofable `X-Forwarded-For` | **Fixed**: keyed on `req.ip` (`utils/clientIp`), `request-ip` removed, `trust proxy` also enabled for staging, hop count via `TRUST_PROXY_HOPS` |
+| Redis outage fails requests (login included) | **Fixed**: `FailOpenStore` wrapper, redis `commandTimeout`, typo fix |
+| Per-worker memory store without Redis | **Mitigated**: startup error log when multi-worker without `REDISCLOUD_URL` (not fatal); deployment must set Redis |
+| `visitorsCounter` unbounded | **Fixed**: removed (it only fed a debug log) |
+| SES code accepts `NaN`/`Infinity`, rejects `0` | **Fixed** (`Number.isFinite`); the `000000` case cannot occur since `generateOTP(6)` returns 100000-999999 |
+| Babel 8 needs Node `^22.18 || >=24.11` | **Fixed**: `engines.node`, `.nvmrc`, README |
+| `uuid` 14 is ESM-only | **Fixed**: `crypto.randomUUID()`, direct dependency removed |
+
 Dependabot alerts still relevant after these fixes: **49** (was 52).
 
 ## 1. Dependabot: still relevant
@@ -111,11 +123,11 @@ Quick wins (about 10 minutes, all dev-only, verified by a test run): `lint-stage
 
 ---
 
-## 2. Code scanning
+## 2. Code scanning (assessment before the fixes; see Status above for what is done)
 
 Alert line numbers refer to old commits; mapped to current code below.
 
-### Worth acting on
+### Worth acting on (all addressed, see Status)
 
 | # | Rule | Where (current) | Verdict | Suggested fix |
 |---|---|---|---|---|
@@ -140,7 +152,7 @@ Alert line numbers refer to old commits; mapped to current code below.
 
 ---
 
-## 3. Suggested order
+## 3. Original suggested order (done: 1, 2, 3 (offerwall removed instead), 6 except the Sentry upgrade; 4 is being fixed in the package itself; 5 is open)
 
 1. Add rate limiting to `/auth/eth`, `/auth/fv`, `/auth/fv2` (small, closes 2 high alerts).
 2. Fix the `aws-ses.js` validation bug (tiny).
