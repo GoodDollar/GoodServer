@@ -18,6 +18,22 @@ Alerts will auto-close on GitHub as this branch reaches the default branch and t
 
 ---
 
+## Status (updated after fixes on `security/alert-triage`)
+
+| Item | Decision / result |
+|---|---|
+| Rate limit `/auth/eth`, `/auth/fv`, `/auth/fv2` | **Fixed** (30/min per IP; test added). Alerts #37, #77 |
+| `aws-ses.js` type validation | **Fixed** (tests added). Alert #19 |
+| `visitorsCounter` | **Fixed** (`Map`). Alert #24 |
+| Offerwall endpoint | **Removed** with `offerwallSecret` config and `transferWalletGoodDollars`. Alert #87 (MD5) and the replay issue no longer apply |
+| NoSQL operator injection | **Fixed** with type guards in the storage layer (tests added); global `sanitizeFilter` rejected because the code legitimately uses `$in`/`$lte`/... Alerts #3, #48, #49, #72 (CodeQL may keep them open: it may not recognise the custom guard) |
+| `lint-staged` 17, `nodemon` 3 (+ pin of the 2.x range) | **Fixed**. Dependabot #230 (micromatch), #378 (yaml), #182 (semver) |
+| `@gooddollar/kms-ethereum-signing` | **Out of scope here**: to be fixed in the package itself |
+| `@axelar-network/axelarjs-sdk` | Not done in this branch |
+| `@sentry/node` upgrade | Dropped |
+
+Dependabot alerts still relevant after these fixes: **49** (was 52).
+
 ## 1. Dependabot: still relevant
 
 ### 1a. Root cause: `@gooddollar/kms-ethereum-signing` -> `web3` 1.x -> `web3-bzz` -> `swarm-js` (13 packages, runtime)
