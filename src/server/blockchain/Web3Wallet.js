@@ -826,6 +826,15 @@ export class Web3Wallet {
   async isConnected(address: string): Promise<boolean> {
     const { log } = this
 
+    if (!this.identityContract) {
+      log.warn('isConnected: identity contract unavailable, wallet not initialized', {
+        address,
+        wallet: this.name,
+        networkId: this.networkId
+      })
+      return false
+    }
+
     const tx: string = await this.identityContract.read.getWhitelistedRoot([address]).catch(e => {
       log.error('Error isConnected', e.message, e)
       throw e

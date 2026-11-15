@@ -17,6 +17,25 @@ jest.mock('../../utils/tx-manager', () => ({ getManager: jest.fn() }))
 jest.mock('../../../imports/slack', () => ({ sendSlackAlert: jest.fn() }))
 jest.mock('../KMSWallet', () => ({ KMSWallet: jest.fn() }))
 
+describe('Web3Wallet.isConnected', () => {
+  test('returns false and warns when the identity contract is unavailable', async () => {
+    const log = { warn: jest.fn() }
+    const wallet = Object.assign(Object.create(Web3Wallet.prototype), {
+      log,
+      name: 'test-wallet',
+      networkId: 42220
+    })
+    const address = '0x0000000000000000000000000000000000000001'
+
+    await expect(wallet.isConnected(address)).resolves.toBe(false)
+    expect(log.warn).toHaveBeenCalledWith('isConnected: identity contract unavailable, wallet not initialized', {
+      address,
+      wallet: 'test-wallet',
+      networkId: 42220
+    })
+  })
+})
+
 describe('Anvil fork configuration', () => {
   test.each([undefined, 'http://127.0.0.1:18545'])(
     'provisions wallets and manages node ownership with external RPC %s',
