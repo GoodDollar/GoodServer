@@ -5,7 +5,7 @@
   "main": "src/server/index.js",
   "engines": {
     "node": "^22.18.0 || >=24.11.0",
-    "npm": "10.8.2"
+    "pnpm": "12.18.0"
   },
   "scripts": {
     "build": "webpack --mode production --config webpack.server.config.js",
