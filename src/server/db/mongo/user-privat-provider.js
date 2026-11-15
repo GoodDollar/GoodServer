@@ -1,5 +1,5 @@
 //@flow
-import { v4 as uuidv4 } from 'uuid'
+import { randomUUID } from 'crypto'
 import { get, isArray, isBoolean, isString } from 'lodash'
 
 import UserPrivateModel from './models/user-private'
@@ -269,7 +269,7 @@ class UserPrivate {
    * @param {object} filters
    */
   async fetchTasksForProcessing(taskName: string, filters: object = {}): Promise<DelayedTaskRecord[]> {
-    const lockId = uuidv4()
+    const lockId = randomUUID()
     const { taskModel, logger } = this
     const { Locked, Complete } = DelayedTaskStatus
 
