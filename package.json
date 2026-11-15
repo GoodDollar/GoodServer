@@ -51,7 +51,7 @@
     "@aws-sdk/client-rekognition": "~3.1167.0",
     "@aws-sdk/client-s3": "^3.1102.0",
     "@aws-sdk/client-ses": "~3.1167.0",
-    "@axelar-network/axelarjs-sdk": "^0.21.0",
+    "@axelar-network/axelarjs-sdk": "^0.22.0",
     "@gooddollar/goodprotocol": "^2.3.4",
     "@gooddollar/kms-ethereum-signing": "^1.0.4",
     "@goodwidget/core": "^0.1.5",

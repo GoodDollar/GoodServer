@@ -29,3 +29,8 @@ overrides:
   '@aws-sdk/client-rekognition': 3.1167.0
   mongoose: 8.24.8
   'nodemon@>=2 <3': 3.1.14
+  # security: patched versions of transitive deps (see docs/security-triage-2026-11-15.md)
+  'protobufjs@<7': 7.6.3
+  'toml@<5': 5.0.1
+  'zod@<4': 4.6.6
+  'esbuild@<0.25': 0.25.0
