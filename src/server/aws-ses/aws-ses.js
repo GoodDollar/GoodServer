@@ -52,9 +52,9 @@ export const sendTemplateEmail = async (recipientEmail: string, templateData: Ob
 
   const { firstname, code } = templateData
 
-  // firstname must be a non-empty string, code a non-empty string or a number
+  // firstname must be a non-empty string, code a non-empty string or a finite number (JSON.stringify turns NaN/Infinity into null)
   const isValidFirstname = typeof firstname === 'string' && firstname !== ''
-  const isValidCode = (typeof code === 'string' && code !== '') || (typeof code === 'number' && code !== 0)
+  const isValidCode = (typeof code === 'string' && code !== '') || (typeof code === 'number' && Number.isFinite(code))
 
   if (!isValidFirstname || !isValidCode) {
     throw new Error(`Invalid templateData ${templateDataStr}`)

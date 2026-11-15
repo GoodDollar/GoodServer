@@ -80,12 +80,23 @@ describe('sendTemplateEmail', () => {
     expect(mSes.sendTemplatedEmail).toBeCalledTimes(1)
   })
 
+  it('should accept a zero code', async () => {
+    const mSes = new MockSES()
+    mSes.sendTemplatedEmail.mockResolvedValue({ MessageId: 'id' })
+
+    await sendTemplateEmail('some@email.com', { firstname: 'MyName', code: 0 })
+
+    expect(mSes.sendTemplatedEmail).toBeCalledTimes(1)
+  })
+
   it.each([
     ['non-string firstname', { firstname: 42, code: '12345' }],
     ['object firstname', { firstname: { a: 1 }, code: '12345' }],
     ['object code', { firstname: 'MyName', code: { a: 1 } }],
     ['boolean code', { firstname: 'MyName', code: true }],
-    ['empty firstname', { firstname: '', code: '12345' }]
+    ['empty firstname', { firstname: '', code: '12345' }],
+    ['NaN code', { firstname: 'MyName', code: NaN }],
+    ['Infinity code', { firstname: 'MyName', code: Infinity }]
   ])('should throw on %s', async (_, templateData) => {
     const mSes = new MockSES()
     const error = await sendTemplateEmail('some@email.com', templateData).catch(error => error)
