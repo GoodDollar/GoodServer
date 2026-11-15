@@ -1062,7 +1062,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    * @ignore
    */
 
-  const visitorsCounter = {}
+  // Map (not a plain object): visitorId is client-supplied, so keys like '__proto__' must not touch the prototype
+  const visitorsCounter = new Map()
   app.post(
     '/verify/recaptcha',
     requestRateLimiter(10, 1),
@@ -1081,9 +1082,10 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         }
         let visitsCounter = 0
         if (visitorId) {
-          visitsCounter = visitorsCounter[visitorId] || 0
-          visitsCounter++
-          visitorsCounter[visitorId] = visitsCounter
+          const visitorKey = String(visitorId)
+
+          visitsCounter = (visitorsCounter.get(visitorKey) || 0) + 1
+          visitorsCounter.set(visitorKey, visitsCounter)
         }
 
         log.debug('Verifying recaptcha', {
