@@ -132,7 +132,7 @@ module.exports = {
   // setupFiles: [],
 
   // The path to a module that runs some code to configure or set up the testing framework before each test
-  setupFilesAfterEnv: ['jest-extended', './jest.setup.js'],
+  setupFilesAfterEnv: ['jest-extended/all', './jest.setup.js'],
 
   // A list of paths to snapshot serializer modules Jest should use for snapshot testing
   // snapshotSerializers: [],
@@ -184,7 +184,7 @@ module.exports = {
 
   // An array of regexp pattern strings that are matched against all source file paths, matched files will skip transformation
   transformIgnorePatterns: [
-    "/node_modules/(?!(@veramo|multiformats|key-did-resolver|@aws-sdk)/)", 
+    "/node_modules/(?!(\.pnpm/)?(@veramo|multiformats|key-did-resolver|@aws-sdk|@scure|@noble|uuid)[/+@])", 
     "\\.pnp\\.[^\\\/]+$"
   ],
   
