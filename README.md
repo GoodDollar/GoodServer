@@ -7,8 +7,9 @@ We use
 
 ## Setup
 
+- Requirements: Node `^22.18.0 || >=24.11.0` (Babel 8 requires it; CI uses Node 24, see `.nvmrc`) and pnpm 12 (pinned in `package.json`; with corepack you need corepack 0.34 or later)
 - copy env.example to .env
-- choose network kovan/truffle (see below how to setup local truffle node)
+- choose the network (see "Celo Fork Tests" below for the local fork used by the tests)
 - fill the mnemonic that was used to deploy contracts
 
 ## Blockchain Clients

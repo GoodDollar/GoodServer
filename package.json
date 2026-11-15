@@ -4,7 +4,7 @@
   "description": "GoodDollar Server",
   "main": "src/server/index.js",
   "engines": {
-    "node": ">=20.x",
+    "node": "^22.18.0 || >=24.11.0",
     "npm": "10.8.2"
   },
   "scripts": {
