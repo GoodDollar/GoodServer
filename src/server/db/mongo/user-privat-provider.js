@@ -8,6 +8,13 @@ import logger from '../../../imports/logger'
 
 import { type UserRecord, type DelayedTaskRecord } from '../../../imports/types'
 
+// Query values must be plain strings: an object such as { $ne: null } would otherwise be interpreted as a mongo operator
+const assertString = (name, value) => {
+  if (!isString(value)) {
+    throw new TypeError(`Invalid ${name}: expected a string`)
+  }
+}
+
 class UserPrivate {
   constructor(model, taskModel, logger) {
     this.logger = logger
@@ -55,6 +62,8 @@ class UserPrivate {
   async updateUser(user: UserRecord): Promise<boolean> {
     const { logger, model } = this
 
+    assertString('identifier', user.identifier)
+
     try {
       await model.updateOne({ identifier: user.identifier }, { $set: user }, { upsert: true })
 
@@ -98,10 +107,14 @@ class UserPrivate {
    * @returns {object || null}
    */
   async getByIdentifier(identifier) {
+    assertString('identifier', identifier)
+
     return await this.model.findOne({ identifier }).lean()
   }
 
   async getByIdentifierHash(identifier) {
+    assertString('identifier', identifier)
+
     return await this.model
       .find({ $or: [{ email: identifier }, { walletAddress: identifier }, { mobile: identifier }, { identifier }] })
       .lean()
@@ -115,6 +128,9 @@ class UserPrivate {
    * @returns {object || null}
    */
   async completeStep(identifier, stepName) {
+    assertString('identifier', identifier)
+    assertString('stepName', stepName)
+
     const field = `isCompleted.${stepName}`
 
     await this.model.updateOne({ identifier }, { $set: { [field]: true } })
@@ -147,6 +163,8 @@ class UserPrivate {
    * @returns {Promise<*>}
    */
   async getUsersByEmail(email: string): Promise<UserRecord> {
+    assertString('email', email)
+
     return await this.model.find({ email }).lean()
   }
 
@@ -158,6 +176,8 @@ class UserPrivate {
    * @returns {Promise<*>}
    */
   async getUsersByMobile(mobile: string): Promise<UserRecord> {
+    assertString('mobile', mobile)
+
     return await this.model.find({ mobile }).lean()
   }
 

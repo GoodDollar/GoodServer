@@ -364,4 +364,24 @@ describe('UserPrivate', () => {
     await storage.removeDelayedTasks([_id])
     await testTasksExists(true)
   })
+  describe('query value type guards (NoSQL operator injection)', () => {
+    const injected = { $ne: null }
+
+    test.each([
+      ['getByIdentifier', () => storage.getByIdentifier(injected)],
+      ['getByIdentifierHash', () => storage.getByIdentifierHash(injected)],
+      ['getUsersByEmail', () => storage.getUsersByEmail(injected)],
+      ['getUsersByMobile', () => storage.getUsersByMobile(injected)],
+      ['getUser', () => storage.getUser(injected)],
+      ['updateUser', () => storage.updateUser({ identifier: injected, fullName: 'x' })],
+      ['completeStep', () => storage.completeStep(injected, 'whiteList')]
+    ])('%s rejects operator objects', async (_, call) => {
+      await expect(call()).rejects.toThrow(/Invalid .*expected a string/)
+    })
+
+    test('string lookups still work', async () => {
+      await expect(storage.getUsersByEmail('nobody@test.test')).resolves.toEqual([])
+      await expect(storage.getByIdentifier('does-not-exist')).resolves.toBeNull()
+    })
+  })
 })
