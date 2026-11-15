@@ -135,16 +135,11 @@ describe('verificationAPI', () => {
     }
 
     const testWhitelisted = async () => {
-      const { address, profilePublickey } = await getCreds()
+      const { address } = await getCreds()
       const lcAddress = address.toLowerCase()
 
       // checking is user was actrally re-whitelisted in the wallet
-      expect(whitelistUserMock).toHaveBeenCalledWith(
-        lcAddress,
-        profilePublickey,
-        defaultWhitelistChainId,
-        expect.anything()
-      )
+      expect(whitelistUserMock).toHaveBeenCalledWith(lcAddress, lcAddress, defaultWhitelistChainId, expect.anything())
 
       expect(topWalletMock).toHaveBeenCalledWith(lcAddress, 'all', expect.anything())
     }

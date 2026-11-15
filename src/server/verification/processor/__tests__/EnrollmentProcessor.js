@@ -64,7 +64,6 @@ const payload = {
 const user = {
   identifier: 'fake-user-identifier',
   gdAddress: 'fake-wallet-address',
-  profilePublickey: 'fake-public-key',
   loggedInAs: 'fake@email.com',
   crmId: 'fake-crm-id'
 }
@@ -190,7 +189,7 @@ describe('EnrollmentProcessor', () => {
     helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
     helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
 
-    const { gdAddress, loggedInAs, profilePublickey, crmId } = user
+    const { gdAddress, loggedInAs, crmId } = user
     user.chainId = 1234
 
     const wrappedResponse = expect(enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)).resolves
@@ -200,7 +199,7 @@ describe('EnrollmentProcessor', () => {
     await wrappedResponse.toHaveProperty('enrollmentResult.isVerified', true)
 
     expect(updateUserMock).toHaveBeenCalledWith({ identifier: loggedInAs, isVerified: true })
-    expect(whitelistUserMock).toHaveBeenCalledWith(gdAddress, profilePublickey, 1234, expect.anything())
+    expect(whitelistUserMock).toHaveBeenCalledWith(gdAddress, gdAddress, 1234, expect.anything())
     expect(topWalletMock).toHaveBeenCalledWith(gdAddress, 'all', expect.anything())
     expect(whitelistContactMock.mock.calls[0][0]).toBe(crmId)
   })
@@ -211,7 +210,7 @@ describe('EnrollmentProcessor', () => {
     helper.mockEmptyResultsFaceSearch(enrollmentIdentifier)
     helper.mock3dDatabaseEnrollmentSuccess(enrollmentIdentifier)
 
-    const { gdAddress, loggedInAs, profilePublickey, crmId } = user
+    const { gdAddress, loggedInAs, crmId } = user
     user.chainId = 1234
     const wrappedResponse = expect(enrollmentProcessor.enroll(user, enrollmentIdentifier, payload)).resolves
 
@@ -220,7 +219,7 @@ describe('EnrollmentProcessor', () => {
     await wrappedResponse.toHaveProperty('enrollmentResult.isVerified', true)
 
     expect(updateUserMock).toHaveBeenCalledWith({ identifier: loggedInAs, isVerified: true })
-    expect(whitelistUserMock).toHaveBeenCalledWith(gdAddress, profilePublickey, 1234, expect.anything())
+    expect(whitelistUserMock).toHaveBeenCalledWith(gdAddress, gdAddress, 1234, expect.anything())
     expect(topWalletMock).toHaveBeenCalledWith(gdAddress, 'all', expect.anything())
     expect(whitelistContactMock.mock.calls[0][0]).toBe(crmId)
   })

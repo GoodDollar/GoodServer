@@ -129,7 +129,7 @@ class TorusVerifier {
 
     logger.debug('verifyProof', { signature, identifier, verifier, torusType, userRecord, nonce })
 
-    const signedPublicKey = recoverPublickey(signature, identifier, nonce)
+    const signedPublicKey = await recoverPublickey(signature, identifier, nonce)
     const isOwner = await this.isIdentifierOwner(signedPublicKey, verifier, identifier)
 
     if (isOwner) {

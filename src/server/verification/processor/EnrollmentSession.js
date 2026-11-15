@@ -123,7 +123,7 @@ export default class EnrollmentSession {
 
   async onEnrollmentCompleted() {
     const { user, storage, adminApi, log, enrollmentIdentifier, _logWrap } = this
-    const { gdAddress, profilePublickey, loggedInAs, crmId, chainId } = user
+    const { gdAddress, loggedInAs, crmId, chainId } = user
 
     const whitelistingTasks = [
       () => storage.updateUser({ identifier: loggedInAs, isVerified: true }),
@@ -160,7 +160,7 @@ export default class EnrollmentSession {
 
     // wait only for whitelisting to be done successfully
     await _logWrap(
-      () => adminApi.whitelistUser(gdAddress, profilePublickey || gdAddress, chainId, log),
+      () => adminApi.whitelistUser(gdAddress, gdAddress, chainId, log),
       'Whitelisting success:',
       'Whitelisting failed:',
       { gdAddress, loggedInAs, chainId },

@@ -1,6 +1,6 @@
 import { CronJob, CronTime } from 'cron'
 import { invokeMap, keys, once } from 'lodash'
-import { v4 as uuidv4 } from 'uuid'
+import { randomUUID } from 'crypto'
 import moment from 'moment'
 import MongoLock from '../utils/tx-manager/queueMongo'
 import logger from '../../imports/logger'
@@ -23,10 +23,10 @@ class TaskRunner {
   registerTask(task) {
     const { logger, tasks, lock, jobFactory } = this
     const { schedule, name } = task
-    const taskName = name || `task/${uuidv4()}`
+    const taskName = name || `task/${randomUUID()}`
 
     const taskJob = new jobFactory(schedule, async () => {
-      const taskId = uuidv4()
+      const taskId = randomUUID()
 
       try {
         logger.info('Running cron task. getting lock...', { taskName, taskId })

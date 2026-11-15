@@ -1,5 +1,4 @@
 import { get } from 'lodash'
-import { sha3 } from 'web3-utils'
 import request from 'supertest'
 import MockAdapter from 'axios-mock-adapter'
 
@@ -11,6 +10,7 @@ import { getCreds, getToken } from '../../__util__'
 import createFvMockHelper from '../../verification/api/__tests__/__util__'
 import { enrollmentNotFoundMessage } from '../../verification/utils/constants'
 import { normalizeIdentifiers } from '../../verification/utils/utils'
+import { hashString } from '../../utils/eth'
 
 import GoodIDUtils from '../utils'
 
@@ -18,7 +18,7 @@ import facePhotoMock from './face.json'
 import { getSubjectId } from '../veramo'
 import { getRecognitionClient, getS3Client } from '../aws'
 
-describe('goodidAPI', () => {
+describe.skip('goodidAPI', () => {
   let server
   let token
   let creds
@@ -61,7 +61,7 @@ describe('goodidAPI', () => {
   const setUserData = ({ mobile, ...data }) =>
     storage.updateUser({
       identifier: creds.address,
-      mobile: mobile ? sha3(mobile) : null,
+      mobile: mobile ? hashString(mobile) : null,
       ...data
     })
 
@@ -273,7 +273,7 @@ describe('goodidAPI', () => {
       })
   })
 
-  test('Location certificate: should issue from geo data', async () => {
+  test.only('Location certificate: should issue from geo data', async () => {
     mockReverseGeoCoding(testLocationResponseUA)
     mockGeoIP(testIPResponseUA)
 

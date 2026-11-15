@@ -3,9 +3,8 @@ import crypto from 'crypto'
 import { Router } from 'express'
 import passport from 'passport'
 import { get, defaults, memoize, omit } from 'lodash'
-import { sha3, keccak256, toWei } from 'web3-utils'
-import web3Abi from 'web3-eth-abi'
-import requestIp from 'request-ip'
+import { encodeFunctionData } from 'viem'
+import { getClientIp } from '../utils/clientIp'
 import moment from 'moment'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
 import { default as AdminWallet } from '../blockchain/MultiWallet'
@@ -24,7 +23,7 @@ import createEnrollmentProcessor from './processor/EnrollmentProcessor.js'
 import createIdScanProcessor from './processor/IdScanProcessor'
 
 import { cancelDisposalTask, getDisposalTask } from './cron/taskUtil'
-import { recoverPublickey, verifyIdentifier } from '../utils/eth'
+import { hashString, recoverPublickey, verifyIdentifier } from '../utils/eth'
 import { shouldLogVerificaitonError } from './utils/logger'
 import { syncUserEmail } from '../storage/addUserSteps'
 import { normalizeIdentifiers } from './utils/utils.js'
@@ -237,7 +236,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
       const { log, user } = req
-      const clientIp = requestIp.getClientIp(req)
+      const clientIp = getClientIp(req)
 
       log.debug('session face request:', { user })
 
@@ -280,13 +279,24 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     '/verify/face/:enrollmentIdentifier',
     passport.authenticate('jwt', { session: false }),
     wrapAsync(async (req, res) => {
-      const { user, log, params, body } = req
+      const { user, log, params, body, headers } = req
+      const { origin, host, referer } = headers
+
       const { enrollmentIdentifier } = params
       const { chainId, fvSigner = '', ...payload } = body || {} // payload is the facetec data
       const { gdAddress } = user
-      const clientIp = requestIp.getClientIp(req)
+      const clientIp = getClientIp(req)
 
-      log.debug('enroll face request:', { fvSigner, enrollmentIdentifier, chainId, user })
+      log.debug('enroll face request:', {
+        fvSigner,
+        enrollmentIdentifier,
+        chainId,
+        user,
+        origin,
+        host,
+        referer,
+        clientIp
+      })
 
       // checking if request aborted to handle cases when connection is slow
       // and facemap / images were uploaded more that 30sec causing timeout
@@ -496,22 +506,25 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       try {
         const { signature, ...signed } = scanResult
         const { gdAddress } = signed
-        const mHash = keccak256(JSON.stringify(signed))
+        const mHash = hashString(JSON.stringify(signed))
         log.debug('idscan submit verifying...:', { mHash, signature })
-        const publicKey = recoverPublickey(signature, mHash, '')
-        const data = web3Abi.encodeFunctionCall(
-          {
-            name: 'addMember',
-            type: 'function',
-            inputs: [
-              {
-                type: 'address',
-                name: 'member'
-              }
-            ]
-          },
-          [gdAddress]
-        )
+        const publicKey = await recoverPublickey(signature, mHash, '')
+        const data = encodeFunctionData({
+          abi: [
+            {
+              name: 'addMember',
+              type: 'function',
+              inputs: [
+                {
+                  type: 'address',
+                  name: 'member'
+                }
+              ]
+            }
+          ],
+          functionName: 'addMember',
+          args: [gdAddress]
+        })
         const relayer = await AdminWallet.signer.relayer.getRelayer()
 
         log.debug('idscan submit verified...:', { publicKey, relayer })
@@ -561,7 +574,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       const onlyCheckAlreadyVerified = body.onlyCheckAlreadyVerified
 
       const mobile = decodeURIComponent(body.user.mobile || user.otp.mobile) //fix in case input is %2B instead of +
-      const hashedMobile = sha3(mobile)
+      const hashedMobile = hashString(mobile)
       let userRec: UserRecord = defaults(body.user, user, { identifier: user.loggedInAs })
 
       const savedMobile = user.mobile
@@ -574,7 +587,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         if (!onlyCheckAlreadyVerified) {
           log.debug('sending otp:', user.loggedInAs)
           if (['production', 'staging'].includes(conf.env)) {
-            const clientIp = requestIp.getClientIp(req)
+            const clientIp = getClientIp(req)
             const sendResult = await OTP.sendOTP(mobile, get(body, 'user.otpChannel', 'sms'), clientIp)
 
             log.info('otp sent:', mobile, { user: user.loggedInAs, sendResult })
@@ -625,14 +638,14 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         return res.status(400).json({ ok: 0, error: 'MOBILE MISSING' })
       }
 
-      const hashedNewMobile = mobile && sha3(mobile)
+      const hashedNewMobile = hashString(mobile)
       const currentMobile = user.mobile
 
       log.debug('mobile verified', { user, verificationData, hashedNewMobile })
 
       if (!user.smsValidated || currentMobile !== hashedNewMobile) {
         try {
-          const clientIp = requestIp.getClientIp(req)
+          const clientIp = getClientIp(req)
           await verifier.verifyMobile({ identifier: user.loggedInAs, mobile }, verificationData, clientIp)
         } catch (e) {
           log.warn('mobile verification failed:', e.message, { user, mobile, verificationData })
@@ -704,13 +717,13 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
     passport.authenticate(['jwt', 'anonymous'], { session: false }),
     wrapAsync(async (req, res) => {
       const log = req.log
-      const { origin, host } = req.headers
+      const { origin, host, referer } = req.headers
       const { account, chainId = 42220 } = req.body || {}
       const user: LoggedUser = req.user || { gdAddress: account }
-      const clientIp = requestIp.getClientIp(req)
+      const clientIp = getClientIp(req)
 
-      const gdContract = AdminWallet.walletsMap[chainId]?.tokenContract?._address
-      const faucetContract = AdminWallet.walletsMap[chainId]?.faucetContract?._address
+      const gdContract = AdminWallet.walletsMap[chainId]?.tokenContract?.address
+      const faucetContract = AdminWallet.walletsMap[chainId]?.faucetContract?.address
       log.debug('topwallet tx request:', {
         address: user.gdAddress,
         chainId,
@@ -719,6 +732,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         user: req.user,
         origin,
         host,
+        referer,
         clientIp
       })
 
@@ -888,7 +902,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       //merge user details
       const { email: currentEmail } = user
       let userRec: UserRecord = defaults(body.user, user)
-      const isEmailChanged = currentEmail && currentEmail !== sha3(email)
+      const isEmailChanged = currentEmail && currentEmail !== hashString(email)
 
       let code
       log.debug('email verification request:', { email, currentEmail, isEmailChanged, body, user })
@@ -965,7 +979,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
       let { email } = user.otp || {}
       email = email && email.toLowerCase()
 
-      const hashedNewEmail = email ? sha3(email) : null
+      const hashedNewEmail = email ? hashString(email) : null
       const currentEmail = user.email
 
       log.debug('email verification request', {
@@ -1048,14 +1062,13 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    * @ignore
    */
 
-  const visitorsCounter = {}
   app.post(
     '/verify/recaptcha',
     requestRateLimiter(10, 1),
     wrapAsync(async (req, res) => {
       const log = req.log
       const { payload: token = '', ipv6 = '', captchaType = '', fingerprint = {} } = req.body
-      const clientIp = requestIp.getClientIp(req)
+      const clientIp = getClientIp(req)
       const xForwardedFor = (req.headers || {})['x-forwarded-for']
       const { visitorId } = fingerprint
       let kvStorageIpKey = clientIp
@@ -1065,13 +1078,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         if (ipv6 && ipv6 !== clientIp) {
           kvStorageIpKey = ipv6
         }
-        let visitsCounter = 0
-        if (visitorId) {
-          visitsCounter = visitorsCounter[visitorId] || 0
-          visitsCounter++
-          visitorsCounter[visitorId] = visitsCounter
-        }
-
         log.debug('Verifying recaptcha', {
           token: token.slice(0, 10),
           ipv6,
@@ -1079,8 +1085,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           kvStorageIpKey,
           xForwardedFor,
           captchaType,
-          visitorId,
-          visitsCounter
+          visitorId
         })
 
         //hcaptcha verify
@@ -1133,42 +1138,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           captchaType,
           parsedRes
         })
-        res.status(400).json({ success: false, error: message })
-      }
-    })
-  )
-  const payouts = new Set()
-  app.get(
-    '/verify/offerwall',
-    wrapAsync(async (req, res) => {
-      const { log, query } = req
-      const { user_id, value, token, signature } = query
-
-      // Secret key (replace with your actual secret key)
-      const secretKey = conf.offerwallSecret
-
-      // Concatenate the inputs with "."
-      const concatenatedString = `${secretKey}.${user_id}.${parseInt(value)}.${token}`
-
-      // Generate MD5 hash
-      const calculatedSignature = crypto.createHash('md5').update(concatenatedString).digest('hex')
-      log.debug('offerwall payout request:', { user_id, value, token, signature, calculatedSignature })
-      try {
-        // Compare the calculated signature with the provided signature
-        if (calculatedSignature !== signature) {
-          throw new Error('Invalid signature')
-        }
-        if (payouts.has(token)) {
-          throw new Error('Already paid')
-        }
-        const tx = await AdminWallet.walletsMap[42220].transferWalletGoodDollars(user_id, toWei(String(value)), log)
-        payouts.add(token)
-        log.info('offerwall payout success:', { user_id, value, token, tx: tx.transactionHash })
-        res.json({ success: true })
-      } catch (exception) {
-        const { message } = exception
-
-        log.error('offerwall payout request failed:', message, exception, { user_id, value, token, signature })
         res.status(400).json({ success: false, error: message })
       }
     })

@@ -1,6 +1,6 @@
 // @flow
 
-import Axios from 'axios'
+import { create as createAxios } from 'axios'
 import { URL } from 'url'
 import { assign, get, pick, omit, isPlainObject, isArray, mapValues, once, lowerFirst, toLower, findKey } from 'lodash'
 
@@ -503,4 +503,4 @@ export class ZoomAPI {
   }
 }
 
-export default once(() => new ZoomAPI(Config, Axios.create, logger.child({ from: 'ZoomAPI' })))
+export default once(() => new ZoomAPI(Config, createAxios, logger.child({ from: 'ZoomAPI' })))

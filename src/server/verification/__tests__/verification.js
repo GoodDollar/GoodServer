@@ -6,14 +6,14 @@ const emailVerificationCode = 123456
 const testUser = {
   identifier: '01',
   fullName: 'mongo_test',
-  email: 'test@test.test',
+  email: 'testverification@test.test',
   mobile: '123456789',
   emailVerificationCode
 }
 
 describe('verification', () => {
   beforeEach(async () => {
-    await UserDBPrivate.model.deleteMany({ fullName: new RegExp('mongo_test', 'i') })
+    await UserDBPrivate.model.deleteMany({ identifier: '01' })
     await UserDBPrivate.addUser(testUser)
   })
 

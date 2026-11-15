@@ -10,12 +10,12 @@ import DelayedTaskModel, { DelayedTaskStatus } from '../mongo/models/delayed-tas
 const testUserName = 'mongo_test'
 const testTaskName = 'mongo_test'
 const testTaskSubject = 'test_subject'
-const testUser = { identifier: '00', fullName: testUserName, email: 'test@test.test', mobile: '123456789' }
+const testUser = { identifier: '00', fullName: testUserName, email: 'testprivate@test.test', mobile: '123456789' }
 
 describe('UserPrivate', () => {
   const { model: userModel, taskModel } = storage
 
-  const testUsersCleanup = async () => userModel.deleteMany({ fullName: new RegExp(testUserName, 'i') })
+  const testUsersCleanup = async () => userModel.deleteMany({ identifier: '00' })
 
   const testUserAddCreateDate = async () =>
     await storage.updateUser({ identifier: testUser.identifier, createdDate: new Date().toString() })
@@ -363,5 +363,25 @@ describe('UserPrivate', () => {
     await testTasksExists(true)
     await storage.removeDelayedTasks([_id])
     await testTasksExists(true)
+  })
+  describe('query value type guards (NoSQL operator injection)', () => {
+    const injected = { $ne: null }
+
+    test.each([
+      ['getByIdentifier', () => storage.getByIdentifier(injected)],
+      ['getByIdentifierHash', () => storage.getByIdentifierHash(injected)],
+      ['getUsersByEmail', () => storage.getUsersByEmail(injected)],
+      ['getUsersByMobile', () => storage.getUsersByMobile(injected)],
+      ['getUser', () => storage.getUser(injected)],
+      ['updateUser', () => storage.updateUser({ identifier: injected, fullName: 'x' })],
+      ['completeStep', () => storage.completeStep(injected, 'whiteList')]
+    ])('%s rejects operator objects', async (_, call) => {
+      await expect(call()).rejects.toThrow(/Invalid .*expected a string/)
+    })
+
+    test('string lookups still work', async () => {
+      await expect(storage.getUsersByEmail('nobody@test.test')).resolves.toEqual([])
+      await expect(storage.getByIdentifier('does-not-exist')).resolves.toBeNull()
+    })
   })
 })

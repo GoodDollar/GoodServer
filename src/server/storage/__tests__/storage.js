@@ -58,7 +58,6 @@ describe('storageAPI', () => {
 
     try {
       config.disableFaceVerification = false
-      userRecord.profilePublickey = String(Math.random())
 
       await addUserToWhiteList(userRecord, console)
       userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')
@@ -72,7 +71,6 @@ describe('storageAPI', () => {
   test('should addUserToWhiteList when faceverification disabled', async () => {
     try {
       config.disableFaceVerification = true
-      userRecord.profilePublickey = String(Math.random())
 
       await addUserToWhiteList(userRecord, console)
       userIsCompleted = await UserDBPrivate.getUserField(user.identifier, 'isCompleted')

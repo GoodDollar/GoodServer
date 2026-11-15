@@ -2,16 +2,15 @@
 
 import { Router } from 'express'
 import passport from 'passport'
-import requestIp from 'request-ip'
-import { sha3 } from 'web3-utils'
+import { getClientIp } from '../utils/clientIp'
 import { get, isEmpty } from 'lodash'
 
+import { hashString, verifyIdentifier } from '../utils/eth'
 import { Credential } from './veramo'
 
 import createEnrollmentProcessor from '../verification/processor/EnrollmentProcessor'
 import { enrollmentNotFoundMessage } from '../verification/utils/constants'
 import { normalizeIdentifiers } from '../verification/utils/utils'
-import { verifyIdentifier } from '../utils/eth.js'
 
 import MultiWallet from '../blockchain/MultiWallet'
 
@@ -88,7 +87,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
       try {
         if (mobile) {
           const countryCodeFromMobile = utils.getCountryCodeFromMobile(mobile)
-          const isPhoneMatchesAndVerified = smsValidated && mobileHash === sha3(mobile)
+          const isPhoneMatchesAndVerified = smsValidated && mobileHash === hashString(mobile)
           log.debug('Got country code from mobile:', { countryCodeFromMobile, isPhoneMatchesAndVerified })
           if (isPhoneMatchesAndVerified) {
             await issueCertificate(countryCodeFromMobile)
@@ -100,7 +99,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
           throw new Error('Failed to verify location: missing geolocation data')
         }
 
-        const clientIp = requestIp.getClientIp(req)
+        const clientIp = getClientIp(req)
 
         log.debug('Getting country data', { clientIp, longitude, latitude, gdAddress })
 

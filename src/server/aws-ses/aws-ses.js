@@ -1,5 +1,5 @@
 // @flow
-import SES from 'aws-sdk/clients/ses'
+import { SES } from '@aws-sdk/client-ses'
 import conf from '../server.config'
 import { punycodeDomain } from '../utils/email'
 
@@ -18,8 +18,7 @@ if (runInEnv) {
 }
 
 const SES_CONFIG = {
-  accessKeyId,
-  secretAccessKey,
+  credentials: { accessKeyId, secretAccessKey },
   region
 }
 
@@ -51,12 +50,13 @@ const ses = new SES(SES_CONFIG)
 export const sendTemplateEmail = async (recipientEmail: string, templateData: Object) => {
   const templateDataStr = JSON.stringify(templateData)
 
-  if (
-    !templateData.firstname ||
-    !typeof templateData.firstname === 'string' ||
-    !templateData.code ||
-    typeof !templateData.code === 'number'
-  ) {
+  const { firstname, code } = templateData
+
+  // firstname must be a non-empty string, code a non-empty string or a finite number (JSON.stringify turns NaN/Infinity into null)
+  const isValidFirstname = typeof firstname === 'string' && firstname !== ''
+  const isValidCode = (typeof code === 'string' && code !== '') || (typeof code === 'number' && Number.isFinite(code))
+
+  if (!isValidFirstname || !isValidCode) {
     throw new Error(`Invalid templateData ${templateDataStr}`)
   }
 
@@ -70,5 +70,5 @@ export const sendTemplateEmail = async (recipientEmail: string, templateData: Ob
     ConfigurationSetName: 'walletEmails'
   }
 
-  return ses.sendTemplatedEmail(params).promise()
+  return ses.sendTemplatedEmail(params)
 }

@@ -9,7 +9,7 @@ import conf from '../server/server.config'
 import logger from './logger'
 
 export default new (class {
-  constructor(Config, jwt, Axios, logger) {
+  constructor(Config, jwt, axiosLib, logger) {
     const { cfWorkerVerifyJwtSecret, cfWorkerVerifyJwtAudience, cfWorkerVerifyJwtSubject, cfWorkerVerifyUrl } = Config
 
     this.log = logger
@@ -24,13 +24,13 @@ export default new (class {
     this.jwtAudience = cfWorkerVerifyJwtAudience
     this.jwtSubject = cfWorkerVerifyJwtSubject
     this.verifyWorkerUrl = cfWorkerVerifyUrl
-    this.http = this.createHttpClient(Axios, Config)
+    this.http = this.createHttpClient(axiosLib, Config)
   }
 
-  createHttpClient(Axios, Config) {
+  createHttpClient(axiosLib, Config) {
     const { otpRetryAttempts, otpRetryDelay } = Config
 
-    const http = Axios.create({
+    const http = axiosLib.create({
       baseURL: this.verifyWorkerUrl,
       method: 'POST',
       headers: {

@@ -1,0 +1,31 @@
+allowBuilds:
+  '@axelar-network/axelarjs-sdk': true
+  '@parcel/watcher': false
+  '@sentry/cli': true
+  aws-sdk: true
+  bufferutil: true
+  core-js: true
+  es5-ext: true
+  esbuild: true
+  husky: true
+  keccak: true
+  protobufjs: true
+  secp256k1: true
+  utf-8-validate: true
+  web3: true
+  web3-bzz: true
+  web3-shh: true
+blockExoticSubdeps: false
+minimumReleaseAge: 4500
+# Pin transitive versions that are newer than minimumReleaseAge allows (published 2026-11-12).
+# Safe to remove after 2026-11-16 ~01:00 UTC, once the newer versions have aged past the window.
+overrides:
+  'ws@>=7 <8': 7.5.13
+  'ws@>=8 <9': 8.22.2
+  'encodeurl@>=1 <2': 1.0.3
+  'graceful-fs@>=4 <5': 4.2.11
+  '@aws-sdk/client-kms': 3.1167.0
+  '@aws-sdk/client-ses': 3.1167.0
+  '@aws-sdk/client-rekognition': 3.1167.0
+  mongoose: 8.24.8
+  'nodemon@>=2 <3': 3.1.14

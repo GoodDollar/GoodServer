@@ -3,38 +3,23 @@ import express, { Router } from 'express'
 import bodyParser from 'body-parser'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
-import { version as contractsVersion } from '@gooddollar/goodcontracts/package.json'
 
 import addLoginMiddlewares from './login/login-middleware'
 import UserDBPrivate from './db/mongo/user-privat-provider'
 import getTasksRunner from './cron/TaskRunner'
 import addStorageMiddlewares from './storage/storageAPI'
 import addVerificationMiddlewares from './verification/verificationAPI'
-import addGoodIDMiddleware from './goodid/goodid-middleware'
+// import addGoodIDMiddleware from './goodid/goodid-middleware'
 import logger, { addRequestLogger } from '../imports/logger'
 import VerificationAPI from './verification/verification'
 import createDisposeEnrollmentsTask from './verification/cron/DisposeEnrollmentsTask'
 import createCleanupAbandonedSignupsTask from './storage/cron/CleanupAbandonedSignups'
-import StakingModelTasks from './blockchain/stakingModelTasks'
 import { MessageStrings } from './db/mongo/models/props'
 import Config from './server.config'
 import { wrapAsync } from './utils/helpers'
-import GoodIDUtils from './goodid/utils'
-
-const { FishInactiveTask, CollectFundsTask } = StakingModelTasks
+// import GoodIDUtils from './goodid/utils'
 const rootLogger = logger.child({ from: 'Server' })
-const { env, fishTaskDisabled, stakeTaskDisabled } = Config
-
-const stakingModelTasks = [
-  {
-    task: CollectFundsTask,
-    disabled: stakeTaskDisabled
-  },
-  {
-    task: FishInactiveTask,
-    disabled: fishTaskDisabled
-  }
-]
+const { env, trustProxyHops } = Config
 
 export default async (app: Router) => {
   const corsConfig = {
@@ -64,8 +49,10 @@ export default async (app: Router) => {
     return callback(null, corsConfig)
   }
 
-  if (env === 'production') {
-    app.set('trust proxy', 1) //this is required for heroku to pass ips correctly to rate limiter
+  if (['production', 'staging'].includes(env)) {
+    // required behind heroku (or any reverse proxy) so that req.ip is the real client address, used by the rate limiter.
+    // set TRUST_PROXY_HOPS to the number of proxies in front of the server (e.g. 2 with a CDN in front of heroku)
+    app.set('trust proxy', trustProxyHops)
   }
 
   if (global.workerId <= 1) {
@@ -87,7 +74,7 @@ export default async (app: Router) => {
   addLoginMiddlewares(app)
   addStorageMiddlewares(app, UserDBPrivate)
   addVerificationMiddlewares(app, VerificationAPI, UserDBPrivate)
-  addGoodIDMiddleware(app, GoodIDUtils, UserDBPrivate)
+  // addGoodIDMiddleware(app, GoodIDUtils, UserDBPrivate)
 
   app.get(
     '/strings',
@@ -127,16 +114,6 @@ export default async (app: Router) => {
     const task = taskFactory(UserDBPrivate)
 
     CronTasksRunner.registerTask(task)
-  }
-
-  if (contractsVersion >= '2.0.0') {
-    for (let { task, disabled } of stakingModelTasks) {
-      if (disabled) {
-        continue
-      }
-
-      CronTasksRunner.registerTask(new task())
-    }
   }
 
   CronTasksRunner.startTasks()

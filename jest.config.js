@@ -76,16 +76,7 @@ module.exports = {
   // ],
 
   // A map from regular expressions to module names that allow to stub out resources with a single module
-  moduleNameMapper: {
-    // Force module uuid to resolve with the CJS entry point, because Jest does not support package.json.exports. See https://github.com/uuidjs/uuid/issues/451
-    "uuid": require.resolve('uuid'),
-    "@ipld/dag-pb": "<rootDir>/node_modules/@ipld/dag-pb/dist/index.min.js",
-    "multiformats/hashes/digest": "<rootDir>/node_modules/multiformats/src/hashes/digest.js",
-    "multiformats/bases/base58": "<rootDir>/node_modules/multiformats/src/bases/base58.js",
-    "multiformats/cid": "<rootDir>/node_modules/multiformats/src/cid.js",
-    "ipfs-unixfs": "<rootDir>/node_modules/ipfs-unixfs/dist/index.min.js",
-    "uint8arrays":"<rootDir>/node_modules/uint8arrays/dist/index.min.js",
-  },
+  moduleNameMapper: {},
 
   // An array of regexp pattern strings, matched against all module paths before considered 'visible' to the module loader
   // modulePathIgnorePatterns: [],
@@ -132,7 +123,7 @@ module.exports = {
   // setupFiles: [],
 
   // The path to a module that runs some code to configure or set up the testing framework before each test
-  setupFilesAfterEnv: ['jest-extended', './jest.setup.js'],
+  setupFilesAfterEnv: ['jest-extended/all', './jest.setup.js'],
 
   // A list of paths to snapshot serializer modules Jest should use for snapshot testing
   // snapshotSerializers: [],
@@ -184,7 +175,7 @@ module.exports = {
 
   // An array of regexp pattern strings that are matched against all source file paths, matched files will skip transformation
   transformIgnorePatterns: [
-    "/node_modules/(?!(@veramo|multiformats|key-did-resolver|@aws-sdk)/)", 
+    "/node_modules/(?!(\.pnpm/)?(@veramo|multiformats|key-did-resolver|@aws-sdk|@scure|@noble|uuid)[/+@])", 
     "\\.pnp\\.[^\\\/]+$"
   ],
   
