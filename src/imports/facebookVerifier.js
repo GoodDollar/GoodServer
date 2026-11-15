@@ -1,6 +1,6 @@
 // @flow
 
-import Axios from 'axios'
+import { create as createAxios } from 'axios'
 import { isPlainObject, get } from 'lodash'
 
 import Config from '../server/server.config'
@@ -67,4 +67,4 @@ class FacebookVerifier {
   }
 }
 
-export default new FacebookVerifier(Config, Axios.create, logger.child({ from: 'FacebookVerifier' }))
+export default new FacebookVerifier(Config, createAxios, logger.child({ from: 'FacebookVerifier' }))
