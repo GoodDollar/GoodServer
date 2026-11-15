@@ -79,12 +79,6 @@ module.exports = {
   moduleNameMapper: {
     // Force module uuid to resolve with the CJS entry point, because Jest does not support package.json.exports. See https://github.com/uuidjs/uuid/issues/451
     "uuid": require.resolve('uuid'),
-    "@ipld/dag-pb": "<rootDir>/node_modules/@ipld/dag-pb/dist/index.min.js",
-    "multiformats/hashes/digest": "<rootDir>/node_modules/multiformats/src/hashes/digest.js",
-    "multiformats/bases/base58": "<rootDir>/node_modules/multiformats/src/bases/base58.js",
-    "multiformats/cid": "<rootDir>/node_modules/multiformats/src/cid.js",
-    "ipfs-unixfs": "<rootDir>/node_modules/ipfs-unixfs/dist/index.min.js",
-    "uint8arrays":"<rootDir>/node_modules/uint8arrays/dist/index.min.js",
   },
 
   // An array of regexp pattern strings, matched against all module paths before considered 'visible' to the module loader
