@@ -47,7 +47,6 @@
   },
   "homepage": "https://gooddollar.org",
   "dependencies": {
-    "@ambire/signature-validator": "^1.5.0",
     "@aws-sdk/client-kms": "^3.1168.0",
     "@aws-sdk/client-rekognition": "^3.1168.0",
     "@aws-sdk/client-s3": "^3.1102.0",
@@ -67,7 +66,6 @@
     "@veramo/did-resolver": "^7.0.2",
     "@veramo/key-manager": "^7.0.2",
     "@veramo/kms-local": "^7.0.2",
-    "await-mutex": "^1.0.2",
     "axios": "^1.19.0",
     "axios-retry": "^4.5.0",
     "bip39-light": "^1.0.7",
