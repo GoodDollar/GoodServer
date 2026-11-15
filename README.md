@@ -48,9 +48,3 @@ CELO_FORK_REAL_KMS=true pnpm run test src/server/blockchain/__tests__/adminWalle
 Real-KMS mode fails if keys or credentials are missing; it never falls back to the local signer.
 
 KMS addresses are funded and granted admin access using the same impersonated setup.
-
-## Local Node
-
-- clone @gooddollar/goodcontracts
-- run `truffle develop`
-- in console type `migrate --reset`
