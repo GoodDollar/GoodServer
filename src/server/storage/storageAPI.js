@@ -156,7 +156,6 @@ const setup = (app: Router, storage: StorageAPI) => {
           email: email ? hashString(email) : userRecord.email,
           mobile: mobile ? hashString(mobile) : userRecord.mobile,
           fullName,
-          profilePublickey: userRecord.profilePublickey,
           walletAddress: hashString(userRecord.gdAddress.toLowerCase()),
           isCompleted: userRecord.isCompleted
             ? userRecord.isCompleted

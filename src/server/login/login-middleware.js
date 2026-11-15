@@ -74,7 +74,6 @@ const generateJWT = async (recovered, identifier = null, payload = {}) => {
     {
       loggedInAs: userId,
       gdAddress: recovered,
-      profilePublickey: recovered,
       exp: Math.floor(Date.now() / 1000) + (hasSignedUp ? jwtExpiration : 3600), //if not signed up jwt will last only 60 seconds so it will be refreshed after signup
       aud: hasSignedUp || hasVerified ? `realmdb_wallet_${env}` : 'unsigned',
       sub: recovered,
@@ -99,7 +98,6 @@ const setup = (app: Router) => {
    *
    * @apiParam {String} signature
    * @apiParam {String} gdSignature
-   * @apiParam {String} profilePublickey
    * @apiParam {String} nonce
    * @apiParam {String} method
    *
@@ -114,7 +112,7 @@ const setup = (app: Router) => {
       log.debug('/auth/eth', { message: 'authorizing' })
       log.debug('/auth/eth', { body })
 
-      const { nonce, method, signature, gdSignature, profilePublickey: profileReqPublickey } = body
+      const { nonce, method, signature, gdSignature } = body
 
       log.debug('/auth/eth', { signature, method })
 
@@ -134,8 +132,7 @@ const setup = (app: Router) => {
       log.debug('/auth/eth', {
         message: 'Recovered public key',
         recovered,
-        gdPublicAddress,
-        profileReqPublickey
+        gdPublicAddress
       })
 
       if (!recovered || !gdPublicAddress) {
@@ -148,8 +145,7 @@ const setup = (app: Router) => {
 
       const token = await generateJWT(recovered, recovered, {
         method,
-        gdAddress: gdPublicAddress,
-        profilePublickey: profileReqPublickey
+        gdAddress: gdPublicAddress
       })
 
       log.info('/auth/eth', {
