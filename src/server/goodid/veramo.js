@@ -21,10 +21,10 @@ export const getAgent = once(async () => {
     { KeyManager, MemoryKeyStore, MemoryPrivateKeyStore },
     { KeyManagementSystem },
     { CredentialPlugin },
+    { CredentialProviderJWT },
     { DIDResolverPlugin },
     { Resolver },
-    { getResolver: keyDidResolver },
-    { CredentialIssuerLD, LdDefaultContexts, VeramoEcdsaSecp256k1RecoverySignature2020, VeramoEd25519Signature2018 }
+    { getResolver: keyDidResolver }
   ] = await Promise.all([
     import('@veramo/core'),
     import('@veramo/did-manager'),
@@ -32,10 +32,10 @@ export const getAgent = once(async () => {
     import('@veramo/key-manager'),
     import('@veramo/kms-local'),
     import('@veramo/credential-w3c'),
+    import('@veramo/credential-jwt'),
     import('@veramo/did-resolver'),
     import('did-resolver'),
-    import('key-did-resolver'),
-    import('@veramo/credential-ld')
+    import('key-did-resolver')
   ])
 
   const agent = createAgent({
@@ -60,11 +60,7 @@ export const getAgent = once(async () => {
           ...keyDidResolver()
         })
       }),
-      new CredentialPlugin(),
-      new CredentialIssuerLD({
-        contextMaps: [LdDefaultContexts],
-        suites: [new VeramoEd25519Signature2018(), new VeramoEcdsaSecp256k1RecoverySignature2020()]
-      })
+      new CredentialPlugin([new CredentialProviderJWT()])
     ]
   })
 

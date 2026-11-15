@@ -41,7 +41,7 @@ module.exports = (_, argv) => {
 
   return {
     entry: {
-      server: ['@babel/polyfill', SERVER_PATH]
+      server: ['core-js/stable', 'regenerator-runtime/runtime', SERVER_PATH]
     },
     output: {
       publicPath: '/',

@@ -4,7 +4,6 @@ We use
 [<img valign="middle" src="https://www.datocms-assets.com/31049/1618983297-powered-by-vercel.svg?raw=true&sanitize=1" width="100px"/>](https://vercel.com/?utm_source=gooddollar&utm_campaign=oss)
 
 [![Build Status](https://travis-ci.com/GoodDollar/GoodServer.svg?branch=master)](https://travis-ci.com/GoodDollar/GoodServer)
-[![Coverage Status](https://coveralls.io/repos/github/GoodDollar/GoodServer/badge.svg?branch=master)](https://coveralls.io/github/GoodDollar/GoodServer?branch=master)
 
 ## Setup
 
@@ -49,9 +48,3 @@ CELO_FORK_REAL_KMS=true pnpm run test src/server/blockchain/__tests__/adminWalle
 Real-KMS mode fails if keys or credentials are missing; it never falls back to the local signer.
 
 KMS addresses are funded and granted admin access using the same impersonated setup.
-
-## Local Node
-
-- clone @gooddollar/goodcontracts
-- run `truffle develop`
-- in console type `migrate --reset`

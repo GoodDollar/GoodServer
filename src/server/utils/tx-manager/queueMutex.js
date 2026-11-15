@@ -1,6 +1,38 @@
-import Mutex from 'await-mutex'
 import logger from '../../../imports/logger'
 const log = logger.child({ from: 'wallet queueMutex' })
+
+/**
+ * Minimal promise-based mutex: lock() resolves with an (idempotent) release function once acquired.
+ */
+class Mutex {
+  constructor() {
+    this._locked = false
+    this._waiters = []
+  }
+
+  isLocked() {
+    return this._locked
+  }
+
+  lock() {
+    return new Promise(resolve => {
+      const grant = () => {
+        this._locked = true
+        let released = false
+        resolve(() => {
+          if (released) return
+          released = true
+          const next = this._waiters.shift()
+          if (next) next()
+          else this._locked = false
+        })
+      }
+
+      if (this._locked) this._waiters.push(grant)
+      else grant()
+    })
+  }
+}
 
 export default class queueMutex {
   constructor() {

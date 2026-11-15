@@ -9,10 +9,7 @@
     "prettier"
   ],
   "parserOptions": {
-    "ecmaVersion": 2020,
-    "babelOptions": {
-      "plugins": [["@babel/plugin-syntax-import-attributes", { "deprecatedAssertSyntax": true }]]
-    }
+    "ecmaVersion": 2020
   },
   "plugins": ["flowtype", "import", "prettier", "jest"],
   "settings": {},
@@ -32,13 +29,13 @@
     "import/no-unresolved": [
       "error",
       {
-        "ignore": ["^@goodwidget/core/viemFallbackClient$"]
+        "ignore": ["^@goodwidget/core/viemFallbackClient$", "^uuid$"]
       }
     ],
     "node/no-missing-import": [
       "error",
       {
-        "allowModules": ["@goodwidget/core"]
+        "allowModules": ["@goodwidget/core", "uuid"]
       }
     ]
   }

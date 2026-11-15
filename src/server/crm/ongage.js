@@ -1,6 +1,6 @@
 // @flow
 
-import Axios from 'axios'
+import { create as createAxios } from 'axios'
 import axiosRetry from 'axios-retry'
 import { get, assign, values, first, isError } from 'lodash'
 
@@ -352,4 +352,4 @@ class OnGage implements CrmApi {
   }
 }
 
-export default new OnGage(Config, Axios.create, logger.child({ from: 'OnGage' }))
+export default new OnGage(Config, createAxios, logger.child({ from: 'OnGage' }))

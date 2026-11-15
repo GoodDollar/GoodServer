@@ -1,5 +1,5 @@
 // @flow
-import SES from 'aws-sdk/clients/ses'
+import { SES } from '@aws-sdk/client-ses'
 import conf from '../server.config'
 import { punycodeDomain } from '../utils/email'
 
@@ -18,8 +18,7 @@ if (runInEnv) {
 }
 
 const SES_CONFIG = {
-  accessKeyId,
-  secretAccessKey,
+  credentials: { accessKeyId, secretAccessKey },
   region
 }
 
@@ -70,5 +69,5 @@ export const sendTemplateEmail = async (recipientEmail: string, templateData: Ob
     ConfigurationSetName: 'walletEmails'
   }
 
-  return ses.sendTemplatedEmail(params).promise()
+  return ses.sendTemplatedEmail(params)
 }

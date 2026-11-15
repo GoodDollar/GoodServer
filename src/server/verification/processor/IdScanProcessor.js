@@ -1,5 +1,5 @@
 // @flow
-import Axios from 'axios'
+import { create as createAxios } from 'axios'
 
 import Config from '../../server.config'
 import logger from '../../../imports/logger'
@@ -15,7 +15,7 @@ class IdScanProcessor {
   constructor(storage, logger) {
     this.logger = logger
     this.storage = storage
-    this.api = new ZoomAPI(Config, Axios.create, logger.child({ from: 'ZoomAPI' }))
+    this.api = new ZoomAPI(Config, createAxios, logger.child({ from: 'ZoomAPI' }))
   }
 
   async verify(user: UserRecord, enrollmentIdentifier: string, payload: IdScanRequest): Promise<IdScanResult> {

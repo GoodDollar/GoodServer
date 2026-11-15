@@ -71,9 +71,6 @@ export const UserPrivateSchema = new Schema(
     mnemonic: {
       type: String
     },
-    profilePublickey: {
-      type: String
-    },
     isCompleted: {
       whiteList: {
         type: Boolean,

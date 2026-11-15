@@ -1,6 +1,5 @@
 import * as ethers from 'ethers'
-import { getAddress, hexToBytes, isHex, keccak256, recoverMessageAddress, toHex } from 'viem'
-import { verifyMessage } from '@ambire/signature-validator'
+import { createPublicClient, getAddress, hexToBytes, http, isHex, keccak256, recoverMessageAddress, toHex } from 'viem'
 import { messageContains } from './exception'
 import { mustache } from '../utils/string'
 import getNetworks from '../networks'
@@ -63,17 +62,17 @@ export const verifyIdentifier = async (fvsig, gdAddress, chainId = 42220) => {
   // const xdcProvider = new ethers.providers.JsonRpcProvider('https://rpc.ankr.com/')
 
   const rpc = networks[chainId]?.httpWeb3Provider?.split(',')[0]
-  const provider = rpc ? new ethers.providers.JsonRpcProvider(rpc) : null
-  if (!provider) {
+  const client = rpc ? createPublicClient({ transport: http(rpc) }) : null
+  if (!client) {
     throw new Error(`verifyIdentifier: no RPC for chainId ${chainId} for FV identifier verification`)
   }
 
   const signer = getAddress(gdAddress)
 
   try {
-    const verifyResult = await verifyMessage({
-      provider,
-      signer,
+    // viem's verifyMessage supports EOA, ERC-1271 and ERC-6492 (counterfactual) signatures
+    const verifyResult = await client.verifyMessage({
+      address: signer,
       signature: fvsig,
       message: FV_IDENTIFIER_MSG2({ account: signer })
     })

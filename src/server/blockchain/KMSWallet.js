@@ -6,7 +6,7 @@ import {
   getPublicKey,
   importKMSKey
 } from '@gooddollar/kms-ethereum-signing'
-import AWS from 'aws-sdk'
+import { KMS } from '@aws-sdk/client-kms'
 import logger from '../../imports/logger'
 
 const log = logger.child({ from: 'KMSWallet' })
@@ -39,7 +39,7 @@ export class KMSWallet {
       throw new Error(`Invalid tag filter format. Expected "Key=Value", got: ${tagFilter}`)
     }
 
-    const kms = new AWS.KMS({ region: this.region })
+    const kms = new KMS({ region: this.region })
     const keyIds = []
     let nextMarker = undefined
 
@@ -49,7 +49,7 @@ export class KMSWallet {
           Marker: nextMarker
         }
 
-        const response = await kms.listKeys(params).promise()
+        const response = await kms.listKeys(params)
 
         for (const keyMetadata of response.Keys || []) {
           const keyId = keyMetadata.KeyId
@@ -59,7 +59,7 @@ export class KMSWallet {
             const tagParams = {
               KeyId: keyId
             }
-            const tagsResponse = await kms.listResourceTags(tagParams).promise()
+            const tagsResponse = await kms.listResourceTags(tagParams)
 
             // Check if key has the matching tag
             const hasMatchingTag = (tagsResponse.Tags || []).some(

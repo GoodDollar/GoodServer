@@ -5,7 +5,8 @@ const webpack = require('webpack')
 module.exports = {
   entry: {
     main: [
-      '@babel/polyfill',
+      'core-js/stable',
+      'regenerator-runtime/runtime',
       'webpack-hot-middleware/client?path=/__webpack_hmr&reload=true&timeout=20000',
       './src/client/index.js'
     ]
