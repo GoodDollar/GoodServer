@@ -1,6 +1,6 @@
 import verification from '../verification'
 import UserDBPrivate from '../../db/mongo/user-privat-provider'
-
+import { findFaucetAbuse } from '../../blockchain/explorer'
 const emailVerificationCode = 123456
 
 const testUser = {
@@ -30,5 +30,9 @@ describe('verification', () => {
     }
 
     await expect(verification.verifyEmail(testUser, emailVerificationCodeBad)).rejects.toThrow()
+  })
+
+  test.skip('faucet abuse', async () => {
+    await expect(findFaucetAbuse('0xDdDfFe17c3A8266D859e0BD299E3e230aa09F3d6', 50)).resolves.not.toThrow()
   })
 })

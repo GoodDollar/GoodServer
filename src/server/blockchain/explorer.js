@@ -10,7 +10,7 @@ export const getExplorerTxs = async (address, chainId, query, from = null, allPa
 
   const networkExplorerUrls = NETWORKS[Number(chainId)].explorer
 
-  const params = { module: 'account', address, sort: 'asc', page: 1, ...query }
+  const params = { module: 'account', address, sort: 'asc', page: 1, ...query, chainId, chain_id: chainId }
 
   if (from) {
     params.start_block = from
