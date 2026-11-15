@@ -1062,8 +1062,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
    * @ignore
    */
 
-  // Map (not a plain object): visitorId is client-supplied, so keys like '__proto__' must not touch the prototype
-  const visitorsCounter = new Map()
   app.post(
     '/verify/recaptcha',
     requestRateLimiter(10, 1),
@@ -1080,14 +1078,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         if (ipv6 && ipv6 !== clientIp) {
           kvStorageIpKey = ipv6
         }
-        let visitsCounter = 0
-        if (visitorId) {
-          const visitorKey = String(visitorId)
-
-          visitsCounter = (visitorsCounter.get(visitorKey) || 0) + 1
-          visitorsCounter.set(visitorKey, visitsCounter)
-        }
-
         log.debug('Verifying recaptcha', {
           token: token.slice(0, 10),
           ipv6,
@@ -1095,8 +1085,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           kvStorageIpKey,
           xForwardedFor,
           captchaType,
-          visitorId,
-          visitsCounter
+          visitorId
         })
 
         //hcaptcha verify
