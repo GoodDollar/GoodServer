@@ -10,12 +10,12 @@ import DelayedTaskModel, { DelayedTaskStatus } from '../mongo/models/delayed-tas
 const testUserName = 'mongo_test'
 const testTaskName = 'mongo_test'
 const testTaskSubject = 'test_subject'
-const testUser = { identifier: '00', fullName: testUserName, email: 'test@test.test', mobile: '123456789' }
+const testUser = { identifier: '00', fullName: testUserName, email: 'testprivate@test.test', mobile: '123456789' }
 
 describe('UserPrivate', () => {
   const { model: userModel, taskModel } = storage
 
-  const testUsersCleanup = async () => userModel.deleteMany({ fullName: new RegExp(testUserName, 'i') })
+  const testUsersCleanup = async () => userModel.deleteMany({ identifier: '00' })
 
   const testUserAddCreateDate = async () =>
     await storage.updateUser({ identifier: testUser.identifier, createdDate: new Date().toString() })
