@@ -5,9 +5,6 @@ import { Strategy as AnonymousStrategy } from 'passport-anonymous'
 import { ExtractJwt, Strategy } from 'passport-jwt'
 import { Router } from 'express'
 import { defaults } from 'lodash'
-import { PublicKey } from '@textile/crypto'
-import { TextEncoder } from 'util'
-import isBase64 from 'is-base64'
 import { AxelarQueryAPI } from '@axelar-network/axelarjs-sdk'
 import * as ethers from 'ethers'
 
@@ -35,41 +32,6 @@ nonce:`
 const FV_IDENTIFIER_MSG = `Sign this message to create your own unique identifier for your anonymized record.
 You can use this identifier in the future to delete this anonymized record.
 WARNING: do not sign this message unless you trust the website/application requesting this signature.`
-
-const isProfileSignatureCompatible = (signature, nonce) => {
-  if (isBase64(signature)) {
-    return true
-  }
-
-  if (signature.startsWith('SEA')) {
-    let json
-
-    try {
-      json = JSON.parse(signature.replace(/^SEA/, ''))
-    } catch {
-      json = null
-    }
-
-    if (json && json.m === `Login to GoodDAPP${nonce}`) {
-      return false
-    }
-  }
-
-  throw new Error('Invalid profile signature received. Should be a valid BASE64 string.')
-}
-
-const verifyProfilePublicKey = async (publicKeyString, signature, nonce) => {
-  try {
-    const profilePublicKey = PublicKey.fromString(publicKeyString)
-    const sigbytes = Uint8Array.from(Buffer.from(signature, 'base64'))
-    const msgbytes = new TextEncoder().encode(MSG + nonce)
-
-    return await profilePublicKey.verify(msgbytes, sigbytes)
-  } catch (e) {
-    log.warn('Error verifying profile public key', e.message, e, { publicKeyString, signature, nonce })
-    return false
-  }
-}
 
 export const strategy = new Strategy(jwtOptions, async (jwtPayload, next) => {
   const { loggedInAs: identifier, exp } = jwtPayload
@@ -138,7 +100,6 @@ const setup = (app: Router) => {
    * @apiParam {String} signature
    * @apiParam {String} gdSignature
    * @apiParam {String} profilePublickey
-   * @apiParam {String} profileSignature
    * @apiParam {String} nonce
    * @apiParam {String} method
    *
@@ -153,7 +114,7 @@ const setup = (app: Router) => {
       log.debug('/auth/eth', { message: 'authorizing' })
       log.debug('/auth/eth', { body })
 
-      const { nonce, method, signature, gdSignature, profileSignature, profilePublickey: profileReqPublickey } = body
+      const { nonce, method, signature, gdSignature, profilePublickey: profileReqPublickey } = body
 
       log.debug('/auth/eth', { signature, method })
 
@@ -169,22 +130,15 @@ const setup = (app: Router) => {
 
       const recovered = await recoverPublickey(signature, MSG, nonce)
       const gdPublicAddress = await recoverPublickey(gdSignature, MSG, nonce)
-      let profileVerified = true
-
-      // ignore profile signature check if public key is null or signature was sent from the old wallet version using GUN
-      if (profileReqPublickey != null && isProfileSignatureCompatible(profileSignature, nonce) === true) {
-        profileVerified = await verifyProfilePublicKey(profileReqPublickey, profileSignature, nonce)
-      }
 
       log.debug('/auth/eth', {
         message: 'Recovered public key',
         recovered,
         gdPublicAddress,
-        profileVerified,
         profileReqPublickey
       })
 
-      if (!recovered || !gdPublicAddress || !profileVerified) {
+      if (!recovered || !gdPublicAddress) {
         log.warn('/auth/eth', {
           message: 'SigUtil unable to recover the message signer'
         })

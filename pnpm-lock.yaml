@@ -41,9 +41,6 @@ importers:
       '@sentry/node':
         specifier: ^5.30.0
         version: 5.30.0
-      '@textile/crypto':
-        specifier: ^4.2.0
-        version: 4.2.1
       '@toruslabs/fetch-node-details':
         specifier: ^14.0.1
         version: 14.2.0(@babel/runtime@7.29.14)
@@ -131,9 +128,6 @@ importers:
       ioredis:
         specifier: ^5.3.2
         version: 5.11.1
-      is-base64:
-        specifier: ^1.1.0
-        version: 1.1.0
       jsonwebtoken:
         specifier: ^9.0.1
         version: 9.0.3
@@ -3375,9 +3369,6 @@ packages:
       react-dom: '*'
       react-native: '*'
 
-  '@textile/crypto@4.2.1':
-    resolution: {integrity: sha512-7qxFLrXiSq5Tf3Wh3Oh6JKJMitF/6N3/AJyma6UAA8iQnAZBF98ShWz9tR59a3dvmGTc9MlyplOm16edbccscg==}
-
   '@toruslabs/constants@14.2.0':
     resolution: {integrity: sha512-Mb5EfYNSPyvvw5s1JXnpZwritCgp4NmLni1imTqrSKGV3yikYhUn1ufyLMAHGnBBgv4AuMIXBIe3EpJJ+SpA0g==}
     engines: {node: '>=18.x', npm: '>=9.x'}
@@ -3521,9 +3512,6 @@ packages:
 
   '@types/debug@4.1.13':
     resolution: {integrity: sha512-KSVgmQmzMwPlmtljOomayoR89W4FynCAi3E8PPs7vmDVPe84hT+vGPKkJfThkmXs0x0jAaa9U8uW8bbfyS2fWw==}
-
-  '@types/ed2curve@0.2.4':
-    resolution: {integrity: sha512-1m9IX8qypOa0K1NfdMsMxB3gjhKyXbr5Yl9FzzwWQjLSDFGLkvRvSfla1NYqzIt72ocIALMXsF+twRlzr1ov/g==}
 
   '@types/esrecurse@4.3.1':
     resolution: {integrity: sha512-xJBAbDifo5hpffDBuHl0Y8ywswbiAp/Wi7Y/GtAgSlZyIABppyurxVueOPE8LUQOxdlgi6Zqce7uoEpqNTeiUw==}
@@ -3849,9 +3837,6 @@ packages:
 
   '@yarnpkg/lockfile@1.1.0':
     resolution: {integrity: sha512-GpSwvyXOcOOlV70vbnzjj4fW5xW/FdUF6nQEt1ENy7m4ZCczi1+/buVUPAqmGfqznsORNFzUMjctTIp8a9tuCQ==}
-
-  '@zxing/text-encoding@0.9.0':
-    resolution: {integrity: sha512-U/4aVJ2mxI0aDNI8Uq0wEhMgY+u4CNtEb0om3+y3+niDAsoTCOB33UF0sxpzqzdqXLqmvc+vZyAt4O8pPdfkwA==}
 
   abitype@1.2.3:
     resolution: {integrity: sha512-Ofer5QUnuUdTFsBRwARMoWKOH1ND5ehwYhJ3OJ/BQO+StkwQjHw0XyVh4vDttzHB7QOFhPHa/o413PJ82gU/Tg==}
@@ -5178,9 +5163,6 @@ packages:
   ed25519-signature-2020-context@1.1.0:
     resolution: {integrity: sha512-dBGSmoUIK6h2vadDctrDnhhTO01PR2hJk0mRNEfrRDPCjaIwrfy4J+eziEQ9Q1m8By4f/CSRgKM1h53ydKfdNg==}
 
-  ed2curve@0.3.0:
-    resolution: {integrity: sha512-8w2fmmq3hv9rCrcI7g9hms2pMunQr1JINfcjwR9tAyZqhtyaMN991lF/ZfHfr5tzZQ8c7y7aBgZbjfbd0fjFwQ==}
-
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
@@ -5780,9 +5762,6 @@ packages:
   fastest-levenshtein@1.0.16:
     resolution: {integrity: sha512-eRnCtTTtGZFpQCwhJiUOuxPQWRXVKYDn0b2PeHfXL6/Zi53SLAzAHfVhVWK2AryC/WH05kGfxhFIPvTF0SXQzg==}
     engines: {node: '>= 4.9.1'}
-
-  fastestsmallesttextencoderdecoder@1.0.22:
-    resolution: {integrity: sha512-Pb8d48e+oIuY4MaM64Cd7OW1gt4nxCHs7/ddPPZ/Ic3sg8yVGM7O9wDvZ7us6ScaUupzM+pfBolwtYhN1IxBIw==}
 
   fastq@1.20.3:
     resolution: {integrity: sha512-XKv5nnLs6nLF71NgiKJLIZFLkPyIEuOselLG7ujZnGrRfQK8HpvY+WqKhAJUAdLomwVHErVS4LfxFlPq0/FTAw==}
@@ -6455,10 +6434,6 @@ packages:
   is-async-function@2.1.1:
     resolution: {integrity: sha512-9dgM/cZBnNvjzaMYHVoxxfPj2QXt22Ev7SuuPrs+xav0ukGB0S6d4ydZdEiM48kLx5kDV+QBPrpVnFyefL8kkQ==}
     engines: {node: '>= 0.4'}
-
-  is-base64@1.1.0:
-    resolution: {integrity: sha512-Nlhg7Z2dVC4/PTvIFkgVVNvPHSO2eR/Yd0XzhGiXCXEvWnptXlXa/clQ8aePPiMuxEGcWfzWbGw2Fe3d+Y3v1g==}
-    hasBin: true
 
   is-bigint@1.1.0:
     resolution: {integrity: sha512-n4ZT37wG78iz03xPRKJrHTdZbe3IicyucEtdRsV5yglwc3GyUfbAfpSeD0FJ41NbUNSt5wbhqfp1fS+BgnvDFQ==}
@@ -7946,11 +7921,6 @@ packages:
 
   multibase@0.7.0:
     resolution: {integrity: sha512-TW8q03O0f6PNFTQDvh3xxH03c8CjGaaYrjkl9UQPG6rz53TQzzxJVCIWVjzcbN/Q5Y53Zd0IBQBMVktVgNx4Fg==}
-    deprecated: This module has been superseded by the multiformats module
-
-  multibase@3.1.2:
-    resolution: {integrity: sha512-bpklWHs70LO3smJUHOjcnzGceJJvn9ui0Vau6Za0B/GBepaXswmW8Ufea0uD9pROf/qCQ4N4lZ3sf3U+SNf0tw==}
-    engines: {node: '>=10.0.0', npm: '>=6.0.0'}
     deprecated: This module has been superseded by the multiformats module
 
   multibase@4.0.6:
@@ -9996,9 +9966,6 @@ packages:
 
   wcwidth@1.0.1:
     resolution: {integrity: sha512-XHPEwS0q6TaxcvG85+8EYkbiCux2XtWG2mkc47Ng2A77BQu9+DqIOJldST4HgPkuea7dvKSj5VgX3P1d4rW8Tg==}
-
-  web-encoding@1.1.5:
-    resolution: {integrity: sha512-HYLeVCdJ0+lBYV2FvNZmv3HJ2Nt0QYXqZojk3d9FJOLkwnuhzM9tmamh8d7HPM8QqjKH8DeHkFTx+CFlWpZZDA==}
 
   web-namespaces@2.0.1:
     resolution: {integrity: sha512-bKr1DkiNa2krS7qxNtdrtHAmzuYGFQLiQ13TsorsdT6ULTkPLKuu5+GsFpDlg6JFjUTwX2DyhMPG2be8uPrqsQ==}
@@ -15200,14 +15167,6 @@ snapshots:
       react-dom: 19.3.1(react@19.3.1)
       react-native: 0.88.1(@babel/core@8.1.2)(bufferutil@4.2.0)(react@19.3.1)(utf-8-validate@6.0.6)
 
-  '@textile/crypto@4.2.1':
-    dependencies:
-      '@types/ed2curve': 0.2.4
-      ed2curve: 0.3.0
-      fastestsmallesttextencoderdecoder: 1.0.22
-      multibase: 3.1.2
-      tweetnacl: 1.0.3
-
   '@toruslabs/constants@14.2.0(@babel/runtime@7.29.14)':
     dependencies:
       '@babel/runtime': 7.29.14
@@ -15437,10 +15396,6 @@ snapshots:
   '@types/debug@4.1.13':
     dependencies:
       '@types/ms': 2.1.0
-
-  '@types/ed2curve@0.2.4':
-    dependencies:
-      tweetnacl: 1.0.3
 
   '@types/esrecurse@4.3.1': {}
 
@@ -15968,9 +15923,6 @@ snapshots:
   '@xtuc/long@4.2.2': {}
 
   '@yarnpkg/lockfile@1.1.0': {}
-
-  '@zxing/text-encoding@0.9.0':
-    optional: true
 
   abitype@1.2.3(typescript@6.0.3)(zod@3.25.76):
     optionalDependencies:
@@ -17552,10 +17504,6 @@ snapshots:
   ed25519-signature-2020-context@1.1.0:
     optional: true
 
-  ed2curve@0.3.0:
-    dependencies:
-      tweetnacl: 1.0.3
-
   ee-first@1.1.1: {}
 
   ejs@3.1.10:
@@ -18443,8 +18391,6 @@ snapshots:
 
   fastest-levenshtein@1.0.16: {}
 
-  fastestsmallesttextencoderdecoder@1.0.22: {}
-
   fastq@1.20.3:
     dependencies:
       reusify: 1.1.0
@@ -19238,8 +19184,6 @@ snapshots:
       get-proto: 1.0.1
       has-tostringtag: 1.0.2
       safe-regex-test: 1.1.0
-
-  is-base64@1.1.0: {}
 
   is-bigint@1.1.0:
     dependencies:
@@ -21281,11 +21225,6 @@ snapshots:
     dependencies:
       base-x: 3.0.11
       buffer: 5.7.1
-
-  multibase@3.1.2:
-    dependencies:
-      '@multiformats/base-x': 4.0.1
-      web-encoding: 1.1.5
 
   multibase@4.0.6:
     dependencies:
@@ -23662,12 +23601,6 @@ snapshots:
     dependencies:
       defaults: 1.0.4
     optional: true
-
-  web-encoding@1.1.5:
-    dependencies:
-      util: 0.12.5
-    optionalDependencies:
-      '@zxing/text-encoding': 0.9.0
 
   web-namespaces@2.0.1: {}
 
