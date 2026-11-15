@@ -106,6 +106,7 @@ const setup = (app: Router) => {
    */
   app.post(
     '/auth/eth',
+    requestRateLimiter(30, 1),
     wrapAsync(async (req, res) => {
       const { log, body } = req
 
@@ -158,6 +159,7 @@ const setup = (app: Router) => {
 
   app.post(
     '/auth/fv',
+    requestRateLimiter(30, 1),
     wrapAsync(async (req, res) => {
       const { log, body } = req
 
@@ -203,6 +205,7 @@ const setup = (app: Router) => {
 
   app.post(
     '/auth/fv2',
+    requestRateLimiter(30, 1),
     wrapAsync(async (req, res) => {
       const { log, body } = req
 
