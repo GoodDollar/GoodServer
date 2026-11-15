@@ -16,4 +16,4 @@ allowBuilds:
   web3-bzz: true
   web3-shh: true
 blockExoticSubdeps: false
-minimumReleaseAge: 4500
+minimumReleaseAge: 0
