@@ -6,7 +6,7 @@ import { assign, get, pick, omit, isPlainObject, isArray, mapValues, once, lower
 
 import Config from '../../server.config'
 import logger from '../../../imports/logger'
-import { IdScanResult, IdScanRequest } from '../processor/typings'
+import type { IdScanResult, IdScanRequest } from '../processor/typings'
 
 import {
   ZoomAPIError,

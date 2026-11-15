@@ -11,9 +11,6 @@ module.exports = {
       './src/client/index.js'
     ]
   },
-  resolve: {
-    extensions: ['.ts', '.js', '.json', '.htm']
-  },
   output: {
     path: path.join(__dirname, 'dist'),
     publicPath: '/',

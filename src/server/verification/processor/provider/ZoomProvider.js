@@ -108,7 +108,7 @@ class ZoomProvider implements IEnrollmentProvider {
     // 1. Determining which operation we need to perform
     // a) if face verification disabled we'll check liveness only
     let alreadyEnrolled = false
-    let methodToInvoke = 'checkLiveness'
+    let methodToInvoke
     let methodArgs = [payload, customLogger]
 
     // b) if face verification enabled, we're checking is facescan already uploaded & enrolled
@@ -244,7 +244,7 @@ class ZoomProvider implements IEnrollmentProvider {
       // if not already enrolled or indexed - indexing
       try {
         await api.indexEnrollment(enrollmentIdentifier, defaultSearchIndexName, customLogger)
-        log.debug((alreadyIndexed ? 'Updated' : 'New') + ' enrollment indexed:', { enrollmentIdentifier })
+        log.debug('New enrollment indexed:', { enrollmentIdentifier })
       } catch (exception) {
         const { response, message } = exception
 

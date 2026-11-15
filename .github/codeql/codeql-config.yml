@@ -1,0 +1,4 @@
+name: GoodServer CodeQL config
+paths-ignore:
+  # vendored third-party Flow library definitions (not our code, and not valid plain JS)
+  - flow-typed

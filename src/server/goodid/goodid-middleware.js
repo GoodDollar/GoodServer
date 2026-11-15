@@ -1,6 +1,6 @@
 // @flow
 
-import { Router } from 'express'
+import type { Router } from 'express'
 import passport from 'passport'
 import { getClientIp } from '../utils/clientIp'
 import { get, isEmpty } from 'lodash'
@@ -15,6 +15,7 @@ import { normalizeIdentifiers } from '../verification/utils/utils'
 import MultiWallet from '../blockchain/MultiWallet'
 
 import { wrapAsync } from '../utils/helpers'
+import { sanitizeLog } from '../utils/sanitizeLog'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import config from '../server.config'
 import { retry as retryAttempt } from '../utils/async'
@@ -204,9 +205,9 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
       } catch (exception) {
         const { message } = exception
 
-        log.error('Failed to issue identity ceritifate:', message, exception, {
-          enrollmentIdentifier,
-          fvSigner
+        log.error('Failed to issue identity ceritifate:', sanitizeLog(message), exception, {
+          enrollmentIdentifier: sanitizeLog(enrollmentIdentifier),
+          fvSigner: sanitizeLog(fvSigner)
         })
 
         res.status(400).json({ success: false, error: message })

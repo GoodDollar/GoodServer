@@ -1,6 +1,6 @@
 // @flow
 import crypto from 'crypto'
-import { Router } from 'express'
+import type { Router } from 'express'
 import passport from 'passport'
 import { get, defaults, memoize, omit } from 'lodash'
 import { encodeFunctionData } from 'viem'
@@ -13,6 +13,7 @@ import {
   // findGDTx
 } from '../blockchain/explorer'
 import { onlyInEnv, wrapAsync } from '../utils/helpers'
+import { sanitizeLog } from '../utils/sanitizeLog'
 import requestRateLimiter, { userRateLimiter } from '../utils/requestRateLimiter'
 import OTP from '../../imports/otp'
 import conf from '../server.config'
@@ -337,10 +338,10 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         try {
           await verifyIdentifier(enrollmentIdentifier, gdAddress, chainId)
         } catch (e) {
-          log.warn('verifyIdentifier failed:', e.message, e, {
-            enrollmentIdentifier,
-            fvSigner,
-            gdAddress,
+          log.warn('verifyIdentifier failed:', sanitizeLog(e.message), e, {
+            enrollmentIdentifier: sanitizeLog(enrollmentIdentifier),
+            fvSigner: sanitizeLog(fvSigner),
+            gdAddress: sanitizeLog(gdAddress),
             chainId: e.chainId,
             rpc: e.rpc
           })
@@ -590,7 +591,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
             const clientIp = getClientIp(req)
             const sendResult = await OTP.sendOTP(mobile, get(body, 'user.otpChannel', 'sms'), clientIp)
 
-            log.info('otp sent:', mobile, { user: user.loggedInAs, sendResult })
+            log.info('otp sent:', sanitizeLog(mobile), { user: sanitizeLog(user.loggedInAs), sendResult })
           }
 
           await storage.updateUser({
@@ -791,7 +792,9 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           })
           .catch(async exception => {
             const { message } = exception
-            log.warn('Failed topwallet tx', message, exception, { walletaddress: user.gdAddress }) //errors are already logged in adminwallet so jsut warn
+            log.warn('Failed topwallet tx', sanitizeLog(message), exception, {
+              walletaddress: sanitizeLog(user.gdAddress)
+            }) //errors are already logged in adminwallet so jsut warn
 
             return { ok: -1, error: message }
           })
@@ -914,8 +917,8 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           try {
             const { fullName } = userRec
 
-            if (!code || !fullName || !email) {
-              log.error('missing input for sending verification email', { code, fullName, email })
+            if (!fullName || !email) {
+              log.error('missing input for sending verification email', { fullName, email })
               throw new Error('missing input for sending verification email')
             }
 

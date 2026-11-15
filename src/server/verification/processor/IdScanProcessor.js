@@ -5,8 +5,8 @@ import Config from '../../server.config'
 import logger from '../../../imports/logger'
 
 import { ZoomAPI } from '../api/ZoomAPI'
-import { IdScanRequest, IdScanResult } from './typings'
-import { UserRecord } from '../../../imports/types'
+import type { IdScanRequest, IdScanResult } from './typings'
+import type { UserRecord } from '../../../imports/types'
 
 class IdScanProcessor {
   logger = null
