@@ -28,3 +28,4 @@ overrides:
   '@aws-sdk/client-ses': 3.1167.0
   '@aws-sdk/client-rekognition': 3.1167.0
   mongoose: 8.24.8
+  'nodemon@>=2 <3': 3.1.14

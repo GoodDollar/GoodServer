@@ -2,7 +2,7 @@
 
 import { Router } from 'express'
 import passport from 'passport'
-import requestIp from 'request-ip'
+import { getClientIp } from '../utils/clientIp'
 import { get, isEmpty } from 'lodash'
 
 import { hashString, verifyIdentifier } from '../utils/eth'
@@ -99,7 +99,7 @@ export default function addGoodIDMiddleware(app: Router, utils, storage) {
           throw new Error('Failed to verify location: missing geolocation data')
         }
 
-        const clientIp = requestIp.getClientIp(req)
+        const clientIp = getClientIp(req)
 
         log.debug('Getting country data', { clientIp, longitude, latitude, gdAddress })
 

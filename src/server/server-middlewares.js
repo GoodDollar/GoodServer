@@ -19,7 +19,7 @@ import Config from './server.config'
 import { wrapAsync } from './utils/helpers'
 // import GoodIDUtils from './goodid/utils'
 const rootLogger = logger.child({ from: 'Server' })
-const { env } = Config
+const { env, trustProxyHops } = Config
 
 export default async (app: Router) => {
   const corsConfig = {
@@ -49,8 +49,10 @@ export default async (app: Router) => {
     return callback(null, corsConfig)
   }
 
-  if (env === 'production') {
-    app.set('trust proxy', 1) //this is required for heroku to pass ips correctly to rate limiter
+  if (['production', 'staging'].includes(env)) {
+    // required behind heroku (or any reverse proxy) so that req.ip is the real client address, used by the rate limiter.
+    // set TRUST_PROXY_HOPS to the number of proxies in front of the server (e.g. 2 with a CDN in front of heroku)
+    app.set('trust proxy', trustProxyHops)
   }
 
   if (global.workerId <= 1) {

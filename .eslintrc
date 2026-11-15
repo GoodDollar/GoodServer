@@ -29,13 +29,13 @@
     "import/no-unresolved": [
       "error",
       {
-        "ignore": ["^@goodwidget/core/viemFallbackClient$", "^uuid$"]
+        "ignore": ["^@goodwidget/core/viemFallbackClient$"]
       }
     ],
     "node/no-missing-import": [
       "error",
       {
-        "allowModules": ["@goodwidget/core", "uuid"]
+        "allowModules": ["@goodwidget/core"]
       }
     ]
   }

@@ -1154,56 +1154,6 @@ export class Web3Wallet {
     }
   }
 
-  /**
-   * transfer G$s locked in adminWallet contract to recipient
-   * @param {*} to recipient
-   * @param {*} value amount to transfer
-   * @param {*} logger
-   * @returns
-   */
-  async transferWalletGoodDollars(to, value, customLogger = null): Promise<TransactionReceipt> {
-    const logger = customLogger || this.log
-
-    try {
-      let encodedCall = encodeFunctionData({
-        abi: [
-          {
-            name: 'transfer',
-            type: 'function',
-            inputs: [
-              {
-                type: 'address',
-                name: 'to'
-              },
-              {
-                type: 'uint256',
-                name: 'value'
-              }
-            ]
-          }
-        ],
-        functionName: 'transfer',
-        args: [to, value]
-      })
-      logger.info('transferWalletGoodDollars sending tx', { encodedCall, to, value })
-
-      const transaction = await this.contractTransaction(this.proxyContract, 'genericCall', [
-        this.tokenContract.address,
-        encodedCall,
-        0
-      ])
-      const tx = await this.sendTransaction(transaction, {}, undefined, false, logger)
-
-      logger.info('transferWalletGoodDollars success', { to, value, tx: tx.transactionHash })
-      return tx
-    } catch (exception) {
-      const { message } = exception
-
-      logger.error('transferWalletGoodDollars failed', message, exception, { to, value })
-      throw exception
-    }
-  }
-
   async getAddressBalance(address: string): Promise<string> {
     return this.publicClient.getBalance({ address: address }).then(balance => balance.toString())
   }
