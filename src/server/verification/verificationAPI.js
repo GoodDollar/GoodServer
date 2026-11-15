@@ -3,7 +3,7 @@ import crypto from 'crypto'
 import { Router } from 'express'
 import passport from 'passport'
 import { get, defaults, memoize, omit } from 'lodash'
-import { encodeFunctionData, parseEther } from 'viem'
+import { encodeFunctionData } from 'viem'
 import requestIp from 'request-ip'
 import moment from 'moment'
 import type { LoggedUser, StorageAPI, UserRecord, VerificationAPI } from '../../imports/types'
@@ -1149,46 +1149,6 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           captchaType,
           parsedRes
         })
-        res.status(400).json({ success: false, error: message })
-      }
-    })
-  )
-  const payouts = new Set()
-  app.get(
-    '/verify/offerwall',
-    wrapAsync(async (req, res) => {
-      const { log, query } = req
-      const { user_id, value, token, signature } = query
-
-      // Secret key (replace with your actual secret key)
-      const secretKey = conf.offerwallSecret
-
-      // Concatenate the inputs with "."
-      const concatenatedString = `${secretKey}.${user_id}.${parseInt(value)}.${token}`
-
-      // Generate MD5 hash
-      const calculatedSignature = crypto.createHash('md5').update(concatenatedString).digest('hex')
-      log.debug('offerwall payout request:', { user_id, value, token, signature, calculatedSignature })
-      try {
-        // Compare the calculated signature with the provided signature
-        if (calculatedSignature !== signature) {
-          throw new Error('Invalid signature')
-        }
-        if (payouts.has(token)) {
-          throw new Error('Already paid')
-        }
-        const tx = await AdminWallet.walletsMap[42220].transferWalletGoodDollars(
-          user_id,
-          parseEther(String(value)).toString(),
-          log
-        )
-        payouts.add(token)
-        log.info('offerwall payout success:', { user_id, value, token, tx: tx.transactionHash })
-        res.json({ success: true })
-      } catch (exception) {
-        const { message } = exception
-
-        log.error('offerwall payout request failed:', message, exception, { user_id, value, token, signature })
         res.status(400).json({ success: false, error: message })
       }
     })
