@@ -1,9 +1,9 @@
 // @flow
 
 /**
- * Strips line breaks from user-provided strings before they are written to the logs, so a caller cannot forge
- * additional log entries (log injection). Non-string values are returned untouched.
+ * Converts a user-provided value to a string and replaces its line breaks before it is written to the logs, so a
+ * caller cannot forge additional log entries (log injection).
  */
-export const sanitizeLog = (value: any): any => (typeof value === 'string' ? value.replace(/[\r\n]+/g, ' ') : value)
+export const sanitizeLog = (value: any): string => String(value).replace(/[\r\n]+/g, ' ')
 
 export default sanitizeLog

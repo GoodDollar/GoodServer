@@ -917,7 +917,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
           try {
             const { fullName } = userRec
 
-            if (!fullName || !email) {
+            if (!fullName) {
               log.error('missing input for sending verification email', { fullName, email })
               throw new Error('missing input for sending verification email')
             }

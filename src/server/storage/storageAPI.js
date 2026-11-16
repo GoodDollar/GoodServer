@@ -74,7 +74,7 @@ const setup = (app: Router, storage: StorageAPI) => {
 
       if (loggedInAs !== identifier) {
         log.warn(`Trying to update other user data! ${sanitizeLog(loggedInAs)}!==${sanitizeLog(identifier)}`)
-        throw new Error(`Trying to update other user data! ${loggedInAs}!==${identifier}`)
+        throw new Error(`Trying to update other user data! ${sanitizeLog(loggedInAs)}!==${sanitizeLog(identifier)}`)
       } else next()
     })
   )

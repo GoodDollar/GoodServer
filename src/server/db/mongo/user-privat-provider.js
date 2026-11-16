@@ -116,7 +116,14 @@ class UserPrivate {
     assertString('identifier', identifier)
 
     return await this.model
-      .find({ $or: [{ email: identifier }, { walletAddress: identifier }, { mobile: identifier }, { identifier }] })
+      .find({
+        $or: [
+          { email: String(identifier) },
+          { walletAddress: String(identifier) },
+          { mobile: String(identifier) },
+          { identifier: String(identifier) }
+        ]
+      })
       .lean()
   }
   /**

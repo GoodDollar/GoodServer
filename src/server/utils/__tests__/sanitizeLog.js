@@ -5,9 +5,9 @@ describe('sanitizeLog', () => {
     expect(sanitizeLog('abc\nINFO fake entry\r\nmore')).toBe('abc INFO fake entry more')
   })
 
-  test('leaves other values untouched', () => {
+  test('leaves plain strings untouched and stringifies other values', () => {
     expect(sanitizeLog('plain')).toBe('plain')
-    expect(sanitizeLog(5)).toBe(5)
-    expect(sanitizeLog(undefined)).toBeUndefined()
+    expect(sanitizeLog(5)).toBe('5')
+    expect(sanitizeLog(undefined)).toBe('undefined')
   })
 })
