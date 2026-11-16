@@ -3,13 +3,14 @@ import jwt from 'jsonwebtoken'
 import passport from 'passport'
 import { Strategy as AnonymousStrategy } from 'passport-anonymous'
 import { ExtractJwt, Strategy } from 'passport-jwt'
-import { Router } from 'express'
+import type { Router } from 'express'
 import { defaults } from 'lodash'
 import { AxelarQueryAPI } from '@axelar-network/axelarjs-sdk'
 import * as ethers from 'ethers'
 
 import logger from '../../imports/logger'
 import { wrapAsync } from '../utils/helpers'
+import { sanitizeLog } from '../utils/sanitizeLog'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
 import Config from '../server.config.js'
 import { hashString, recoverPublickey, verifyIdentifier } from '../utils/eth'
@@ -226,7 +227,10 @@ const setup = (app: Router) => {
 
         res.json({ token })
       } catch (e) {
-        log.error('/auth/fv2 failed', e.message, e, { account, fvsig })
+        log.error('/auth/fv2 failed', sanitizeLog(e.message), e, {
+          account: sanitizeLog(account),
+          fvsig: sanitizeLog(fvsig)
+        })
         throw e
       }
     })

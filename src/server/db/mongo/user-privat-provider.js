@@ -65,7 +65,7 @@ class UserPrivate {
     assertString('identifier', user.identifier)
 
     try {
-      await model.updateOne({ identifier: user.identifier }, { $set: user }, { upsert: true })
+      await model.updateOne({ identifier: String(user.identifier) }, { $set: user }, { upsert: true })
 
       return true
     } catch (ex) {
@@ -109,14 +109,21 @@ class UserPrivate {
   async getByIdentifier(identifier) {
     assertString('identifier', identifier)
 
-    return await this.model.findOne({ identifier }).lean()
+    return await this.model.findOne({ identifier: String(identifier) }).lean()
   }
 
   async getByIdentifierHash(identifier) {
     assertString('identifier', identifier)
 
     return await this.model
-      .find({ $or: [{ email: identifier }, { walletAddress: identifier }, { mobile: identifier }, { identifier }] })
+      .find({
+        $or: [
+          { email: String(identifier) },
+          { walletAddress: String(identifier) },
+          { mobile: String(identifier) },
+          { identifier: String(identifier) }
+        ]
+      })
       .lean()
   }
   /**
@@ -165,7 +172,7 @@ class UserPrivate {
   async getUsersByEmail(email: string): Promise<UserRecord> {
     assertString('email', email)
 
-    return await this.model.find({ email }).lean()
+    return await this.model.find({ email: String(email) }).lean()
   }
 
   /**
@@ -178,7 +185,7 @@ class UserPrivate {
   async getUsersByMobile(mobile: string): Promise<UserRecord> {
     assertString('mobile', mobile)
 
-    return await this.model.find({ mobile }).lean()
+    return await this.model.find({ mobile: String(mobile) }).lean()
   }
 
   /**

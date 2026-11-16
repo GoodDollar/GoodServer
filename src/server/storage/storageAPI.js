@@ -1,13 +1,14 @@
 // @flow
 import moment from 'moment'
-import { Router } from 'express'
+import type { Router } from 'express'
 import passport from 'passport'
 import fetch from 'cross-fetch'
 import { first, get, toLower, values } from 'lodash'
 import { getAddress } from 'viem'
 
-import { type StorageAPI, UserRecord } from '../../imports/types'
+import type { StorageAPI, UserRecord } from '../../imports/types'
 import { wrapAsync, onlyInEnv } from '../utils/helpers'
+import { sanitizeLog } from '../utils/sanitizeLog'
 import { withTimeout } from '../utils/async'
 import OnGage from '../crm/ongage'
 import conf from '../server.config'
@@ -72,8 +73,8 @@ const setup = (app: Router, storage: StorageAPI) => {
       log.trace(`/user/* ${req.baseUrl} auth:`, { user, body })
 
       if (loggedInAs !== identifier) {
-        log.warn(`Trying to update other user data! ${loggedInAs}!==${identifier}`)
-        throw new Error(`Trying to update other user data! ${loggedInAs}!==${identifier}`)
+        log.warn(`Trying to update other user data! ${sanitizeLog(loggedInAs)}!==${sanitizeLog(identifier)}`)
+        throw new Error(`Trying to update other user data! ${sanitizeLog(loggedInAs)}!==${sanitizeLog(identifier)}`)
       } else next()
     })
   )
@@ -388,7 +389,7 @@ const setup = (app: Router, storage: StorageAPI) => {
     '/user/claim',
     onlyInEnv('production', 'staging'),
     wrapAsync(async (req, res) => {
-      let { last_claim, claim_counter } = req.body
+      const { claim_counter } = req.body
       const { log: logger, user } = req
 
       if (!user.crmId) {
@@ -400,7 +401,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       }
 
       // format date according to OnGage date format
-      last_claim = moment().format('YYYY/MM/DD')
+      const last_claim = moment().format('YYYY/MM/DD')
 
       updatesQueue.push({ id: user.crmId, last_claim, claim_counter })
       if (updatesQueue.length > 100) {
@@ -766,7 +767,7 @@ const setup = (app: Router, storage: StorageAPI) => {
       let result = {}
       const identifier = body.identifier || hashString(getAddress(body.account))
       if (identifier) result = await storage.updateUser({ identifier, ageVerified: true })
-      log.info('admin age verify', body, result)
+      log.info('admin age verify', { identifier: sanitizeLog(identifier), result })
       res.json({ ok: 1, result })
     })
   )

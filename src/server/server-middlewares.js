@@ -1,5 +1,6 @@
 // @flow
-import express, { Router } from 'express'
+import express from 'express'
+import type { Router } from 'express'
 import bodyParser from 'body-parser'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'

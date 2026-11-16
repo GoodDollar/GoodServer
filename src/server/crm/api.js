@@ -1,7 +1,7 @@
 // @flow
 import { fromPairs } from 'lodash'
 
-import { UserRecord } from '../../imports/types'
+import type { UserRecord } from '../../imports/types'
 
 const fieldsMap = {
   firstName: 'first_name',

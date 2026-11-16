@@ -160,3 +160,20 @@ Alert line numbers refer to old commits; mapped to current code below.
 4. Replace `@gooddollar/kms-ethereum-signing` with a viem implementation (closes both critical alerts and ~13 packages).
 5. Replace `axelarjs-sdk` with a direct API call (closes 10 high protobufjs alerts).
 6. `@sentry/node` upgrade; `lint-staged` / `nodemon` upgrades; `visitorsCounter` -> `Map`; `sanitizeFilter`.
+
+## Follow-up (after the `switch-to-viem` merge)
+
+Re-scanned on `master` (3902ec3a): 38 code-scanning and 60 Dependabot alerts were open.
+
+### Code scanning
+- **Fixed in code:** log injection (`sanitizeLog` helper strips line breaks from user-provided values before logging), `last_claim` / `methodToInvoke` useless assignments, always-true conditionals (`!code`, `alreadyIndexed`), duplicate `resolve` key in `webpack.dev.config.js`, dead functions in `scripts/docs.js` plus shell-quoting of file names passed to `exec`.
+- **Flow type imports:** CodeQL cannot see Flow annotations, so `Router`, `UserRecord`, `IdScanRequest`, ... looked unused. They are now `import type`.
+- **Vendored `flow-typed/`:** excluded through `.github/codeql/codeql-config.yml`.
+- **NoSQL injection (#3, #48, #49, #97):** inputs are validated with `assertString` and now also passed through `String()` at the query site.
+- **False positive:** #64 (`/goodid/certificate/verify` `if (!certificate)` is a missing-input check; the certificate itself is cryptographically verified).
+
+### Dependabot
+- **Fixed:** `@axelar-network/axelarjs-sdk` 0.22; overrides for `protobufjs`, `toml`, `zod`, `esbuild`.
+- **Waiting for `@gooddollar/kms-ethereum-signing`** (still depends on `web3` 1.x, latest 1.0.4): `tar`, `request`, `form-data`, `qs`, `tough-cookie`, `uuid`, `ws`, `decode-uri-component`, `bn.js`, `web3-core-subscriptions`. All come in through `web3-bzz` / `swarm-js` (Swarm support, never used by signing).
+- **No patched version / major upgrade needed:** `stream-json` 1.x via `jayson` (patched 3.x is ESM-only and moves the sub-paths `jayson` requires), `elliptic`, `deepmerge`, `cookie` via `@sentry/node` 5.
+- **Dev tooling only** (apidoc, documentation, mock-express-response, eslint/jest): `bootstrap`, `markdown-it`, `linkify-it`, `vue-template-compiler`, `send`, `cookie`, `minimatch`.

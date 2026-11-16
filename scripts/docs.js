@@ -38,24 +38,6 @@ const isValidFile = async filePath => {
   }
 }
 
-/**
- * Removes all empty docs and returns a list with actual documentation
- * @param {[string]} docs
- */
-async function filterEmptyDocs(docs) {
-  const emptyDoc = await whenEmptyFileString
-  return docs.filter(doc => {
-    if (!doc.mdFile) {
-      console.log('no mdFile', doc)
-      return false
-    }
-    const data = fs.readFileSync(doc.mdFile)
-    const docString = data.toString()
-
-    return docString !== emptyDoc
-  })
-}
-
 function promiseFromChildProcess(child) {
   return new Promise(function(resolve, reject) {
     child.addListener('error', e => {
@@ -72,61 +54,23 @@ function promiseFromChildProcess(child) {
   })
 }
 
+// single-quotes a value so file names read from disk cannot inject shell syntax
+const shellQuote = value => `'${String(value).replace(/'/g, `'\\''`)}'`
+
 function execPromise(toExec) {
   return promiseFromChildProcess(exec(toExec)).catch(e => console.log('Failed exec', toExec))
 }
 
 async function generateAPIDocs() {
   await execPromise('apidoc -i src/server/ -o apidoc/')
-  await execPromise(`apidoc-markdown -p apidoc -o ${BASE_DOCS_FOLDER}/README.md`)
+  await execPromise(`apidoc-markdown -p apidoc -o ${shellQuote(`${BASE_DOCS_FOLDER}/README.md`)}`)
   await execPromise('rm -rf apidoc')
-}
-
-async function doGenerateToc(docs, { baseFolder, relativeToToc, level }) {
-  relativeToToc = relativeToToc || ''
-  let outputString = ''
-  const currentLevel = level || 0
-  if (!docs || docs.length <= 0) return outputString
-  const padding = ' '.repeat(currentLevel * 3)
-  const results = await Promise.all(
-    await docs.map(async doc => {
-      let addedOutput = ''
-
-      if (doc.mdFile) {
-        const path = doc.mdFile.replace(baseFolder, relativeToToc)
-        console.log('TOC path:', { md: doc.mdFile, path })
-        addedOutput += `${padding + padding}-   [${doc.src.replace(baseFolder, relativeToToc)}](/${doc.mdFile})\n`
-      }
-
-      if (doc.childrenDocs && doc.childrenDocs.length > 0) {
-        if (doc.childrenDocs.filter(child => child.mdFile).length > 0) {
-          const path = doc.src.replace(baseFolder, relativeToToc)
-          addedOutput += `${padding}-   ${path}\n`
-        }
-        addedOutput += await doGenerateToc(doc.childrenDocs, { baseFolder, relativeToToc, level: currentLevel + 1 })
-      }
-
-      return addedOutput
-    })
-  )
-  return results.join('')
-}
-
-async function generateToc(docs) {
-  console.log('Generating TOC', docs)
-  const baseFolder = BASE_DOCS_FOLDER + '/'
-  await execPromise(`mkdir -p ${baseFolder}`)
-
-  const title = '\n### GoodServer\n\n'
-
-  const outputString = title + (await doGenerateToc(docs, { baseFolder }))
-  fs.writeFileSync(`${baseFolder}/README.md`, outputString)
 }
 
 async function insertSourceLink(mdFile, srcFile) {
   const link = BASE_SRC_URL + '/' + srcFile
   // console.log('insert line', { link, mdFile })
-  return await execPromise(`echo "## Source\n[${link}](${link})\n" >> ${mdFile}`)
+  return await execPromise(`echo ${shellQuote(`## Source\n[${link}](${link})\n`)} >> ${shellQuote(mdFile)}`)
 }
 
 async function generateDocs(baseFolder, deep, perFile = true) {
@@ -141,7 +85,7 @@ async function generateDocs(baseFolder, deep, perFile = true) {
         if (fs.lstatSync(filePath).isDirectory() && perFile) {
           const outputFolder = camelCaseToDash(`${filePath.replace(baseFolder, BASE_DOCS_FOLDER)}/`)
           console.log('creating docs folder:', outputFolder)
-          await execPromise(`mkdir -p ${outputFolder}`)
+          await execPromise(`mkdir -p ${shellQuote(outputFolder)}`)
           //adding '*.js' causes documentation to not be generated for sub folders
           const childrenDocs = await doGenerateDocs(filePath, deep - 1)
           const newDoc = { src: filePath, childrenDocs }
@@ -151,7 +95,7 @@ async function generateDocs(baseFolder, deep, perFile = true) {
           const outputFolder = `${folder.replace(baseFolder, BASE_DOCS_FOLDER)}/`
           const mdFile = camelCaseToDash(`${outputFolder + file.replace('.js', '')}.md`)
           // const mdFile = `${outputFolder + file.replace('.js', '')}.md`
-          const toExec = `documentation build ${filePath} -f md -o ${mdFile} --shallow`
+          const toExec = `documentation build ${shellQuote(filePath)} -f md -o ${shellQuote(mdFile)} --shallow`
           console.log('Generating docs for:', { filePath, mdFile, toExec })
           await execPromise(toExec)
           const newDoc = { src: folder + '/' + file }
@@ -165,16 +109,16 @@ async function generateDocs(baseFolder, deep, perFile = true) {
         // //generate recursively for all subfolders when reaching last level
         // else if (fs.lstatSync(filePath).isDirectory() && deep == 0) {
         //   const outputFolder = `${folder.replace(baseFolder, BASE_DOCS_FOLDER)}/`
-        //   await execPromise(`mkdir -p ${outputFolder}`)
+        //   await execPromise(`mkdir -p ${shellQuote(outputFolder)}`)
 
         //   const mdFile = camelCaseToDash(`${outputFolder + file}.md`)
-        //   const toExec = `documentation build ${filePath} -f md -o ${mdFile} --shallow`
+        //   const toExec = `documentation build ${shellQuote(filePath)} -f md -o ${shellQuote(mdFile)} --shallow`
         //   return execPromise(toExec).then(r => ({ mdFile, folder: outputFolder + file }))
         // }
         // //generate docs only for direct source files for non last level directory
         // else if (fs.lstatSync(filePath).isDirectory()) {
         //   const outputFolder = `${folder.replace(baseFolder, BASE_DOCS_FOLDER)}/`
-        //   await execPromise(`mkdir -p ${outputFolder}`)
+        //   await execPromise(`mkdir -p ${shellQuote(outputFolder)}`)
         //   //adding '*.js' causes documentation to not be generated for sub folders
         //   const mdFile = camelCaseToDash(`${outputFolder + file}.md`)
         //   const toExec = `documentation build ${filePath}/*.js -f md -o ${mdFile} --shallow`
@@ -197,9 +141,8 @@ async function generateDocs(baseFolder, deep, perFile = true) {
   console.log('Generating docs...')
 
   await execPromise('rm -rf docs/*')
-  const childrenDocs = await doGenerateDocs(baseFolder, deep)
-  //currently let gitbook handle TOC
-  //generateToc(childrenDocs)
+  // gitbook handles the TOC
+  await doGenerateDocs(baseFolder, deep)
 
   if (DELETE_EMPTY_DOCS) {
     console.log('Deleting empty docs...')
