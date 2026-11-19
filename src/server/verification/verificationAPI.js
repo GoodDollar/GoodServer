@@ -323,9 +323,11 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
         }
 
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
-        // for v1 this will do nothing
+        // for v1 this will do nothing (since length < 42)
         try {
-          await verifyIdentifier(enrollmentIdentifier, gdAddress, chainId)
+          if (enrollmentIdentifier.length >= 42) {
+            await verifyIdentifier(enrollmentIdentifier, gdAddress, chainId)
+          }
         } catch (e) {
           log.warn('verifyIdentifier failed:', e.message, e, {
             enrollmentIdentifier,
@@ -453,7 +455,7 @@ const setup = (app: Router, verifier: VerificationAPI, storage: StorageAPI) => {
 
       try {
         // for v2 identifier - verify that identifier is for the address we are going to whitelist
-        // for v1 this will do nothing
+        // for v1 throw
         await verifyIdentifier(enrollmentIdentifier, gdAddress, chainId)
 
         const { v2Identifier } = normalizeIdentifiers(enrollmentIdentifier)
