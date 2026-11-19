@@ -52,10 +52,10 @@ export const verifySignature = async (message, signature) => {
 export const verifyIdentifier = async (fvsig, gdAddress, chainId = 42220) => {
   const networks = getNetworks()
 
-  // check v2, v2 identifier is expected to be the whole signature
-  if (fvsig.length < 42) {
-    return
-  }
+  // // check v2, v2 identifier is expected to be the whole signature
+  // if (fvsig.length < 42) {
+  //   return
+  // }
 
   // const fuseProvider = new ethers.providers.JsonRpcProvider('https://rpc.fuse.io')
   // const celoProvider = new ethers.providers.JsonRpcProvider('https://forno.celo.org')
