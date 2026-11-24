@@ -13,7 +13,7 @@ import { noopAsync } from '../../../utils/async'
 
 import GoodIDUtils from '../../../goodid/utils'
 // make sure age test fails
-GoodIDUtils.ageGenderCheck = jest.fn().mockResolvedValue({ age: { min: 15 } })
+GoodIDUtils.ageGenderCheck = jest.fn().mockResolvedValue({ age: { min: 15, max: 15 } })
 
 let helper
 let zoomServiceMock
