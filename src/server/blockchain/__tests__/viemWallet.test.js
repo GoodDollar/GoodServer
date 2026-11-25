@@ -1,6 +1,7 @@
 // import viemFallbackClient directly to prevent other packages from being imported inadvertently
 import { createViemFallbackClient } from '@goodwidget/core/viemFallbackClient'
 import { Web3Wallet } from '../Web3Wallet'
+import conf from '../../server.config'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { encodeFunctionData, parseAbi, zeroHash } from 'viem'
 import { fuse } from 'viem/chains'
@@ -330,6 +331,49 @@ describe('viem wallet', () => {
     wallet.authenticateUser = jest.fn().mockResolvedValue({ status: true })
     await expect(wallet.whitelistUser(address, 'did:gd:test')).resolves.toEqual({ status: true })
     expect(wallet.authenticateUser).toHaveBeenCalledWith(address, wallet.log)
+  })
+
+  test('encodes string chain IDs with the four-argument whitelist overload', async () => {
+    const address = privateKeyToAccount(generatePrivateKey()).address
+    const abi = parseAbi([
+      'function whitelist(address user, string did)',
+      'function whitelist(address user, string did, uint256 orgChain, uint256 dateAuthenticated)'
+    ])
+    const sendTransaction = jest.fn().mockResolvedValue({ status: true })
+    Object.assign(wallet, {
+      isVerified: jest.fn().mockResolvedValue(false),
+      identityContract: {
+        read: {
+          identities: jest.fn().mockResolvedValue([0n, 0n, '', 0n, 0]),
+          lastAuthenticated: jest.fn().mockResolvedValue(0n)
+        }
+      },
+      proxyContract: { address, abi },
+      sendTransaction
+    })
+    const previousEnableWhitelistAtChain = conf.enableWhitelistAtChain
+    conf.enableWhitelistAtChain = true
+
+    try {
+      await expect(wallet.whitelistUser(address, 'did:gd:test', '42220')).resolves.toEqual({ status: true })
+
+      expect(sendTransaction).toHaveBeenCalledWith(
+        {
+          to: address,
+          data: encodeFunctionData({
+            abi,
+            functionName: 'whitelist',
+            args: [address, 'did:gd:test', 42220, 0]
+          })
+        },
+        expect.any(Object),
+        undefined,
+        true,
+        wallet.log
+      )
+    } finally {
+      conf.enableWhitelistAtChain = previousEnableWhitelistAtChain
+    }
   })
 
   test('converts KMS transaction values, gas and fees to decimal strings', async () => {
