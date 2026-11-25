@@ -1296,7 +1296,8 @@ export class Web3Wallet {
           maxPriorityFeePerGas: maxPriorityFeePerGas,
           adjustedMaxFeePerGas: maxPriorityFeePerGas
         })
-        maxFeePerGas = maxPriorityFeePerGas
+        if (maxFeePerGas === 0) maxFeePerGas = maxPriorityFeePerGas
+        maxPriorityFeePerGas = Math.floor(maxFeePerGas * 0.1)
       }
       logger.debug('normalizeGasPricing final values:', {
         chainId: this.networkId,
