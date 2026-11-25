@@ -48,6 +48,8 @@ jobs:
       - run: corepack enable
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
+        with:
+          version: 12.18.0
       - uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -72,6 +74,8 @@ jobs:
       - run: corepack enable
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
+        with:
+          version: 12.18.0
       - uses: actions/setup-node@v7
         with:
           node-version: 24
