@@ -641,7 +641,9 @@ export class Web3Wallet {
       // we add a check for lastAuth, since on fuse the identityRecord can be empty for OLD whitelisted accounts and we don't want
       // to mark them as whitelisted on a chain other than fuse
       const txExtraArgs =
-        conf.enableWhitelistAtChain && chainId !== null && lastAuth === 0 ? [chainId, lastAuthenticated] : []
+        conf.enableWhitelistAtChain && chainId !== null && lastAuth === 0
+          ? [Number(chainId), Number(lastAuthenticated)]
+          : []
 
       const txPromise = this.sendTransaction(
         this.contractTransaction(this.proxyContract, 'whitelist', [address, did, ...txExtraArgs]),
