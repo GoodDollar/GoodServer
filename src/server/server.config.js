@@ -702,7 +702,7 @@ switch (network) {
   case 'staging':
     networkId = 122
     celoNetworkId = 42220
-    mainNetworkId = 11155111
+    mainNetworkId = 1
     baseNetworkId = 8453
     xdcNetworkId = 50
     break
