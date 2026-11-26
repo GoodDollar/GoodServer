@@ -7,14 +7,13 @@ import type { Router } from 'express'
 import { defaults } from 'lodash'
 import { AxelarQueryAPI } from '@axelar-network/axelarjs-sdk'
 import { BigNumber } from 'ethers'
-import { createViemFallbackClient } from '@goodwidget/core/viemFallbackClient'
 import { encodePacked, formatEther } from 'viem'
-import * as viemChains from 'viem/chains'
 
 import logger from '../../imports/logger'
 import { wrapAsync } from '../utils/helpers'
 import { sanitizeLog } from '../utils/sanitizeLog'
 import UserDBPrivate from '../db/mongo/user-privat-provider'
+import MultiWallet from '../blockchain/MultiWallet'
 import Config from '../server.config.js'
 import { hashString, recoverPublickey, verifyIdentifier } from '../utils/eth'
 import { strcasecmp } from '../utils/string'
@@ -23,7 +22,6 @@ import clientSettings from '../clients.config.js'
 import estimateAxelarFees from './estimateAxelarFees'
 
 const log = logger.child({ from: 'login-middleware' })
-const viemRpcCache = new Map()
 const LAYERZERO_BRIDGE_ADDRESS = '0xa3247276DbCC76Dd7705273f766eB3E8a5ecF4a5'
 const ESTIMATE_SEND_FEE_ABI = [
   {
@@ -121,24 +119,16 @@ const generateJWT = async (recovered, identifier = null, payload = {}) => {
   return token
 }
 
-const createChainPublicClient = async chainId => {
-  chainId = Number(chainId)
+const getWalletPublicClient = chainId => {
+  const { mainWallet, walletsMap } = MultiWallet
+  const client =
+    Number(chainId) === Number(mainWallet.networkIdMainnet)
+      ? mainWallet.mainnetPublicClient
+      : walletsMap[chainId]?.publicClient
 
-  const chain = Object.values(viemChains).find(candidate => candidate.id === chainId)
-  const clientFactory = createViemFallbackClient(
-    {
-      get: key => viemRpcCache.get(key),
-      put: (key, value) => viemRpcCache.set(key, value)
-    },
-    {
-      chainIds: [chainId],
-      rank: false
-    }
-  )
+  if (!client) throw new Error(`Public client for chain ${chainId} is unavailable`)
 
-  return clientFactory.createPublicClient({
-    chain
-  })
+  return client
 }
 
 const setup = (app: Router) => {
@@ -324,12 +314,11 @@ const setup = (app: Router) => {
     '/bridge/estimatefees',
     requestRateLimiter(10),
     wrapAsync(async (req, res) => {
-      const [ethClient, fuseClient, celoClient, xdcClient] = await Promise.all([
-        createChainPublicClient(1),
-        createChainPublicClient(122),
-        createChainPublicClient(42220),
-        createChainPublicClient(50)
-      ])
+      await MultiWallet.ready
+      const ethClient = getWalletPublicClient(1)
+      const fuseClient = getWalletPublicClient(122)
+      const celoClient = getWalletPublicClient(42220)
+      const xdcClient = getWalletPublicClient(50)
       const axlApi = new AxelarQueryAPI({ environment: 'mainnet' })
       axlApi.estimateL1GasFee = async (chain, params) => {
         if (params.l2Type !== 'op') return BigNumber.from(0)
