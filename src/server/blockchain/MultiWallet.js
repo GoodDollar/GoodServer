@@ -1,5 +1,5 @@
 // @flow
-import { assign, every, forOwn, isEmpty, isError, map, some } from 'lodash'
+import { assign, every, isEmpty, isError, map, some } from 'lodash'
 import AdminWallet from './AdminWallet'
 import { CeloAdminWallet } from './CeloAdminWallet'
 import { BaseAdminWallet } from './BaseAdminWallet'
@@ -9,7 +9,7 @@ import conf from '../server.config'
 import logger from '../../imports/logger'
 const multiLogger = logger.child({ from: 'MultiWallet' })
 
-class MultiWallet {
+export class MultiWallet {
   mainWallet = null
   otherWallets = []
   wallets = []
@@ -20,20 +20,21 @@ class MultiWallet {
     return Promise.all(map(this.wallets, 'ready')).then(() => this.mainWallet.addresses)
   }
 
-  constructor(walletsMap) {
-    let mainWallet
-    let defaultChainId
+  constructor(walletsMap, mainWalletChainId) {
+    const defaultChainId = String(mainWalletChainId)
+    const mainWallet = walletsMap[defaultChainId]
 
-    forOwn(walletsMap, (wallet, chainId) => {
-      this.wallets.push(wallet)
+    if (!mainWallet) {
+      throw new Error(`Main wallet for chain ${mainWalletChainId} is missing`)
+    }
 
-      if (mainWallet) {
-        this.otherWallets.push(wallet)
-      } else {
-        mainWallet = wallet
-        defaultChainId = chainId
-      }
-    })
+    this.wallets = [
+      mainWallet,
+      ...Object.keys(walletsMap)
+        .filter(chainId => chainId !== defaultChainId)
+        .map(chainId => walletsMap[chainId])
+    ]
+    this.otherWallets = this.wallets.slice(1)
 
     multiLogger.debug('MultiWallet constructor:', {
       wallets: Object.keys(walletsMap),
@@ -184,7 +185,10 @@ if (conf.env !== 'test') {
   }
 }
 
-export default new MultiWallet({
-  122: AdminWallet, // "main" wallet goes first
-  ...otherWallets
-})
+export default new MultiWallet(
+  {
+    122: AdminWallet,
+    ...otherWallets
+  },
+  122
+)
