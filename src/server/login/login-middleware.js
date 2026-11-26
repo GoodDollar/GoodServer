@@ -6,6 +6,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt'
 import type { Router } from 'express'
 import { defaults } from 'lodash'
 import { AxelarQueryAPI } from '@axelar-network/axelarjs-sdk'
+import { BigNumber } from 'ethers'
 import { createViemFallbackClient } from '@goodwidget/core/viemFallbackClient'
 import { encodePacked, formatEther } from 'viem'
 import * as viemChains from 'viem/chains'
@@ -39,6 +40,15 @@ const ESTIMATE_SEND_FEE_ABI = [
       { name: '_nativeFee', type: 'uint256' },
       { name: '_zroFee', type: 'uint256' }
     ],
+    stateMutability: 'view',
+    type: 'function'
+  }
+]
+const L1_FEE_ORACLE_ABI = [
+  {
+    inputs: [{ name: 'executeData', type: 'bytes' }],
+    name: 'getL1Fee',
+    outputs: [{ type: 'uint256' }],
     stateMutability: 'view',
     type: 'function'
   }
@@ -314,14 +324,27 @@ const setup = (app: Router) => {
     '/bridge/estimatefees',
     requestRateLimiter(10),
     wrapAsync(async (req, res) => {
-      const axlApi = new AxelarQueryAPI({ environment: 'mainnet' })
-      const { axlCeloEth, axlEthCelo } = await estimateAxelarFees(axlApi)
       const [ethClient, fuseClient, celoClient, xdcClient] = await Promise.all([
         createChainPublicClient(1),
         createChainPublicClient(122),
         createChainPublicClient(42220),
         createChainPublicClient(50)
       ])
+      const axlApi = new AxelarQueryAPI({ environment: 'mainnet' })
+      axlApi.estimateL1GasFee = async (chain, params) => {
+        if (params.l2Type !== 'op') return BigNumber.from(0)
+
+        const client = chain === 'celo' ? celoClient : ethClient
+        const fee = await client.readContract({
+          address: params.l1GasOracleAddress || '0x420000000000000000000000000000000000000F',
+          abi: L1_FEE_ORACLE_ABI,
+          functionName: 'getL1Fee',
+          args: [params.executeData]
+        })
+
+        return BigNumber.from(fee)
+      }
+      const { axlCeloEth, axlEthCelo } = await estimateAxelarFees(axlApi)
       const params = encodePacked(['uint16', 'uint256'], [1, 400000n])
       // Define chain info
       const chains = [
