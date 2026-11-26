@@ -131,7 +131,7 @@ const getWalletPublicClient = chainId => {
       mainWalletChainId: mainWallet.networkIdMainnet,
       mainWalletClient: mainWallet.mainnetPublicClient
     })
-    throw new Error(`Public client for chain ${chainId} is unavailable`)
+    return null
   }
 
   return client
@@ -358,6 +358,10 @@ const setup = (app: Router) => {
           if (from.name === to.name) continue
           const key = `LZ_${from.name}_TO_${to.name}`
           // Estimate send fee
+          if (!from.provider) {
+            lzFees[key] = null
+            continue
+          }
           const promise = from.provider
             .readContract({
               address: LAYERZERO_BRIDGE_ADDRESS,
