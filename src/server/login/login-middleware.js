@@ -126,7 +126,13 @@ const getWalletPublicClient = chainId => {
       ? mainWallet.mainnetPublicClient
       : walletsMap[chainId]?.publicClient
 
-  if (!client) throw new Error(`Public client for chain ${chainId} is unavailable`)
+  if (!client) {
+    log.error(`Public client for chain ${chainId} is unavailable`, {
+      mainWalletChainId: mainWallet.networkIdMainnet,
+      mainWalletClient: mainWallet.mainnetPublicClient
+    })
+    throw new Error(`Public client for chain ${chainId} is unavailable`)
+  }
 
   return client
 }
