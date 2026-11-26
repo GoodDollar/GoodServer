@@ -6,7 +6,9 @@ import { ExtractJwt, Strategy } from 'passport-jwt'
 import type { Router } from 'express'
 import { defaults } from 'lodash'
 import { AxelarQueryAPI } from '@axelar-network/axelarjs-sdk'
-import * as ethers from 'ethers'
+import { createViemFallbackClient } from '@goodwidget/core/viemFallbackClient'
+import { encodePacked, formatEther } from 'viem'
+import * as viemChains from 'viem/chains'
 
 import logger from '../../imports/logger'
 import { wrapAsync } from '../utils/helpers'
@@ -20,6 +22,27 @@ import clientSettings from '../clients.config.js'
 import estimateAxelarFees from './estimateAxelarFees'
 
 const log = logger.child({ from: 'login-middleware' })
+const viemRpcCache = new Map()
+const LAYERZERO_BRIDGE_ADDRESS = '0xa3247276DbCC76Dd7705273f766eB3E8a5ecF4a5'
+const ESTIMATE_SEND_FEE_ABI = [
+  {
+    inputs: [
+      { name: '_dstChainId', type: 'uint16' },
+      { name: '_refundAddress', type: 'address' },
+      { name: '_toAddress', type: 'address' },
+      { name: '_amount', type: 'uint256' },
+      { name: '_useZro', type: 'bool' },
+      { name: '_adapterParams', type: 'bytes' }
+    ],
+    name: 'estimateSendFee',
+    outputs: [
+      { name: '_nativeFee', type: 'uint256' },
+      { name: '_zroFee', type: 'uint256' }
+    ],
+    stateMutability: 'view',
+    type: 'function'
+  }
+]
 
 const jwtOptions = {
   jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -86,6 +109,26 @@ const generateJWT = async (recovered, identifier = null, payload = {}) => {
 
   UserDBPrivate.updateUser({ identifier: userId, lastLogin: new Date() })
   return token
+}
+
+const createChainPublicClient = async chainId => {
+  chainId = Number(chainId)
+
+  const chain = Object.values(viemChains).find(candidate => candidate.id === chainId)
+  const clientFactory = createViemFallbackClient(
+    {
+      get: key => viemRpcCache.get(key),
+      put: (key, value) => viemRpcCache.set(key, value)
+    },
+    {
+      chainIds: [chainId],
+      rank: false
+    }
+  )
+
+  return clientFactory.createPublicClient({
+    chain
+  })
 }
 
 const setup = (app: Router) => {
@@ -273,29 +316,19 @@ const setup = (app: Router) => {
     wrapAsync(async (req, res) => {
       const axlApi = new AxelarQueryAPI({ environment: 'mainnet' })
       const { axlCeloEth, axlEthCelo } = await estimateAxelarFees(axlApi)
-      const bridge = new ethers.Contract('0xa3247276DbCC76Dd7705273f766eB3E8a5ecF4a5', [
-        'function estimateSendFee(uint16,address,address,uint256,bool,bytes) view returns (uint256,uint256)'
+      const [ethClient, fuseClient, celoClient, xdcClient] = await Promise.all([
+        createChainPublicClient(1),
+        createChainPublicClient(122),
+        createChainPublicClient(42220),
+        createChainPublicClient(50)
       ])
-
-      const fuseProvider = new ethers.providers.JsonRpcProvider(Config['fuse'].httpWeb3Provider.split(',')[0])
-      const celoProvider = new ethers.providers.JsonRpcProvider(Config['celo'].httpWeb3Provider.split(',')[0])
-
-      const bridgeEth = bridge.connect(
-        new ethers.providers.JsonRpcProvider(Config['ethereumMainnet'].httpWeb3Provider.split(',')[0])
-      )
-      const bridgeFuse = bridge.connect(fuseProvider)
-      const bridgeCelo = bridge.connect(celoProvider)
-      const bridgeXdc = bridge.connect(
-        new ethers.providers.JsonRpcProvider(Config['xdc'].httpWeb3Provider.split(',')[0])
-      )
-
-      const params = ethers.utils.solidityPack(['uint16', 'uint256'], [1, 400000])
+      const params = encodePacked(['uint16', 'uint256'], [1, 400000n])
       // Define chain info
       const chains = [
-        { name: 'ETH', id: 101, provider: bridgeEth, symbol: 'ETH' },
-        { name: 'FUSE', id: 138, provider: bridgeFuse, symbol: 'Fuse' },
-        { name: 'CELO', id: 125, provider: bridgeCelo, symbol: 'Celo' },
-        { name: 'XDC', id: 365, provider: bridgeXdc, symbol: 'XDC' }
+        { name: 'ETH', id: 101, provider: ethClient, symbol: 'ETH' },
+        { name: 'FUSE', id: 138, provider: fuseClient, symbol: 'Fuse' },
+        { name: 'CELO', id: 125, provider: celoClient, symbol: 'Celo' },
+        { name: 'XDC', id: 365, provider: xdcClient, symbol: 'XDC' }
       ]
 
       // Calculate all pairs except same-chain
@@ -308,10 +341,21 @@ const setup = (app: Router) => {
           const key = `LZ_${from.name}_TO_${to.name}`
           // Estimate send fee
           const promise = from.provider
-            .estimateSendFee(to.id, ethers.constants.AddressZero, ethers.constants.AddressZero, 0, false, params)
-            .then(_ => {
-              // _[0] is the fee BigNumber
-              lzFees[key] = _.length > 0 ? _[0].toString() / 1e18 + ' ' + from.symbol : null
+            .readContract({
+              address: LAYERZERO_BRIDGE_ADDRESS,
+              abi: ESTIMATE_SEND_FEE_ABI,
+              functionName: 'estimateSendFee',
+              args: [
+                to.id,
+                '0x0000000000000000000000000000000000000000',
+                '0x0000000000000000000000000000000000000000',
+                0n,
+                false,
+                params
+              ]
+            })
+            .then(fees => {
+              lzFees[key] = Array.isArray(fees) && fees.length > 0 ? `${formatEther(fees[0])} ${from.symbol}` : null
             })
             .catch(() => {
               lzFees[key] = null
