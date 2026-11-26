@@ -17,6 +17,7 @@ import { hashString, recoverPublickey, verifyIdentifier } from '../utils/eth'
 import { strcasecmp } from '../utils/string'
 import requestRateLimiter from '../utils/requestRateLimiter'
 import clientSettings from '../clients.config.js'
+import estimateAxelarFees from './estimateAxelarFees'
 
 const log = logger.child({ from: 'login-middleware' })
 
@@ -271,10 +272,7 @@ const setup = (app: Router) => {
     requestRateLimiter(10),
     wrapAsync(async (req, res) => {
       const axlApi = new AxelarQueryAPI({ environment: 'mainnet' })
-      const [axlCeloEth, axlEthCelo] = await Promise.all([
-        axlApi.estimateGasFee('Celo', 'Ethereum', 'Celo', '300000', 1.1).then(_ => _ / 1e18),
-        axlApi.estimateGasFee('Ethereum', 'Celo', 'ETH', '300000', 1.1).then(_ => _ / 1e18)
-      ])
+      const { axlCeloEth, axlEthCelo } = await estimateAxelarFees(axlApi)
       const bridge = new ethers.Contract('0xa3247276DbCC76Dd7705273f766eB3E8a5ecF4a5', [
         'function estimateSendFee(uint16,address,address,uint256,bool,bytes) view returns (uint256,uint256)'
       ])
