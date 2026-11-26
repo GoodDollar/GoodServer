@@ -1,6 +1,6 @@
 import setupLoginRoutes from '../login-middleware'
 import estimateAxelarFees from '../estimateAxelarFees'
-import { createViemFallbackClient } from '@goodwidget/core/viemFallbackClient'
+import MultiWallet from '../../blockchain/MultiWallet'
 import { encodePacked } from 'viem'
 
 jest.mock('@axelar-network/axelarjs-sdk', () => ({
@@ -19,13 +19,30 @@ jest.mock('../../db/mongo/user-privat-provider', () => ({
   }
 }))
 
-jest.mock('@goodwidget/core/viemFallbackClient', () => ({
-  createViemFallbackClient: jest.fn()
+jest.mock('../../blockchain/MultiWallet', () => ({
+  __esModule: true,
+  default: {
+    ready: Promise.resolve([]),
+    mainWallet: {
+      networkIdMainnet: 1,
+      mainnetPublicClient: { readContract: jest.fn() }
+    },
+    walletsMap: {
+      122: { publicClient: { readContract: jest.fn() } },
+      42220: { publicClient: { readContract: jest.fn() } },
+      50: { publicClient: { readContract: jest.fn() } }
+    }
+  }
 }))
 
 describe('GET /bridge/estimatefees', () => {
   let routeHandler
-  const readContract = jest.fn()
+  const readContracts = [
+    () => MultiWallet.mainWallet.mainnetPublicClient.readContract,
+    () => MultiWallet.walletsMap[122].publicClient.readContract,
+    () => MultiWallet.walletsMap[42220].publicClient.readContract,
+    () => MultiWallet.walletsMap[50].publicClient.readContract
+  ]
 
   beforeAll(() => {
     const routes = {}
@@ -41,10 +58,8 @@ describe('GET /bridge/estimatefees', () => {
   })
 
   beforeEach(() => {
-    readContract.mockReset()
-    readContract.mockResolvedValue([1000000000000000000n, 0n])
-    createViemFallbackClient.mockReturnValue({
-      createPublicClient: jest.fn().mockResolvedValue({ readContract })
+    readContracts.forEach(getReadContract => {
+      getReadContract().mockReset().mockResolvedValue([1000000000000000000n, 0n])
     })
     estimateAxelarFees.mockResolvedValue({
       axlCeloEth: 1,
@@ -72,7 +87,7 @@ describe('GET /bridge/estimatefees', () => {
         LZ_XDC_TO_CELO: '1 XDC'
       })
     })
-    expect(readContract).toHaveBeenCalledWith(
+    expect(readContracts[0]()).toHaveBeenCalledWith(
       expect.objectContaining({
         functionName: 'estimateSendFee',
         args: [
@@ -85,10 +100,11 @@ describe('GET /bridge/estimatefees', () => {
         ]
       })
     )
+    readContracts.forEach(getReadContract => expect(getReadContract()).toHaveBeenCalledTimes(3))
   })
 
   test('returns null for LayerZero routes whose fee estimation fails', async () => {
-    readContract.mockRejectedValueOnce(new Error('provider unavailable'))
+    readContracts[0]().mockRejectedValueOnce(new Error('provider unavailable'))
     const json = jest.fn()
 
     routeHandler({ log: {} }, { json }, jest.fn())
